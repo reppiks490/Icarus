@@ -141,7 +141,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
       <span class="node" data-n="paper"><i></i>Paper fills</span>
     </div>
     <div class="state">
-      <span class="combined-pnl" title="Sum of net P&amp;L for the four simulated paper workspaces: paper equity minus allocated capital, including open P&amp;L"><span class="label">Combined paper P&amp;L</span><span class="value" id="combinedPaperPnl">—</span></span>
+      <span class="combined-pnl" title="Closed live paper results plus current open marks across four simulated ledgers"><span class="label">4-ledger paper P&amp;L</span><span class="value" id="combinedPaperPnl">—</span></span>
       <span class="small muted" id="meta">—</span><span class="small muted tnum" id="clock" title="your computer's clock (local zone) and the strategy's session clock (New York)"></span>
       <span class="badge" id="phase">—</span>
       <span class="badge" id="armed">—</span>
@@ -247,7 +247,19 @@ async function admin(path, body, quiet) {
       body:JSON.stringify(body||{}),
     });
     const j = await r.json().catch(()=>({}));
-    const msg = r.ok ? (j.note||'ok') : ('error '+r.status+': '+(j.detail||j.error||'request failed'));
+    let msg = r.ok ? (j.note||'ok') : ('error '+r.status+': '+(j.detail||j.error||'request failed'));
+    if (r.ok && path.includes('/flatten')) {
+      const censored = Number(j.shadow_censored_positions)||0;
+      msg = `Flattened ${Number(j.flattened_positions)||0} simulated position(s).${censored ? ` Censored ${censored} shadow-only position(s).` : ''} Ledger remains paused.`;
+    }
+    if (!r.ok && path.includes('/flatten') && Array.isArray(j.failed_assets) && j.failed_assets.length) {
+      const failed = j.failed_assets.map(x => `${x.asset || 'runner'}: ${x.detail || 'flatten failed'}`).join('; ');
+      const censored = Number(j.shadow_censored_positions)||0;
+      const censorNote = censored ? ` ${censored} shadow-only position(s) censored.` : '';
+      msg = j.partial
+        ? `Partial paper flatten: ${Number(j.flattened_positions)||0} position(s) closed.${censorNote} Failed: ${failed}`
+        : `Paper flatten stopped before any positions closed.${censorNote} Failed: ${failed}`;
+    }
     if (!quiet) toast(msg, !r.ok);
     if (r.ok) setTimeout(refresh, 400);
     return r.ok ? j : null;
@@ -1213,25 +1225,7 @@ async function refresh() {
   }
 }
 async function refreshCombinedPaperPnl() {
-  const el = $('#combinedPaperPnl');
-  if (!el) return;
-  try {
-    const r = await fetch('/api/command-centers', {cache:'no-store'});
-    if (!r.ok) throw new Error('HTTP '+r.status);
-    const data = await r.json();
-    const profiles = data.profiles;
-    if (data.mode !== 'concurrent_paper' || !Array.isArray(profiles) || profiles.length !== 4 ||
-        profiles.some(p => typeof p.status?.net !== 'number' || !Number.isFinite(p.status.net))) throw new Error('four paper profiles unavailable');
-    const net = profiles.reduce((sum,p) => sum + p.status.net, 0);
-    if (!Number.isFinite(net)) throw new Error('combined paper P&L is not finite');
-    el.textContent = net.toLocaleString(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
-    el.className = 'value ' + (net >= 0 ? 'pos' : 'neg');
-    el.title = `Combined net P&L across ${profiles.length} simulated paper workspaces: ${profiles.map(p=>`${p.name}: ${Number(p.status.net).toFixed(2)}`).join(' + ')}. Net means paper equity minus allocated capital and includes open P&L.`;
-  } catch (e) {
-    el.textContent = '—';
-    el.className = 'value';
-    el.title = 'Combined paper P&L unavailable: four workspace results could not be read.';
-  }
+  await loadPaperWorkspaces();
 }
 async function refreshGolive() {
   try {

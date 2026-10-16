@@ -7,11 +7,14 @@
   let visible = true, particles = [], pointer = {x:0, y:0}, eased = {x:0, y:0};
   let introFrame = 0, introLast = 0, introElapsed = 0;
   let intro = null, introTimer = 0, introReturnFocus = null, inertSiblings = [];
-  const colors = {divine:[205,165,82], void:[255,80,108], astral:[137,192,255]};
+  const colors = {divine:[205,165,82], void:[255,80,108], astral:[137,192,255], galaxy:[161,185,255], cyberpunk:[102,232,236], chibi:[255,217,242]};
   const introLabels = {
     divine:{kicker:'THE ONE ABOVE ALL',final:'ENTER THE SANCTUM',seal:'CROWN // LIGHT // INFINITY',glyph:['◇','Ⅰ','△','☼','∞','◈','⌁','Ⅲ'],chapter:['ORIGIN / APERTURE','FORM / CONVERGENCE','ASCENT / CROWN','DOMINION / REVEALED']},
     void:{kicker:'MARKET DESTROYER',final:'ENTER THE BREACH',seal:'RUPTURE // SILENCE // EMBER',glyph:['×','⟁','Ⅱ','⌁','◇','Ⅲ','×','▲'],chapter:['SILENCE / APERTURE','EMBER / CONVERGENCE','VOID / CROWN','DOMINION / REVEALED']},
-    astral:{kicker:'BEYOND THE HORIZON',final:'ENTER THE OBSERVATORY',seal:'ORBIT // AETHER // HORIZON',glyph:['○','✦','∞','⌁','Ⅰ','◈','⋮','Ⅲ'],chapter:['STAR / APERTURE','ORBIT / CONVERGENCE','AETHER / CROWN','HORIZON / REVEALED']}
+    astral:{kicker:'BEYOND THE HORIZON',final:'ENTER THE OBSERVATORY',seal:'ORBIT // AETHER // HORIZON',glyph:['○','✦','∞','⌁','Ⅰ','◈','⋮','Ⅲ'],chapter:['STAR / APERTURE','ORBIT / CONVERGENCE','AETHER / CROWN','HORIZON / REVEALED']},
+    galaxy:{kicker:'MAPS OF THE NIGHT',final:'ENTER THE STAR CHART',seal:'STAR // CHART // DISTANCE',glyph:['✦','○','◇','⋮','✧','◈','⌁','✦'],chapter:['DUST / APERTURE','ORBIT / CONVERGENCE','CHART / REVEAL','HORIZON / OPEN']},
+    cyberpunk:{kicker:'SIGNALS IN THE RAIN',final:'ENTER THE CIRCUIT',seal:'NEON // CIRCUIT // SIGNAL',glyph:['▣','◇','⌁','◈','▥','△','⌗','◇'],chapter:['CITY / APERTURE','SIGNAL / CONVERGENCE','CIRCUIT / REVEAL','NIGHT / OPEN']},
+    chibi:{kicker:'SMALL STEPS, WIDE SKIES',final:'MEET THE WAYFINDER',seal:'WONDER // MAP // DAYBREAK',glyph:['✦','♡','◇','○','✧','◈','⌁','✦'],chapter:['WONDER / APERTURE','MAP / CONVERGENCE','FRIEND / REVEAL','SKY / OPEN']}
   };
   const rand = (a,b) => a + Math.random() * (b-a);
   const permitted = () => scene && !intro && !scene.hidden && visible && !document.hidden &&
