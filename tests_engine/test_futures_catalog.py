@@ -62,8 +62,6 @@ def test_catalog_identities_are_continuous_unique_and_fail_closed_by_constructio
         assert product.session in {"rth", "eth"}
         assert product.calendar in {"cme", "cme_crypto"}
 
-    # ICARUS keeps BTC spot and CME Bitcoin futures unambiguous internally while
-    # resolving dated CME contracts with the real exchange root.
     assert FUTURES_PRODUCTS["BTCF"].execution_root == "BTC"
     assert FUTURES_PRODUCTS["MBT"].execution_root == "MBT"
 
@@ -105,10 +103,11 @@ def test_static_dated_contract_qualification_is_explicit_for_every_root():
         assert product.roll_model
 
 
-def test_current_fx_catalog_supports_monthly_contracts():
-    monthly = "FGHJKMNQUVXZ"
+def test_static_fx_resolution_uses_quarterly_benchmark_cycle():
+    # Standard FX also lists serial months, but the continuous benchmark and all
+    # micro contracts use the March quarterly cycle for deterministic static routing.
     for root in ("6E", "M6E", "6J", "MJY", "6B", "M6B", "6A", "M6A"):
-        assert FUTURES_PRODUCTS[root].cycle == monthly
+        assert FUTURES_PRODUCTS[root].cycle == "HMUZ"
 
 
 def test_runtime_registry_is_derived_from_the_same_32_root_authority():
@@ -184,8 +183,8 @@ def test_representative_product_families_resolve_expected_current_candidates():
         "MCL1!": "MCLZ26",
         "NG1!": "NGX26",
         "MNG1!": "MNGX26",
-        "6E1!": "6EX26",
-        "M6E1!": "M6EX26",
+        "6E1!": "6EZ26",
+        "M6E1!": "M6EZ26",
         "ZN1!": "ZNZ26",
         "ZB1!": "ZBZ26",
         "BTCF1!": "BTCV26",
