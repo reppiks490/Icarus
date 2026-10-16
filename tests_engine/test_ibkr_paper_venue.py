@@ -662,6 +662,43 @@ class IbkrPaperVenueTests(unittest.TestCase):
     gateway.disconnect()
 
 
+  def test_reconciliation_recovers_completed_tws_fill_before_identity(self):
+    api = FakeIbapiClient()
+    gateway = IbkrTwsPaperGateway(api_client=api, contract_factory=FakeApiRecord,
+                                  order_factory=FakeApiRecord, timeout_s=0.05)
+    gateway.connect()
+    adapter = IbkrPaperVenue(gateway, "DU12345", {"MNQZ26": mapping()})
+    intent = Intent(strategy="callback-guard", symbol="MNQZ26", side="BUY",
+                    qty=1, kind="MARKET")
+    order_ref = intent.intent_id
+    contract = gateway._make_contract(mapping().ib_contract())
+    request = adapter._build_order(mapping(), order_ref, "BUY", 1, "MARKET", None)
+    order = gateway._make_order(request)
+    order.orderId = 901
+    api.orders["901"] = (contract, order, "Submitted")
+    assert gateway.open_orders("DU12345")
+    with TemporaryDirectory() as temp:
+      engine = ExecutionEngine(adapter, RiskGovernor(), Journal(f"{temp}/journal.jsonl"),
+                               mode="PAPER")
+      engine.book.add(intent)
+      engine.book.on_sent(order_ref)
+      engine.book.on_timeout(order_ref)
+
+      api.order_fill("901", 1, 19888.25, "exec-full-before-reconcile")
+      api.orders["901"] = (contract, order, "Filled")
+      api.completed_orders.append((contract, order, "Filled"))
+      api.positions_rows.append(("DU12345", contract, 1))
+      assert adapter.poll() == []
+
+      report = engine.reconcile()
+      assert report["resolved"] == {order_ref: "901"}
+      assert engine.book.orders[order_ref].state == S.FILLED
+      assert engine.book.positions["MNQZ26"] == 1
+      assert report["position_mismatch"] == {}
+      assert engine.needs_reconcile is False
+    gateway.disconnect()
+
+
   def test_verified_tws_reject_callbacks_preserve_broker_identity(self):
     for callback_kind in ("error", "inactive"):
       with self.subTest(callback=callback_kind):
