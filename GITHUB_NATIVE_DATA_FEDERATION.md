@@ -15,7 +15,7 @@ The Engine repository is the canonical GitHub-native credential/data-health auth
 
 ## GitHub Actions credentials
 
-Provider workflows consume GitHub Actions Secrets or Variables through canonical environment names with legacy-alias fallback. Do not copy plaintext API keys into chat, source files, commits, artifacts, logs, or handoff documents.
+Provider workflows consume GitHub Actions Secrets or Variables through canonical environment names with legacy-alias fallback. GitHub Actions Secrets are for sensitive credentials; Variables are for non-sensitive configuration only. Do not copy plaintext API keys into chat, source files, commits, artifacts, logs, or handoff documents.
 
 Credential presence is not proof of provider validity or entitlement. Runtime receipts remain authoritative for authentication, plan denial, quota, collection and downstream-consumption status.
 
