@@ -58,73 +58,50 @@ def test_dashboard_javascript_parses(rel, tmp_path):
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed on this developer machine")
 def test_combined_paper_pnl_renders_four_finite_values_and_fails_closed(tmp_path):
-    dashboard = REPO / "icarus_engine/command-centers-ui.js"
+    ui = REPO / "icarus_engine/command-centers-ui.js"
     runner = tmp_path / "combined-paper-pnl.cjs"
     runner.write_text(
         r"""
 const fs = require('node:fs');
 const vm = require('node:vm');
-const html = fs.readFileSync(process.argv[2], 'utf8');
-const start = html.indexOf('let paperWorkspaces = null;');
-const end = html.indexOf('\nfunction paperAggregateHtml(data)', start);
-if (start < 0 || end < 0) throw new Error('paper P&L helpers boundary not found');
-const implementation = html.slice(start, end);
+const source = fs.readFileSync(process.argv[2], 'utf8');
+const start = source.indexOf('function paperValue(');
+const end = source.indexOf('async function loadPaperWorkspaces(', start);
+if (start < 0 || end < 0) throw new Error('paper P&L helper boundary not found');
+const implementation = source.slice(start, end);
 const scenarios = JSON.parse(process.argv[3]);
-
 function run(scenario) {
   const element = {textContent: '', className: '', title: ''};
-  const context = {
-    document: {querySelector: (selector) => selector === '#combinedPaperPnl' ? element : null},
-  };
+  const context = {document: {querySelector: (selector) => selector === '#combinedPaperPnl' ? element : null}};
   vm.runInNewContext(implementation + '\nthis.invoke = paperSetHeader;', context);
-  context.invoke(scenario.data);
+  context.invoke(scenario);
   return element;
 }
-
-const results = scenarios.map(run);
-process.stdout.write(JSON.stringify(results));
+process.stdout.write(JSON.stringify(scenarios.map(run)));
 """,
         encoding="utf-8",
     )
     profiles = [{"name": name} for name in "ABCD"]
     scenarios = [
-        {"data": {"mode": "concurrent_paper", "profiles": profiles, "aggregate": {"realized_pnl": 10.5, "open_pnl": 5.0}}},
-        {
-            "data": {
-                "mode": "concurrent_paper",
-                "profiles": profiles,
-                "aggregate": {"realized_pnl": -10.0, "open_pnl": 0.0},
-            }
-        },
-        {
-            "data": {
-                "mode": "concurrent_paper",
-                "profiles": profiles,
-                "aggregate": {"realized_pnl": 1e308, "open_pnl": 1e308},
-            }
-        },
-        {"data": {"mode": "concurrent_paper", "profiles": profiles[:3], "aggregate": {"realized_pnl": 1.0, "open_pnl": 2.0}}},
-        {
-            "data": {
-                "mode": "concurrent_paper",
-                "profiles": profiles,
-                "aggregate": {"realized_pnl": 1.0, "open_pnl": None},
-            }
-        },
-        {"data": {"mode": "concurrent_paper", "profiles": profiles}},
+        {"mode": "concurrent_paper", "profiles": profiles, "aggregate": {"realized_pnl": 14.5, "open_pnl": 1}},
+        {"mode": "concurrent_paper", "profiles": profiles, "aggregate": {"realized_pnl": -10, "open_pnl": 0}},
+        {"mode": "concurrent_paper", "profiles": profiles, "aggregate": {"realized_pnl": 1e308, "open_pnl": 1e308}},
+        {"mode": "concurrent_paper", "profiles": profiles[:3], "aggregate": {"realized_pnl": 1, "open_pnl": 1}},
+        {"mode": "concurrent_paper", "profiles": profiles, "aggregate": {"realized_pnl": 1, "open_pnl": None}},
+        {"mode": "unavailable", "profiles": profiles, "aggregate": {"realized_pnl": 1, "open_pnl": 1}},
     ]
     result = subprocess.run(
-        [NODE, str(runner), str(dashboard), json.dumps(scenarios)],
+        [NODE, str(runner), str(ui), json.dumps(scenarios)],
         text=True,
         encoding="utf-8",
         capture_output=True,
     )
     assert result.returncode == 0, result.stderr
     rendered = json.loads(result.stdout)
-    assert "15.50" in rendered[0]["textContent"]
+    assert "$15.50" in rendered[0]["textContent"]
     assert rendered[0]["className"] == "value pos"
-    assert "open marks" in rendered[0]["title"]
-    assert "10.00" in rendered[1]["textContent"]
+    assert "4 separate simulated ledgers" in rendered[0]["title"]
+    assert "$10.00" in rendered[1]["textContent"]
     assert rendered[1]["className"] == "value neg"
     for invalid in rendered[2:]:
         assert invalid["textContent"] == "—"
