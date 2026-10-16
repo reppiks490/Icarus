@@ -12,7 +12,16 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from .assets import REGISTRY, apply_chart_config, validate_chart_config
-from .runtime import AssetRunner, Journal, Portfolio, RunnerConfig, apply_spec_meta, resolve_inputs, validate_values
+from .runtime import (
+    AssetRunner,
+    FlattenUnavailableError,
+    Journal,
+    Portfolio,
+    RunnerConfig,
+    apply_spec_meta,
+    resolve_inputs,
+    validate_values,
+)
 
 
 _MINI_MICRO_FUTURES = (
@@ -528,15 +537,51 @@ class PaperWorkspaceManager:
         portfolio = self.portfolios[profile_id]
         with portfolio._lock:
             runners = portfolio.runner_list()
-            for runner in runners:
-                if getattr(getattr(runner, "em", None), "open", ()) and (
-                    not isinstance(getattr(runner, "last_price", None), (int, float)) or
-                    not math.isfinite(runner.last_price) or runner.last_price <= 0
-                ):
-                    raise ValueError(f"{runner.symbol}: cannot flatten a paper position without a valid observed mark")
             portfolio.paused = True
+            pause_errors = []
             for runner in runners:
-                runner.set_paused(True)
-            count = sum(runner.flatten("workspace") for runner in runners)
+                try:
+                    runner.set_paused(True)
+                except Exception as ex:
+                    pause_errors.append({"asset": runner.symbol, "detail": f"{type(ex).__name__}: {ex}"})
+            if pause_errors:
+                error = FlattenUnavailableError(
+                    "Could not pause every paper runner; flattening was not attempted")
+                error.flattened_positions = 0
+                error.failed_assets = pause_errors
+                error.partial = False
+                raise error
+
+            for runner in runners:
+                emulator = getattr(runner, "em", None)
+                shadow = getattr(emulator, "shadow", None)
+                has_open = bool(getattr(emulator, "open", ())) or bool(getattr(shadow, "open", ()))
+                mark = getattr(runner, "last_price", None)
+                try:
+                    valid_mark = mark is not None and math.isfinite(float(mark)) and float(mark) > 0
+                except (TypeError, ValueError, OverflowError):
+                    valid_mark = False
+                if has_open and not valid_mark:
+                    error = FlattenUnavailableError(
+                        f"{runner.symbol}: cannot flatten a paper position without a valid observed mark")
+                    error.flattened_positions = 0
+                    error.failed_assets = [{"asset": runner.symbol, "detail": str(error)}]
+                    error.partial = False
+                    raise error
+
+            count = 0
+            failures = []
+            for runner in runners:
+                try:
+                    count += int(runner.flatten("workspace") or 0)
+                except Exception as ex:
+                    failures.append({"asset": runner.symbol, "detail": f"{type(ex).__name__}: {ex}"})
+            if failures:
+                error = FlattenUnavailableError(
+                    f"Flatten completed with {count} position(s) closed and {len(failures)} runner failure(s)")
+                error.flattened_positions = count
+                error.failed_assets = failures
+                error.partial = count > 0
+                raise error
         return {"ok": True, "id": profile_id, "flattened_positions": count,
                 "paused": True, "paper_only": True}

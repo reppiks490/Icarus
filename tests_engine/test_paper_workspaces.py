@@ -1,6 +1,7 @@
 import copy
 import sqlite3
 import threading
+from types import SimpleNamespace
 from http.server import ThreadingHTTPServer
 
 import pytest
@@ -478,3 +479,49 @@ def test_shared_databento_wrapper_exposes_cached_session_health():
     feed = paper_workspaces.SharedFeed(Databento())
     assert feed.provider_name == "databento"
     assert feed.cached_meta("NQ") == {"core_session_ok": False, "mapping_active": True}
+
+
+def test_flatten_attempts_every_runner_and_reports_partial_failures(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        portfolio = manager.portfolios["cc1"]
+        first, second, third = _Runner(), _Runner(), _Runner()
+        first.symbol, second.symbol, third.symbol = "NQ", "ES", "YM"
+        first.flatten = lambda _reason: 2
+
+        def fail_flatten(_reason):
+            raise RuntimeError("paper journal unavailable")
+
+        second.flatten = fail_flatten
+        third.flatten = lambda _reason: 1
+        portfolio.runners = [first, second, third]
+
+        with pytest.raises(paper_workspaces.FlattenUnavailableError, match=r"3 position\(s\) closed") as caught:
+            manager.flatten("cc1")
+
+        assert [runner.flatten_calls for runner in (first, second, third)] == [[], [], []]
+        assert [runner.paused for runner in (first, second, third)] == [True, True, True]
+        assert caught.value.flattened_positions == 3
+        assert caught.value.partial is True
+        assert caught.value.failed_assets == [{"asset": "ES", "detail": "RuntimeError: paper journal unavailable"}]
+    finally:
+        manager.stop()
+
+
+def test_flatten_requires_mark_for_primary_or_shadow_open_positions(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        runner = manager.portfolios["cc1"].runners[0]
+        runner.symbol = "NQ"
+        runner.em = SimpleNamespace(open=[], shadow=SimpleNamespace(open=[object()]))
+        runner.last_price = None
+
+        with pytest.raises(paper_workspaces.FlattenUnavailableError, match="valid observed mark"):
+            manager.flatten("cc1")
+
+        assert runner.paused is True
+        assert runner.flatten_calls == []
+    finally:
+        manager.stop()
