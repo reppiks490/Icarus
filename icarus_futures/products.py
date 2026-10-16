@@ -108,11 +108,13 @@ _PRODUCTS = (
     _product("HG", "Copper", "HG=F", "COMEX:HG1!", "COMEX", "metal", 0.0005, 25000.0, "HKNUZ", "first_notice", session="eth", group="metals"),
     _product("MHG", "Micro Copper", "MHG=F", "COMEX:MHG1!", "COMEX", "metal", 0.0005, 2500.0, "HKNUZ", "first_notice", micro_of="HG", session="eth", group="metals"),
 
-    # Energy futures trade monthly and use a conservative pre-notice roll.
-    _product("CL", "WTI Crude Oil", "CL=F", "NYMEX:CL1!", "NYMEX", "energy", 0.01, 1000.0, MONTHLY, "first_notice", session="eth"),
-    _product("MCL", "Micro WTI Crude Oil", "MCL=F", "NYMEX:MCL1!", "NYMEX", "energy", 0.01, 100.0, MONTHLY, "first_notice", micro_of="CL", session="eth"),
-    _product("NG", "Henry Hub Natural Gas", "NG=F", "NYMEX:NG1!", "NYMEX", "energy", 0.001, 10000.0, MONTHLY, "first_notice", session="eth"),
-    _product("MNG", "Micro Henry Hub Natural Gas", "MNG=F", "NYMEX:MNG1!", "NYMEX", "energy", 0.001, 1000.0, MONTHLY, "first_notice", micro_of="NG", session="eth"),
+    # Energy futures have product-specific last-trade rules.  The static resolver
+    # models those rules conservatively; exact broker contract-details remain the
+    # final paper-execution authority.
+    _product("CL", "WTI Crude Oil", "CL=F", "NYMEX:CL1!", "NYMEX", "energy", 0.01, 1000.0, MONTHLY, "wti", session="eth"),
+    _product("MCL", "Micro WTI Crude Oil", "MCL=F", "NYMEX:MCL1!", "NYMEX", "energy", 0.01, 100.0, MONTHLY, "wti_micro", micro_of="CL", session="eth"),
+    _product("NG", "Henry Hub Natural Gas", "NG=F", "NYMEX:NG1!", "NYMEX", "energy", 0.001, 10000.0, MONTHLY, "natgas", session="eth"),
+    _product("MNG", "Micro Henry Hub Natural Gas", "MNG=F", "NYMEX:MNG1!", "NYMEX", "energy", 0.001, 1000.0, MONTHLY, "natgas_micro", micro_of="NG", session="eth"),
 
     # Major CME FX futures and their micro counterparts.  Static resolution
     # follows the benchmark quarterly cycle; broker qualification handles serials.
