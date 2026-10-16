@@ -4,6 +4,9 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from icarus_engine.bar_receipts import make_bar_batch_receipt
+from icarus_engine.calendar import get_calendar
+from icarus_engine.market_universe import snapshot
+from icarus_engine.market_universe_adapter import MarketUniverseAdapter
 from icarus_engine.pine.timeframe import Bar
 
 
@@ -66,4 +69,27 @@ def test_expected_daily_schedule_allows_half_hour_dst_transition():
 
     assert timestamps[1] - timestamps[0] == 86400 - 1800
     assert receipt.historical_bars_qualified is True
+
+
+def test_a200_adapter_records_timezone_from_authoritative_equity_calendar():
+    class FakeYahoo:
+        GRANULARITIES = (86400,)
+
+        def candles(self, _symbol, interval_seconds, start_ts, end_ts):
+            schedule = get_calendar("US_EQUITIES").expected_bar_timestamps(
+                start_ts, end_ts, interval_seconds,
+            )
+            return [Bar(ts, 10, 12, 9, 11, 1) for ts in schedule]
+
+        def meta(self, symbol):
+            return {"symbol": symbol}
+
+    row = snapshot()["instruments"][0]
+    _, receipt = MarketUniverseAdapter(FakeYahoo()).fetch_history(
+        row["instrument_id"], 86400,
+        int(datetime(2026, 3, 6, tzinfo=ZoneInfo("UTC")).timestamp()),
+        int(datetime(2026, 3, 10, tzinfo=ZoneInfo("UTC")).timestamp()),
+    )
+
+    assert receipt.calendar_timezone == "America/New_York"
 

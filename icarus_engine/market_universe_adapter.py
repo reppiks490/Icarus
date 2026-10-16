@@ -87,12 +87,14 @@ class MarketUniverseAdapter:
         # unqualified instead of extrapolating session rules.
         expected = None
         alignment = None
+        calendar_timezone = None
         session_status = "UNKNOWN"
         timestamp_normalization = "NONE"
         try:
             calendar = get_calendar(row["calendar"])
             expected = calendar.expected_bar_timestamps(start_ts, end_ts, interval_seconds)
             alignment = lambda ts: calendar.is_aligned(ts, interval_seconds)
+            calendar_timezone = calendar.timezone
             session_status = "VERIFIED"
             if provider == "yahoo" and interval_seconds == 86400:
                 normalized = []
@@ -127,6 +129,7 @@ class MarketUniverseAdapter:
             provider_mapping_status=mapping_status,
             alignment_validator=alignment,
             expected_bar_timestamps=expected,
+            calendar_timezone=calendar_timezone,
             timestamp_normalization=timestamp_normalization,
         )
         return checked, receipt
