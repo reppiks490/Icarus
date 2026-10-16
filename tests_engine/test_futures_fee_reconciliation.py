@@ -84,6 +84,14 @@ def test_malformed_nonfinite_and_binary_float_amounts_are_rejected(amount):
                        [row(amount=amount)])
 
 
+@pytest.mark.parametrize("amount", [Decimal("1e129"), Decimal("1e-129"),
+                                    Decimal("9" * 129)])
+def test_extreme_amount_scale_and_precision_are_bounded(amount):
+    with pytest.raises(ValueError, match="precision or scale"):
+        reconcile_fees([FillIdentity("DU12345", "exec-1", "USD")],
+                       [row(amount=amount)])
+
+
 def test_output_is_deterministic_and_retains_statement_row_identity_hash():
     fills = [FillIdentity("DU12345", "exec-b", "USD"),
              FillIdentity("DU12345", "exec-a", "USD")]

@@ -5,6 +5,8 @@ or order-routing behavior. Adapters must first translate their source records in
 these types while preserving the provider's statement-row identity and SHA-256 digest.
 Amounts use signed ``Decimal`` values: positive debits increase costs, negative
 credits/rebates reduce them, and zero is preserved as reported.
+Inputs are bounded to 128 coefficient digits and a Decimal exponent between -128
+and 128 so malformed statement values cannot trigger unbounded integer expansion.
 
 Source motivation: ``reppiks490/Icarus-engine``
 ``coordination/source-material/20261015-screen-recordings-transcript.md`` at the
@@ -23,6 +25,8 @@ from typing import Iterable
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
+_MAX_AMOUNT_DIGITS = 128
+_MAX_AMOUNT_EXPONENT = 128
 
 
 @dataclass(frozen=True, order=True)
@@ -98,6 +102,11 @@ def _amount(value: Decimal | str | int) -> Decimal:
         raise ValueError("fee amount is not a valid decimal") from exc
     if not amount.is_finite():
         raise ValueError("fee amount must be finite")
+    parts = amount.as_tuple()
+    if (len(parts.digits) > _MAX_AMOUNT_DIGITS
+            or not isinstance(parts.exponent, int)
+            or abs(parts.exponent) > _MAX_AMOUNT_EXPONENT):
+        raise ValueError("fee amount exceeds supported precision or scale")
     return amount
 
 
