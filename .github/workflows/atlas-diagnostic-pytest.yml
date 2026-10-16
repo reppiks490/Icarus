@@ -1,0 +1,37 @@
+name: atlas-diagnostic-pytest
+
+on:
+  push:
+    branches:
+      - atlas/icarus-system-convergence-20261016
+
+permissions:
+  contents: read
+
+jobs:
+  pytest-diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -e ".[dev,ml,bridge,databento]"
+      - name: Capture full pytest output
+        shell: bash
+        run: |
+          set +e
+          python -m pytest tests_engine -q > pytest.log 2>&1
+          code=$?
+          echo "$code" > pytest.exitcode
+          exit 0
+      - name: Upload diagnostic log
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-pytest-diagnostic
+          path: |
+            pytest.log
+            pytest.exitcode
+          if-no-files-found: error
+          retention-days: 1
