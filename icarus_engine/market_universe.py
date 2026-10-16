@@ -217,6 +217,8 @@ def load_listing_crosswalk_report() -> dict[str, Any]:
     updated = report.get("retrieved_at")
     try:
         retrieved = datetime.fromisoformat(str(updated).replace("Z", "+00:00"))
+        if retrieved.tzinfo is None:
+            return invalid
         age = (datetime.now(timezone.utc) - retrieved.astimezone(timezone.utc)).total_seconds()
     except (ValueError, TypeError):
         return invalid

@@ -54,7 +54,7 @@ def test_crosswalk_reports_all_200_listing_identities_without_feed_qualification
     assert catalog["counts"]["strategy_qualified_count"] == 0
 
 
-@pytest.mark.parametrize("mutation", ["duplicate", "missing", "name", "type", "digest", "unknown"])
+@pytest.mark.parametrize("mutation", ["duplicate", "missing", "name", "type", "digest", "unknown", "naive_time", "source_digest"])
 def test_crosswalk_fails_closed_on_invalid_identity_ledger(monkeypatch, tmp_path, mutation):
     report = _report()
     if mutation == "duplicate":
@@ -76,6 +76,10 @@ def test_crosswalk_fails_closed_on_invalid_identity_ledger(monkeypatch, tmp_path
     elif mutation == "unknown":
         report["results"][0]["instrument_id"] = "unknown-id"
         report["results_sha256"] = market_universe.source_probe_results_digest(report["results"])
+    elif mutation == "naive_time":
+        report["retrieved_at"] = "2026-10-16T12:00:00"
+    elif mutation == "source_digest":
+        report["source_snapshots"]["NYSE"]["sha256"] = "not-a-sha256"
     path = tmp_path / "crosswalk.json"
     path.write_text(json.dumps(report))
     monkeypatch.setattr(market_universe, "LISTING_CROSSWALK_PATH", path)
