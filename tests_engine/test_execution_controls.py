@@ -147,6 +147,7 @@ def test_flatten_open_trade_cannot_fill_pending_reversal():
     assert r.flatten() == 1
     assert not r.em.open and not r.em._pending_entries
     assert [f.kind for f in r.em.fills] == ["entry", "close"]
+    assert r.journal.closed_paper_profit()["closed_pieces"] == 1
     assert r.strat.w_slot_queue == [0] and r.strat.tod_hour_queue == [8]
 
 
