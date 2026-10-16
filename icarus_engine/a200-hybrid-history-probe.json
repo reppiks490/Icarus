@@ -35,6 +35,8 @@
       "received_at_ns": 1792131370630767263,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -46,7 +48,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "NVDA"
+      "provider_symbol_candidate": "NVDA",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -66,6 +70,8 @@
       "received_at_ns": 1792131371244958281,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -77,7 +83,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "AAPL"
+      "provider_symbol_candidate": "AAPL",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -97,6 +105,8 @@
       "received_at_ns": 1792131371837954433,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -108,7 +118,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "GOOGL"
+      "provider_symbol_candidate": "GOOGL",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -128,6 +140,8 @@
       "received_at_ns": 1792131372345322360,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -139,7 +153,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MSFT"
+      "provider_symbol_candidate": "MSFT",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -159,6 +175,8 @@
       "received_at_ns": 1792131372823830262,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -170,7 +188,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "AMZN"
+      "provider_symbol_candidate": "AMZN",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -190,6 +210,8 @@
       "received_at_ns": 1792131373299832819,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -201,7 +223,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "META"
+      "provider_symbol_candidate": "META",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -221,6 +245,8 @@
       "received_at_ns": 1792131373868204354,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -232,7 +258,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "AVGO"
+      "provider_symbol_candidate": "AVGO",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -252,6 +280,8 @@
       "received_at_ns": 1792131374410896750,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -263,7 +293,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "TSLA"
+      "provider_symbol_candidate": "TSLA",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -283,6 +315,8 @@
       "received_at_ns": 1792131374919176940,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -294,7 +328,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "LLY"
+      "provider_symbol_candidate": "LLY",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -314,6 +350,8 @@
       "received_at_ns": 1792131375389376261,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -325,7 +363,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SKHY"
+      "provider_symbol_candidate": "SKHY",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -345,6 +385,8 @@
       "received_at_ns": 1792131375983891128,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -356,7 +398,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MU"
+      "provider_symbol_candidate": "MU",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -376,6 +420,8 @@
       "received_at_ns": 1792131376457898996,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -387,7 +433,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "AMD"
+      "provider_symbol_candidate": "AMD",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -407,6 +455,8 @@
       "received_at_ns": 1792131376962286125,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -418,7 +468,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "WMT"
+      "provider_symbol_candidate": "WMT",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -438,6 +490,8 @@
       "received_at_ns": 1792131377478279442,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -449,7 +503,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "JPM"
+      "provider_symbol_candidate": "JPM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -469,6 +525,8 @@
       "received_at_ns": 1792131377982292650,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -480,7 +538,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "XOM"
+      "provider_symbol_candidate": "XOM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -500,6 +560,8 @@
       "received_at_ns": 1792131378476560343,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -511,7 +573,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "JNJ"
+      "provider_symbol_candidate": "JNJ",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -531,6 +595,8 @@
       "received_at_ns": 1792131378966041054,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -542,7 +608,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MA"
+      "provider_symbol_candidate": "MA",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -562,6 +630,8 @@
       "received_at_ns": 1792131379487087753,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -573,7 +643,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "INTC"
+      "provider_symbol_candidate": "INTC",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -593,6 +665,8 @@
       "received_at_ns": 1792131379956691721,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -604,7 +678,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ABBV"
+      "provider_symbol_candidate": "ABBV",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -624,6 +700,8 @@
       "received_at_ns": 1792131380447945455,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -635,7 +713,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PLTR"
+      "provider_symbol_candidate": "PLTR",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -655,6 +735,8 @@
       "received_at_ns": 1792131380921954565,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -666,7 +748,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CSCO"
+      "provider_symbol_candidate": "CSCO",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -686,6 +770,8 @@
       "received_at_ns": 1792131381450029674,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -697,7 +783,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CVX"
+      "provider_symbol_candidate": "CVX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -717,6 +805,8 @@
       "received_at_ns": 1792131381933299848,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -728,7 +818,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "COST"
+      "provider_symbol_candidate": "COST",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -748,6 +840,8 @@
       "received_at_ns": 1792131382415011852,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -759,7 +853,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ORCL"
+      "provider_symbol_candidate": "ORCL",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -779,6 +875,8 @@
       "received_at_ns": 1792131382920868830,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -790,7 +888,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "KO"
+      "provider_symbol_candidate": "KO",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -810,6 +910,8 @@
       "received_at_ns": 1792131383839702677,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -821,7 +923,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PG"
+      "provider_symbol_candidate": "PG",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -841,6 +945,8 @@
       "received_at_ns": 1792131384342513000,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -852,7 +958,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MRK"
+      "provider_symbol_candidate": "MRK",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -872,6 +980,8 @@
       "received_at_ns": 1792131384880493954,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -883,7 +993,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BAC"
+      "provider_symbol_candidate": "BAC",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -903,6 +1015,8 @@
       "received_at_ns": 1792131385347872765,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -914,7 +1028,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "LRCX"
+      "provider_symbol_candidate": "LRCX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -934,6 +1050,8 @@
       "received_at_ns": 1792131386074377510,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -945,7 +1063,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "UNH"
+      "provider_symbol_candidate": "UNH",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -965,6 +1085,8 @@
       "received_at_ns": 1792131386590905369,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -976,7 +1098,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "AMAT"
+      "provider_symbol_candidate": "AMAT",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -996,6 +1120,8 @@
       "received_at_ns": 1792131387217113682,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1007,7 +1133,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CAT"
+      "provider_symbol_candidate": "CAT",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1027,6 +1155,8 @@
       "received_at_ns": 1792131387806140723,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1038,7 +1168,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "DELL"
+      "provider_symbol_candidate": "DELL",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1058,6 +1190,8 @@
       "received_at_ns": 1792131388337035983,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1069,7 +1203,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "HSBC"
+      "provider_symbol_candidate": "HSBC",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1089,6 +1225,8 @@
       "received_at_ns": 1792131388902227277,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1100,7 +1238,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PM"
+      "provider_symbol_candidate": "PM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1120,6 +1260,8 @@
       "received_at_ns": 1792131389438060769,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1131,7 +1273,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "GE"
+      "provider_symbol_candidate": "GE",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1151,6 +1295,8 @@
       "received_at_ns": 1792131389914983795,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1162,7 +1308,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PANW"
+      "provider_symbol_candidate": "PANW",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1182,6 +1330,8 @@
       "received_at_ns": 1792131390394318703,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1193,7 +1343,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "HD"
+      "provider_symbol_candidate": "HD",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1213,6 +1365,8 @@
       "received_at_ns": 1792131390862928699,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1224,7 +1378,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "NFLX"
+      "provider_symbol_candidate": "NFLX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1244,6 +1400,8 @@
       "received_at_ns": 1792131391337892685,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1255,7 +1413,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SHEL"
+      "provider_symbol_candidate": "SHEL",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1275,6 +1435,8 @@
       "received_at_ns": 1792131391820303776,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1286,7 +1448,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MS"
+      "provider_symbol_candidate": "MS",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1306,6 +1470,8 @@
       "received_at_ns": 1792131392316713094,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1317,7 +1483,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "NVS"
+      "provider_symbol_candidate": "NVS",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1337,6 +1505,8 @@
       "received_at_ns": 1792131392802204761,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1348,7 +1518,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BABA"
+      "provider_symbol_candidate": "BABA",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1368,6 +1540,8 @@
       "received_at_ns": 1792131393357323471,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1379,7 +1553,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "RY"
+      "provider_symbol_candidate": "RY",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1399,6 +1575,8 @@
       "received_at_ns": 1792131393845029378,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1410,7 +1588,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MUFG"
+      "provider_symbol_candidate": "MUFG",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1430,6 +1610,8 @@
       "received_at_ns": 1792131394361488294,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1441,7 +1623,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "TXN"
+      "provider_symbol_candidate": "TXN",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1461,6 +1645,8 @@
       "received_at_ns": 1792131394871252017,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1472,7 +1658,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "GS"
+      "provider_symbol_candidate": "GS",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1492,6 +1680,8 @@
       "received_at_ns": 1792131395350122270,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1503,7 +1693,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CRWD"
+      "provider_symbol_candidate": "CRWD",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1523,6 +1715,8 @@
       "received_at_ns": 1792131395802592403,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1534,7 +1728,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ARM"
+      "provider_symbol_candidate": "ARM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1554,6 +1750,8 @@
       "received_at_ns": 1792131396301558365,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1565,7 +1763,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "RTX"
+      "provider_symbol_candidate": "RTX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1585,6 +1785,8 @@
       "received_at_ns": 1792131396772923444,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1596,7 +1798,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "AZN"
+      "provider_symbol_candidate": "AZN",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1616,6 +1820,8 @@
       "received_at_ns": 1792131397233406962,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1627,7 +1833,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "GEV"
+      "provider_symbol_candidate": "GEV",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1647,6 +1855,8 @@
       "received_at_ns": 1792131397705600140,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1658,7 +1868,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "TMO"
+      "provider_symbol_candidate": "TMO",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1678,6 +1890,8 @@
       "received_at_ns": 1792131398163386686,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1689,7 +1903,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ANET"
+      "provider_symbol_candidate": "ANET",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1709,6 +1925,8 @@
       "received_at_ns": 1792131398644962777,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1720,7 +1938,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "TM"
+      "provider_symbol_candidate": "TM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1740,6 +1960,8 @@
       "received_at_ns": 1792131399140874822,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1751,7 +1973,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "WFC"
+      "provider_symbol_candidate": "WFC",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1771,6 +1995,8 @@
       "received_at_ns": 1792131399603301847,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1782,7 +2008,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "KLAC"
+      "provider_symbol_candidate": "KLAC",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1802,6 +2030,8 @@
       "received_at_ns": 1792131400077259703,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1813,7 +2043,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "AMGN"
+      "provider_symbol_candidate": "AMGN",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1833,6 +2065,8 @@
       "received_at_ns": 1792131400544303281,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1844,7 +2078,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "LIN"
+      "provider_symbol_candidate": "LIN",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1864,6 +2100,8 @@
       "received_at_ns": 1792131401011723459,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1875,7 +2113,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MRVL"
+      "provider_symbol_candidate": "MRVL",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1895,6 +2135,8 @@
       "received_at_ns": 1792131401521769045,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1906,7 +2148,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "IBM"
+      "provider_symbol_candidate": "IBM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1926,6 +2170,8 @@
       "received_at_ns": 1792131401998324045,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1937,7 +2183,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BHP"
+      "provider_symbol_candidate": "BHP",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1957,6 +2205,8 @@
       "received_at_ns": 1792131402790120694,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1968,7 +2218,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "AXP"
+      "provider_symbol_candidate": "AXP",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -1988,6 +2240,8 @@
       "received_at_ns": 1792131403268478677,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -1999,7 +2253,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "C"
+      "provider_symbol_candidate": "C",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2019,6 +2275,8 @@
       "received_at_ns": 1792131403736345289,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2030,7 +2288,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SNDK"
+      "provider_symbol_candidate": "SNDK",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2050,6 +2310,8 @@
       "received_at_ns": 1792131404236365407,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2061,7 +2323,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "APH"
+      "provider_symbol_candidate": "APH",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2081,6 +2345,8 @@
       "received_at_ns": 1792131404715997164,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2092,7 +2358,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "TTE"
+      "provider_symbol_candidate": "TTE",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2112,6 +2380,8 @@
       "received_at_ns": 1792131405196243132,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2123,7 +2393,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ADI"
+      "provider_symbol_candidate": "ADI",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2143,6 +2415,8 @@
       "received_at_ns": 1792131405665816691,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2154,7 +2428,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CRM"
+      "provider_symbol_candidate": "CRM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2174,6 +2450,8 @@
       "received_at_ns": 1792131406129871511,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2185,7 +2463,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "TD"
+      "provider_symbol_candidate": "TD",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2205,6 +2485,8 @@
       "received_at_ns": 1792131406586037151,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2216,7 +2498,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "GILD"
+      "provider_symbol_candidate": "GILD",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2236,6 +2520,8 @@
       "received_at_ns": 1792131407087924411,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2247,7 +2533,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "DIS"
+      "provider_symbol_candidate": "DIS",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2267,6 +2555,8 @@
       "received_at_ns": 1792131407641468835,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2278,7 +2568,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "VZ"
+      "provider_symbol_candidate": "VZ",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2298,6 +2590,8 @@
       "received_at_ns": 1792131408119075291,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2309,7 +2603,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "QCOM"
+      "provider_symbol_candidate": "QCOM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2329,6 +2625,8 @@
       "received_at_ns": 1792131408614534576,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2340,7 +2638,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ABT"
+      "provider_symbol_candidate": "ABT",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2360,6 +2660,8 @@
       "received_at_ns": 1792131409099787862,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2371,7 +2673,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PEP"
+      "provider_symbol_candidate": "PEP",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2391,6 +2695,8 @@
       "received_at_ns": 1792131409595790043,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2402,7 +2708,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "DE"
+      "provider_symbol_candidate": "DE",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2422,6 +2730,8 @@
       "received_at_ns": 1792131410157325000,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2433,7 +2743,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "COP"
+      "provider_symbol_candidate": "COP",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2453,6 +2765,8 @@
       "received_at_ns": 1792131410637463824,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2464,7 +2778,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "UNP"
+      "provider_symbol_candidate": "UNP",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2484,6 +2800,8 @@
       "received_at_ns": 1792131411106500771,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2495,7 +2813,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "TMUS"
+      "provider_symbol_candidate": "TMUS",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2515,6 +2835,8 @@
       "received_at_ns": 1792131411581876672,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2526,7 +2848,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "NVO"
+      "provider_symbol_candidate": "NVO",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2546,6 +2870,8 @@
       "received_at_ns": 1792131412061884420,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2557,7 +2883,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MCD"
+      "provider_symbol_candidate": "MCD",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2577,6 +2905,8 @@
       "received_at_ns": 1792131412537959399,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2588,7 +2918,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SCCO"
+      "provider_symbol_candidate": "SCCO",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2608,6 +2940,8 @@
       "received_at_ns": 1792131413032068335,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2619,7 +2953,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SCHW"
+      "provider_symbol_candidate": "SCHW",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2639,6 +2975,8 @@
       "received_at_ns": 1792131413512902792,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2650,7 +2988,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "WELL"
+      "provider_symbol_candidate": "WELL",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2670,6 +3010,8 @@
       "received_at_ns": 1792131414014700683,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2681,7 +3023,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PFE"
+      "provider_symbol_candidate": "PFE",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2701,6 +3045,8 @@
       "received_at_ns": 1792131414502125510,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2712,7 +3058,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BLK"
+      "provider_symbol_candidate": "BLK",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2732,6 +3080,8 @@
       "received_at_ns": 1792131414988678612,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2743,7 +3093,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "NEE"
+      "provider_symbol_candidate": "NEE",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2763,6 +3115,8 @@
       "received_at_ns": 1792131415466464653,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2774,7 +3128,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "STX"
+      "provider_symbol_candidate": "STX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2794,6 +3150,8 @@
       "received_at_ns": 1792131415968105685,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2805,7 +3163,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ETN"
+      "provider_symbol_candidate": "ETN",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2825,6 +3185,8 @@
       "received_at_ns": 1792131416435805038,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2836,7 +3198,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "DHR"
+      "provider_symbol_candidate": "DHR",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2856,6 +3220,8 @@
       "received_at_ns": 1792131416899968644,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2867,7 +3233,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SMFG"
+      "provider_symbol_candidate": "SMFG",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2887,6 +3255,8 @@
       "received_at_ns": 1792131417381752042,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2898,7 +3268,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "TJX"
+      "provider_symbol_candidate": "TJX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2918,6 +3290,8 @@
       "received_at_ns": 1792131417841136481,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2929,7 +3303,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ISRG"
+      "provider_symbol_candidate": "ISRG",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2949,6 +3325,8 @@
       "received_at_ns": 1792131418301295451,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2960,7 +3338,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "UBS"
+      "provider_symbol_candidate": "UBS",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -2980,6 +3360,8 @@
       "received_at_ns": 1792131418783827682,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -2991,7 +3373,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BBVA"
+      "provider_symbol_candidate": "BBVA",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3011,6 +3395,8 @@
       "received_at_ns": 1792131419280805908,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3022,7 +3408,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BA"
+      "provider_symbol_candidate": "BA",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3042,6 +3430,8 @@
       "received_at_ns": 1792131419741102761,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3053,7 +3443,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "NOW"
+      "provider_symbol_candidate": "NOW",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3073,6 +3465,8 @@
       "received_at_ns": 1792131420245885101,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3084,7 +3478,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SONY"
+      "provider_symbol_candidate": "SONY",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3104,6 +3500,8 @@
       "received_at_ns": 1792131420724475961,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3115,7 +3513,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ACN"
+      "provider_symbol_candidate": "ACN",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3135,6 +3535,8 @@
       "received_at_ns": 1792131421180884052,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3146,7 +3548,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "UBER"
+      "provider_symbol_candidate": "UBER",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3166,6 +3570,8 @@
       "received_at_ns": 1792131421657108879,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3177,7 +3583,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "UL"
+      "provider_symbol_candidate": "UL",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3197,6 +3605,8 @@
       "received_at_ns": 1792131422123637896,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3208,7 +3618,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MPC"
+      "provider_symbol_candidate": "MPC",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3228,6 +3640,8 @@
       "received_at_ns": 1792131422597973449,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3239,7 +3653,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "WDC"
+      "provider_symbol_candidate": "WDC",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3259,6 +3675,8 @@
       "received_at_ns": 1792131423077196133,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3270,7 +3688,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CB"
+      "provider_symbol_candidate": "CB",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3290,6 +3710,8 @@
       "received_at_ns": 1792131423530948237,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3301,7 +3723,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "FTNT"
+      "provider_symbol_candidate": "FTNT",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3321,6 +3745,8 @@
       "received_at_ns": 1792131424017840939,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3332,7 +3758,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "VLO"
+      "provider_symbol_candidate": "VLO",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3352,6 +3780,8 @@
       "received_at_ns": 1792131424596078572,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3363,7 +3793,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BP"
+      "provider_symbol_candidate": "BP",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3383,6 +3815,8 @@
       "received_at_ns": 1792131425044715070,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3394,7 +3828,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "VRTX"
+      "provider_symbol_candidate": "VRTX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3414,6 +3850,8 @@
       "received_at_ns": 1792131425616653446,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3425,7 +3863,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PGR"
+      "provider_symbol_candidate": "PGR",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3445,6 +3885,8 @@
       "received_at_ns": 1792131426101649782,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3456,7 +3898,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PLD"
+      "provider_symbol_candidate": "PLD",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3476,6 +3920,8 @@
       "received_at_ns": 1792131426641193794,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3487,7 +3933,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BTI"
+      "provider_symbol_candidate": "BTI",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3507,6 +3955,8 @@
       "received_at_ns": 1792131427114830006,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3518,7 +3968,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "GLW"
+      "provider_symbol_candidate": "GLW",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3538,6 +3990,8 @@
       "received_at_ns": 1792131427611182382,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3549,7 +4003,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BMY"
+      "provider_symbol_candidate": "BMY",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3569,6 +4025,8 @@
       "received_at_ns": 1792131428163530037,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3580,7 +4038,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BKNG"
+      "provider_symbol_candidate": "BKNG",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3600,6 +4060,8 @@
       "received_at_ns": 1792131428651867616,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3611,7 +4073,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PH"
+      "provider_symbol_candidate": "PH",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3631,6 +4095,8 @@
       "received_at_ns": 1792131429154093484,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3642,7 +4108,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MDT"
+      "provider_symbol_candidate": "MDT",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3662,6 +4130,8 @@
       "received_at_ns": 1792131429673980485,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3673,7 +4143,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "LMT"
+      "provider_symbol_candidate": "LMT",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3693,6 +4165,8 @@
       "received_at_ns": 1792131430171411375,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3704,7 +4178,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SPGI"
+      "provider_symbol_candidate": "SPGI",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3724,6 +4200,8 @@
       "received_at_ns": 1792131430661409046,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3735,7 +4213,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "COF"
+      "provider_symbol_candidate": "COF",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3755,6 +4235,8 @@
       "received_at_ns": 1792131431141816697,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3766,7 +4248,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PSX"
+      "provider_symbol_candidate": "PSX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3786,6 +4270,8 @@
       "received_at_ns": 1792131431617269901,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3797,7 +4283,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SNOW"
+      "provider_symbol_candidate": "SNOW",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3817,6 +4305,8 @@
       "received_at_ns": 1792131432090197919,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3828,7 +4318,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "HDB"
+      "provider_symbol_candidate": "HDB",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3848,6 +4340,8 @@
       "received_at_ns": 1792131432566587676,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3859,7 +4353,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PDD"
+      "provider_symbol_candidate": "PDD",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3879,6 +4375,8 @@
       "received_at_ns": 1792131433053743825,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3890,7 +4388,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CVS"
+      "provider_symbol_candidate": "CVS",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3910,6 +4410,8 @@
       "received_at_ns": 1792131433524366470,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3921,7 +4423,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "NET"
+      "provider_symbol_candidate": "NET",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3941,6 +4445,8 @@
       "received_at_ns": 1792131434030382440,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3952,7 +4458,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "RIO"
+      "provider_symbol_candidate": "RIO",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -3972,6 +4480,8 @@
       "received_at_ns": 1792131434549396120,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -3983,7 +4493,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MCK"
+      "provider_symbol_candidate": "MCK",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4003,6 +4515,8 @@
       "received_at_ns": 1792131435079747198,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4014,7 +4528,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BMO"
+      "provider_symbol_candidate": "BMO",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4034,6 +4550,8 @@
       "received_at_ns": 1792131435583750715,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4045,7 +4563,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ADP"
+      "provider_symbol_candidate": "ADP",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4065,6 +4585,8 @@
       "received_at_ns": 1792131436102211384,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4076,7 +4598,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SYK"
+      "provider_symbol_candidate": "SYK",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4096,6 +4620,8 @@
       "received_at_ns": 1792131436571204696,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4107,7 +4633,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SPOT"
+      "provider_symbol_candidate": "SPOT",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4127,6 +4655,8 @@
       "received_at_ns": 1792131437060154266,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4138,7 +4668,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CNQ"
+      "provider_symbol_candidate": "CNQ",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4158,6 +4690,8 @@
       "received_at_ns": 1792131437549491262,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4169,7 +4703,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SBUX"
+      "provider_symbol_candidate": "SBUX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4189,6 +4725,8 @@
       "received_at_ns": 1792131438026977438,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4200,7 +4738,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "LOW"
+      "provider_symbol_candidate": "LOW",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4220,6 +4760,8 @@
       "received_at_ns": 1792131438501116682,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4231,7 +4773,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ENB"
+      "provider_symbol_candidate": "ENB",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4251,6 +4795,8 @@
       "received_at_ns": 1792131438998653987,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4262,7 +4808,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SO"
+      "provider_symbol_candidate": "SO",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4282,6 +4830,8 @@
       "received_at_ns": 1792131439466155103,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4293,7 +4843,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CME"
+      "provider_symbol_candidate": "CME",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4313,6 +4865,8 @@
       "received_at_ns": 1792131439962633709,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4324,7 +4878,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "HCA"
+      "provider_symbol_candidate": "HCA",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4344,6 +4900,8 @@
       "received_at_ns": 1792131440442678858,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4355,7 +4913,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "IBN"
+      "provider_symbol_candidate": "IBN",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4375,6 +4935,8 @@
       "received_at_ns": 1792131440937964881,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4386,7 +4948,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CM"
+      "provider_symbol_candidate": "CM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4406,6 +4970,8 @@
       "received_at_ns": 1792131441407209071,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4417,7 +4983,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ABNB"
+      "provider_symbol_candidate": "ABNB",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4437,6 +5005,8 @@
       "received_at_ns": 1792131441947203597,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4448,7 +5018,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "FCX"
+      "provider_symbol_candidate": "FCX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4468,6 +5040,8 @@
       "received_at_ns": 1792131442486469418,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4479,7 +5053,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CEG"
+      "provider_symbol_candidate": "CEG",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4499,6 +5075,8 @@
       "received_at_ns": 1792131442984729493,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4510,7 +5088,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ASX"
+      "provider_symbol_candidate": "ASX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4530,6 +5110,8 @@
       "received_at_ns": 1792131443450445181,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4541,7 +5123,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "EQIX"
+      "provider_symbol_candidate": "EQIX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4561,6 +5145,8 @@
       "received_at_ns": 1792131444009785271,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4572,7 +5158,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PWR"
+      "provider_symbol_candidate": "PWR",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4592,6 +5180,8 @@
       "received_at_ns": 1792131444515866881,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4603,7 +5193,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ING"
+      "provider_symbol_candidate": "ING",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4623,6 +5215,8 @@
       "received_at_ns": 1792131445071125696,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4634,7 +5228,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MAR"
+      "provider_symbol_candidate": "MAR",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4654,6 +5250,8 @@
       "received_at_ns": 1792131445543010514,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4665,7 +5263,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "GSK"
+      "provider_symbol_candidate": "GSK",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4685,6 +5285,8 @@
       "received_at_ns": 1792131445998658031,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4696,7 +5298,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "DDOG"
+      "provider_symbol_candidate": "DDOG",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4716,6 +5320,8 @@
       "received_at_ns": 1792131446460764907,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4727,7 +5333,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ADBE"
+      "provider_symbol_candidate": "ADBE",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4747,6 +5355,8 @@
       "received_at_ns": 1792131446968954386,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4758,7 +5368,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BNY"
+      "provider_symbol_candidate": "BNY",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4778,6 +5390,8 @@
       "received_at_ns": 1792131447509243544,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4789,7 +5403,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "DUK"
+      "provider_symbol_candidate": "DUK",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4809,6 +5425,8 @@
       "received_at_ns": 1792131447988650269,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4820,7 +5438,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MELI"
+      "provider_symbol_candidate": "MELI",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4840,6 +5460,8 @@
       "received_at_ns": 1792131448454124858,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4851,7 +5473,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ELV"
+      "provider_symbol_candidate": "ELV",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4871,6 +5495,8 @@
       "received_at_ns": 1792131448937545565,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4882,7 +5508,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SNPS"
+      "provider_symbol_candidate": "SNPS",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4902,6 +5530,8 @@
       "received_at_ns": 1792131449394762745,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4913,7 +5543,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "HOOD"
+      "provider_symbol_candidate": "HOOD",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4933,6 +5565,8 @@
       "received_at_ns": 1792131450074286917,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4944,7 +5578,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "E"
+      "provider_symbol_candidate": "E",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4964,6 +5600,8 @@
       "received_at_ns": 1792131450529115420,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -4975,7 +5613,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CDNS"
+      "provider_symbol_candidate": "CDNS",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -4995,6 +5635,8 @@
       "received_at_ns": 1792131451039470036,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5006,7 +5648,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "GD"
+      "provider_symbol_candidate": "GD",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5026,6 +5670,8 @@
       "received_at_ns": 1792131451493101962,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5037,7 +5683,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MRNA"
+      "provider_symbol_candidate": "MRNA",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5057,6 +5705,8 @@
       "received_at_ns": 1792131451976441935,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5068,7 +5718,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "EMR"
+      "provider_symbol_candidate": "EMR",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5088,6 +5740,8 @@
       "received_at_ns": 1792131452459331942,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5099,7 +5753,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "AEM"
+      "provider_symbol_candidate": "AEM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5119,6 +5775,8 @@
       "received_at_ns": 1792131452949996239,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5130,7 +5788,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CSX"
+      "provider_symbol_candidate": "CSX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5150,6 +5810,8 @@
       "received_at_ns": 1792131453420302071,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5161,7 +5823,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "WMB"
+      "provider_symbol_candidate": "WMB",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5181,6 +5845,8 @@
       "received_at_ns": 1792131453892896281,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5192,7 +5858,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SU"
+      "provider_symbol_candidate": "SU",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5212,6 +5880,8 @@
       "received_at_ns": 1792131454353682180,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5223,7 +5893,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "APP"
+      "provider_symbol_candidate": "APP",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5243,6 +5915,8 @@
       "received_at_ns": 1792131454843800002,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5254,7 +5928,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "USB"
+      "provider_symbol_candidate": "USB",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5274,6 +5950,8 @@
       "received_at_ns": 1792131455323616890,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5285,7 +5963,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ICE"
+      "provider_symbol_candidate": "ICE",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5305,6 +5985,8 @@
       "received_at_ns": 1792131455807911884,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5316,7 +5998,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "HWM"
+      "provider_symbol_candidate": "HWM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5336,6 +6020,8 @@
       "received_at_ns": 1792131456277364655,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5347,7 +6033,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "WM"
+      "provider_symbol_candidate": "WM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5367,6 +6055,8 @@
       "received_at_ns": 1792131456776655583,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5378,7 +6068,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "PNC"
+      "provider_symbol_candidate": "PNC",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5398,6 +6090,8 @@
       "received_at_ns": 1792131457246471519,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5409,7 +6103,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "VRT"
+      "provider_symbol_candidate": "VRT",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5429,6 +6125,8 @@
       "received_at_ns": 1792131457733677102,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5440,7 +6138,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MRSH"
+      "provider_symbol_candidate": "MRSH",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5460,6 +6160,8 @@
       "received_at_ns": 1792131458259043408,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5471,7 +6173,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MMM"
+      "provider_symbol_candidate": "MMM",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5491,6 +6195,8 @@
       "received_at_ns": 1792131458718115706,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5502,7 +6208,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "HPE"
+      "provider_symbol_candidate": "HPE",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5522,6 +6230,8 @@
       "received_at_ns": 1792131459178716880,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5533,7 +6243,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "AMT"
+      "provider_symbol_candidate": "AMT",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5553,6 +6265,8 @@
       "received_at_ns": 1792131459761692711,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5564,7 +6278,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "INTU"
+      "provider_symbol_candidate": "INTU",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5584,6 +6300,8 @@
       "received_at_ns": 1792131460238901779,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5595,7 +6313,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CTAS"
+      "provider_symbol_candidate": "CTAS",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5615,6 +6335,8 @@
       "received_at_ns": 1792131460707682513,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5626,7 +6348,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "NGG"
+      "provider_symbol_candidate": "NGG",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5646,6 +6370,8 @@
       "received_at_ns": 1792131461187722037,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5657,7 +6383,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "UPS"
+      "provider_symbol_candidate": "UPS",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5677,6 +6405,8 @@
       "received_at_ns": 1792131461656277694,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5688,7 +6418,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "LITE"
+      "provider_symbol_candidate": "LITE",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5708,6 +6440,8 @@
       "received_at_ns": 1792131462126561895,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5719,7 +6453,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "LYG"
+      "provider_symbol_candidate": "LYG",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5739,6 +6475,8 @@
       "received_at_ns": 1792131462611119336,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5750,7 +6488,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "EOG"
+      "provider_symbol_candidate": "EOG",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5770,6 +6510,8 @@
       "received_at_ns": 1792131463106755817,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5781,7 +6523,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ECL"
+      "provider_symbol_candidate": "ECL",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5801,6 +6545,8 @@
       "received_at_ns": 1792131463579493083,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5812,7 +6558,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MCO"
+      "provider_symbol_candidate": "MCO",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5832,6 +6580,8 @@
       "received_at_ns": 1792131464041235440,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5843,7 +6593,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "REGN"
+      "provider_symbol_candidate": "REGN",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5863,6 +6615,8 @@
       "received_at_ns": 1792131464533891765,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5874,7 +6628,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MDLZ"
+      "provider_symbol_candidate": "MDLZ",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5894,6 +6650,8 @@
       "received_at_ns": 1792131465060850468,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5905,7 +6663,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "DASH"
+      "provider_symbol_candidate": "DASH",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5925,6 +6685,8 @@
       "received_at_ns": 1792131465524489622,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5936,7 +6698,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BX"
+      "provider_symbol_candidate": "BX",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5956,6 +6720,8 @@
       "received_at_ns": 1792131466002605742,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5967,7 +6733,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "NTES"
+      "provider_symbol_candidate": "NTES",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -5987,6 +6755,8 @@
       "received_at_ns": 1792131466481309781,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -5998,7 +6768,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "TRV"
+      "provider_symbol_candidate": "TRV",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -6018,6 +6790,8 @@
       "received_at_ns": 1792131466962138052,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -6029,7 +6803,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "SHW"
+      "provider_symbol_candidate": "SHW",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -6049,6 +6825,8 @@
       "received_at_ns": 1792131467522514709,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -6060,7 +6838,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "EPD"
+      "provider_symbol_candidate": "EPD",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -6080,6 +6860,8 @@
       "received_at_ns": 1792131467978324549,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -6091,7 +6873,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "KKR"
+      "provider_symbol_candidate": "KKR",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -6111,6 +6895,8 @@
       "received_at_ns": 1792131468463971883,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -6122,7 +6908,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "ITW"
+      "provider_symbol_candidate": "ITW",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -6142,6 +6930,8 @@
       "received_at_ns": 1792131468962648056,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -6153,7 +6943,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "CI"
+      "provider_symbol_candidate": "CI",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -6173,6 +6965,8 @@
       "received_at_ns": 1792131469501731729,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -6184,7 +6978,9 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "BCS"
+      "provider_symbol_candidate": "BCS",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     },
     {
       "canonical_identity_status": "PROVISIONAL",
@@ -6204,6 +7000,8 @@
       "received_at_ns": 1792131470006461681,
       "received_end_ts": 1791984600,
       "received_start_ts": 1790861400,
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800,
       "row_count": 10,
       "session_validation_status": "VERIFIED",
       "timestamp_alignment_status": "VERIFIED"
@@ -6215,10 +7013,12 @@
       "probe_status": "NOT_CONFIGURED",
       "provider": "fmp",
       "provider_mapping_status": "UNVERIFIED",
-      "provider_symbol_candidate": "MSI"
+      "provider_symbol_candidate": "MSI",
+      "requested_end_ts": 1792022400,
+      "requested_start_ts": 1790812800
     }
   ],
-  "results_sha256": "c2347ee50953fa8a3ba9864c78d7d25eb7f710d5788f11ea6c73ac4f6b7e8554",
+  "results_sha256": "c2ebb6729bdffa15f4b12b8c294330a62123d6d31747cd39d834d6d62d190df5",
   "schema_version": "icarus.market-universe.hybrid-probe.v1",
   "window": {
     "end_ts": 1792022400,

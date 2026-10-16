@@ -155,6 +155,9 @@ def load_hybrid_probe_report() -> dict[str, Any]:
         return {"status": "INVALID", "results": []}
     if report.get("results_sha256") != source_probe_results_digest(results):
         return {"status": "INVALID", "results": []}
+    if any(row.get("requested_start_ts") != window["start_ts"]
+           or row.get("requested_end_ts") != window["end_ts"] for row in results):
+        return {"status": "INVALID", "results": []}
     actual_counts: dict[str, int] = {}
     catalog_rows = {row["instrument_id"]: row for row in catalog["instruments"]}
     expected_pairs = {

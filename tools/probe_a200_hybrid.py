@@ -26,6 +26,8 @@ def _probe_one(adapter: MarketUniverseAdapter, instrument: dict, mapping: dict,
         "provider": provider,
         "provider_symbol_candidate": mapping["symbol"],
         "provider_mapping_status": mapping["mapping_status"],
+        "requested_start_ts": start_ts,
+        "requested_end_ts": end_ts,
         "probe_started_at": _utc_now(),
     }
     if not adapter.source_configured(provider):
@@ -81,6 +83,8 @@ def run(*, limit: int = 1, start_ts: int, end_ts: int,
                 results.append({"instrument_id": instrument["instrument_id"],
                                 "provider": str(provider or "unknown"), "probe_status": "ERROR",
                                 "probe_started_at": _utc_now(),
+                                "requested_start_ts": start_ts,
+                                "requested_end_ts": end_ts,
                                 "error_code": "invalid_provider_mapping"})
                 continue
             seen.add(provider)
