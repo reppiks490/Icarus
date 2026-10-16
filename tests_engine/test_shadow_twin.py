@@ -1,4 +1,5 @@
 import json
+import time
 
 import pytest
 
@@ -394,6 +395,9 @@ def test_portfolio_shadow_view_aggregates_counts_and_ratios_without_faking_drawd
                 return {"symbol": "TEST", "equity": 10_000, "capital": 10_000,
                         "live_profit": 0, "open_profit": 0, "position": 0,
                         "paused": False, "warm": True, "last_bar_ts": 180,
+                        "bar_age": 45, "view_stale": True,
+                        "view_captured_at": time.time() - 10,
+                        "feed_health": {"status": "STALE"},
                         "real_price_shadow": shadow}
 
         portfolio.runners["TEST"] = DegradedSummaryRunner()
@@ -407,6 +411,11 @@ def test_portfolio_shadow_view_aggregates_counts_and_ratios_without_faking_drawd
         assert degraded["pairable_closed_episodes"] is None
         assert degraded["assets"][0]["reason"] == "missing real-price bar"
         assert degraded["assets"][0]["administrative_censored_shadow_positions"] is None
+        assert degraded["assets"][0]["last_bar_ts"] == 180
+        assert 54 <= degraded["assets"][0]["bar_age_seconds"] <= 60
+        assert degraded["assets"][0]["view_stale"] is True
+        assert degraded["assets"][0]["feed_health"] == {"status": "STALE"}
+        assert "historical emulator evidence" in degraded["metrics_time_basis"]
         public_asset = portfolio.status()["assets"][0]["real_price_shadow"]
         assert public_asset["metrics_available"] is False
         assert public_asset["primary"] is None

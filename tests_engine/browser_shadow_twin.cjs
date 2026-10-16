@@ -20,6 +20,8 @@ const fixture={
         primary_fill_basis:'HA_BAR_CLOSE',shadow_fill_basis:'standard_real_ohlc',
         feed_health:{status:'GREEN'}}
     }
+  },{
+    symbol:'ES',real_price_shadow:{asset:'ES',status:'READY',reason:null,provenance:{feed_health:{status:'UNKNOWN'}}}
   }],
   real_price_shadow:{
     schema:'icarus.real_price_shadow.portfolio/1',enabled:true,status:'READY',metrics_available:true,execution_authorized:false,
@@ -31,8 +33,11 @@ const fixture={
     primary_win_preservation:0.8,primary_net:200,real_price_shadow_net:123,net_realization_ratio:0.615,
     paired_profit_capture:0.65,drawdown_aggregation:'per_asset_only; cross_asset_close_timestamps_are_not_yet_aligned',
     assets:[{asset:'NQ',status:'READY',reason:null,administrative_censored_shadow_positions:0,
+      last_bar_ts:1781567940,bar_age_seconds:60,feed_health:{status:'GREEN'},
       provenance:{price_provider:'test-feed',timeframe_minutes:10,calendar:'CME',session_mode:'RTH',
-        primary_fill_basis:'HA_BAR_CLOSE',shadow_fill_basis:'standard_real_ohlc',feed_health:{status:'GREEN'}}}]
+        primary_fill_basis:'HA_BAR_CLOSE',shadow_fill_basis:'standard_real_ohlc',feed_health:{status:'GREEN'}}},
+      {asset:'ES',status:'READY',reason:null,administrative_censored_shadow_positions:0,
+       last_bar_ts:null,bar_age_seconds:null,feed_health:{status:'UNKNOWN'},provenance:{feed_health:{status:'UNKNOWN'}}}]
   }
 };
 (async()=>{
@@ -54,6 +59,11 @@ const fixture={
     assert.match(content,/Shadow net[\s\S]*\$123\.00/i);
     assert.match(content,/NQ/);
     assert.match(content,/test-feed/);
+    assert.match(content,/Last bar \/ age/i);
+    assert.match(content,/READY describes historical comparison evidence integrity, not current feed freshness/);
+    const rows=await page.locator('#rt01-content tbody tr').allInnerTexts();
+    assert.match(rows[0],/2026-06-15T/);
+    assert.match(rows[1],/— \/ —/);
     assert.match(content,/Primary net[\s\S]*\$200\.00/i);
     assert.match(content,/Shadow net[\s\S]*\$123\.00/i);
     const assetRow=await page.locator('#rt01-content tbody tr').first().innerText();
