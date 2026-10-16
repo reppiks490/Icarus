@@ -42,6 +42,24 @@ def test_candidate_history_is_carried_without_runtime_promotion():
     assert result.execution_authorized is False
 
 
+@pytest.mark.parametrize("value", ["UNVERIFIED", 1, object()])
+def test_truthy_non_booleans_cannot_pass_eligibility_gates(value):
+    batch = _batch()
+    result = assess_runtime_eligibility(
+        batch, canonical_identity_verified=value, live_feed_qualified=value,
+    )
+    assert "canonical_identity_unverified" in result.reasons
+    assert "live_feed_unqualified" in result.reasons
+    assert result.eligible is False
+
+
+def test_manual_receipt_cannot_use_non_boolean_historical_qualification():
+    batch = _batch()
+    forged_receipt = replace(batch.receipt, historical_bars_qualified="yes")
+    with pytest.raises(ValueError, match="must be a boolean"):
+        A200RuntimeBatch.from_history(batch.instrument_id, batch.provider, batch.bars, forged_receipt)
+
+
 def test_receipt_cannot_be_reassigned_to_another_catalog_instrument():
     batch = _batch()
     with pytest.raises(ValueError, match="does not match its receipt"):

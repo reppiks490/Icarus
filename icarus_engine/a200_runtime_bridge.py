@@ -31,6 +31,8 @@ class A200RuntimeBatch:
             raise TypeError("A200 runtime batch requires a BarBatchReceipt")
         if self.receipt.instrument_id != self.instrument_id or self.receipt.provider != self.provider:
             raise ValueError("A200 batch identity does not match its receipt")
+        if type(self.receipt.historical_bars_qualified) is not bool:
+            raise ValueError("A200 receipt historical qualification must be a boolean")
         # Runtime callers can bypass annotations; canonicalize mutable sequences
         # before validating so later caller mutations cannot alter this batch.
         object.__setattr__(self, "bars", tuple(self.bars))
@@ -63,7 +65,7 @@ def assess_runtime_eligibility(batch: A200RuntimeBatch, *, canonical_identity_ve
     """Check independent runtime gates; receipt evidence alone cannot assert policy facts."""
     receipt = batch.receipt
     reasons: list[str] = []
-    if not canonical_identity_verified or receipt.identity_status != "VERIFIED":
+    if canonical_identity_verified is not True or receipt.identity_status != "VERIFIED":
         reasons.append("canonical_identity_unverified")
     if receipt.provider_mapping_status != "VERIFIED":
         reasons.append("provider_mapping_unverified")
@@ -71,7 +73,7 @@ def assess_runtime_eligibility(batch: A200RuntimeBatch, *, canonical_identity_ve
         reasons.append("provider_entitlement_unverified")
     if not receipt.historical_bars_qualified:
         reasons.append("historical_bars_unqualified")
-    if not live_feed_qualified:
+    if live_feed_qualified is not True:
         reasons.append("live_feed_unqualified")
     # The A200 catalog currently hard-disables execution authority. This boundary
     # only describes data eligibility and must never arm Pulse or a broker.
