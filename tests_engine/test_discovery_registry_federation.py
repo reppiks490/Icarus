@@ -115,6 +115,15 @@ def test_candidate_endpoint_links_only_matching_operation_path(tmp_path):
     assert len(f.evidence_events(quote_links)) == 1
 
 
+def test_candidate_endpoint_does_not_match_a_distinct_trailing_slash_route(tmp_path):
+    f = federator(files(tmp_path, verified_operations=["twelve:get:/time_series"]))
+
+    trailing_slash = candidate("https://api.twelvedata.com/time_series/")
+
+    assert f.links_for([trailing_slash]) == ()
+    assert f.evidence_events(f.links_for([trailing_slash])) == ()
+
+
 def test_unrelated_endpoint_path_has_no_provider_operation_links(tmp_path):
     f = federator(files(tmp_path, verified_operations=["twelve:get:/time_series"]))
     assert f.links_for([candidate("https://api.twelvedata.com/unrelated")]) == ()
