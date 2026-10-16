@@ -88,7 +88,9 @@ Set `ICARUS_FEED=databento` to use an entitled Databento account as the primary
 CME feed; `ICARUS_DATABENTO_HISTORY_DAYS` bounds its history window (default 365,
 range 1–3650 days). The default Yahoo mode replays Yahoo history only. Databento
 history is not joined to Yahoo history because continuous-contract roll bases
-have not been reconciled, so the two price series must remain separate.
+have not been reconciled, so the two price series must remain separate. If a
+Databento history request fails, warmup fails closed instead of switching to
+Yahoo.
 GitHub Actions credentials are managed separately by a repository administrator
 under Settings → Secrets and variables → Actions.
 
