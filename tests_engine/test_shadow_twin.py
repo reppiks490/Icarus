@@ -121,10 +121,10 @@ def test_closed_episode_excursions_sum_partial_lots_and_compare_real_lane():
         "EMULATOR_OBSERVED_HIGH_LOW_THROUGH_EXIT_FILL_QTY_WEIGHTED_ENTRY_COMMISSION_ADJUSTED"
     )
     assert result["primary_closed_episode_excursions"] == {
-        "episode_count": 1, "favorable_excursion": 38.0, "adverse_excursion": -22.0,
+        "denominator": 1, "favorable_excursion": 38.0, "adverse_excursion": -22.0,
     }
     assert result["real_price_shadow_closed_episode_excursions"] == {
-        "episode_count": 1, "favorable_excursion": 18.0, "adverse_excursion": -14.0,
+        "denominator": 1, "favorable_excursion": 18.0, "adverse_excursion": -14.0,
     }
     assert result["matched_closed_episode_favorable_excursion_delta_shadow_minus_primary"] == {
         "count": 1, "mean": -20.0, "median": -20.0, "min": -20.0, "max": -20.0,

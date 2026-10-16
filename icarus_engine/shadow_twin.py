@@ -368,7 +368,7 @@ class MirroredEmulator:
         def closed_excursions(rows: dict[Any, dict[str, Any]]) -> dict[str, Any]:
             closed_rows = [row for row in rows.values() if row["closed"]]
             return {
-                "episode_count": len(closed_rows),
+                "denominator": len(closed_rows),
                 "favorable_excursion": round(sum(row["runup"] for row in closed_rows), 8),
                 "adverse_excursion": round(sum(row["drawdown"] for row in closed_rows), 8),
             }
