@@ -15,7 +15,6 @@ import collections
 import copy
 import csv
 import hashlib
-import importlib.util
 import dataclasses
 import io
 import json
@@ -750,6 +749,7 @@ class AssetRunner:
         databento_days = (
             self._databento_history_days()
             if not hist and self.spec.kind == "futures" and self.history_feed is not None
+            and type(self.feed).__name__ == "Databento"
             else 0
         )
         hybrid = (
@@ -781,7 +781,7 @@ class AssetRunner:
             src = self.spec.feed
         horizon = f", source horizon up to {provider_days}d" if provider_days else ""
         if hybrid:
-            horizon = f", Databento older candles up to {databento_days}d + Yahoo recent candles"
+            horizon = f", single-source {type(self.feed).__name__} history up to {databento_days or provider_days}d"
         self.journal.log("INFO", f"[{self.symbol}] warm-up requested from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars requested{horizon}, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={_session_mode(self.cal)} security={self.spec.security_source}" + (f" continuous={self.spec.tv_symbol or self.spec.ticker}" if self.spec.kind == "futures" else ""))
         if hist:
             self._warmup_from_csv(hist, now, source_minutes=minutes)
@@ -791,7 +791,7 @@ class AssetRunner:
             self.journal.log("WARN", f"[{self.symbol}] ICARUS_FEED=file and no history/{self.symbol}_*m.csv — waiting for drop ingest; Yahoo is not contacted")
         elif self.spec.feed == "yahoo":
             if hybrid:
-                self._warmup_yahoo_databento(T_w, now, databento_days)
+                self._warmup_continuous_futures(T_w, now)
             else:
                 self._warmup_yahoo(T_w, now)  # same interface for Yahoo or Databento continuous futures
         else:
@@ -817,45 +817,32 @@ class AssetRunner:
             raise ValueError("ICARUS_DATABENTO_HISTORY_DAYS must be between 1 and 3650")
         return days
 
-    def _warmup_yahoo_databento(self, T_w: int, now: int, databento_days: int) -> None:
-        """Stitch deep Databento 1m history to Yahoo's recent 1m history at one boundary."""
-        if type(self.feed).__name__ == "Databento":
-            db, yahoo = self.feed, self.history_feed
+    def _warmup_continuous_futures(self, T_w: int, now: int) -> None:
+        """Load one source matching the configured live provider; never splice series."""
+        source = self.feed
+        source_name = type(source).__name__
+        if source_name == "Databento":
+            source_from = max(int(T_w), int(getattr(source, "HISTORICAL_START_TS", 0)))
         else:
-            yahoo, db = self.feed, self.history_feed
-        yahoo_from = max(int(T_w), int(now) - 29 * 86400)
-        db_from = max(int(T_w), int(getattr(db, "HISTORICAL_START_TS", 0)))
-        older = []
-        if db_from < yahoo_from:
-            try:
-                older = db.candles(self.spec.ticker, 60, db_from, yahoo_from)
-            except Exception as ex:
-                self.journal.log("WARN", f"[{self.symbol}] Databento historical candles unavailable; continuing with Yahoo history ({type(ex).__name__})")
-        older = sorted((b for b in older if db_from <= b.ts < yahoo_from), key=lambda b: b.ts)
-        recent_source = "Yahoo"
+            source_from = max(int(T_w), int(now) - 29 * 86400)
         try:
-            recent = self._closed_only(yahoo.candles(self.spec.ticker, 60, yahoo_from, now), self.spec.ticker, feed=yahoo)
+            history = source.candles(self.spec.ticker, 60, source_from, max(source_from, int(now) - 60))
+            if source_name == "Yahoo":
+                history = self._closed_only(history, self.spec.ticker, feed=source)
+            history = sorted((b for b in history if source_from <= b.ts and b.ts + 60 <= now),
+                             key=lambda b: b.ts)
+            if not history:
+                raise ValueError(f"{source_name} returned no closed historical candles")
         except Exception as ex:
-            self.journal.log("WARN", f"[{self.symbol}] Yahoo recent candles unavailable; trying Databento through the warm-up end ({type(ex).__name__})")
-            try:
-                recent = [
-                    b for b in db.candles(self.spec.ticker, 60, yahoo_from, max(yahoo_from, now - 60))
-                    if b.ts + 60 <= now
-                ]
-                recent_source = "Databento fallback"
-            except Exception as db_ex:
-                self.journal.log("WARN", f"[{self.symbol}] Databento recent fallback unavailable ({type(db_ex).__name__})")
-                recent = []
-        for b in older:
-            self.on_sub_bar(b, 1, live=False)
-        for b in recent:
-            if b.ts >= yahoo_from:
+            self.journal.log("WARN", f"[{self.symbol}] {source_name} history unavailable ({type(ex).__name__})")
+            history = []
+        for b in history:
+            if b.ts + 60 <= now:
                 self.on_sub_bar(b, 1, live=False)
         self.journal.log(
             "INFO",
-            f"[{self.symbol}] hybrid warm-up: {len(older)} Databento 1m bars before "
-            f"{time.strftime('%Y-%m-%d %H:%M', time.gmtime(yahoo_from))}Z + "
-            f"{len(recent)} {recent_source} 1m bars after the boundary; requested Databento window {databento_days}d",
+            f"[{self.symbol}] single-source warm-up: {len(history)} {source_name} 1m closed bars; "
+            f"requested window about {max(0, int((now - source_from) // 86400))}d; continuous futures feeds are not spliced",
         )
 
     def _closed_only(self, bars: List[Bar], ticker: str, *, feed: Any = None) -> List[Bar]:
@@ -1499,18 +1486,12 @@ class Portfolio:
             db_feed = Databento()
             self.feeds = {"yahoo": db_feed, "coinbase": Coinbase(), "databento_history": Yahoo()}
             self.feed_mode = "databento"
-            journal.log("INFO", "ICARUS_FEED=databento — CME futures use Databento GLBX.MDP3 with a Yahoo recent-history stitch")
+            journal.log("INFO", "ICARUS_FEED=databento — CME futures use Databento continuously; Yahoo bars are not spliced into the series")
         else:
             self.feeds = {"yahoo": Yahoo(), "coinbase": Coinbase(), "databento_history": None}
             self.feed_mode = "live"
             if os.environ.get("DATABENTO_API_KEY", "").strip():
-                try:
-                    if importlib.util.find_spec("databento") is None:
-                        raise RuntimeError("Databento SDK is not installed; install ICARUS with .[databento]")
-                    self.feeds["databento_history"] = Databento()
-                    journal.log("INFO", "Databento historical source enabled; Yahoo supplies the recent 1m tail")
-                except Exception as ex:
-                    journal.log("WARN", f"Databento historical source unavailable; using Yahoo-only warm-up ({type(ex).__name__}: {ex})")
+                journal.log("INFO", "Databento key is present but ICARUS_FEED is not databento; Yahoo remains the single futures source. Set ICARUS_FEED=databento to use Databento across warm-up and live bars")
             else:
                 journal.log("INFO", "Databento history key is not configured; CME warm-up uses Yahoo's available history")
         self.runners: Dict[str, AssetRunner] = {}

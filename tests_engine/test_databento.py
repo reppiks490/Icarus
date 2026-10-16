@@ -14,7 +14,7 @@ import pytest
 
 from icarus_engine.assets import CHART_TIMEFRAME_OPTIONS, REGISTRY, resolve
 from icarus_engine.feeds.databento import Databento
-from icarus_engine.pine.timeframe import tf_minutes
+from icarus_engine.pine.timeframe import Bar, tf_minutes
 from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
 from icarus_engine.server import serve
 from icarus_engine.strategy.inputs import Inputs
@@ -1189,6 +1189,85 @@ def test_runner_summary_reflects_databento_transport_health():
         assert summary["feed_capabilities"]["depth_schema_isolation"] is True
     finally:
         journal.con.close()
+
+
+def test_hybrid_futures_warmup_uses_one_provider_without_cross_feed_splice():
+    now = 10_000_000
+    databento_rows = [Bar(9_999_700, 100, 101, 99, 100, 1),
+                      Bar(9_999_760, 101, 102, 100, 101, 1)]
+    yahoo_rows = [Bar(9_999_700, 200, 201, 199, 200, 1),
+                  Bar(9_999_760, 201, 202, 200, 201, 1)]
+    calls = []
+
+    class YahooStub:
+        _meta = {"NQ=F": {"regularMarketTime": now}}
+
+        def candles(self, symbol, granularity, start_ts, end_ts):
+            calls.append(("yahoo", start_ts, end_ts))
+            return yahoo_rows
+
+    class DatabentoStub:
+        HISTORICAL_START_TS = 0
+
+        def candles(self, symbol, granularity, start_ts, end_ts):
+            calls.append(("databento", start_ts, end_ts))
+            return databento_rows
+
+    # AssetRunner selects these feeds using the provider class names.
+    YahooStub.__name__ = "Yahoo"
+    DatabentoStub.__name__ = "Databento"
+    journal = Journal(":memory:")
+    runner = AssetRunner(
+        RunnerConfig(resolve("NQ"), Inputs(use_tide=False, use_eod_flat=False), mintick=0.25),
+        journal, {"yahoo": DatabentoStub(), "databento_history": YahooStub()},
+    )
+    loaded = []
+    runner.on_sub_bar = lambda candle, _minutes, *, live: loaded.append(candle)
+
+    runner._warmup_continuous_futures(0, now)
+
+    assert calls == [("databento", 0, now - 60)]
+    assert loaded == databento_rows
+    assert "single-source warm-up" in " ".join(row["msg"] for row in journal.log_tail)
+    journal.con.close()
+
+
+def test_yahoo_futures_warmup_does_not_splice_databento_history():
+    now = 10_000_000
+    yahoo_rows = [Bar(9_999_700, 200, 201, 199, 200, 1),
+                  Bar(9_999_760, 201, 202, 200, 201, 1)]
+    calls = []
+
+    class YahooStub:
+        _meta = {"NQ=F": {"regularMarketTime": now}}
+
+        def candles(self, symbol, granularity, start_ts, end_ts):
+            calls.append(("yahoo", start_ts, end_ts))
+            return yahoo_rows
+
+    class DatabentoStub:
+        HISTORICAL_START_TS = 0
+
+        def candles(self, symbol, granularity, start_ts, end_ts):
+            calls.append(("databento", start_ts, end_ts))
+            raise RuntimeError("history unavailable")
+
+    YahooStub.__name__ = "Yahoo"
+    DatabentoStub.__name__ = "Databento"
+    journal = Journal(":memory:")
+    runner = AssetRunner(
+        RunnerConfig(resolve("NQ"), Inputs(use_tide=False, use_eod_flat=False), mintick=0.25),
+        journal, {"yahoo": YahooStub(), "databento_history": DatabentoStub()},
+    )
+    loaded = []
+    runner.on_sub_bar = lambda candle, _minutes, *, live: loaded.append(candle)
+
+    runner._warmup_continuous_futures(0, now)
+
+    assert calls == [("yahoo", max(0, now - 29 * 86400), now - 60)]
+    assert loaded == yahoo_rows
+    assert "single-source warm-up" in " ".join(row["msg"] for row in journal.log_tail)
+    journal.con.close()
 
 
 def test_portfolio_prepares_shared_live_feed_before_spawning_futures(monkeypatch, tmp_path):
