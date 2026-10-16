@@ -31,6 +31,9 @@ class A200RuntimeBatch:
             raise TypeError("A200 runtime batch requires a BarBatchReceipt")
         if self.receipt.instrument_id != self.instrument_id or self.receipt.provider != self.provider:
             raise ValueError("A200 batch identity does not match its receipt")
+        # Runtime callers can bypass annotations; canonicalize mutable sequences
+        # before validating so later caller mutations cannot alter this batch.
+        object.__setattr__(self, "bars", tuple(self.bars))
         if not self.bars or self.receipt.row_count != len(self.bars):
             raise ValueError("A200 batch bars must be non-empty and match receipt row count")
         encoded = json.dumps(

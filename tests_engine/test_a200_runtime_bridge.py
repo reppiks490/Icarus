@@ -56,6 +56,16 @@ def test_same_length_substituted_bars_are_rejected_by_receipt_checksum():
         A200RuntimeBatch.from_history(batch.instrument_id, batch.provider, tampered, batch.receipt)
 
 
+def test_mutable_input_sequence_is_copied_into_immutable_batch():
+    batch = _batch()
+    input_bars = list(batch.bars)
+    copied = A200RuntimeBatch(batch.instrument_id, batch.provider, input_bars, batch.receipt)
+    input_bars[0] = Bar(input_bars[0].ts, input_bars[0].o, input_bars[0].h,
+                        input_bars[0].l, input_bars[0].c + 0.01, input_bars[0].v)
+    assert isinstance(copied.bars, tuple)
+    assert copied.bars[0] == batch.bars[0]
+
+
 def test_empty_or_incomplete_history_batch_is_rejected():
     batch = _batch()
     with pytest.raises(ValueError, match="non-empty"):
