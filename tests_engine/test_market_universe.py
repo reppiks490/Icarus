@@ -338,6 +338,27 @@ def test_a200_hybrid_provider_selection_never_calls_unselected_source(monkeypatc
     assert loaded["requested_providers"] == ["yahoo"]
 
 
+def test_yahoo_only_hybrid_probe_does_not_load_fmp_credentials_or_connector(monkeypatch, tmp_path):
+    row = snapshot()["instruments"][0]
+    yahoo_symbol = next(m["symbol"] for m in row["provider_symbol_candidates"]
+                        if m["provider"] == "yahoo")
+    monkeypatch.setenv("FMP_API_KEY", "test-only-key")
+    monkeypatch.setattr(market_universe_adapter, "Yahoo",
+                        lambda: _FakeYahooHistory(yahoo_symbol))
+
+    import icarus_engine.feeds.fmp as fmp_feed
+
+    def forbidden_fmp_construction():
+        raise AssertionError("Yahoo-only probe must not construct the FMP connector")
+
+    monkeypatch.setattr(fmp_feed, "FmpHistory", forbidden_fmp_construction)
+    report = hybrid_probe.run(limit=1, start_ts=60, end_ts=86460,
+                              out=tmp_path / "yahoo-only-default-adapter.json",
+                              pause_seconds=0, providers=("yahoo",))
+    assert report["requested_providers"] == ["yahoo"]
+    assert report["counts"]["fmp_not_requested_count"] == 1
+
+
 def test_a200_hybrid_provider_selection_rejects_empty_unknown_and_duplicate_scope(tmp_path):
     for providers in ((), ("other",), ("yahoo", "yahoo")):
         with pytest.raises(ValueError, match="non-empty unique subset"):

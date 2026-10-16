@@ -79,7 +79,6 @@ def run(*, limit: int = 1, start_ts: int, end_ts: int,
     if type(pause_seconds) not in (int, float) or not 0 <= pause_seconds <= 10:
         raise ValueError("pause_seconds must be between zero and ten")
     catalog = snapshot()
-    adapter = adapter or MarketUniverseAdapter()
     results = []
     rows = catalog["instruments"][:limit]
     available_providers = tuple(dict.fromkeys(
@@ -95,6 +94,7 @@ def run(*, limit: int = 1, start_ts: int, end_ts: int,
             or len(selected_providers) != len(set(selected_providers))):
         raise ValueError("providers must be a non-empty unique subset of catalog providers")
     selected_set = set(selected_providers)
+    adapter = adapter or MarketUniverseAdapter(providers=selected_providers)
     for index, instrument in enumerate(rows, start=1):
         mappings = instrument.get("provider_symbol_candidates", [])
         seen = set()
