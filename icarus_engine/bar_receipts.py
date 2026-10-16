@@ -43,6 +43,7 @@ class BarBatchReceipt:
     received_at_ns: int
     historical_bars_qualified: bool
     execution_authorized: bool = False
+    calendar_timezone: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -103,13 +104,13 @@ def make_bar_batch_receipt(
         def is_dst_shortened_calendar_interval(earlier: int, later: int) -> bool:
             if calendar_zone is None or interval_seconds < 86400 or interval_seconds % 86400:
                 return False
-            if later - earlier != interval_seconds - 3600:
-                return False
             earlier_local = datetime.fromtimestamp(earlier, timezone.utc).astimezone(calendar_zone)
             later_local = datetime.fromtimestamp(later, timezone.utc).astimezone(calendar_zone)
             wall_delta = later_local.replace(tzinfo=None) - earlier_local.replace(tzinfo=None)
             offset_delta = later_local.utcoffset() - earlier_local.utcoffset()
-            return wall_delta == timedelta(seconds=interval_seconds) and offset_delta == timedelta(hours=1)
+            return (offset_delta > timedelta(0)
+                    and later - earlier == interval_seconds - int(offset_delta.total_seconds())
+                    and wall_delta == timedelta(seconds=interval_seconds))
 
         if any(later - earlier < interval_seconds and not is_dst_shortened_calendar_interval(earlier, later)
                for earlier, later in zip(expected, expected[1:])):
@@ -175,6 +176,7 @@ def make_bar_batch_receipt(
         "expected_schedule_sha256": hashlib.sha256(
             json.dumps(expected, separators=(",", ":")).encode("utf-8")
         ).hexdigest() if expected is not None else None,
+        "calendar_timezone": calendar_timezone,
         "interval_gap_count": gap_count,
         "gap_validation_status": "VERIFIED" if gaps_validated else "UNKNOWN",
         "timestamp_alignment_status": "UNKNOWN" if alignment_validator is None else "VERIFIED" if aligned else "FAILED",
@@ -215,5 +217,6 @@ def make_bar_batch_receipt(
         fetched_at_ns=fetched_at_ns,
         received_at_ns=received_at_ns,
         historical_bars_qualified=qualified,
+        calendar_timezone=calendar_timezone,
     )
     return rows, receipt

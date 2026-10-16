@@ -43,6 +43,7 @@ def test_expected_daily_schedule_allows_dst_shortened_calendar_day():
     _, receipt = _qualified_receipt(86400, timestamps, "America/New_York")
 
     assert receipt.historical_bars_qualified is True
+    assert receipt.calendar_timezone == "America/New_York"
 
 
 def test_expected_daily_schedule_rejects_23_hour_gap_outside_dst_transition():
@@ -53,4 +54,16 @@ def test_expected_daily_schedule_rejects_23_hour_gap_outside_dst_transition():
     ]
     with pytest.raises(ValueError, match="closer than the declared interval"):
         _qualified_receipt(86400, timestamps, "America/New_York")
+
+
+def test_expected_daily_schedule_allows_half_hour_dst_transition():
+    lord_howe = ZoneInfo("Australia/Lord_Howe")
+    timestamps = [
+        int(datetime(2026, 10, 3, 9, 30, tzinfo=lord_howe).timestamp()),
+        int(datetime(2026, 10, 4, 9, 30, tzinfo=lord_howe).timestamp()),
+    ]
+    _, receipt = _qualified_receipt(86400, timestamps, "Australia/Lord_Howe")
+
+    assert timestamps[1] - timestamps[0] == 86400 - 1800
+    assert receipt.historical_bars_qualified is True
 
