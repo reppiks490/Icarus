@@ -26,17 +26,19 @@ import sqlite3
 import threading
 import time
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Deque, Dict, List, Optional, Tuple
 
 from .assets import AssetSpec, apply_chart_config, chart_capabilities, chart_timeframe_parts, normalize_chart_timeframe, resolve, validate_chart_config
 from .calendar import get_calendar
 from .emulator import Emulator, Fill
+from .shadow_twin import MirroredEmulator
 from .feeds import Coinbase, Kraken
 from .feeds.events import event_bar_to_bar, make_event_feed
 from .feeds.bars import HistoryHub, detect_granularity, file_feed_mode, find_history, parse_ohlcv_csv, read_text_csv  # Grok (xAI) — 2026-09-20
 from .feeds.databento import Databento
 from .feeds.yahoo import Yahoo
+from .bar_receipts import make_bar_batch_receipt
 from .microstructure import TickAggregator, TradeAggregator, TradeEvent
 from .pine.series import NAN, na
 from .pine.timeframe import Aggregator, Bar, tf_minutes
@@ -79,6 +81,7 @@ class Journal:
         self.path = path
         self._lock = threading.RLock()
         self.con = sqlite3.connect(path, check_same_thread=False)
+        self._closed = False
         self.con.execute("PRAGMA journal_mode=WAL")
         self.con.executescript("""
         CREATE TABLE IF NOT EXISTS trades (id INTEGER PRIMARY KEY, symbol TEXT, entry_id TEXT, direction INTEGER, qty INTEGER,
@@ -121,6 +124,14 @@ class Journal:
         self.con.execute("DELETE FROM log WHERE ts < ?", (time.time() - 14 * 86400,))
         self.con.commit()
         self.log_tail: Deque[Dict[str, Any]] = collections.deque(maxlen=400)
+
+    def close(self) -> None:
+        """Close the SQLite connection; safe to call more than once."""
+        with self._lock:
+            if self._closed:
+                return
+            self.con.close()
+            self._closed = True
 
     def log(self, level: str, msg: str) -> None:
         row = {"ts": time.time(), "level": level, "msg": msg}
@@ -457,6 +468,11 @@ class RunnerConfig:
     scale_known_at: Optional[int] = None    # actual receipt/computation time, never inferred from a price's date
     base_dir: Optional[str] = None          # Grok (xAI) — plant root; warmup looks here, not cwd
     base_spec: Optional[AssetSpec] = None    # startup/API-pinned baseline before preset/global/asset metadata
+    shadow_real_fills: bool = False          # same-decision real-bar emulator; observation only
+
+
+class FlattenUnavailableError(RuntimeError):
+    """Administrative flatten could not safely close an open position."""
 
 
 class AssetRunner:
@@ -478,7 +494,11 @@ class AssetRunner:
         self.chart_mode, self.chart_value = chart_timeframe_parts(self.spec.chart_tf)
         self.chart_minutes = self.chart_value if self.chart_mode == "minutes" else 0
         self.chart_seconds = self.chart_value * 60 if self.chart_mode == "minutes" else (self.chart_value if self.chart_mode == "seconds" else None)
-        self.mintick = cfg.mintick if cfg.mintick is not None else (self.spec.mintick if self.spec.feed == "yahoo" else self.feed.mintick(self.spec.ticker))
+        # Tick metadata is part of the registered asset contract. Never infer it
+        # from a provider response or silently substitute a generic increment.
+        self.mintick = cfg.mintick if cfg.mintick is not None else self.spec.mintick
+        self.last_bar_batch_receipt: Optional[Dict[str, Any]] = None
+        self.bar_batch_receipts: List[Dict[str, Any]] = []
         self.trade_events: List[TradeEvent] = []
         self.event_feed = feeds.get("events")
         if self.chart_mode != "minutes" and self.event_feed is None:
@@ -535,7 +555,9 @@ class AssetRunner:
         self.chart_minutes = self.chart_value if self.chart_mode == "minutes" else 0
         self.chart_seconds = self.chart_value * 60 if self.chart_mode == "minutes" else (self.chart_value if self.chart_mode == "seconds" else None)
         self.cal = get_calendar(sp.calendar, sp.anchor_et, session=sp.session, group=sp.group)   # a preset may switch the chart session
-        self.em = Emulator(sp.capital, sp.commission, self.mintick, sp.multiplier, pyramiding=2, slippage_ticks=sp.slippage_ticks)
+        primary_emulator = Emulator(sp.capital, sp.commission, self.mintick, sp.multiplier, pyramiding=2, slippage_ticks=sp.slippage_ticks)
+        self.em = (MirroredEmulator(primary_emulator, asset=self.symbol)
+                   if self.cfg.shadow_real_fills else primary_emulator)
         self.strat: Optional[PulseStrategy] = None
         ib = self.inputs_base
         self.htf_tfs = [tf_minutes(t) for t in (ib.htf_tf_1, ib.htf_tf_2, ib.htf_tf_3, ib.htf_tf_4, ib.htf_tf_5)]
@@ -607,7 +629,10 @@ class AssetRunner:
         self.strat.paused = self.paused
         if self.paused:
             self._cancel_pending_entries()
-        self.em.process_bar(fill_bar, self.bar_index)
+        if isinstance(self.em, MirroredEmulator):
+            self.em.process_bar(fill_bar, self.bar_index, real_bar=real)
+        else:
+            self.em.process_bar(fill_bar, self.bar_index)
         entry_regime = str((self.state or {}).get("rate_regime_str") or "unknown")
         for opened in getattr(self.em, "open", ()):
             self._lot_entry_regimes.setdefault(int(opened.seq), entry_regime)
@@ -838,6 +863,50 @@ class AssetRunner:
             for b in bars:
                 self._push_deep(ch, b, sub_min)
 
+    def _fetch_historical_candles(self, feed: Any, symbol: str, interval_seconds: int,
+                                 start_ts: int, end_ts: int) -> List[Bar]:
+        """Fetch one history batch, reject malformed rows, and retain its audit receipt."""
+        fetched_at_ns = time.time_ns()
+        bars = feed.candles(symbol, interval_seconds, start_ts, end_ts)
+        received_at_ns = time.time_ns()
+        adapter = feed
+        visited = set()
+        while id(adapter) not in visited:
+            visited.add(id(adapter))
+            wrapped = getattr(adapter, "_feed", None)
+            if wrapped is None:
+                break
+            adapter = wrapped
+        observed_symbol = None
+        expected_provider_symbol = symbol
+        # Yahoo embeds the requested symbol in the response metadata. Do not
+        # infer identity for other adapters unless they expose an explicit field.
+        if isinstance(adapter, Yahoo):
+            metadata = adapter.meta(symbol)
+            observed_symbol = metadata.get("symbol") or metadata.get("provider_symbol")
+        elif isinstance(adapter, Databento):
+            metadata = adapter.meta(symbol)
+            expected_provider_symbol = adapter.continuous_symbol(symbol, adapter.roll_rule)
+            observed_symbol = metadata.get("continuous_symbol")
+        else:
+            metadata = getattr(adapter, "_meta", {}).get(symbol, {})
+            observed_symbol = metadata.get("provider_symbol") or metadata.get("symbol")
+        provider = "databento" if isinstance(adapter, Databento) else (
+            "yahoo" if isinstance(adapter, Yahoo) else self.spec.feed)
+        instrument_id = f"icarus:{self.spec.kind}:{self.spec.symbol.upper()}"
+        checked, receipt = make_bar_batch_receipt(
+            instrument_id=instrument_id, provider=provider,
+            expected_provider_symbol=expected_provider_symbol, observed_provider_symbol=observed_symbol,
+            interval_seconds=interval_seconds, requested_start_ts=start_ts,
+            requested_end_ts=end_ts, bars=bars, fetched_at_ns=fetched_at_ns,
+            received_at_ns=received_at_ns, entitlement_status="UNKNOWN",
+        )
+        self.last_bar_batch_receipt = receipt.to_dict()
+        self.bar_batch_receipts.append(self.last_bar_batch_receipt)
+        if len(self.bar_batch_receipts) > 100:
+            del self.bar_batch_receipts[:-100]
+        return checked
+
     def _warmup_coinbase(self, T_w: int, now: int) -> None:
         cb = self.feed
         deep = {10080: (86400, 800 * 86400), 1440: (86400, 400 * 86400), 240: (3600, 45 * 86400), 120: (3600, 45 * 86400), 60: (3600, 45 * 86400),
@@ -849,9 +918,9 @@ class AssetRunner:
             g, depth = deep[m]
             key = (g, depth)
             if key not in cache:
-                cache[key] = cb.candles(self.spec.ticker, g, T_w - depth, T_w)
+                cache[key] = self._fetch_historical_candles(cb, self.spec.ticker, g, T_w - depth, T_w)
             self._feed_deep([m], cache[key], g // 60)
-        ones = cb.candles(self.spec.ticker, 60, T_w, now - 60)
+        ones = self._fetch_historical_candles(cb, self.spec.ticker, 60, T_w, now - 60)
         self.journal.log("INFO", f"[{self.symbol}] {len(ones)} one-minute candles fetched; replaying")
         for b in ones:
             self.on_sub_bar(b, 1, live=False)
@@ -861,22 +930,26 @@ class AssetRunner:
         tk = self.spec.ticker                                 # provider-native continuous symbol (e.g. NQ=F)
         tki = self.spec.ticker                                # intraday also stays continuous; no month-coded expiry contract
         bounded = lambda start: max(start, history_floor) if history_floor is not None else start
-        daily = y.candles(tk, 86400, bounded(T_w - 900 * 86400), T_w)
+        daily_start = bounded(T_w - 900 * 86400)
+        daily = self._fetch_historical_candles(y, tk, 86400, daily_start, T_w) if daily_start < T_w else []
         daily = [Bar(self.cal.bucket_start(b.ts, 1440), b.o, b.h, b.l, b.c, b.v) for b in daily]   # stamp at the session open
         self._feed_deep([m for m in self.chains if m >= 1440], daily, 1440)
         rth = getattr(self.cal, "session", "eth") == "rth"
         if rth:                                               # RTH hourly buckets sit at :30 - build them from 15-minute bars (60 days)
             hourly = []
         else:
-            hourly = y.candles(tki, 3600, bounded(max(T_w - 400 * 86400, now - 729 * 86400)), T_w)
+            hourly_start = bounded(max(T_w - 400 * 86400, now - 729 * 86400))
+            hourly = self._fetch_historical_candles(y, tki, 3600, hourly_start, T_w) if hourly_start < T_w else []
             self._feed_deep([m for m in self.chains if 60 <= m < 1440], hourly, 60)
-        q15 = y.candles(tki, 900, bounded(max(T_w - 40 * 86400, now - 59 * 86400)), T_w)
+        q15_start = bounded(max(T_w - 40 * 86400, now - 59 * 86400))
+        q15 = self._fetch_historical_candles(y, tki, 900, q15_start, T_w) if q15_start < T_w else []
         self._feed_deep([m for m in self.chains if 15 <= m < 1440 and m % 15 == 0 and (rth or m < 60)], q15, 15)
-        fives_deep = y.candles(tki, 300, bounded(max(T_w - 20 * 86400, now - 59 * 86400)), T_w)
+        fives_deep_start = bounded(max(T_w - 20 * 86400, now - 59 * 86400))
+        fives_deep = self._fetch_historical_candles(y, tki, 300, fives_deep_start, T_w) if fives_deep_start < T_w else []
         self._feed_deep([m for m in self.chains if 5 <= m < 15 and m % 5 == 0], fives_deep, 5)
         one_from = bounded(max(T_w, now - 29 * 86400))
-        fives = y.candles(tki, 300, T_w, one_from) if one_from > T_w else []
-        ones = self._closed_only(y.candles(tki, 60, one_from, now), tki)
+        fives = self._fetch_historical_candles(y, tki, 300, bounded(T_w), one_from) if one_from > bounded(T_w) else []
+        ones = self._closed_only(self._fetch_historical_candles(y, tki, 60, one_from, now), tki) if one_from < now else []
         self.journal.log("INFO", f"[{self.symbol}] deep {len(daily)}d/{len(hourly)}h/{len(q15)}x15m/{len(fives_deep)}x5m; {len(fives)} five-minute + {len(ones)} one-minute sub-bars; replaying")
         for b in fives:
             self.on_sub_bar(b, 5, live=False)
@@ -921,7 +994,7 @@ class AssetRunner:
                 tail_start = max(tail_from, now - 29 * 86400)
                 if history_floor is not None:
                     tail_start = max(tail_start, history_floor)
-                ones = self.feed.candles(self.spec.ticker, 60, tail_start, now)
+                ones = self._fetch_historical_candles(self.feed, self.spec.ticker, 60, tail_start, now)
                 if self.spec.feed == "yahoo":
                     ones = self._closed_only(ones, self.spec.ticker)
                 for b in ones:
@@ -1109,12 +1182,19 @@ class AssetRunner:
         """Caller holds lock. Keep exits/close orders protecting existing positions."""
         pending = list(self.em._pending_entries)
         ids = {p.id for p in pending}
-        self.em._pending_entries.clear()
-        for eid, order in list(self.em._exits.items()):
-            if order.from_entry in ids and not self.em.qty_open(order.from_entry):
-                self.em._exits.pop(eid)
-        self.em._pending_closes[:] = [c for c in self.em._pending_closes
-                                     if c.entry_id not in ids or self.em.qty_open(c.entry_id)]
+        if isinstance(self.em, MirroredEmulator):
+            # A limit may fill in the primary while it remains pending in the
+            # real-price lane. Admin pause/flatten still has to cancel that
+            # shadow-only remainder before processing another bar.
+            ids.update(p.id for p in self.em.shadow._pending_entries)
+            self.em.cancel_pending_entries(ids)
+        else:
+            self.em._pending_entries.clear()
+            for eid, order in list(self.em._exits.items()):
+                if order.from_entry in ids and not self.em.qty_open(order.from_entry):
+                    self.em._exits.pop(eid)
+            self.em._pending_closes[:] = [c for c in self.em._pending_closes
+                                         if c.entry_id not in ids or self.em.qty_open(c.entry_id)]
         if self.strat is not None:
             # RATE snapshots are appended when intent is submitted. Filled/closed
             # positions still own the earlier queue entries; only remove the tail.
@@ -1125,7 +1205,7 @@ class AssetRunner:
                     self.strat.tod_hour_queue.pop()
             self.strat.rate_pend_dir = 0
             self.strat.rate_pend_bar = -999
-        return len(pending)
+        return len(ids)
 
     def set_paused(self, paused: bool) -> int:
         with self.lock:
@@ -1217,15 +1297,39 @@ class AssetRunner:
     def flatten(self, reason: str = "manual") -> int:
         with self.lock:
             cancelled = self._cancel_pending_entries()
-            n = 0
-            for t in list(self.em.open):
-                self.em.close(t.entry_id, comment="FLAT_" + reason.upper()[:8])
-                n += 1
-            if self.last_price and self.em.open:
-                fake = Bar(int(time.time()), self.last_price, self.last_price, self.last_price, self.last_price, 0.0)
-                self.em.process_bar(fake, self.bar_index)
-            self.journal.log("WARN", f"[{self.symbol}] FLATTEN ({reason}): {n} position(s), {cancelled} pending entry intent(s) cancelled")
-            return n
+            open_positions = list(self.em.open)
+            if isinstance(self.em, MirroredEmulator):
+                open_positions.extend(self.em.shadow.open)
+            entry_ids = {t.entry_id for t in open_positions}
+            has_primary_open = bool(self.em.open)
+            has_shadow_open = isinstance(self.em, MirroredEmulator) and bool(self.em.shadow.open)
+            has_open = has_primary_open or has_shadow_open
+            if has_primary_open and (self.last_price is None or not math.isfinite(float(self.last_price))):
+                raise FlattenUnavailableError(
+                    f"[{self.symbol}] cannot flatten open positions: no finite last market price is available")
+            for entry_id in entry_ids:
+                comment = "FLAT_" + reason.upper()[:8]
+                if isinstance(self.em, MirroredEmulator):
+                    # The operator close is not a standard-price market event.
+                    # Close the authoritative primary and censor the mirrored
+                    # hypothetical position in the explicit admin path below.
+                    self.em.primary.close(entry_id, comment=comment)
+                else:
+                    self.em.close(entry_id, comment=comment)
+            if has_open:
+                if isinstance(self.em, MirroredEmulator):
+                    fake = None
+                    if has_primary_open:
+                        mark = float(self.last_price)
+                        fake = Bar(int(time.time()), mark, mark, mark, mark, 0.0)
+                    self.em.process_administrative_flatten(
+                        fake, self.bar_index, entry_ids, reason=reason)
+                else:
+                    mark = float(self.last_price)
+                    fake = Bar(int(time.time()), mark, mark, mark, mark, 0.0)
+                    self.em.process_bar(fake, self.bar_index)
+            self.journal.log("WARN", f"[{self.symbol}] FLATTEN ({reason}): {len(entry_ids)} position(s), {cancelled} pending entry intent(s) cancelled")
+            return len(entry_ids)
 
     def export_csv(self) -> str:
         with self.lock:
@@ -1335,6 +1439,8 @@ class AssetRunner:
             "feed_provider": ("databento" if type(self.feed).__name__ == "Databento" else self.spec.feed),
             "feed_capabilities": (self.feed.capabilities() if hasattr(self.feed, "capabilities") else {}),
             "feed_health": self._feed_health_view(),
+            "last_bar_batch_receipt": self.last_bar_batch_receipt,
+            "bar_batch_receipts": list(self.bar_batch_receipts),
             "session_mode": _session_mode(self.cal), "security_source": self.spec.security_source,
             "tf": self.chart_minutes, "mintick": self.mintick, "contract_size": self.em.contract_size, "multiplier": self.spec.multiplier,
             "chart_type": self.spec.chart_type, "fill_on": self.spec.fill_on, "slippage_ticks": self.spec.slippage_ticks,
@@ -1356,6 +1462,30 @@ class AssetRunner:
             "equity": self.em.equity(mark), "capital": self.spec.capital, "netprofit": self.em.netprofit,
             "open_profit": self.em.open_profit(mark) if mark else 0.0, "position": self.em.position_size,
             "open_trades": open_trades, "exits": self.em.live_exits(), "pending": self.em.pending_view(),
+            "real_price_shadow": ({**self.em.summary(live_from_ts=self.live_from_ts),
+                                   "primary_fill_basis": self.spec.fill_on,
+                                   "provenance": {
+                                       "instrument_id": self.symbol,
+                                       "provider_symbol": self.spec.ticker,
+                                       "asset_kind": self.spec.kind,
+                                       "price_provider": (
+                                           "file_history_hub" if file_feed_mode() else
+                                           "databento" if type(self.feed).__name__ == "Databento" else
+                                           self.spec.feed),
+                                       "feed_mode": (
+                                           "file" if file_feed_mode() else
+                                           "databento" if type(self.feed).__name__ == "Databento" else
+                                           "provider"),
+                                       "timeframe_minutes": self.chart_minutes,
+                                       "calendar": self.cal.name,
+                                       "session_mode": _session_mode(self.cal),
+                                       "chart_type": self.spec.chart_type,
+                                       "primary_fill_basis": self.spec.fill_on,
+                                       "shadow_fill_basis": "standard_real_ohlc",
+                                       "security_source": self.spec.security_source,
+                                       "feed_health": self._feed_health_view(),
+                                   }}
+                                  if isinstance(self.em, MirroredEmulator) else None),
             "trades_total": len(self.em.closed), "wins_total": wins,
             "performance_guard": getattr(self, "_performance_guard", {"status": "INSUFFICIENT_SAMPLE", "scorecards": {}}),
             "live_trades": len(live_trades), "live_profit": sum(t.profit for t in live_trades),
@@ -1433,13 +1563,14 @@ class AssetRunner:
 class Portfolio:
     def __init__(self, journal: Journal, base_dir: str, poll_sec: float = 5.0, profile: str = "nq",
                  preset: Optional[str] = None, warmup_bars: int = 1200, pts_ref_symbol: str = "NQ",
-                 feeds: Optional[Dict[str, Any]] = None):
+                 feeds: Optional[Dict[str, Any]] = None, shadow_real_fills: bool = False):
         self.journal = journal
         self.base_dir = base_dir
         self.poll_sec = poll_sec
         self.profile = profile
         self.preset = preset
         self.warmup_bars = warmup_bars
+        self.shadow_real_fills = bool(shadow_real_fills)
         self.pts_ref_symbol = pts_ref_symbol
         self.pts_ref_price = 0.0
         # ICARUS_FEED selects the market-data transport without changing stable AssetSpec
@@ -1481,6 +1612,7 @@ class Portfolio:
         self._continuous_refresh_day = int(self.started // 86400)
         self.paused = False
         self._threads: Dict[str, threading.Thread] = {}
+        self._sampler_thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
         self._lock = threading.RLock()
         # Optional measured latency sink. The HTTP server binds one instance and
@@ -1520,7 +1652,7 @@ class Portfolio:
         scale = self._ref_price() if (spec.symbol != self.pts_ref_symbol) else 0.0
         cfg = RunnerConfig(spec=spec, inputs=inputs, warmup_bars=self.warmup_bars, sources=sources, profile=self.profile,
                            preset=self.preset or spec.preset, pts_ref_price=scale, base_dir=self.base_dir,
-                           base_spec=base_spec)
+                           base_spec=base_spec, shadow_real_fills=self.shadow_real_fills)
         runner = AssetRunner(cfg, self.journal, self.feeds)
         runner.latency_telemetry = self.latency_telemetry
         return runner
@@ -1560,7 +1692,8 @@ class Portfolio:
             raise
 
     def remove_asset(self, symbol: str) -> bool:
-        key = resolve(symbol).symbol
+        raw = str(symbol).strip().upper()
+        key = raw if raw in self.runners else resolve(symbol).symbol
         with self._lock:
             r = self.runners.get(key)
             if not r:
@@ -1595,7 +1728,8 @@ class Portfolio:
                      *, preset: Any = _UNCHANGED, reset: bool = False,
                      chart: Optional[Dict[str, Any]] = None) -> AssetRunner:
         """Atomically apply strategy/chart configuration, then persist only after replay succeeds."""
-        key = resolve(symbol).symbol
+        raw = str(symbol).strip().upper()
+        key = raw if raw in self.runners else resolve(symbol).symbol
         r = self.runners[key]
         with r.lock:
             r.ensure_configurable()
@@ -1691,7 +1825,8 @@ class Portfolio:
             self._prepare_depth_context(feed, tickers)
         for s in list(self.order):
             self._spawn(self.runners[s])
-        threading.Thread(target=self._sampler, daemon=True, name="equity-sampler").start()
+        self._sampler_thread = threading.Thread(target=self._sampler, daemon=True, name="equity-sampler")
+        self._sampler_thread.start()
 
     def _prepare_depth_context(self, feed: Any, tickers: Sequence[str]) -> None:
         """Subscribe isolated MBP-10 context without making it a core-feed dependency."""
@@ -1774,11 +1909,13 @@ class Portfolio:
     def stop(self) -> None:
         self._stop.set()
 
-        # Do not tear down a live transport underneath a runner already inside poll().
-        # Give all runner threads one bounded shared shutdown window first.
+        # Do not tear down a live transport underneath a runner or sampler already
+        # inside a feed call. Give all worker threads one bounded shutdown window.
         deadline = time.monotonic() + 5.0
         current = threading.current_thread()
-        for thread in list(self._threads.values()):
+        threads = ([self._sampler_thread] if self._sampler_thread is not None else [])
+        threads.extend(self._threads.values())
+        for thread in threads:
             if thread is current or not thread.is_alive():
                 continue
             remaining = deadline - time.monotonic()
@@ -1811,6 +1948,7 @@ class Portfolio:
 
     def status(self, *, nonblocking: bool = False) -> Dict[str, Any]:
         rs = [r.summary(nonblocking=True) if nonblocking else r.summary() for r in self.runner_list()]
+        shadow_rows = [x["real_price_shadow"] for x in rs if x.get("real_price_shadow")]
         eq = sum(x["equity"] or 0.0 for x in rs)
         cap = sum(x["capital"] for x in rs)
         stale = nonblocking and any(x.get("view_stale") for x in rs)
@@ -1818,6 +1956,76 @@ class Portfolio:
         if nonblocking and not stale:
             self._public_equity_epoch = epoch
         live_profit = sum(x["live_profit"] for x in rs)
+        shadow_status = ("INVALID" if any(x["status"] == "INVALID" for x in shadow_rows)
+                         else "DEGRADED" if any(x["status"] != "READY" for x in shadow_rows)
+                         else "READY") if shadow_rows else "DISABLED"
+        primary_entries = sum(x["primary_entry_fills"] for x in shadow_rows)
+        shadow_entries = sum(x["shadow_entry_fills"] for x in shadow_rows)
+        matched_entries = sum(x["matched_entry_intents"] for x in shadow_rows)
+        agreement_denominator = sum(x["outcome_agreement_denominator"] for x in shadow_rows)
+        agree_count = sum(x["outcome_agreement_count"] for x in shadow_rows)
+        primary_win_count = sum(x["primary_win_count"] for x in shadow_rows)
+        preserved_count = sum(x["primary_win_preserved_count"] for x in shadow_rows)
+        portfolio_primary_net = sum(x["primary"]["net"] for x in shadow_rows)
+        portfolio_shadow_net = sum(x["real_price_shadow"]["net"] for x in shadow_rows)
+        portfolio_primary_winner_net = sum(x["paired_primary_winner_net"] for x in shadow_rows)
+        portfolio_shadow_on_primary_winners = sum(
+            x["paired_shadow_net_on_primary_winners"] for x in shadow_rows)
+        portfolio_outcome_matrix = {
+            primary: {
+                shadow: sum(x["outcome_matrix"][primary][shadow] for x in shadow_rows)
+                for shadow in ("win", "loss", "break_even")
+            }
+            for primary in ("win", "loss", "break_even")
+        }
+        portfolio_epsilon = max(1e-8, abs(portfolio_primary_net) * 1e-12)
+        portfolio_realization_ratio = (
+            portfolio_shadow_net / portfolio_primary_net
+            if portfolio_primary_net > portfolio_epsilon else None)
+        portfolio_profit_capture = (
+            portfolio_shadow_on_primary_winners / portfolio_primary_winner_net
+            if portfolio_primary_winner_net > 1e-8 else None)
+        shadow_portfolio = ({
+            "schema": "icarus.real_price_shadow.portfolio/1",
+            "enabled": True,
+            "status": shadow_status,
+            "execution_authorized": False,
+            "asset_count": len(shadow_rows),
+            "primary_entry_fills": primary_entries,
+            "shadow_entry_fills": shadow_entries,
+            "entry_fill_parity": matched_entries / primary_entries if primary_entries else None,
+            "matched_entry_intents": matched_entries,
+            "primary_only_entry_fills": sum(x["primary_only_entry_fills"] for x in shadow_rows),
+            "shadow_only_entry_fills": sum(x["shadow_only_entry_fills"] for x in shadow_rows),
+            "administrative_censored_shadow_positions": sum(
+                x["administrative_censored_shadow_positions"] for x in shadow_rows),
+            "pairable_closed_episodes": sum(x["pairable_closed_episodes"] for x in shadow_rows),
+            "outcome_agreement_denominator": agreement_denominator,
+            "outcome_agreement_rate": agree_count / agreement_denominator if agreement_denominator else None,
+            "outcome_matrix": portfolio_outcome_matrix,
+            "primary_win_preservation": preserved_count / primary_win_count if primary_win_count else None,
+            "primary_net": round(portfolio_primary_net, 8),
+            "real_price_shadow_net": round(portfolio_shadow_net, 8),
+            "net_realization_ratio": portfolio_realization_ratio,
+            "net_realization_ratio_unavailable_reason": (
+                None if portfolio_realization_ratio is not None else
+                "portfolio primary net is non-positive or too close to zero"),
+            "paired_profit_capture": portfolio_profit_capture,
+            "paired_profit_capture_unavailable_reason": (
+                None if portfolio_profit_capture is not None else
+                "no positive pairable primary-winner P&L denominator"),
+            "paired_primary_winner_net": round(portfolio_primary_winner_net, 8),
+            "paired_shadow_net_on_primary_winners": round(portfolio_shadow_on_primary_winners, 8),
+            "primary_warmup_net": round(sum(x["primary"]["warmup_net"] for x in shadow_rows), 8),
+            "primary_live_net": round(sum(x["primary"]["live_net"] for x in shadow_rows), 8),
+            "real_price_shadow_warmup_net": round(sum(x["real_price_shadow"]["warmup_net"] for x in shadow_rows), 8),
+            "real_price_shadow_live_net": round(sum(x["real_price_shadow"]["live_net"] for x in shadow_rows), 8),
+            "drawdown_aggregation": "per_asset_only; cross_asset_close_timestamps_are_not_yet_aligned",
+            "assets": [{"asset": x["asset"], "status": x["status"], "reason": x["reason"],
+                        "administrative_censored_shadow_positions": x["administrative_censored_shadow_positions"],
+                        "provenance": x.get("provenance")}
+                       for x in shadow_rows],
+        } if shadow_rows else None)
         return _clean({
             "now": time.time(), "uptime_sec": time.time() - self.started, "paused": self.paused,
             "global_pause_intent": self.paused,
@@ -1826,9 +2034,65 @@ class Portfolio:
             "equity": eq, "capital": cap, "net": eq - cap, "live_profit": live_profit,
             "open_profit": sum(x["open_profit"] or 0.0 for x in rs), "positions": sum(1 for x in rs if x["position"]),
             "assets": rs, "log": list(self.journal.log_tail)[-80:],
+            "real_price_shadow": shadow_portfolio,
             "equity_epoch": epoch,
             "view_stale": bool(stale),
             "equity_series": self.journal.equity_series(max_points=600, since_ts=max(self.started, epoch)),
             "all_warm": all(x["warm"] for x in rs) if rs else False,
             "preset": self.preset, "profile": self.profile, "pts_ref": {"symbol": self.pts_ref_symbol, "price": self.pts_ref_price},
         })
+
+    def publish_shadow_evidence(self, fabric, *, run_id: str, received_at: str) -> Dict[str, Any]:
+        """Explicitly publish current per-asset shadow snapshots as one batch.
+
+        Unlike `status()`, this method is an intentional write. All eligible
+        events are validated before the first append so malformed asset state
+        cannot produce a knowingly partial batch. Retries are idempotent.
+        """
+        from .intelligence_fabric import IntelligenceFabric
+        from .shadow_evidence_events import shadow_evidence_event
+
+        if not isinstance(fabric, IntelligenceFabric):
+            raise ValueError("fabric must be an IntelligenceFabric")
+        staged = []
+        failures = []
+        skipped = []
+        for runner in self.runner_list():
+            row = runner.summary()
+            shadow = row.get("real_price_shadow")
+            if shadow is None:
+                skipped.append(row.get("symbol", "unknown"))
+                continue
+            stamp = row.get("last_bar_ts")
+            if isinstance(stamp, bool) or not isinstance(stamp, (int, float)) or stamp <= 0:
+                failures.append({"asset": row.get("symbol", "unknown"),
+                                 "reason": "missing valid last_bar_ts"})
+                continue
+            observed_at = datetime.fromtimestamp(float(stamp), timezone.utc).isoformat().replace("+00:00", "Z")
+            try:
+                event = shadow_evidence_event(
+                    shadow, run_id=run_id, observed_at=observed_at, received_at=received_at)
+                event.normalized()  # validate all envelopes before writing any asset event
+                staged.append((str(row.get("symbol", shadow.get("asset", "unknown"))), event))
+            except (ValueError, OverflowError, OSError) as exc:
+                failures.append({"asset": row.get("symbol", "unknown"),
+                                 "reason": f"{type(exc).__name__}: {exc}"})
+        if failures:
+            return {"schema": "icarus.real_price_shadow.publication/1", "status": "BLOCKED",
+                    "published_count": 0, "skipped_assets": skipped, "failures": failures,
+                    "execution_authorized": False, "production_decision_authorized": False}
+        receipts = []
+        for asset, event in staged:
+            try:
+                receipts.append({"asset": asset, **fabric.publish(event)})
+            except Exception as exc:
+                return {"schema": "icarus.real_price_shadow.publication/1",
+                        "status": "PARTIAL" if receipts else "FAILED",
+                        "published_count": len(receipts), "receipts": receipts,
+                        "failed_asset": asset, "failure": f"{type(exc).__name__}: {exc}",
+                        "execution_authorized": False, "production_decision_authorized": False}
+        return {"schema": "icarus.real_price_shadow.publication/1",
+                "status": "PUBLISHED" if receipts else "NO_ELIGIBLE_ASSETS",
+                "published_count": len(receipts), "receipts": receipts,
+                "skipped_assets": skipped,
+                "execution_authorized": False, "production_decision_authorized": False}

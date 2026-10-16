@@ -55,7 +55,8 @@ def _portfolio(args: argparse.Namespace, journal: Journal) -> Portfolio:
     if feed:
         os.environ["ICARUS_FEED"] = feed
     port = Portfolio(journal, _base_dir(), poll_sec=getattr(args, "poll", 5.0), profile=args.profile, preset=args.preset,
-                     warmup_bars=args.warmup, pts_ref_symbol=args.pts_ref_symbol)
+                     warmup_bars=args.warmup, pts_ref_symbol=args.pts_ref_symbol,
+                     shadow_real_fills=getattr(args, "shadow_real_fills", False))
     for tok in [a for a in args.assets.split(",") if a.strip()]:
         spec = parse_spec(tok, getattr(args, "tf", None) or "20")
         if getattr(args, "tf", None) is not None and "@" not in tok:
@@ -120,11 +121,13 @@ def cmd_run(args: argparse.Namespace) -> int:
     from .server import serve
     journal = Journal(_journal_path(args))
     port = _portfolio(args, journal)
-    journal.log("INFO", f"ICARUS Engine starting: {port.order} tf={args.tf or 'preset/default'} preset={args.preset} profile={args.profile} fills={args.fill_on or 'preset/real'}")
+    journal.log("INFO", f"ICARUS Engine starting: {port.order} tf={args.tf or 'preset/default'} preset={args.preset} profile={args.profile} fills={args.fill_on or 'preset/real'} real_price_shadow={bool(getattr(args, 'shadow_real_fills', False))}")
     port.start()
     print(f"\nICARUS ENGINE  assets={port.order}  tf={args.tf or 'preset/default'}  preset={args.preset}")
     print(f"  dashboard : http://127.0.0.1:{args.port}/     admin token: {args.token}")
     print(f"  data dir  : {_base_dir()}  db={journal.path}")
+    if getattr(args, "shadow_real_fills", False):
+        print("  research  : same-decision standard-real-bar shadow emulator enabled; no broker authority")
     if file_feed_mode():
         print("  feed      : HistoryHub (ICARUS_FEED=file) — Yahoo is not contacted; live bars arrive via history/drop/")
     elif os.environ.get("ICARUS_FEED", "").strip().lower() == "databento":
@@ -358,6 +361,7 @@ def main(argv: Optional[list] = None) -> int:
         s.add_argument("--preset", default="NQ-20m-ultracoded-0914", help="presets/<name>.json applied to every asset (per-asset with GC:NAME); '' for none")
         s.add_argument("--profile", default="nq", choices=["nq", "crypto"], help="base defaults before presets/overrides")
         s.add_argument("--fill-on", default=None, choices=["real", "chart"], help="fill orders on real bars (default) or on the chart's Heikin Ashi bars (TradingView 'Heikin Ashi bars')")
+        s.add_argument("--shadow-real-fills", action="store_true", help="also mirror ICARUS order intents into a standard-real-bar paper emulator; evidence only, no broker access")
         s.add_argument("--chart-type", default=None, choices=["real", "heikin_ashi"], help="override the preset's chart type")
         s.add_argument("--slippage", type=int, default=None, help="override the preset's slippage (ticks)")
         s.add_argument("--session", default=None, choices=["rth", "eth"], help="CME chart session: rth = TradingView 'Regular trading hours' 09:30-16:15 ET (default, your charts), eth = full Globex session")

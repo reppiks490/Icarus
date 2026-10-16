@@ -203,6 +203,9 @@ def test_assets_registry_and_spec_tokens():
     for unsupported in ("CL1!", "NYMEX:CL1!", "CL=F", "ZN1!", "ZN=F"):
         with pytest.raises(ValueError, match="unsupported continuous futures"):
             resolve(unsupported)
+    for unregistered in ("AAPL", "NVDA", "SHIB"):
+        with pytest.raises(ValueError, match="unregistered asset"):
+            resolve(unregistered)
 
 
 def test_input_value_validation_and_preset_confinement(tmp_path):
@@ -491,8 +494,11 @@ class _FakeYahoo:
     def candles(self, symbol, granularity, start_ts, end_ts):
         self.calls.append((symbol, granularity))
         self._meta[symbol] = {"regularMarketTime": int(end_ts) + 600, "regularMarketPrice": self.price}
-        t0 = et(2026, 9, 10, 9, 30)
-        return [B(t0 + granularity * k, self.price, self.price + 1, self.price - 1, self.price, 10) for k in range(3)]
+        t0 = max(int(start_ts), et(2026, 9, 10, 9, 30))
+        if t0 >= end_ts:
+            t0 = int(start_ts)
+        return [B(t0 + granularity * k, self.price, self.price + 1, self.price - 1, self.price, 10)
+                for k in range(3) if t0 + granularity * k < end_ts]
     def daily_volume(self, symbol, days=5):
         self.calls.append((symbol, "daily"))
         return [(et(2026, 9, 10, 0, 0), self.price - 100, 500000.0), (et(2026, 9, 11, 0, 0), self.price, 600000.0), (et(2026, 9, 14, 0, 0), self.price + 300, 50000.0)]
@@ -514,6 +520,12 @@ def test_warmup_uses_only_provider_continuous_ticker(tmp_path):
     r._warmup_yahoo(et(2026, 9, 1, 18, 0), et(2026, 9, 14, 16, 0))
     used = {sym for sym, g in fy.calls if g in (60, 300, 900, 3600, 86400)}
     assert used == {"NQ=F"}
+    receipt = r.summary()["last_bar_batch_receipt"]
+    assert receipt["provider"] == "yahoo"
+    assert receipt["expected_provider_symbol"] == "NQ=F"
+    assert receipt["identity_status"] == "UNKNOWN"  # fake adapter exposes no explicit identity
+    assert receipt["entitlement_status"] == "UNKNOWN"
+    assert receipt["historical_bars_qualified"] is False
     summary = r.summary()
     assert summary["continuous_contract"] is True
     assert summary["continuous_symbol"] == "CME_MINI:NQ1!"

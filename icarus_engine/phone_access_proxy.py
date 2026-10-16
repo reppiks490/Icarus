@@ -16,6 +16,9 @@ from urllib.parse import urlsplit
 LOG = logging.getLogger("icarus.phone_access_proxy")
 _MAX_REQUEST_BYTES = 8 * 1024 * 1024
 _MAX_RESPONSE_BYTES = 32 * 1024 * 1024
+_PHONE_ORIGIN = "https://icarus-command-center-mobile.cloudyrook1.chatgpt.site"
+_CORS_METHODS = "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS"
+_CORS_HEADERS = {"authorization", "content-type"}
 _HOP_HEADERS = {
     "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
     "te", "trailer", "transfer-encoding", "upgrade", "host", "content-length",
@@ -31,6 +34,35 @@ def _gateway_path(path: str) -> bool:
         path == "/command" or path.startswith("/command/")
         or path == "/healthz" or path.startswith("/v1/")
     )
+
+
+def _requires_bearer(path: str) -> bool:
+    """Keep the dashboard shell public so it can collect a token; protect APIs."""
+    return path.startswith(("/api/", "/admin/", "/command", "/v1/")) or path in {
+        "/status/public", "/healthz", "/v1",
+    }
+
+
+def _engine_accepts_bearer(engine_port: int, bearer: str) -> bool | None:
+    """Validate the supplied token against the engine's access registry.
+
+    Returns None only when the local engine cannot be reached. The relay must
+    fail closed in that case rather than treating token presence as identity.
+    """
+    conn = http.client.HTTPConnection("127.0.0.1", engine_port, timeout=5)
+    try:
+        conn.request("GET", "/api/access", headers={
+            "Authorization": f"Bearer {bearer}",
+            "Host": f"127.0.0.1:{engine_port}",
+            "Connection": "close",
+        })
+        response = conn.getresponse()
+        response.read(1024 * 1024)
+        return response.status == 200
+    except (OSError, http.client.HTTPException):
+        return None
+    finally:
+        conn.close()
 
 
 def create_handler(*, engine_port: int, gateway_port: int):
@@ -52,14 +84,52 @@ def create_handler(*, engine_port: int, gateway_port: int):
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(payload)))
             self.send_header("Cache-Control", "no-store")
+            origin = self.headers.get("Origin")
+            if origin == _PHONE_ORIGIN:
+                self.send_header("Access-Control-Allow-Origin", _PHONE_ORIGIN)
+                self.send_header("Vary", "Origin")
             self.send_header("Connection", "close")
             self.end_headers()
             if self.command != "HEAD":
                 self.wfile.write(payload)
 
+        def _preflight(self) -> None:
+            if not self._host_is_loopback():
+                self._respond(400, b"host rejected")
+                return
+            if self.headers.get("Origin") != _PHONE_ORIGIN:
+                self._respond(403, b"origin rejected")
+                return
+            method = self.headers.get("Access-Control-Request-Method", "").upper()
+            if method not in set(_CORS_METHODS.split(", ")) - {"OPTIONS"}:
+                self._respond(405, b"preflight method rejected")
+                return
+            requested_headers = {
+                value.strip().lower()
+                for value in self.headers.get("Access-Control-Request-Headers", "").split(",")
+                if value.strip()
+            }
+            if not requested_headers.issubset(_CORS_HEADERS):
+                self._respond(400, b"preflight headers rejected")
+                return
+            self.send_response(204)
+            self.send_header("Access-Control-Allow-Origin", _PHONE_ORIGIN)
+            self.send_header("Access-Control-Allow-Methods", _CORS_METHODS)
+            self.send_header("Access-Control-Allow-Headers", "authorization, content-type")
+            self.send_header("Access-Control-Max-Age", "600")
+            self.send_header("Vary", "Origin")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", "0")
+            self.send_header("Connection", "close")
+            self.end_headers()
+
         def _proxy(self) -> None:
             if not self._host_is_loopback():
                 self._respond(400, b"host rejected")
+                return
+            origin = self.headers.get("Origin")
+            if origin and origin != _PHONE_ORIGIN:
+                self._respond(403, b"origin rejected")
                 return
             if self.headers.get("Upgrade", "").lower() == "websocket":
                 self._respond(501, b"websocket relay is not supported")
@@ -73,11 +143,22 @@ def create_handler(*, engine_port: int, gateway_port: int):
                 self._respond(413, b"request too large")
                 return
             scheme, _, bearer = self.headers.get("Authorization", "").partition(" ")
+            parsed = urlsplit(self.path)
+            if _requires_bearer(parsed.path) and (scheme.lower() != "bearer" or not bearer.strip()):
+                self._respond(401, b"bearer token required")
+                return
             if scheme.lower() == "bearer" and bearer.strip() == "icarus":
                 self._respond(428, b"configure a strong, unique ICARUS token before enabling phone access")
                 return
+            if _requires_bearer(parsed.path):
+                authenticated = _engine_accepts_bearer(engine_port, bearer.strip())
+                if authenticated is None:
+                    self._respond(503, b"engine authentication service unavailable")
+                    return
+                if not authenticated:
+                    self._respond(401, b"invalid bearer token")
+                    return
 
-            parsed = urlsplit(self.path)
             if not parsed.path.startswith("/") or parsed.path.startswith("//"):
                 self._respond(400, b"invalid path")
                 return
@@ -100,10 +181,14 @@ def create_handler(*, engine_port: int, gateway_port: int):
                 self.send_response(upstream.status)
                 for key, value in upstream.getheaders():
                     low = key.lower()
-                    if low not in _HOP_HEADERS | {"set-cookie", "server", "content-length"}:
+                    if (low not in _HOP_HEADERS | {"set-cookie", "server", "content-length"}
+                            and not low.startswith("access-control-")):
                         self.send_header(key, value)
                 self.send_header("Content-Length", str(len(payload)))
                 self.send_header("Cache-Control", "no-store")
+                if origin == _PHONE_ORIGIN:
+                    self.send_header("Access-Control-Allow-Origin", _PHONE_ORIGIN)
+                    self.send_header("Vary", "Origin")
                 self.send_header("Connection", "close")
                 self.end_headers()
                 if self.command != "HEAD":
@@ -116,6 +201,7 @@ def create_handler(*, engine_port: int, gateway_port: int):
 
         do_GET = _proxy
         do_HEAD = _proxy
+        do_OPTIONS = _preflight
         do_POST = _proxy
         do_PUT = _proxy
         do_PATCH = _proxy

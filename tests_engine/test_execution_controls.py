@@ -10,7 +10,7 @@ import pytest
 
 from icarus_engine.assets import AssetSpec, PRIMARY_INTRADAY_TIMEFRAMES
 from icarus_engine.pine.timeframe import Bar
-from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
+from icarus_engine.runtime import AssetRunner, FlattenUnavailableError, Journal, Portfolio, RunnerConfig
 from icarus_engine.server import serve
 from icarus_engine.strategy.inputs import Inputs
 
@@ -150,6 +150,30 @@ def test_flatten_open_trade_cannot_fill_pending_reversal():
     assert r.strat.w_slot_queue == [0] and r.strat.tod_hour_queue == [8]
 
 
+def test_flatten_without_a_market_mark_fails_before_queueing_a_close():
+    r = make_runner()
+    r.em.entry("Long", 1, 1)
+    r.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+    r.last_price = None
+
+    with pytest.raises(RuntimeError, match="no finite last market price"):
+        r.flatten()
+
+    assert r.em.position_size == 1
+    assert r.em._pending_closes == []
+
+
+def test_flatten_accepts_zero_as_a_finite_market_mark():
+    r = make_runner()
+    r.em.entry("Long", 1, 1)
+    r.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+    r.last_price = 0.0
+
+    assert r.flatten() == 1
+    assert r.em.position_size == 0
+    assert r.em.closed[-1].exit_price == 0.0
+
+
 @pytest.fixture
 def configured(tmp_path):
     (tmp_path / "presets").mkdir()
@@ -276,6 +300,7 @@ def admin(configured):
                 return reply.status, json.load(reply)
         except urllib.error.HTTPError as ex:
             return ex.code, json.load(ex)
+    post.server = srv
     yield port, r, path, post
     srv.shutdown()
     srv.server_close()
@@ -416,6 +441,51 @@ def test_admin_pause_flatten_and_config_success_are_completed_on_return(admin):
     status, response = post("/admin/flatten", {"asset": "TEST", "confirm": True})
     assert status == 200 and response["closed"] == {"TEST": 0}
     assert not r.em._pending_entries
+
+
+def test_admin_flatten_without_mark_returns_conflict_and_keeps_position_open(admin):
+    _, r, _, post = admin
+    r.em.entry("Long", 1, 1)
+    r.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+    r.last_price = None
+
+    status, body = post("/admin/flatten", {"asset": "TEST", "confirm": True})
+
+    assert status == 409
+    assert body["error"] == "flatten_unavailable"
+    assert body["positions_remain_open"] is True
+    assert "no finite last market price" in body["detail"]
+    assert r.em.position_size == 1
+    assert r.em._pending_closes == []
+
+
+def test_command_center_flatten_without_mark_reports_remaining_open_asset(admin):
+    _, _, _, post = admin
+    manager = post.server.command_centers
+    runner = type("Runner", (), {})()
+    runner.symbol = "NQ"
+    runner.em = type("Emulator", (), {"open": [object()], "shadow": None})()
+    runner.set_paused = lambda _paused: None
+    runner.flatten = lambda _reason: (_ for _ in ()).throw(
+        FlattenUnavailableError("[NQ] cannot flatten open positions: no finite last market price is available")
+    )
+    portfolio = type("Portfolio", (), {})()
+    portfolio._lock = threading.RLock()
+    portfolio.paused = False
+    portfolio.runner_list = lambda: [runner]
+    portfolio.stop = lambda: None
+    manager.portfolios["cc1"] = portfolio
+    try:
+        status, body = post("/admin/command-centers/cc1/flatten", {"confirm": True})
+
+        assert status == 409
+        assert body["error"] == "flatten_unavailable"
+        assert body["profile_id"] == "cc1"
+        assert body["open_assets"] == ["NQ"]
+        assert body["positions_remain_open"] is True
+        assert body["paused"] is True
+    finally:
+        manager.portfolios.pop("cc1", None)
 
 
 def test_chart_configuration_rebuilds_paper_engine_and_persists_meta(configured):
