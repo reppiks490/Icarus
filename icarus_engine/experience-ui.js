@@ -189,6 +189,25 @@
       <button type="button" id="experienceReplay" class="sm">Replay cinematic intro</button><p id="experienceMotionNote"></p><p>Original anime worlds. Scenic titles and effects are decorative, independent of market activity.</p>
       </div></details><button class="icon-btn" id="experienceFocus" aria-pressed="false">Focus</button><button class="icon-btn" id="experienceMusicToggle" aria-expanded="false" aria-controls="experienceMusic">Music</button>`;
     document.getElementById('btnTheme').insertAdjacentElement('afterend', controls);
+    const settings = controls.querySelector('.experience-settings');
+    const settingsPanel = settings.querySelector(':scope > div');
+    const positionSettingsPanel = () => {
+      if (!settings.open) return;
+      if (window.matchMedia('(max-width:760px)').matches) {
+        settingsPanel.style.removeProperty('left');
+        settingsPanel.style.removeProperty('right');
+        return;
+      }
+      const anchor = settings.querySelector('summary').getBoundingClientRect();
+      const parent = settings.getBoundingClientRect();
+      const panelWidth = settingsPanel.offsetWidth;
+      const left = Math.max(12, Math.min(anchor.right - panelWidth, window.innerWidth - panelWidth - 12));
+      settingsPanel.style.right = 'auto';
+      settingsPanel.style.left = `${left - parent.left}px`;
+    };
+    settings.addEventListener('toggle', positionSettingsPanel);
+    window.addEventListener('resize', positionSettingsPanel);
+    window.addEventListener('scroll', positionSettingsPanel, true);
     const select = document.getElementById('experienceTheme');
     for (const [id, label] of themes) { const option = document.createElement('option'); option.value = id; option.textContent = label; select.appendChild(option); }
     select.value = root.dataset.theme;
