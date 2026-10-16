@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Mapping
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .pine.timeframe import Bar
@@ -45,6 +45,9 @@ class BarBatchReceipt:
     historical_bars_qualified: bool
     execution_authorized: bool = False
     calendar_timezone: str | None = None
+    corporate_action_policy: str = "UNKNOWN"
+    corporate_action_witness: Mapping[str, Any] | None = None
+    corporate_action_witness_sha256: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -61,6 +64,8 @@ def make_bar_batch_receipt(
     calendar_timezone: str | None = None,
     bar_close_status: str = "UNKNOWN",
     timestamp_normalization: str = "NONE",
+    corporate_action_policy: str = "UNKNOWN",
+    corporate_action_witness: Mapping[str, Any] | None = None,
 ) -> tuple[list[Bar], BarBatchReceipt]:
     """Validate exact response identity and OHLCV before returning bars to runtime.
 
@@ -84,6 +89,10 @@ def make_bar_batch_receipt(
         raise ValueError("invalid session validation status")
     if bar_close_status not in ("UNKNOWN", "VERIFIED", "FAILED"):
         raise ValueError("invalid bar close status")
+    if corporate_action_policy not in ("UNKNOWN", "SPLIT_ADJUSTED", "RAW_WITH_ACTIONS"):
+        raise ValueError("invalid corporate action policy")
+    if corporate_action_witness is not None and not isinstance(corporate_action_witness, Mapping):
+        raise ValueError("corporate_action_witness must be a mapping")
     if timestamp_normalization not in ("NONE", "YAHOO_SESSION_CLOSE_TO_SESSION_OPEN"):
         raise ValueError("invalid bar timestamp normalization")
     for name, value in (("requested_start_ts", requested_start_ts), ("requested_end_ts", requested_end_ts),
@@ -168,6 +177,10 @@ def make_bar_batch_receipt(
         separators=(",", ":"), allow_nan=False,
     ).encode("utf-8")
     checksum = hashlib.sha256(encoded).hexdigest()
+    witness_bytes = (json.dumps(dict(corporate_action_witness), sort_keys=True, separators=(",", ":"),
+                                allow_nan=False).encode("utf-8")
+                     if corporate_action_witness is not None else None)
+    witness_sha256 = hashlib.sha256(witness_bytes).hexdigest() if witness_bytes is not None else None
     provider_symbol_match_status = "MATCHED" if observed is not None else "UNKNOWN"
     identity_status = ("VERIFIED" if provider_symbol_match_status == "MATCHED" and provider_mapping_status == "VERIFIED"
                        else "PROVISIONAL" if provider_symbol_match_status == "MATCHED" else "UNKNOWN")
@@ -189,6 +202,8 @@ def make_bar_batch_receipt(
         "timestamp_normalization": timestamp_normalization,
         "session_validation_status": session_validation_status,
         "bar_close_status": bar_close_status,
+        "corporate_action_policy": corporate_action_policy,
+        "corporate_action_witness_sha256": witness_sha256,
         "checksum_sha256": checksum,
     }
     receipt_identity = json.dumps(
@@ -226,5 +241,8 @@ def make_bar_batch_receipt(
         received_at_ns=received_at_ns,
         historical_bars_qualified=qualified,
         calendar_timezone=calendar_timezone,
+        corporate_action_policy=corporate_action_policy,
+        corporate_action_witness=(dict(corporate_action_witness) if corporate_action_witness is not None else None),
+        corporate_action_witness_sha256=witness_sha256,
     )
     return rows, receipt
