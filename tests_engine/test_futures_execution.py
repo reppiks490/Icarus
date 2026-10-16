@@ -125,6 +125,23 @@ def test_lost_ack_is_ambiguous_blocks_risk_then_reconciles(tmp_path):
     assert e.submit(_buy(ts="2026-10-05T14:02:00Z"), NOW)["status"] in ("FILLED", "WORKING")
 
 
+def test_legacy_open_order_without_full_terms_stays_ambiguous(tmp_path):
+    e, v = _engine(tmp_path, faults={"drop_ack": 1})
+    r = e.submit(_buy(kind="LIMIT", price=19000.0), NOW)
+    assert r["status"] == "AMBIGUOUS"
+    v.open_orders = lambda: [{
+        "broker_id": "S1", "client_id": r["order_id"], "symbol": SYM,
+        "side": "BUY", "remaining": 1, "price": 19000.0,
+    }]
+
+    rep = e.reconcile()
+
+    assert r["order_id"] not in rep["resolved"]
+    assert rep["mismatched_orders"][r["order_id"]] == ["incomplete_order_identity"]
+    assert e.book.orders[r["order_id"]].state is S.AMBIGUOUS
+    assert e.snapshot()["health"] == "BLOCKED"
+
+
 def test_disconnect_mid_submit_is_ambiguous_not_retried(tmp_path):
     e, v = _engine(tmp_path, faults={"disconnect": 1})
     r = e.submit(_buy(), NOW)

@@ -127,7 +127,8 @@ class SimVenue:
 
     def open_orders(self):
         return [dict(broker_id=o.broker_id, client_id=o.client_id, symbol=o.symbol, side=o.side,
-                     remaining=o.qty - o.filled, price=o.price) for o in self._orders.values() if o.active]
+                     quantity=o.qty, kind=o.kind, remaining=o.qty - o.filled, price=o.price)
+                for o in self._orders.values() if o.active]
 
     def positions(self):
         return {k: v for k, v in self._pos.items() if v}

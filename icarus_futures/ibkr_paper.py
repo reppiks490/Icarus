@@ -25,6 +25,172 @@ from .contracts import MONTH_CODES, SPECS
 _PAPER_ACCOUNT = re.compile(r"^DU[0-9]+$")
 _DATED_FUTURE = re.compile(r"^([A-Z]+)([FGHJKMNQUVXZ])(\d{2})$")
 _VALID_ORDER_KINDS = {"MARKET": "MKT", "LIMIT": "LMT", "STOP": "STP"}
+_ORDER_REPLAY_DEFAULTS = {
+    # Values which the adapter does not submit, but which can change how an
+    # otherwise identical order executes. Capture them from TWS readback and
+    # treat any non-default value as a different order identity.
+    "parentId": 0,
+    "ocaGroup": "",
+    "ocaType": 0,
+    "transmit": True,
+    "allOrNone": False,
+    "minQty": None,
+    "goodAfterTime": "",
+    "goodTillDate": "",
+    "activeStartTime": "",
+    "activeStopTime": "",
+    "autoCancelDate": "",
+    "conditions": (),
+    "conditionsCancelOrder": False,
+    "conditionsIgnoreRth": False,
+    "algoStrategy": "",
+    "algoParams": (),
+    "smartComboRoutingParams": (),
+    "discretionaryAmt": 0.0,
+    "hidden": False,
+    "displaySize": None,
+    "sweepToFill": False,
+    "blockOrder": False,
+    "triggerMethod": 0,
+    "trailStopPrice": None,
+    "trailingPercent": None,
+    "scaleInitLevelSize": None,
+    "scaleSubsLevelSize": None,
+    "scalePriceIncrement": None,
+    "cashQty": None,
+    "notHeld": False,
+    "postToAts": 0,
+    "usePriceMgmtAlgo": None,
+    "routeMarketableToBbo": False,
+    "eTradeOnly": True,
+    "firmQuoteOnly": True,
+    "optOutSmartRouting": False,
+    "overridePercentageConstraints": False,
+    "discretionaryUpToLimitPrice": False,
+    "competeAgainstBestOffset": 0.0,
+    "duration": 0,
+    "postOnly": False,
+    "hedgeType": "",
+    "hedgeParam": "",
+    "shortSaleSlot": 0,
+    "designatedLocation": "",
+    "exemptCode": -1,
+    "autoCancelParent": False,
+    "rule80A": "",
+    "origin": 0,
+    "percentOffset": None,
+    "auctionStrategy": 0,
+    "startingPrice": None,
+    "stockRefPrice": None,
+    "delta": None,
+    "stockRangeLower": None,
+    "stockRangeUpper": None,
+    "volatility": None,
+    "volatilityType": 0,
+    "continuousUpdate": False,
+    "referencePriceType": 0,
+    "deltaNeutralOrderType": "",
+    "deltaNeutralAuxPrice": None,
+    "deltaNeutralConId": 0,
+    "deltaNeutralSettlingFirm": "",
+    "deltaNeutralClearingAccount": "",
+    "deltaNeutralClearingIntent": "",
+    "deltaNeutralOpenClose": "",
+    "deltaNeutralShortSale": False,
+    "deltaNeutralShortSaleSlot": 0,
+    "deltaNeutralDesignatedLocation": "",
+    "basisPoints": None,
+    "basisPointsType": -1,
+    "scalePriceAdjustValue": None,
+    "scalePriceAdjustInterval": 0,
+    "scaleProfitOffset": None,
+    "scaleAutoReset": False,
+    "scaleInitPosition": None,
+    "scaleInitFillQty": None,
+    "scaleRandomPercent": False,
+    "faGroup": "",
+    "faMethod": "",
+    "faPercentage": "",
+    "faProfile": "",
+    "settlingFirm": "",
+    "clearingAccount": "",
+    "clearingIntent": "",
+    "orderMiscOptions": (),
+    "midOffsetAtWhole": None,
+    "midOffsetAtHalf": None,
+    "openClose": "",
+    "randomizePrice": False,
+    "randomizeSize": False,
+    "scaleTable": "",
+    "nbboPriceCap": None,
+    "whatIf": False,
+    "solicited": False,
+    "modelCode": "",
+    "orderComboLegs": (),
+    "referenceContractId": 0,
+    "peggedChangeAmount": 0.0,
+    "isPeggedChangeAmountDecrease": False,
+    "referenceChangeAmount": 0.0,
+    "referenceExchangeId": "",
+    "adjustedOrderType": "",
+    "triggerPrice": None,
+    "adjustedStopPrice": None,
+    "adjustedStopLimitPrice": None,
+    "adjustedTrailingAmount": None,
+    "adjustableTrailingUnit": 0,
+    "lmtPriceOffset": None,
+    "extOperator": "",
+    "refFuturesConId": 0,
+    "shareholder": "",
+    "imbalanceOnly": False,
+    "parentPermId": 0,
+    "algoId": "",
+    "dontUseAutoPriceForHedge": False,
+    "isOmsContainer": False,
+    "mifid2DecisionMaker": "",
+    "mifid2DecisionAlgo": "",
+    "mifid2ExecutionTrader": "",
+    "mifid2ExecutionAlgo": "",
+    "softDollarTier": (),
+}
+
+
+def _normalize_replay_field(field: str, value: Any) -> Any:
+    """Normalize absent/sentinel callback values for order identity checks."""
+    default = _ORDER_REPLAY_DEFAULTS[field]
+    if value is None or value in (2147483647, 1.7976931348623157e308):
+        return default
+    if field == "softDollarTier":
+        if value == ():
+            return ()
+        if isinstance(value, dict):
+            values = tuple(value.get(key, "") for key in ("name", "value", "displayName"))
+        else:
+            values = tuple(getattr(value, key, "") for key in ("name", "value", "displayName"))
+        return () if not any(values) else ("unsupported-nonempty", repr(values))
+    if field in {"conditions", "algoParams", "smartComboRoutingParams", "orderMiscOptions",
+                 "orderComboLegs"}:
+        if not value:
+            return ()
+        # This adapter does not build these options. Any populated value is a
+        # mismatch; repr preserves a useful, deterministic diagnostic value.
+        return ("unsupported-nonempty", repr(value))
+    if field in {"discretionaryAmt", "displaySize", "scalePriceIncrement", "trailStopPrice", "trailingPercent",
+                 "competeAgainstBestOffset", "percentOffset", "startingPrice", "stockRefPrice",
+                 "delta", "stockRangeLower", "stockRangeUpper", "volatility",
+                 "deltaNeutralAuxPrice", "basisPoints", "scalePriceAdjustValue",
+                 "scaleProfitOffset", "midOffsetAtWhole", "midOffsetAtHalf", "nbboPriceCap",
+                 "triggerPrice", "adjustedStopPrice", "adjustedStopLimitPrice",
+                 "adjustedTrailingAmount", "lmtPriceOffset", "peggedChangeAmount",
+                 "referenceChangeAmount"}:
+        try:
+            if float(value) == 0.0:
+                return default
+        except (TypeError, ValueError):
+            pass
+    return value
+
+
 _ERROR_CODES = {
     "103": "INVALID_ORDER",  # duplicate order id
     "110": "INVALID_ORDER",  # price does not conform to contract increment
@@ -223,6 +389,10 @@ class IbkrTwsPaperGateway:
 
     @staticmethod
     def _order_record(order) -> dict:
+        # Broker-assigned orderId/clientId/permId and the changing filledQuantity
+        # are lifecycle state, not submitted order terms. Per-leg price is
+        # retained through orderComboLegs; all other Order execution controls in
+        # the supported IB API are captured by _ORDER_REPLAY_DEFAULTS below.
         record = {"account": getattr(order, "account", ""),
                   "action": getattr(order, "action", ""),
                   "totalQuantity": int(getattr(order, "totalQuantity", 0)),
@@ -234,6 +404,8 @@ class IbkrTwsPaperGateway:
             value = getattr(order, field, None)
             if value not in (None, 0, 0.0):
                 record[field] = float(value)
+        for field, default in _ORDER_REPLAY_DEFAULTS.items():
+            record[field] = _normalize_replay_field(field, getattr(order, field, default))
         return record
 
     def _emit(self, event: dict) -> None:
@@ -282,14 +454,16 @@ class IbkrTwsPaperGateway:
             if order_record["orderRef"]:
                 self._pending_refs[broker_id] = order_record["orderRef"]
             self._cv.notify_all()
-        if order_record["orderRef"]:
-            if replacement_confirmed:
-                self._emit({"type": "replace_ack", "account_id": account_id,
-                            "client_id": order_record["orderRef"], "broker_id": broker_id,
-                            "price": pending_replace["price"]})
-            else:
-                self._emit({"type": "ack", "account_id": account_id,
-                            "client_id": order_record["orderRef"], "broker_id": broker_id})
+        if replacement_confirmed:
+            self._emit({"type": "replace_ack", "account_id": account_id,
+                        "client_id": order_record["orderRef"], "broker_id": broker_id,
+                        "price": pending_replace["price"]})
+        # openOrder is an untrusted readback, not an engine acknowledgment. The
+        # venue adapter validates its account, contract, orderRef, and every order
+        # term before it creates an engine-facing ack. Emitting one here lets
+        # ExecutionEngine.pump() mark a mismatched replay WORKING before reconcile()
+        # can reject the readback. A submit ack is emitted by IbkrPaperVenue only
+        # after the synchronous result or a complete validated readback succeeds.
 
     def openOrderEnd(self):
         with self._lock:
@@ -310,15 +484,17 @@ class IbkrTwsPaperGateway:
             account_id = (record or {}).get("account_id", "")
             self._cv.notify_all()
         normalized = str(status).lower()
-        if client_ref and normalized in {"pendingsubmit", "presubmitted", "submitted", "partiallyfilled", "filled"}:
-            self._emit({"type": "ack", "account_id": account_id,
-                        "client_id": client_ref, "broker_id": broker_id})
-        elif client_ref and normalized in {"cancelled", "apicancelled", "canceled"}:
+        # Status callbacks do not contain contract or full order terms, so they
+        # cannot independently acknowledge an order. The venue filters callback
+        # events until reconciliation has trusted this broker-id/orderRef pair.
+        # The state snapshot remains available to validated readback.
+        if client_ref and normalized in {"cancelled", "apicancelled", "canceled"}:
             self._emit({"type": "cancel_ack", "account_id": account_id,
                         "client_id": client_ref, "broker_id": broker_id})
         elif client_ref and normalized == "inactive":
             self._emit({"type": "reject", "account_id": account_id,
-                        "client_id": client_ref, "code": "UNKNOWN"})
+                        "client_id": client_ref, "broker_id": broker_id,
+                        "code": "UNKNOWN"})
 
     def execDetails(self, reqId, contract, execution):
         broker_id = str(getattr(execution, "orderId", ""))
@@ -358,7 +534,8 @@ class IbkrTwsPaperGateway:
         # account details, provider diagnostics, or other sensitive payloads.
         if client_ref and rejection is not None:
             self._emit({"type": "reject", "account_id": account_id,
-                        "client_id": str(client_ref), "code": rejection})
+                        "client_id": str(client_ref), "broker_id": broker_id,
+                        "code": rejection})
 
     def position(self, account, contract, position, avgCost):
         record = {"account_id": str(account), "contract": self._contract_record(contract),
@@ -468,6 +645,12 @@ class IbkrTwsPaperGateway:
                 return {"account_id": account_id, "broker_id": "", "client_id": order_ref,
                         "status": "Unknown"}
             return None
+        if len(matches) != 1:
+            # A reference identifies one submit for its lifetime. A stale or
+            # completed duplicate is still ambiguous even if only one record is
+            # in the current open/completed snapshots.
+            return {"account_id": account_id, "broker_id": "",
+                    "client_id": order_ref, "status": "Ambiguous"}
         current = [row for row in matches
                    if row.get("broker_id") in self._open_snapshot | self._completed_snapshot]
         if current:
@@ -718,17 +901,48 @@ class IbkrPaperVenue:
             request["lmtPrice" if kind == "LIMIT" else "auxPrice"] = float(normalized_price)
         return request
 
-    def _normalize_found_order(self, record: dict, order_ref: str) -> dict:
+    def _normalize_found_order(self, record: dict, order_ref: str,
+                               expected_contract: dict, expected_order: dict) -> dict:
         account_id = record.get("account_id") or record.get("order", {}).get("account")
         client_ref = record.get("client_id") or record.get("order", {}).get("orderRef")
         if account_id != self.account_id:
             raise PermissionError("IBKR order readback is outside the selected paper account")
         if client_ref != order_ref:
             raise ValueError("IBKR order readback does not match the requested orderRef")
-        status = str(record.get("status", "")).lower()
         broker_id = str(record.get("broker_id", ""))
         if not broker_id:
+            # Unknown or ambiguous readback is never an acknowledgment.
             return {"status": "timeout"}
+
+        contract = record.get("contract")
+        if not isinstance(contract, dict):
+            raise ValueError("IBKR order readback is missing its contract")
+        contract_fields = (
+            "conId", "symbol", "secType", "exchange", "currency",
+            "lastTradeDateOrContractMonth", "localSymbol", "multiplier",
+        )
+        if any(contract.get(field) != expected_contract.get(field)
+               for field in contract_fields):
+            raise ValueError("IBKR order readback contract does not match the requested contract")
+        found_order = record.get("order")
+        if not isinstance(found_order, dict):
+            raise ValueError("IBKR order readback is missing its order terms")
+        order_fields = (
+            "account", "action", "totalQuantity", "orderType", "tif", "orderRef",
+            "outsideRth", "lmtPrice", "auxPrice",
+        )
+        normalized_found_order = {key: found_order.get(key) for key in order_fields}
+        normalized_expected_order = {key: expected_order.get(key) for key in order_fields}
+        for field, default in _ORDER_REPLAY_DEFAULTS.items():
+            normalized_found_order[field] = _normalize_replay_field(
+                field, found_order.get(field, default)
+            )
+            normalized_expected_order[field] = _normalize_replay_field(
+                field, expected_order.get(field, default)
+            )
+        if normalized_found_order != normalized_expected_order:
+            raise ValueError("IBKR order readback terms do not match the requested order")
+        status = str(record.get("status", "")).lower()
         self._broker_to_client[broker_id] = order_ref
         if status in {"rejected", "inactive"}:
             self._events.append({"type": "reject", "client_id": order_ref, "code": "UNKNOWN"})
@@ -768,7 +982,16 @@ class IbkrPaperVenue:
         except (ConnectionError, TimeoutError, OSError):
             return {"status": "timeout"}
         if found:
-            return self._normalize_found_order(found, order_ref)
+            try:
+                return self._normalize_found_order(
+                    found, order_ref, mapping.ib_contract(), request
+                )
+            except (PermissionError, ValueError):
+                # Readback is broker-controlled. A malformed, foreign-account,
+                # or mismatched record cannot be treated as either a rejection
+                # or an acknowledgment; preserve the engine's sent order as
+                # ambiguous so reconciliation blocks further risk.
+                return {"status": "timeout"}
         if attempted_before:
             # Readback must be conclusive before retrying. A callback timeout or
             # incomplete completed-order snapshot leaves execution ambiguous.
@@ -819,38 +1042,70 @@ class IbkrPaperVenue:
         raise ValueError("IBKR order readback omitted orderRef")
 
     def _normalized_open_order(self, record: dict) -> dict:
+        if not isinstance(record, dict):
+            raise ValueError("IBKR open-order readback is malformed")
+        order = record.get("order", {})
+        if not isinstance(order, dict):
+            raise ValueError("IBKR open-order readback has malformed order terms")
         account_id = record.get("account_id") or record.get("order", {}).get("account")
         if account_id != self.account_id:
             raise PermissionError("IBKR open-order readback is outside the selected paper account")
+        contract = record.get("contract")
+        if not isinstance(contract, dict):
+            raise ValueError("IBKR open-order readback is missing its contract")
         symbol = self._record_symbol(record)
+        expected_contract = self.contracts[symbol].ib_contract()
+        contract_fields = (
+            "conId", "symbol", "secType", "exchange", "currency",
+            "lastTradeDateOrContractMonth", "localSymbol", "multiplier",
+        )
+        if any(contract.get(field) != expected_contract.get(field) for field in contract_fields):
+            raise ValueError("IBKR open-order contract does not match the explicit dated mapping")
+        for field, default in _ORDER_REPLAY_DEFAULTS.items():
+            if _normalize_replay_field(field, order.get(field, default)) != default:
+                raise ValueError("IBKR open-order readback has unsupported execution terms")
         client_id = self._record_client(record)
         broker_id = str(record.get("broker_id", ""))
         if not broker_id:
             raise ValueError("IBKR open order readback omitted broker order id")
-        order = record.get("order", {})
-        quantity = int(order.get("totalQuantity", record.get("quantity", 0)))
-        filled = int(record.get("filled", 0))
-        if quantity <= 0 or filled < 0 or filled > quantity:
+        raw_quantity = _decimal(order.get("totalQuantity", record.get("quantity", 0)), "order quantity")
+        if raw_quantity <= 0 or raw_quantity != raw_quantity.to_integral_value():
+            raise ValueError("IBKR open-order readback has invalid quantity")
+        quantity = int(raw_quantity)
+        raw_filled = _decimal(record.get("filled", 0), "filled quantity")
+        if raw_filled < 0 or raw_filled > quantity or raw_filled != raw_filled.to_integral_value():
             raise ValueError("IBKR open order readback has invalid quantity")
+        filled = int(raw_filled)
         action = str(order.get("action", record.get("side", ""))).upper()
         if action not in {"BUY", "SELL"}:
             raise ValueError("IBKR open order readback has invalid side")
         order_type = str(order.get("orderType", "")).upper()
         if order_type == "LMT":
-            price = order.get("lmtPrice")
+            price = float(_decimal(order.get("lmtPrice"), "limit price"))
+            kind = "LIMIT"
         elif order_type == "STP":
-            price = order.get("auxPrice")
+            price = float(_decimal(order.get("auxPrice"), "stop price"))
+            kind = "STOP"
+        elif order_type == "MKT":
+            price = None
+            kind = "MARKET"
         else:
             price = None
-        self._broker_to_client[broker_id] = client_id
+            kind = None
         return {"broker_id": broker_id, "client_id": client_id, "symbol": symbol,
-                "side": action, "remaining": quantity - filled, "price": price}
+                "side": action, "quantity": quantity, "kind": kind,
+                "remaining": quantity - filled,
+                "price": float(price) if price is not None else None}
 
     def open_orders(self) -> list[dict]:
         if not self._connected():
             raise ConnectionError("IBKR PAPER session is disconnected")
         return [self._normalized_open_order(row)
                 for row in self.gateway.open_orders(self.account_id)]
+
+    def accept_reconciled_order(self, client_id: str, broker_id: str) -> None:
+        """Trust callbacks only after ExecutionEngine matched the full order identity."""
+        self._broker_to_client[str(broker_id)] = self._order_ref(client_id)
 
     def positions(self) -> dict[str, int]:
         if not self._connected():
@@ -933,6 +1188,13 @@ class IbkrPaperVenue:
         for event in raw_events:
             kind = str(event.get("type", ""))
             broker_id = str(event.get("broker_id", "")) if event.get("broker_id") is not None else ""
+            # TWS callbacks do not carry a complete order identity. Until a
+            # synchronous exact readback or engine reconciliation establishes
+            # this broker-id/orderRef pair, none of their lifecycle events may
+            # change engine state (including fills, cancel and reject callbacks).
+            if isinstance(self.gateway, IbkrTwsPaperGateway) and (
+                    not broker_id or broker_id not in self._broker_to_client):
+                continue
             client_id = event.get("client_id") or self._broker_to_client.get(broker_id)
             if not client_id:
                 raise ValueError("IBKR event omitted the orderRef needed for reconciliation")
@@ -954,7 +1216,9 @@ class IbkrPaperVenue:
                 events.append({"type": kind, "client_id": str(client_id),
                                "price": float(_decimal(event["price"], "replace price"))})
             elif kind == "reject":
-                code = _ERROR_CODES.get(str(event.get("code", "")), "UNKNOWN")
+                raw_code = str(event.get("code", ""))
+                code = (raw_code if raw_code in _ERROR_CODES.values()
+                        else _ERROR_CODES.get(raw_code, "UNKNOWN"))
                 events.append({"type": "reject", "client_id": str(client_id), "code": code})
             else:
                 raise ValueError(f"unsupported normalized IBKR event type: {kind!r}")
