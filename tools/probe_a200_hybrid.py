@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import time
@@ -16,6 +16,13 @@ DEFAULT_OUT = Path("reports/a200-hybrid-history-probe.json")
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _parse_utc(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("probe dates must include a UTC offset")
+    return parsed.astimezone(timezone.utc)
 
 
 def _probe_one(adapter: MarketUniverseAdapter, instrument: dict, mapping: dict,
@@ -124,14 +131,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit", type=int, default=1,
                         help="number of catalog instruments to probe (default: 1; max: 200)")
-    parser.add_argument("--start", default="2026-10-01T00:00:00Z")
-    parser.add_argument("--end", default="2026-10-15T00:00:00Z")
+    parser.add_argument("--start", help="inclusive UTC ISO-8601 start (default: 14 days before end)")
+    parser.add_argument("--end", help="exclusive UTC ISO-8601 end (default: current UTC time)")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT,
                         help="report path; use the packaged path explicitly to publish API state")
     parser.add_argument("--pause-seconds", type=float, default=0.25)
     args = parser.parse_args()
-    start = int(datetime.fromisoformat(args.start.replace("Z", "+00:00")).timestamp())
-    end = int(datetime.fromisoformat(args.end.replace("Z", "+00:00")).timestamp())
+    end_dt = _parse_utc(args.end) if args.end else datetime.now(timezone.utc).replace(microsecond=0)
+    start_dt = _parse_utc(args.start) if args.start else end_dt - timedelta(days=14)
+    start, end = int(start_dt.timestamp()), int(end_dt.timestamp())
     report = run(limit=args.limit, start_ts=start, end_ts=end, out=args.out,
                  pause_seconds=args.pause_seconds)
     print(json.dumps({"completed": report["completed_result_count"],
