@@ -281,10 +281,18 @@ def resolve(symbol: str) -> AssetSpec:
     raw = s
     s = ALIASES.get(s, s)
     if s in REGISTRY:
-        return replace(REGISTRY[s])
+        spec = REGISTRY[s]
+        if spec.kind == "futures":
+            product = FUTURES_PRODUCTS.get(s)
+            if product is not None and not product.execution_qualified:
+                raise ValueError(
+                    f"unsupported continuous futures symbol {symbol!r}; {s} is registered for discovery "
+                    "but its dated-contract resolver/runtime admission is not yet qualified"
+                )
+        return replace(spec)
     if _CONTINUOUS_FUTURE_STYLE_RE.fullmatch(raw):
         raise ValueError(
-            f"unsupported continuous futures symbol {symbol!r}; ICARUS only accepts registered continuous futures "
+            f"unsupported continuous futures symbol {symbol!r}; ICARUS only accepts runtime-qualified continuous futures "
             "(TradingView 1! / provider =F) and never reinterprets them as crypto"
         )
     if not _SYMBOL_RE.fullmatch(s):
