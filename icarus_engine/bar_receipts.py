@@ -5,7 +5,9 @@ from dataclasses import asdict, dataclass
 import hashlib
 import json
 import math
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .pine.timeframe import Bar
 
@@ -42,6 +44,7 @@ class BarBatchReceipt:
     received_at_ns: int
     historical_bars_qualified: bool
     execution_authorized: bool = False
+    calendar_timezone: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -55,6 +58,7 @@ def make_bar_batch_receipt(
     session_validation_status: str = "UNKNOWN", provider_mapping_status: str = "VERIFIED",
     alignment_validator: Callable[[int], bool] | None = None,
     expected_bar_timestamps: Iterable[int] | None = None,
+    calendar_timezone: str | None = None,
     bar_close_status: str = "UNKNOWN",
     timestamp_normalization: str = "NONE",
 ) -> tuple[list[Bar], BarBatchReceipt]:
@@ -65,6 +69,8 @@ def make_bar_batch_receipt(
     A qualifying receipt also needs the complete expected bar-start schedule,
     generated from the instrument's authoritative exchange calendar for the
     requested session window; a pairwise gap callback cannot prove edge coverage.
+    When that calendar has a DST-shortened interval, calendar_timezone must be
+    the same authoritative calendar's timezone, not an ad hoc caller selection.
     """
     if not instrument_id or not provider or not expected_provider_symbol:
         raise ValueError("bar receipt requires instrument, provider, and expected symbol")
@@ -96,11 +102,24 @@ def make_bar_batch_receipt(
             raise ValueError("expected bar timestamps must be integer starts inside the requested window")
         if expected != sorted(set(expected)):
             raise ValueError("expected bar timestamps must be strictly increasing and unique")
-        # Calendar-based daily and slower schedules can be 23 hours apart at a
-        # DST boundary. Keep that documented one-hour exception while refusing
-        # schedules that claim overlapping or too-frequent bars.
-        minimum_spacing = interval_seconds - 3600 if interval_seconds >= 86400 else interval_seconds
-        if any(later - earlier < minimum_spacing for earlier, later in zip(expected, expected[1:])):
+        try:
+            calendar_zone = ZoneInfo(calendar_timezone) if calendar_timezone else None
+        except (ValueError, ZoneInfoNotFoundError) as exc:
+            raise ValueError("calendar_timezone must name a valid IANA timezone") from exc
+
+        def is_dst_shortened_calendar_interval(earlier: int, later: int) -> bool:
+            if calendar_zone is None or interval_seconds < 86400 or interval_seconds % 86400:
+                return False
+            earlier_local = datetime.fromtimestamp(earlier, timezone.utc).astimezone(calendar_zone)
+            later_local = datetime.fromtimestamp(later, timezone.utc).astimezone(calendar_zone)
+            wall_delta = later_local.replace(tzinfo=None) - earlier_local.replace(tzinfo=None)
+            offset_delta = later_local.utcoffset() - earlier_local.utcoffset()
+            return (offset_delta > timedelta(0)
+                    and later - earlier == interval_seconds - int(offset_delta.total_seconds())
+                    and wall_delta == timedelta(seconds=interval_seconds))
+
+        if any(later - earlier < interval_seconds and not is_dst_shortened_calendar_interval(earlier, later)
+               for earlier, later in zip(expected, expected[1:])):
             raise ValueError("expected bar timestamps cannot be closer than the declared interval")
     observed = str(observed_provider_symbol) if observed_provider_symbol else None
     if observed is not None and observed.upper() != expected_provider_symbol.upper():
@@ -163,6 +182,7 @@ def make_bar_batch_receipt(
         "expected_schedule_sha256": hashlib.sha256(
             json.dumps(expected, separators=(",", ":")).encode("utf-8")
         ).hexdigest() if expected is not None else None,
+        "calendar_timezone": calendar_timezone,
         "interval_gap_count": gap_count,
         "gap_validation_status": "VERIFIED" if gaps_validated else "UNKNOWN",
         "timestamp_alignment_status": "UNKNOWN" if alignment_validator is None else "VERIFIED" if aligned else "FAILED",
@@ -205,5 +225,6 @@ def make_bar_batch_receipt(
         fetched_at_ns=fetched_at_ns,
         received_at_ns=received_at_ns,
         historical_bars_qualified=qualified,
+        calendar_timezone=calendar_timezone,
     )
     return rows, receipt
