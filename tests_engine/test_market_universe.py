@@ -304,47 +304,115 @@ def test_hybrid_probe_ledger_validates_mappings_and_reports_provider_states(monk
     catalog = snapshot()
     row = catalog["instruments"][0]
     now_dt = datetime.now(timezone.utc)
-    now = now_dt.isoformat().replace("+00:00", "Z")
+    now = now_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    fetched_ns = int(now_dt.timestamp() * 1_000_000_000)
     results = [
         {"instrument_id": row["instrument_id"], "provider": mapping["provider"],
          "provider_symbol_candidate": mapping["symbol"],
          "provider_mapping_status": mapping["mapping_status"],
+         "requested_start_ts": 60, "requested_end_ts": 86460,
          "probe_started_at": now,
-         "probe_status": "NOT_CONFIGURED" if mapping["provider"] == "fmp" else "NO_BARS"}
+         "probe_status": "NOT_CONFIGURED" if mapping["provider"] == "fmp" else "NO_BARS",
+         **({"error_code": "source_not_configured"} if mapping["provider"] == "fmp" else {})}
         for mapping in row["provider_symbol_candidates"]
     ]
+    yahoo_mapping = next(m for m in row["provider_symbol_candidates"] if m["provider"] == "yahoo")
+    _, receipt = make_bar_batch_receipt(
+        instrument_id=row["instrument_id"], provider="yahoo",
+        expected_provider_symbol=yahoo_mapping["symbol"],
+        observed_provider_symbol=yahoo_mapping["symbol"], interval_seconds=86400,
+        requested_start_ts=60, requested_end_ts=86460, bars=[],
+        fetched_at_ns=fetched_ns, received_at_ns=fetched_ns + 1_000_000,
+        provider_mapping_status=yahoo_mapping["mapping_status"],
+    )
+    results[0].update({
+        "provider_symbol_match_status": receipt.provider_symbol_match_status,
+        "canonical_identity_status": receipt.identity_status,
+        "entitlement_status": receipt.entitlement_status,
+        "session_validation_status": receipt.session_validation_status,
+        "historical_bars_qualified": receipt.historical_bars_qualified,
+        "row_count": receipt.row_count, "received_start_ts": receipt.received_start_ts,
+        "received_end_ts": receipt.received_end_ts, "checksum_sha256": receipt.checksum_sha256,
+        "receipt_id": receipt.receipt_id, "fetched_at_ns": receipt.fetched_at_ns,
+        "received_at_ns": receipt.received_at_ns, "interval_gap_count": receipt.interval_gap_count,
+        "timestamp_alignment_status": receipt.timestamp_alignment_status,
+    })
     counts = {}
     for result in results:
         key = f"{result['provider']}_{result['probe_status'].lower()}_count"
         counts[key] = counts.get(key, 0) + 1
     path = tmp_path / "hybrid.json"
-    path.write_text(json.dumps({
+    base = {
         "schema_version": "icarus.market-universe.hybrid-probe.v1",
         "probe_implementation": "tools.probe_a200_hybrid.v1",
         "catalog_id": catalog["catalog_id"],
         "catalog_snapshot_sha256": market_universe.catalog_evidence_digest(catalog),
+        "probe_started_at": now,
         "probe_updated_at": now, "requested_instrument_count": 1,
+        "window": {"start_ts": 60, "end_ts": 86460},
         "completed_result_count": len(results), "counts": counts,
         "results_sha256": market_universe.source_probe_results_digest(results),
+        "authority": {"pulse_enabled": False, "strategy_qualified": False,
+                      "execution_authorized": False},
         "raw_ohlcv_persisted": False, "results": results,
-    }))
+    }
+    path.write_text(json.dumps(base))
     monkeypatch.setattr(market_universe, "HYBRID_PROBE_PATH", path)
     report = market_universe.load_hybrid_probe_report()
     assert report["status"] == "PARTIAL"
     assert {result["provider"] for result in report["results"]} == {"yahoo", "fmp"}
     assert report["authority"]["pulse_enabled"] is False
 
-    tampered = json.loads(path.read_text())
-    old = now_dt.replace(year=now_dt.year - 1).isoformat().replace("+00:00", "Z")
-    tampered["results"][0]["probe_status"] = "ERROR"
-    tampered["results"][0]["probe_started_at"] = old
-    tampered["counts"] = {}
-    for result in tampered["results"]:
-        key = f"{result['provider']}_{result['probe_status'].lower()}_count"
-        tampered["counts"][key] = tampered["counts"].get(key, 0) + 1
-    tampered["results_sha256"] = market_universe.source_probe_results_digest(tampered["results"])
-    path.write_text(json.dumps(tampered))
-    assert market_universe.load_hybrid_probe_report()["status"] == "STALE"
+    def save_mutation(mutator):
+        changed = deepcopy(base)
+        mutator(changed)
+        changed["results_sha256"] = market_universe.source_probe_results_digest(changed["results"])
+        changed["counts"] = {}
+        for result in changed["results"]:
+            key = f"{result['provider']}_{result['probe_status'].lower()}_count"
+            changed["counts"][key] = changed["counts"].get(key, 0) + 1
+        path.write_text(json.dumps(changed))
+        return market_universe.load_hybrid_probe_report()
+
+    assert save_mutation(lambda item: item.update(window={"start_ts": 120, "end_ts": 86400}))["status"] == "INVALID"
+    assert save_mutation(lambda item: item["results"][0].pop("receipt_id"))["status"] == "INVALID"
+    assert save_mutation(lambda item: item["results"][0].update(row_count=10))["status"] == "INVALID"
+    assert save_mutation(lambda item: item["results"][0].update(received_end_ts=86460))["status"] == "INVALID"
+    assert save_mutation(lambda item: item["results"][0].update(historical_bars_qualified=True))["status"] == "INVALID"
+    assert save_mutation(lambda item: item.update(authority={"pulse_enabled": True,
+                                                             "strategy_qualified": False,
+                                                             "execution_authorized": False}))["status"] == "INVALID"
+
+    old = now_dt.replace(year=now_dt.year - 1, microsecond=0)
+    old_iso = old.isoformat().replace("+00:00", "Z")
+    old_ns = int(old.timestamp() * 1_000_000_000)
+    def make_stale(item):
+        item["probe_started_at"] = old_iso
+        item["results"][0]["probe_started_at"] = old_iso
+        item["results"][0]["fetched_at_ns"] = old_ns
+        item["results"][0]["received_at_ns"] = old_ns + 1_000_000
+    assert save_mutation(make_stale)["status"] == "STALE"
+
+
+def test_hybrid_cli_defaults_to_non_runtime_report_path(monkeypatch):
+    captured = {}
+
+    def fake_run(**kwargs):
+        captured.update(kwargs)
+        return {"completed_result_count": 0, "counts": {}}
+
+    monkeypatch.setattr(hybrid_probe, "run", fake_run)
+    monkeypatch.setattr("sys.argv", ["probe_a200_hybrid"])
+    assert hybrid_probe.main() == 0
+    assert captured["out"] == hybrid_probe.DEFAULT_OUT
+    assert captured["out"] != market_universe.HYBRID_PROBE_PATH
+    assert captured["end_ts"] - captured["start_ts"] == 14 * 86400
+    assert abs(captured["end_ts"] - int(datetime.now(timezone.utc).timestamp())) < 2
+
+
+def test_hybrid_probe_cli_requires_timezone_on_explicit_dates():
+    with pytest.raises(ValueError, match="UTC offset"):
+        hybrid_probe._parse_utc("2026-10-15T00:00:00")
 
 
 def test_hybrid_adapter_sanitizes_provider_exception_text():

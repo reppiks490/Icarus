@@ -7,6 +7,15 @@ const output=process.env.ICARUS_BROWSER_OUTPUT||'/tmp/icarus-cinema-previews';mk
 const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader'],...(process.env.ICARUS_BROWSER_BINARY?{executablePath:process.env.ICARUS_BROWSER_BINARY}:{})});
 const context=await browser.newContext({viewport:{width:1440,height:1000}});
 const page=await context.newPage(),errors=[],writes=[];
+async function stableCanvasFrame(canvas){
+ let previous=await canvas.evaluate(c=>c.toDataURL()),stable=0;
+ for(let attempt=0;attempt<20;attempt++){
+  await page.waitForTimeout(100);
+  const current=await canvas.evaluate(c=>c.toDataURL());
+  if(current===previous){stable++;if(stable>=2)return current;}else{stable=0;previous=current;}
+ }
+ return previous;
+}
 context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));page.on('pageerror',e=>errors.push(e.message));
 context.on('request',r=>{if(r.method()!=='GET')writes.push(r.url());});
 await page.addInitScript(()=>{
@@ -21,13 +30,17 @@ await page.goto(process.env.ICARUS_PREVIEW_URL||'http://127.0.0.1:8879');
 await page.locator('.world-scene[data-renderer="canvas"]').waitFor();
 await page.waitForTimeout(700);
 const canvas=page.locator('.world-atmosphere');
-const before=await canvas.evaluate(c=>c.toDataURL());await page.waitForTimeout(200);
-assert.notEqual(await canvas.evaluate(c=>c.toDataURL()),before,'The visible scene must actually animate');
+const before=await canvas.evaluate(c=>c.toDataURL());let sceneAnimated=false;
+for(let attempt=0;attempt<20;attempt++){
+ await page.waitForTimeout(100);
+ if(await canvas.evaluate(c=>c.toDataURL())!==before){sceneAnimated=true;break;}
+}
+assert.ok(sceneAnimated,'The visible scene must actually animate');
 assert.equal(await page.evaluate(()=>window.audioCreated),0,'No audio context before opt-in');
 await page.locator('.experience-settings summary').click();
 for(const mode of ['balanced','focus']){
- await page.locator('#experienceMode').selectOption(mode);await page.waitForTimeout(100);
- const a=await canvas.evaluate(c=>c.toDataURL());await page.waitForTimeout(180);
+ await page.locator('#experienceMode').selectOption(mode);
+ const a=await stableCanvasFrame(canvas);await page.waitForTimeout(180);
  assert.equal(await canvas.evaluate(c=>c.toDataURL()),a,`${mode} must stop canvas rendering`);
 }
 await page.locator('#experienceMode').selectOption('cinematic');
@@ -35,10 +48,20 @@ await page.locator('#experienceMode').selectOption('cinematic');
 // below the visible section. Scroll the drawer itself before interacting with
 // the sound opt-in, then verify the target is in the viewport.
 const settingsDrawer=page.locator('.experience-settings > div');
-await settingsDrawer.evaluate(el=>{el.scrollTop=el.scrollHeight;});
+await settingsDrawer.evaluate(async el=>{
+ // The drawer is still running its entrance transform at this point. Finish
+ // that animation before scrolling so Chromium does not resolve the button's
+ // hit-test bounds against an intermediate transformed position.
+ await Promise.all(el.getAnimations().map(animation=>animation.finished.catch(()=>{})));
+ el.querySelector('#experienceSound').scrollIntoView({block:'center',inline:'nearest',behavior:'auto'});
+});
+await page.locator('#experienceSound').scrollIntoViewIfNeeded();
+await page.waitForTimeout(80);
 const soundBounds=await page.locator('#experienceSound').boundingBox();
-assert.ok(soundBounds&&soundBounds.y>=0&&soundBounds.y+soundBounds.height<=1000,'Sound opt-in must be brought into the viewport by scrolling its settings drawer');
-await page.locator('#experienceSound').click();assert.equal(await page.locator('#experienceSound').getAttribute('aria-pressed'),'true');
+const drawerBounds=await settingsDrawer.boundingBox();
+assert.ok(soundBounds&&soundBounds.x>=0&&soundBounds.y>=0&&soundBounds.x+soundBounds.width<=1440&&soundBounds.y+soundBounds.height<=1000,'Sound opt-in must be inside the viewport after scrolling its settings drawer: '+JSON.stringify({soundBounds,drawerBounds}));
+assert.ok(drawerBounds&&soundBounds.x>=drawerBounds.x&&soundBounds.y>=drawerBounds.y&&soundBounds.x+soundBounds.width<=drawerBounds.x+drawerBounds.width&&soundBounds.y+soundBounds.height<=drawerBounds.y+drawerBounds.height,'Sound opt-in must be inside the visible settings drawer');
+await page.mouse.click(soundBounds.x+soundBounds.width/2,soundBounds.y+soundBounds.height/2);assert.equal(await page.locator('#experienceSound').getAttribute('aria-pressed'),'true');
 assert.equal(await page.evaluate(()=>window.audioCreated),1);
 await page.locator('#experienceMotion').selectOption('off');
 assert.equal(await page.evaluate(()=>window.audioGains.at(-1)),0,'No-motion must mute audio');

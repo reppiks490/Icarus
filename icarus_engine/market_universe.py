@@ -146,11 +146,21 @@ def load_hybrid_probe_report() -> dict[str, Any]:
         return {"status": "INVALID", "results": []}
     results = report.get("results")
     requested, completed = report.get("requested_instrument_count"), report.get("completed_result_count")
+    window = report.get("window")
     if (not isinstance(results, list) or any(not isinstance(row, dict) for row in results)
             or type(requested) is not int or requested < 0 or requested > EXPECTED_INSTRUMENT_COUNT
-            or type(completed) is not int or completed != len(results)):
+            or type(completed) is not int or completed != len(results)
+            or not isinstance(window, dict) or type(window.get("start_ts")) is not int
+            or type(window.get("end_ts")) is not int or window["start_ts"] >= window["end_ts"]):
+        return {"status": "INVALID", "results": []}
+    authority = report.get("authority")
+    if authority != {"pulse_enabled": False, "strategy_qualified": False,
+                    "execution_authorized": False}:
         return {"status": "INVALID", "results": []}
     if report.get("results_sha256") != source_probe_results_digest(results):
+        return {"status": "INVALID", "results": []}
+    if any(row.get("requested_start_ts") != window["start_ts"]
+           or row.get("requested_end_ts") != window["end_ts"] for row in results):
         return {"status": "INVALID", "results": []}
     actual_counts: dict[str, int] = {}
     catalog_rows = {row["instrument_id"]: row for row in catalog["instruments"]}
@@ -162,6 +172,17 @@ def load_hybrid_probe_report() -> dict[str, Any]:
     seen = set()
     max_age = 0
     now = datetime.now(timezone.utc)
+    try:
+        probe_started = datetime.fromisoformat(str(report["probe_started_at"]).replace("Z", "+00:00"))
+        updated = datetime.fromisoformat(str(report["probe_updated_at"]).replace("Z", "+00:00"))
+        if probe_started.tzinfo is None or updated.tzinfo is None or updated < probe_started:
+            raise ValueError("invalid probe report timestamps")
+        report_age = int((now - updated).total_seconds())
+        if report_age < 0:
+            raise ValueError("future probe report timestamp")
+    except (KeyError, TypeError, ValueError):
+        return {"status": "INVALID", "results": []}
+    now_ns = int(now.timestamp() * 1_000_000_000)
     for result in results:
         instrument_id, provider = result.get("instrument_id"), result.get("provider")
         key = (instrument_id, provider)
@@ -181,17 +202,74 @@ def load_hybrid_probe_report() -> dict[str, Any]:
             age = int((now - observed).total_seconds())
         except (KeyError, TypeError, ValueError):
             return {"status": "INVALID", "results": []}
-        if age < 0:
+        if (observed.tzinfo is None or age < 0 or observed < probe_started
+                or observed > updated):
             return {"status": "INVALID", "results": []}
         max_age = max(max_age, age)
+        status = result["probe_status"]
+        receipt_fields = ("row_count", "received_start_ts", "received_end_ts", "checksum_sha256",
+                          "receipt_id", "fetched_at_ns", "received_at_ns", "interval_gap_count",
+                          "timestamp_alignment_status", "entitlement_status",
+                          "session_validation_status", "historical_bars_qualified",
+                          "provider_symbol_match_status", "canonical_identity_status")
+        if status == "NOT_CONFIGURED":
+            if (result.get("error_code") != "source_not_configured"
+                    or any(field in result for field in receipt_fields)):
+                return {"status": "INVALID", "results": []}
+            continue
+        if status == "ERROR":
+            error_type = result.get("error_type")
+            if (not isinstance(error_type, str) or not error_type
+                    or result.get("error_code") != f"provider_error:{error_type}"
+                    or any(field in result for field in receipt_fields)):
+                return {"status": "INVALID", "results": []}
+            continue
+
+        row_count = result.get("row_count")
+        received_start, received_end = result.get("received_start_ts"), result.get("received_end_ts")
+        checksum, receipt_id = result.get("checksum_sha256"), result.get("receipt_id")
+        fetched_ns, received_ns = result.get("fetched_at_ns"), result.get("received_at_ns")
+        if (type(row_count) is not int or row_count < 0
+                or (status == "RESPONSE_RECEIVED" and row_count == 0)
+                or (status == "NO_BARS" and row_count != 0)
+                or (row_count == 0 and (received_start is not None or received_end is not None))
+                or (row_count > 0 and (
+                    type(received_start) is not int or type(received_end) is not int
+                    or not window["start_ts"] <= received_start <= received_end < window["end_ts"]
+                ))
+                or not isinstance(checksum, str) or not _HEX.fullmatch(checksum)
+                or not isinstance(receipt_id, str) or not _HEX.fullmatch(receipt_id)
+                or type(fetched_ns) is not int or type(received_ns) is not int
+                or fetched_ns <= 0 or received_ns < fetched_ns or received_ns > now_ns
+                or result.get("historical_bars_qualified") is not False):
+            return {"status": "INVALID", "results": []}
+        provider_match = result.get("provider_symbol_match_status")
+        identity = result.get("canonical_identity_status")
+        mapping_status = result.get("provider_mapping_status")
+        entitlement = result.get("entitlement_status")
+        session_status = result.get("session_validation_status")
+        if (provider_match not in ("MATCHED", "UNKNOWN")
+                or identity not in ("VERIFIED", "PROVISIONAL", "UNKNOWN")
+                or mapping_status not in ("VERIFIED", "UNVERIFIED", "UNKNOWN")
+                or entitlement not in ("UNKNOWN", "VERIFIED", "FAILED")
+                or session_status not in ("UNKNOWN", "VERIFIED", "FAILED")
+                or (identity == "VERIFIED" and (provider_match != "MATCHED" or mapping_status != "VERIFIED"))
+                or (identity == "PROVISIONAL" and (provider_match != "MATCHED" or mapping_status == "VERIFIED"))):
+            return {"status": "INVALID", "results": []}
+        expected_identity = ("VERIFIED" if provider_match == "MATCHED" and mapping_status == "VERIFIED"
+                             else "PROVISIONAL" if provider_match == "MATCHED" else "UNKNOWN")
+        if identity != expected_identity:
+            return {"status": "INVALID", "results": []}
+        gap_count = result.get("interval_gap_count")
+        alignment = result.get("timestamp_alignment_status")
+        if (type(gap_count) is not int or gap_count < 0
+                or alignment not in ("UNKNOWN", "VERIFIED", "FAILED")):
+            return {"status": "INVALID", "results": []}
+        receipt_started_ns = int(observed.timestamp() * 1_000_000_000)
+        updated_ns = int(updated.timestamp() * 1_000_000_000)
+        if fetched_ns < receipt_started_ns or received_ns > updated_ns + 1_000_000_000:
+            return {"status": "INVALID", "results": []}
     if report.get("counts") != actual_counts or seen != expected_pairs:
-        return {"status": "INVALID", "results": []}
-    try:
-        updated = datetime.fromisoformat(str(report.get("probe_updated_at", "")).replace("Z", "+00:00"))
-        report_age = int((now - updated).total_seconds())
-    except (TypeError, ValueError):
-        return {"status": "INVALID", "results": []}
-    if report_age < 0:
         return {"status": "INVALID", "results": []}
     age_seconds = max(report_age, max_age)
     status = "STALE" if age_seconds > 86400 else ("CURRENT" if requested == EXPECTED_INSTRUMENT_COUNT else "PARTIAL")
@@ -200,6 +278,7 @@ def load_hybrid_probe_report() -> dict[str, Any]:
                    "entitlement_status", "session_validation_status", "historical_bars_qualified",
                    "error_type", "error_code")
     return {"status": status, "probe_updated_at": report.get("probe_updated_at"),
+            "window": window,
             "age_seconds": age_seconds, "requested_instrument_count": requested,
             "completed_result_count": completed, "counts": actual_counts,
             "authority": {"pulse_enabled": False, "strategy_qualified": False,

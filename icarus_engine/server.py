@@ -1410,6 +1410,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, brand.render(html_path.read_bytes()), "text/html")
             if p.path == "/research-ui.js":
                 return self._send(200, (html_path.parent / "research-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/shadow-twin-ui.js":
+                return self._send(200, (html_path.parent / "shadow-twin-ui.js").read_bytes(), "text/javascript")
             if p.path == "/sources-ui.js":
                 return self._send(200, (html_path.parent / "sources-ui.js").read_bytes(), "text/javascript")
             if p.path == "/market-data-ui.js":
