@@ -87,7 +87,10 @@ def run(*, limit: int = 1, start_ts: int, end_ts: int,
         for mapping in instrument.get("provider_symbol_candidates", [])
         if isinstance(mapping.get("provider"), str) and mapping["provider"]
     ))
-    selected_providers = available_providers if providers is None else tuple(providers)
+    if providers is None:
+        selected_providers = ("yahoo",) if "yahoo" in available_providers else available_providers[:1]
+    else:
+        selected_providers = tuple(providers)
     if (not selected_providers
             or any(not isinstance(provider, str) or provider not in available_providers
                    for provider in selected_providers)
@@ -165,7 +168,7 @@ def main() -> int:
                         help="report path; use the packaged path explicitly to publish API state")
     parser.add_argument("--pause-seconds", type=float, default=0.25)
     parser.add_argument("--providers", nargs="+", choices=("yahoo", "fmp"),
-                        help="providers to request; defaults to all catalog providers")
+                        help="providers to request (default: Yahoo only; FMP requires explicit selection)")
     args = parser.parse_args()
     end_dt = _parse_utc(args.end) if args.end else datetime.now(timezone.utc).replace(microsecond=0)
     start_dt = _parse_utc(args.start) if args.start else end_dt - timedelta(days=14)
