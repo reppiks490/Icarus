@@ -2046,6 +2046,20 @@ class Portfolio:
         portfolio_profit_capture = (
             portfolio_shadow_on_primary_winners / portfolio_primary_winner_net
             if portfolio_primary_winner_net > 1e-8 else None)
+        summaries_by_asset = {str(row.get("symbol")): row for row in rs if row.get("symbol")}
+
+        def observed_bar_age(summary: Dict[str, Any]) -> Optional[float]:
+            age = summary.get("bar_age")
+            captured_at = summary.get("view_captured_at")
+            if age is None:
+                return None
+            if summary.get("view_stale") and captured_at is not None:
+                try:
+                    age = float(age) + max(0.0, time.time() - float(captured_at))
+                except (TypeError, ValueError):
+                    pass
+            return age
+
         shadow_portfolio = ({
             "schema": "icarus.real_price_shadow.portfolio/1",
             "enabled": True,
@@ -2054,6 +2068,9 @@ class Portfolio:
             "metrics_unavailable_reason": (
                 None if metrics_available else
                 "portfolio comparisons require every evidenced asset to be READY"),
+            "metrics_time_basis": (
+                "historical emulator evidence through each asset's last observed bar; "
+                "current feed health is reported separately"),
             "execution_authorized": False,
             "asset_count": len(shadow_rows),
             "primary_entry_fills": primary_entries,
@@ -2090,6 +2107,11 @@ class Portfolio:
                         "administrative_censored_shadow_positions": (
                             x["administrative_censored_shadow_positions"]
                             if x["status"] == "READY" else None),
+                        "last_bar_ts": summaries_by_asset.get(x["asset"], {}).get("last_bar_ts"),
+                        "bar_age_seconds": observed_bar_age(summaries_by_asset.get(x["asset"], {})),
+                        "view_stale": bool(summaries_by_asset.get(x["asset"], {}).get("view_stale")),
+                        "feed_health": ((x.get("provenance") or {}).get("feed_health")
+                                        or summaries_by_asset.get(x["asset"], {}).get("feed_health")),
                         "provenance": x.get("provenance")}
                        for x in shadow_rows],
         } if shadow_rows else None)

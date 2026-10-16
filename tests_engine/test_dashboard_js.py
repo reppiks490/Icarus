@@ -171,6 +171,9 @@ def test_real_price_shadow_twin_dashboard_is_read_only_and_wired():
     assert "row.status === 'READY' ?" in ui
     assert "portfolio.metrics_available === false" in ui
     assert "metrics_unavailable_reason" in ui
+    assert "Last bar / age" in ui
+    assert "READY describes historical comparison evidence integrity, not current feed freshness" in ui
+    assert "value == null || value === ''" in ui
 
 
 def test_strategy_tester_timeframes_are_cache_aware():
