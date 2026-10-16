@@ -189,6 +189,25 @@
       <button type="button" id="experienceReplay" class="sm">Replay cinematic intro</button><p id="experienceMotionNote"></p><p>Original anime worlds. Scenic titles and effects are decorative, independent of market activity.</p>
       </div></details><button class="icon-btn" id="experienceFocus" aria-pressed="false">Focus</button><button class="icon-btn" id="experienceMusicToggle" aria-expanded="false" aria-controls="experienceMusic">Music</button>`;
     document.getElementById('btnTheme').insertAdjacentElement('afterend', controls);
+    const settings = controls.querySelector('.experience-settings');
+    const settingsSummary = settings.querySelector('summary');
+    const settingsPanel = settings.querySelector(':scope > div');
+    const placeSettingsPanel = () => {
+      if (!settings.open || window.innerWidth <= 760) return;
+      const anchor = settingsSummary.getBoundingClientRect();
+      const width = settingsPanel.offsetWidth;
+      const height = settingsPanel.offsetHeight;
+      const left = Math.max(12, Math.min(anchor.right - width, window.innerWidth - width - 12));
+      const top = Math.max(12, Math.min(anchor.bottom + 8, window.innerHeight - height - 12));
+      settingsPanel.style.left = `${left}px`;
+      settingsPanel.style.right = 'auto';
+      settingsPanel.style.top = `${top}px`;
+    };
+    settings.addEventListener('toggle', () => {
+      if (settings.open) requestAnimationFrame(() => requestAnimationFrame(placeSettingsPanel));
+    });
+    window.addEventListener('resize', placeSettingsPanel, {passive:true});
+    window.addEventListener('scroll', placeSettingsPanel, {passive:true, capture:true});
     const select = document.getElementById('experienceTheme');
     for (const [id, label] of themes) { const option = document.createElement('option'); option.value = id; option.textContent = label; select.appendChild(option); }
     select.value = root.dataset.theme;

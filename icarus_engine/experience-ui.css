@@ -918,6 +918,7 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
   box-shadow:inset 0 1px 0 #ffffff12,0 0 22px color-mix(in srgb,var(--world-glow),transparent 91%);
 }
 :root[data-world]:not([data-world=""]) .experience-settings > div {
+  position:fixed;z-index:80;right:12px;left:auto;top:90px;
   width:min(318px,calc(100vw - 28px));padding:16px 16px 14px;border-radius:17px;
   background:
     linear-gradient(145deg,color-mix(in srgb,var(--world-glow),transparent 95%),transparent 38%),
