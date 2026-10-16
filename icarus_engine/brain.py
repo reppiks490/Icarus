@@ -332,7 +332,17 @@ def _stored_event(raw: Any) -> dict[str, Any]:
     return out
 
 
+def _check_journal_directory(path: Path) -> None:
+    try:
+        current = path.lstat()
+    except FileNotFoundError:
+        raise ValueError("brain journal directory is missing") from None
+    if stat.S_ISLNK(current.st_mode) or not stat.S_ISDIR(current.st_mode):
+        raise ValueError("brain journal parent must be a real directory")
+
+
 def _check_journal_file(path: Path, descriptor: int) -> None:
+    _check_journal_directory(path.parent)
     opened = os.fstat(descriptor)
     if not stat.S_ISREG(opened.st_mode):
         raise ValueError("brain journal paths must be regular files")
@@ -350,6 +360,7 @@ def _check_journal_file(path: Path, descriptor: int) -> None:
 
 @contextmanager
 def _open_journal_file(path: Path, mode: str):
+    _check_journal_directory(path.parent)
     if path.is_symlink():
         raise ValueError("brain journal paths must not be symlinks")
     flags = os.O_RDWR | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
@@ -430,6 +441,7 @@ def record_brain_event(base_dir: str | os.PathLike[str], body: Mapping[str, Any]
 
     path = _journal_path(base_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
+    _check_journal_directory(path.parent)
     with _EVENT_LOCK, _process_journal_lock(path) as (lock_path, lock_descriptor):
         # One descriptor supplies both the duplicate scan and the durable append.
         with _open_journal_file(path, "a+") as fh:
