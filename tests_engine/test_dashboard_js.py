@@ -954,3 +954,38 @@ context.invoke({currentTarget: {dataset: {paperFlatten: 'cc1'}}}).then(() => {
     )
     result = subprocess.run([NODE, str(runner), str(dashboard)], text=True, capture_output=True)
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed on this developer machine")
+def test_flatten_toast_distinguishes_closed_and_censored_paper_positions(tmp_path):
+    dashboard = REPO / "icarus_engine/dashboard.html"
+    runner = tmp_path / "paper-flatten-toast.cjs"
+    runner.write_text(
+        r"""
+const fs = require('node:fs');
+const vm = require('node:vm');
+const html = fs.readFileSync(process.argv[2], 'utf8');
+const start = html.indexOf('async function admin(path, body, quiet) {');
+const end = html.indexOf('\nasync function copyText(', start);
+if (start < 0 || end < 0) throw new Error('admin helper boundary not found');
+const messages = [];
+const context = {
+  tokKey: 'token',
+  localStorage: {getItem: () => 'test-token'},
+  $: () => ({value: '', classList: {add: () => {}}}),
+  fetch: async () => ({ok: true, json: async () => ({flattened_positions: 0, shadow_censored_positions: 1})}),
+  toast: (message) => messages.push(message),
+  setTimeout: () => {},
+  refresh: () => {},
+};
+vm.runInNewContext(html.slice(start, end) + '\nthis.invoke = admin;', context);
+context.invoke('/admin/command-centers/cc1/flatten', {confirm: true}).then(() => {
+  if (!messages[0]?.includes('Flattened 0 simulated position(s).')) throw new Error('closed count was not reported');
+  if (!messages[0]?.includes('Censored 1 shadow-only position(s).')) throw new Error('shadow censor count was not reported');
+  if (!messages[0]?.includes('Ledger remains paused.')) throw new Error('paused state was not reported');
+}).catch((error) => { console.error(error); process.exitCode = 1; });
+""",
+        encoding="utf-8",
+    )
+    result = subprocess.run([NODE, str(runner), str(dashboard)], text=True, capture_output=True)
+    assert result.returncode == 0, result.stderr

@@ -248,13 +248,17 @@ async function admin(path, body, quiet) {
     });
     const j = await r.json().catch(()=>({}));
     let msg = r.ok ? (j.note||'ok') : ('error '+r.status+': '+(j.detail||j.error||'request failed'));
-    if (r.ok && path.includes('/flatten'))
-      msg = `Flattened ${Number(j.flattened_positions)||0} simulated position(s). Ledger remains paused.`;
+    if (r.ok && path.includes('/flatten')) {
+      const censored = Number(j.shadow_censored_positions)||0;
+      msg = `Flattened ${Number(j.flattened_positions)||0} simulated position(s).${censored ? ` Censored ${censored} shadow-only position(s).` : ''} Ledger remains paused.`;
+    }
     if (!r.ok && path.includes('/flatten') && Array.isArray(j.failed_assets) && j.failed_assets.length) {
       const failed = j.failed_assets.map(x => `${x.asset || 'runner'}: ${x.detail || 'flatten failed'}`).join('; ');
+      const censored = Number(j.shadow_censored_positions)||0;
+      const censorNote = censored ? ` ${censored} shadow-only position(s) censored.` : '';
       msg = j.partial
-        ? `Partial paper flatten: ${Number(j.flattened_positions)||0} position(s) closed. Failed: ${failed}`
-        : `Paper flatten stopped before any positions closed. Failed: ${failed}`;
+        ? `Partial paper flatten: ${Number(j.flattened_positions)||0} position(s) closed.${censorNote} Failed: ${failed}`
+        : `Paper flatten stopped before any positions closed.${censorNote} Failed: ${failed}`;
     }
     if (!quiet) toast(msg, !r.ok);
     if (r.ok) setTimeout(refresh, 400);
