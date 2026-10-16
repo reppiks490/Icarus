@@ -169,6 +169,14 @@ def load_hybrid_probe_report() -> dict[str, Any]:
         for row in catalog["instruments"][:requested]
         for mapping in row.get("provider_symbol_candidates", [])
     }
+    all_providers = list(dict.fromkeys(provider for _, provider in expected_pairs))
+    requested_providers = report.get("requested_providers", all_providers)
+    if (not isinstance(requested_providers, list) or not requested_providers
+            or any(not isinstance(provider, str) or provider not in all_providers
+                   for provider in requested_providers)
+            or len(requested_providers) != len(set(requested_providers))):
+        return {"status": "INVALID", "results": []}
+    requested_provider_set = set(requested_providers)
     seen = set()
     max_age = 0
     now = datetime.now(timezone.utc)
@@ -192,7 +200,10 @@ def load_hybrid_probe_report() -> dict[str, Any]:
         if (key in seen or not instrument or len(mappings) != 1
                 or result.get("provider_symbol_candidate") != mappings[0].get("symbol")
                 or result.get("provider_mapping_status") != mappings[0].get("mapping_status")
-                or result.get("probe_status") not in ("NOT_CONFIGURED", "RESPONSE_RECEIVED", "NO_BARS", "ERROR")):
+                or result.get("probe_status") not in (
+                    "NOT_CONFIGURED", "NOT_REQUESTED", "RESPONSE_RECEIVED", "NO_BARS", "ERROR",
+                )
+                or ((provider in requested_provider_set) == (result.get("probe_status") == "NOT_REQUESTED"))):
             return {"status": "INVALID", "results": []}
         seen.add(key)
         count_key = f"{provider.lower()}_{result['probe_status'].lower()}_count"
@@ -214,6 +225,12 @@ def load_hybrid_probe_report() -> dict[str, Any]:
                           "provider_symbol_match_status", "canonical_identity_status")
         if status == "NOT_CONFIGURED":
             if (result.get("error_code") != "source_not_configured"
+                    or any(field in result for field in receipt_fields)):
+                return {"status": "INVALID", "results": []}
+            continue
+        if status == "NOT_REQUESTED":
+            if (provider in requested_provider_set
+                    or result.get("error_code") != "provider_not_selected"
                     or any(field in result for field in receipt_fields)):
                 return {"status": "INVALID", "results": []}
             continue
@@ -272,13 +289,17 @@ def load_hybrid_probe_report() -> dict[str, Any]:
     if report.get("counts") != actual_counts or seen != expected_pairs:
         return {"status": "INVALID", "results": []}
     age_seconds = max(report_age, max_age)
-    status = "STALE" if age_seconds > 86400 else ("CURRENT" if requested == EXPECTED_INSTRUMENT_COUNT else "PARTIAL")
+    full_provider_scope = requested_provider_set == set(all_providers)
+    status = "STALE" if age_seconds > 86400 else (
+        "CURRENT" if requested == EXPECTED_INSTRUMENT_COUNT and full_provider_scope else "PARTIAL"
+    )
     safe_fields = ("instrument_id", "provider", "provider_symbol_candidate", "probe_status",
                    "provider_symbol_match_status", "canonical_identity_status", "row_count",
                    "entitlement_status", "session_validation_status", "historical_bars_qualified",
                    "error_type", "error_code")
     return {"status": status, "probe_updated_at": report.get("probe_updated_at"),
             "window": window,
+            "requested_providers": requested_providers,
             "age_seconds": age_seconds, "requested_instrument_count": requested,
             "completed_result_count": completed, "counts": actual_counts,
             "authority": {"pulse_enabled": False, "strategy_qualified": False,

@@ -104,7 +104,7 @@ def run(*, limit: int = 200, start_ts: int, end_ts: int,
                     and all(_mapping_matches(by_id[key], catalog, key) for key in by_id)):
                 records_by_id = by_id
 
-    adapter = MarketUniverseAdapter(Yahoo(min_interval=0.0))
+    adapter = MarketUniverseAdapter(Yahoo(min_interval=0.0), providers=("yahoo",))
     for index, row in enumerate(rows, start=1):
         if row["instrument_id"] in records_by_id:
             continue

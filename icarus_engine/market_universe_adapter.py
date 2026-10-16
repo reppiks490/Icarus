@@ -33,12 +33,21 @@ class MarketUniverseAdapter:
     future trusted source integration supplies those attestations.
     """
 
-    def __init__(self, yahoo: Yahoo | None = None, fmp: object | None = None):
+    def __init__(self, yahoo: Yahoo | None = None, fmp: object | None = None,
+                 providers: tuple[str, ...] | list[str] | None = None):
+        selected = ("yahoo", "fmp") if providers is None else tuple(providers)
+        if (not selected or any(provider not in ("yahoo", "fmp") for provider in selected)
+                or len(selected) != len(set(selected))):
+            raise ValueError("providers must be a non-empty unique subset of yahoo and fmp")
         catalog = snapshot()
         self.catalog_id = catalog["catalog_id"]
         self._instruments = {row["instrument_id"]: row for row in catalog["instruments"]}
-        self.yahoo = yahoo or Yahoo()
-        self._sources = {"yahoo": self.yahoo}
+        self._sources = {}
+        self.yahoo = (yahoo or Yahoo()) if "yahoo" in selected else None
+        if self.yahoo is not None:
+            self._sources["yahoo"] = self.yahoo
+        if "fmp" not in selected:
+            return
         if fmp is not None:
             self._sources["fmp"] = fmp
         elif os.environ.get("FMP_API_KEY"):

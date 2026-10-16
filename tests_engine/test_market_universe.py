@@ -124,7 +124,8 @@ def test_a200_yahoo_sweep_persists_receipts_without_raw_ohlcv(monkeypatch, tmp_p
     rows = snapshot()["instruments"]
 
     class FakeProbeAdapter:
-        def __init__(self, _yahoo):
+        def __init__(self, _yahoo, *, providers):
+            assert providers == ("yahoo",)
             self.by_id = {row["instrument_id"]: row for row in rows}
 
         def fetch_history(self, instrument_id, interval_seconds, start_ts, end_ts):
@@ -289,7 +290,8 @@ def test_a200_hybrid_report_records_missing_provider_without_raw_bars(monkeypatc
     adapter = MarketUniverseAdapter(_FakeYahooHistory(yahoo_symbol))
     out = tmp_path / "hybrid.json"
     report = hybrid_probe.run(limit=1, start_ts=60, end_ts=86460, out=out,
-                              pause_seconds=0, adapter=adapter)
+                              pause_seconds=0, adapter=adapter,
+                              providers=("yahoo", "fmp"))
     saved = json.loads(out.read_text())
     by_provider = {item["provider"]: item for item in saved["results"]}
     assert report["completed_result_count"] == 2
@@ -298,6 +300,86 @@ def test_a200_hybrid_report_records_missing_provider_without_raw_bars(monkeypatc
     assert by_provider["fmp"]["error_code"] == "source_not_configured"
     assert saved["raw_ohlcv_persisted"] is False
     assert all("close" not in item for item in saved["results"])
+
+
+def test_a200_hybrid_provider_selection_never_calls_unselected_source(monkeypatch, tmp_path):
+    row = snapshot()["instruments"][0]
+    yahoo_symbol = next(m["symbol"] for m in row["provider_symbol_candidates"]
+                        if m["provider"] == "yahoo")
+
+    class CountingFmp:
+        GRANULARITIES = (86400,)
+
+        def __init__(self):
+            self.calls = []
+
+        def candles(self, *args):
+            self.calls.append(("candles", args))
+            raise AssertionError("unselected FMP source must not be called")
+
+        def meta(self, *args):
+            self.calls.append(("meta", args))
+            raise AssertionError("unselected FMP source must not be called")
+
+    fmp = CountingFmp()
+    out = tmp_path / "yahoo-only.json"
+    report = hybrid_probe.run(
+        limit=1, start_ts=60, end_ts=86460, out=out, pause_seconds=0,
+        adapter=MarketUniverseAdapter(_FakeYahooHistory(yahoo_symbol), fmp=fmp),
+        providers=("yahoo",),
+    )
+    by_provider = {item["provider"]: item for item in report["results"]}
+    assert report["requested_providers"] == ["yahoo"]
+    assert by_provider["yahoo"]["probe_status"] == "RESPONSE_RECEIVED"
+    assert by_provider["fmp"]["probe_status"] == "NOT_REQUESTED"
+    assert by_provider["fmp"]["error_code"] == "provider_not_selected"
+    assert fmp.calls == []
+    monkeypatch.setattr(market_universe, "HYBRID_PROBE_PATH", out)
+    loaded = market_universe.load_hybrid_probe_report()
+    assert loaded["status"] == "PARTIAL"
+    assert loaded["requested_providers"] == ["yahoo"]
+
+
+def test_default_hybrid_probe_is_yahoo_only_and_does_not_load_fmp_connector(monkeypatch, tmp_path):
+    row = snapshot()["instruments"][0]
+    yahoo_symbol = next(m["symbol"] for m in row["provider_symbol_candidates"]
+                        if m["provider"] == "yahoo")
+    monkeypatch.setenv("FMP_API_KEY", "test-only-key")
+    monkeypatch.setattr(market_universe_adapter, "Yahoo",
+                        lambda: _FakeYahooHistory(yahoo_symbol))
+
+    import icarus_engine.feeds.fmp as fmp_feed
+
+    def forbidden_fmp_construction():
+        raise AssertionError("Yahoo-only probe must not construct the FMP connector")
+
+    monkeypatch.setattr(fmp_feed, "FmpHistory", forbidden_fmp_construction)
+    report = hybrid_probe.run(limit=1, start_ts=60, end_ts=86460,
+                              out=tmp_path / "yahoo-only-default-adapter.json",
+                              pause_seconds=0)
+    assert report["requested_providers"] == ["yahoo"]
+    assert report["counts"]["fmp_not_requested_count"] == 1
+
+
+def test_a200_hybrid_provider_selection_rejects_empty_unknown_and_duplicate_scope(tmp_path):
+    for providers in ((), ("other",), ("yahoo", "yahoo")):
+        with pytest.raises(ValueError, match="non-empty unique subset"):
+            hybrid_probe.run(limit=1, start_ts=60, end_ts=86460,
+                             out=tmp_path / "invalid.json", pause_seconds=0,
+                             adapter=MarketUniverseAdapter(_FakeYahooHistory("NVDA")),
+                             providers=providers)
+
+
+def test_default_hybrid_probe_fails_closed_if_yahoo_is_not_in_catalog(monkeypatch, tmp_path):
+    catalog = deepcopy(snapshot())
+    catalog["instruments"][0]["provider_symbol_candidates"] = [
+        mapping for mapping in catalog["instruments"][0]["provider_symbol_candidates"]
+        if mapping["provider"] == "fmp"
+    ]
+    monkeypatch.setattr(hybrid_probe, "snapshot", lambda: catalog)
+    with pytest.raises(ValueError, match="non-empty unique subset"):
+        hybrid_probe.run(limit=1, start_ts=60, end_ts=86460,
+                         out=tmp_path / "fmp-only-catalog.json", pause_seconds=0)
 
 
 def test_hybrid_probe_ledger_validates_mappings_and_reports_provider_states(monkeypatch, tmp_path):
@@ -406,6 +488,7 @@ def test_hybrid_cli_defaults_to_non_runtime_report_path(monkeypatch):
     assert hybrid_probe.main() == 0
     assert captured["out"] == hybrid_probe.DEFAULT_OUT
     assert captured["out"] != market_universe.HYBRID_PROBE_PATH
+    assert captured["providers"] is None
     assert captured["end_ts"] - captured["start_ts"] == 14 * 86400
     assert abs(captured["end_ts"] - int(datetime.now(timezone.utc).timestamp())) < 2
 
@@ -811,6 +894,9 @@ def test_a200_history_api_returns_bars_with_full_unqualified_receipt(tmp_path, m
     )
 
     class FakeAdapter:
+        def __init__(self, *, providers):
+            assert providers == ("yahoo",)
+
         def fetch_history(self, instrument_id, interval, requested_start, requested_end, *, provider):
             assert (instrument_id, interval, requested_start, requested_end, provider) == (
                 row["instrument_id"], 86400, start, page_end, "yahoo",
@@ -936,6 +1022,9 @@ def test_a200_history_api_sanitizes_provider_errors(tmp_path, monkeypatch):
     from icarus_engine.server import serve
 
     class LeakyAdapter:
+        def __init__(self, *, providers):
+            assert providers == ("yahoo",)
+
         def fetch_history(self, *_args, **_kwargs):
             raise ValueError("https://provider.invalid/history?apikey=secret-value")
 

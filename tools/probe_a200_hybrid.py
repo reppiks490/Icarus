@@ -70,7 +70,8 @@ def _probe_one(adapter: MarketUniverseAdapter, instrument: dict, mapping: dict,
 
 def run(*, limit: int = 1, start_ts: int, end_ts: int,
         out: Path = DEFAULT_OUT,
-        pause_seconds: float = 0.25, adapter: MarketUniverseAdapter | None = None) -> dict:
+        pause_seconds: float = 0.25, adapter: MarketUniverseAdapter | None = None,
+        providers: tuple[str, ...] | list[str] | None = None) -> dict:
     if type(limit) is not int or not 1 <= limit <= 200:
         raise ValueError("limit must be between 1 and 200")
     if type(start_ts) is not int or type(end_ts) is not int or start_ts >= end_ts:
@@ -78,9 +79,25 @@ def run(*, limit: int = 1, start_ts: int, end_ts: int,
     if type(pause_seconds) not in (int, float) or not 0 <= pause_seconds <= 10:
         raise ValueError("pause_seconds must be between zero and ten")
     catalog = snapshot()
-    adapter = adapter or MarketUniverseAdapter()
     results = []
     rows = catalog["instruments"][:limit]
+    available_providers = tuple(dict.fromkeys(
+        mapping.get("provider")
+        for instrument in rows
+        for mapping in instrument.get("provider_symbol_candidates", [])
+        if isinstance(mapping.get("provider"), str) and mapping["provider"]
+    ))
+    if providers is None:
+        selected_providers = ("yahoo",)
+    else:
+        selected_providers = tuple(providers)
+    if (not selected_providers
+            or any(not isinstance(provider, str) or provider not in available_providers
+                   for provider in selected_providers)
+            or len(selected_providers) != len(set(selected_providers))):
+        raise ValueError("providers must be a non-empty unique subset of catalog providers")
+    selected_set = set(selected_providers)
+    adapter = adapter or MarketUniverseAdapter(providers=selected_providers)
     for index, instrument in enumerate(rows, start=1):
         mappings = instrument.get("provider_symbol_candidates", [])
         seen = set()
@@ -95,7 +112,20 @@ def run(*, limit: int = 1, start_ts: int, end_ts: int,
                                 "error_code": "invalid_provider_mapping"})
                 continue
             seen.add(provider)
-            results.append(_probe_one(adapter, instrument, mapping, start_ts, end_ts))
+            if provider in selected_set:
+                results.append(_probe_one(adapter, instrument, mapping, start_ts, end_ts))
+            else:
+                results.append({
+                    "instrument_id": instrument["instrument_id"],
+                    "provider": provider,
+                    "provider_symbol_candidate": mapping.get("symbol"),
+                    "provider_mapping_status": mapping.get("mapping_status"),
+                    "requested_start_ts": start_ts,
+                    "requested_end_ts": end_ts,
+                    "probe_started_at": _utc_now(),
+                    "probe_status": "NOT_REQUESTED",
+                    "error_code": "provider_not_selected",
+                })
         if pause_seconds and index < len(rows):
             time.sleep(pause_seconds)
     now = _utc_now()
@@ -112,6 +142,7 @@ def run(*, limit: int = 1, start_ts: int, end_ts: int,
         "probe_updated_at": now,
         "window": {"start_ts": start_ts, "end_ts": end_ts},
         "requested_instrument_count": len(rows),
+        "requested_providers": list(selected_providers),
         "completed_result_count": len(results),
         "results_sha256": source_probe_results_digest(results),
         "counts": counts,
@@ -136,12 +167,15 @@ def main() -> int:
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT,
                         help="report path; use the packaged path explicitly to publish API state")
     parser.add_argument("--pause-seconds", type=float, default=0.25)
+    parser.add_argument("--providers", nargs="+", choices=("yahoo", "fmp"),
+                        help="providers to request (default: Yahoo only; FMP requires explicit selection)")
     args = parser.parse_args()
     end_dt = _parse_utc(args.end) if args.end else datetime.now(timezone.utc).replace(microsecond=0)
     start_dt = _parse_utc(args.start) if args.start else end_dt - timedelta(days=14)
     start, end = int(start_dt.timestamp()), int(end_dt.timestamp())
     report = run(limit=args.limit, start_ts=start, end_ts=end, out=args.out,
-                 pause_seconds=args.pause_seconds)
+                 pause_seconds=args.pause_seconds,
+                 providers=tuple(args.providers) if args.providers else None)
     print(json.dumps({"completed": report["completed_result_count"],
                       "counts": report["counts"]}, sort_keys=True))
     return 0

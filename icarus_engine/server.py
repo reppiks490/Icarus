@@ -1365,7 +1365,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         page_end_ts = schedule[limit]
                         next_start_ts = page_end_ts
                     try:
-                        bars, receipt = MarketUniverseAdapter().fetch_history(
+                        bars, receipt = MarketUniverseAdapter(providers=(provider,)).fetch_history(
                             instrument_id, interval, start_ts, page_end_ts, provider=provider,
                         )
                     except RuntimeError as ex:
