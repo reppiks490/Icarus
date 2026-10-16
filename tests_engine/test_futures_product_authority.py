@@ -92,6 +92,8 @@ def test_every_product_parses_and_resolves_from_continuous_identity():
         assert resolved["contract"].startswith(root)
         assert resolved["contract"] != f"{root}1!"
         assert resolved["roll_date"] > session_date.isoformat()
+        assert resolved["broker_qualification_required"] is True
+        assert resolved["execution_authorized"] is False
 
 
 def test_representative_families_resolve_deterministically_mid_cycle():
@@ -102,7 +104,7 @@ def test_representative_families_resolve_deterministically_mid_cycle():
         "CL1!": "CLX26",
         "6E1!": "6EZ26",
         "ZN1!": "ZNZ26",
-        "BTCF1!": "BTCFX26",
+        "BTCF1!": "BTCFV26",
     }
     for continuous, dated in expected.items():
         assert resolve_contract(continuous, session_date)["contract"] == dated
