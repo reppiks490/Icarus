@@ -1,6 +1,7 @@
 from copy import deepcopy
 import json
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -69,24 +70,46 @@ def test_a200_yahoo_adapter_resolves_mapping_and_keeps_entitlement_unqualified()
     assert receipt.historical_bars_qualified is False
 
 
-def test_a200_adapter_receipt_preserves_authoritative_calendar_timezone():
+def test_a200_adapter_receipt_preserves_authoritative_calendar_timezone(monkeypatch):
     row = snapshot()["instruments"][0]
     provider_symbol = next(mapping["symbol"] for mapping in row["provider_symbol_candidates"]
                            if mapping["provider"] == "yahoo")
-    calendar = get_calendar(row["calendar"])
-    start_ts = int(datetime(2026, 3, 6, tzinfo=timezone.utc).timestamp())
-    end_ts = int(datetime(2026, 3, 10, tzinfo=timezone.utc).timestamp())
+    eastern = get_calendar(row["calendar"])
+    calendar_tz = eastern.timezone_name
+    expected = [
+        int(datetime(2026, 3, 7, 9, 30, tzinfo=ZoneInfo(calendar_tz)).timestamp()),
+        int(datetime(2026, 3, 8, 9, 30, tzinfo=ZoneInfo(calendar_tz)).timestamp()),
+    ]
+
+    class SpringTransitionCalendar:
+        timezone_name = calendar_tz
+
+        @staticmethod
+        def expected_bar_timestamps(_start, _end, _interval):
+            return expected
+
+        @staticmethod
+        def is_aligned(_ts, _interval):
+            return True
+
+        @staticmethod
+        def session_bounds(_day):
+            return None
+
+    monkeypatch.setattr(market_universe_adapter, "get_calendar",
+                        lambda _name: SpringTransitionCalendar())
+    start_ts, end_ts = expected[0], expected[-1] + 86400
 
     class CalendarAwareYahoo(_FakeYahooHistory):
-        def candles(self, _symbol, _interval, start, end):
-            expected = calendar.expected_bar_timestamps(start, end, 86400)
+        def candles(self, _symbol, _interval, _start, _end):
             return [Bar(ts, 10, 12, 9, 11, 4) for ts in expected]
 
     _, receipt = MarketUniverseAdapter(CalendarAwareYahoo(provider_symbol)).fetch_history(
         row["instrument_id"], 86400, start_ts, end_ts,
     )
 
-    assert receipt.calendar_timezone == "America/New_York"
+    assert expected[1] - expected[0] == 23 * 3600
+    assert receipt.calendar_timezone == calendar_tz
     assert receipt.session_validation_status == "VERIFIED"
     assert receipt.timestamp_alignment_status == "VERIFIED"
     assert receipt.historical_bars_qualified is False
