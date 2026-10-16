@@ -821,14 +821,19 @@ class AssetRunner:
         """Load one source matching the configured live provider; never splice series."""
         source = self.feed
         source_name = type(source).__name__
+        if source_name == "Yahoo":
+            # Preserve Yahoo's native multi-resolution coverage: 59 days of
+            # 5m/15m history for aligned charts, plus its 29-day 1m tail.
+            # Databento may be configured as an alternate history feed, but
+            # it must not be spliced into Yahoo's continuous series.
+            self._warmup_yahoo(T_w, now)
+            return
         if source_name == "Databento":
             source_from = max(int(T_w), int(getattr(source, "HISTORICAL_START_TS", 0)))
         else:
-            source_from = max(int(T_w), int(now) - 29 * 86400)
+            source_from = int(T_w)
         try:
             history = source.candles(self.spec.ticker, 60, source_from, max(source_from, int(now) - 60))
-            if source_name == "Yahoo":
-                history = self._closed_only(history, self.spec.ticker, feed=source)
             history = sorted((b for b in history if source_from <= b.ts and b.ts + 60 <= now),
                              key=lambda b: b.ts)
             if not history:

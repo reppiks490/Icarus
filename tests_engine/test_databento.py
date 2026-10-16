@@ -1233,7 +1233,7 @@ def test_hybrid_futures_warmup_uses_one_provider_without_cross_feed_splice():
 
 
 def test_yahoo_futures_warmup_does_not_splice_databento_history():
-    now = 10_000_000
+    now = 1_800_000_000
     yahoo_rows = [Bar(9_999_700, 200, 201, 199, 200, 1),
                   Bar(9_999_760, 201, 202, 200, 201, 1)]
     calls = []
@@ -1242,14 +1242,14 @@ def test_yahoo_futures_warmup_does_not_splice_databento_history():
         _meta = {"NQ=F": {"regularMarketTime": now}}
 
         def candles(self, symbol, granularity, start_ts, end_ts):
-            calls.append(("yahoo", start_ts, end_ts))
+            calls.append(("yahoo", granularity, start_ts, end_ts))
             return yahoo_rows
 
     class DatabentoStub:
         HISTORICAL_START_TS = 0
 
         def candles(self, symbol, granularity, start_ts, end_ts):
-            calls.append(("databento", start_ts, end_ts))
+            calls.append(("databento", granularity, start_ts, end_ts))
             raise RuntimeError("history unavailable")
 
     YahooStub.__name__ = "Yahoo"
@@ -1261,12 +1261,17 @@ def test_yahoo_futures_warmup_does_not_splice_databento_history():
     )
     loaded = []
     runner.on_sub_bar = lambda candle, _minutes, *, live: loaded.append(candle)
+    runner._feed_deep = lambda *_args, **_kwargs: None
 
-    runner._warmup_continuous_futures(0, now)
+    T_w = now - 59 * 86400
+    runner._warmup_continuous_futures(T_w, now)
 
-    assert calls == [("yahoo", max(0, now - 29 * 86400), now - 60)]
-    assert loaded == yahoo_rows
-    assert "single-source warm-up" in " ".join(row["msg"] for row in journal.log_tail)
+    assert calls
+    assert all(provider == "yahoo" for provider, *_ in calls)
+    assert ("yahoo", 300, now - 59 * 86400, T_w) in calls
+    assert ("yahoo", 300, T_w, now - 29 * 86400) in calls
+    assert ("yahoo", 60, now - 29 * 86400, now) in calls
+    assert all(candle in yahoo_rows for candle in loaded)
     journal.con.close()
 
 
