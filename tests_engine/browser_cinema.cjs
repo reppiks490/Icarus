@@ -48,8 +48,9 @@ await settingsDrawer.evaluate(async el=>{
 });
 const soundBounds=await page.locator('#experienceSound').boundingBox();
 const drawerBounds=await settingsDrawer.boundingBox();
-assert.ok(soundBounds&&drawerBounds&&soundBounds.y>=drawerBounds.y&&soundBounds.y+soundBounds.height<=drawerBounds.y+drawerBounds.height&&soundBounds.y+soundBounds.height<=1000,'Sound opt-in must be brought into the visible settings drawer before interaction');
-await page.locator('#experienceSound').click();assert.equal(await page.locator('#experienceSound').getAttribute('aria-pressed'),'true');
+assert.ok(soundBounds&&soundBounds.x>=0&&soundBounds.y>=0&&soundBounds.x+soundBounds.width<=1440&&soundBounds.y+soundBounds.height<=1000,'Sound opt-in must be inside the viewport after scrolling its settings drawer');
+assert.ok(drawerBounds&&soundBounds.x>=drawerBounds.x&&soundBounds.y>=drawerBounds.y&&soundBounds.x+soundBounds.width<=drawerBounds.x+drawerBounds.width&&soundBounds.y+soundBounds.height<=drawerBounds.y+drawerBounds.height,'Sound opt-in must be inside the visible settings drawer');
+await page.mouse.click(soundBounds.x+soundBounds.width/2,soundBounds.y+soundBounds.height/2);assert.equal(await page.locator('#experienceSound').getAttribute('aria-pressed'),'true');
 assert.equal(await page.evaluate(()=>window.audioCreated),1);
 await page.locator('#experienceMotion').selectOption('off');
 assert.equal(await page.evaluate(()=>window.audioGains.at(-1)),0,'No-motion must mute audio');
