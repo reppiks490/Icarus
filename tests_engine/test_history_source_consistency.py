@@ -100,3 +100,26 @@ def test_empty_databento_history_does_not_mark_runner_warm(tmp_path, monkeypatch
         raise AssertionError("empty Databento history must not mark warm-up complete")
     assert not runner.warm
     assert not yahoo.calls
+
+
+def test_databento_csv_tail_respects_configured_history_floor(tmp_path, monkeypatch):
+    monkeypatch.delenv("ICARUS_FEED", raising=False)
+    monkeypatch.setenv("ICARUS_DATABENTO_HISTORY_DAYS", "7")
+    now = 1_800_000_000
+    history = tmp_path / "history"
+    history.mkdir()
+    old_ts = now - 10 * 86400
+    (history / "NQ_1m.csv").write_text(
+        "ts,open,high,low,close,volume\n"
+        f"{old_ts},100,101,99,100,1\n{old_ts + 60},100,101,99,101,1\n",
+        encoding="utf-8",
+    )
+    databento, yahoo = Databento(), Yahoo()
+    runner = make_runner(tmp_path, databento, yahoo)
+
+    runner.warmup(now)
+
+    assert runner.warm
+    assert databento.calls
+    assert all(start >= now - 7 * 86400 for _, _, start, _ in databento.calls)
+    assert not yahoo.calls

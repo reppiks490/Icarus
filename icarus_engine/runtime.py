@@ -747,15 +747,12 @@ class AssetRunner:
             # the requested window past the bars the provider can actually supply.
             provider_days = 59 if self.chart_minutes >= 5 and self.chart_minutes % 5 == 0 else 29
             span = max(span, provider_days * 86400)
-        databento_primary = (
-            not hist and self.spec.kind == "futures"
-            and type(self.feed).__name__ == "Databento"
-        )
-        databento_days = self._databento_history_days() if databento_primary else 0
-        history_floor = None
+        databento_feed = self.spec.kind == "futures" and type(self.feed).__name__ == "Databento"
+        databento_primary = not hist and databento_feed
+        databento_days = self._databento_history_days() if databento_feed else 0
+        history_floor = now - databento_days * 86400 if databento_feed else None
         if databento_primary:
             provider_days = databento_days
-            history_floor = now - databento_days * 86400
         T_w = self.cal.bucket_start(now - span, 1440)
         if history_floor is not None:
             T_w = max(T_w, history_floor)
@@ -782,7 +779,7 @@ class AssetRunner:
             horizon = f", Databento-only history up to {databento_days}d"
         self.journal.log("INFO", f"[{self.symbol}] warm-up requested from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars requested{horizon}, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={_session_mode(self.cal)} security={self.spec.security_source}" + (f" continuous={self.spec.tv_symbol or self.spec.ticker}" if self.spec.kind == "futures" else ""))
         if hist:
-            self._warmup_from_csv(hist, now, source_minutes=minutes)
+            self._warmup_from_csv(hist, now, source_minutes=minutes, history_floor=history_floor)
             self._file_waiting = False
         elif file_feed_mode():
             self._file_waiting = True
@@ -888,7 +885,10 @@ class AssetRunner:
                 continue
             self.on_sub_bar(b, 1, live=False)
 
-    def _warmup_from_csv(self, path: str, now: int, source_minutes: Optional[int] = None) -> None:
+    def _warmup_from_csv(
+        self, path: str, now: int, source_minutes: Optional[int] = None,
+        *, history_floor: Optional[int] = None,
+    ) -> None:
         """Warm up from a TradingView Supercharts export (or canonical history/*.csv).
 
         Grok (xAI) — 2026-09-20. Prefer a 1-minute dump: HTF/LTF chains then
@@ -918,7 +918,10 @@ class AssetRunner:
                 return  # Grok (xAI) — offline plant: the CSV is the whole tape; do not call Yahoo for a tail
             tail_from = rows[-1].ts + source_minutes * 60
             try:
-                ones = self.feed.candles(self.spec.ticker, 60, max(tail_from, now - 29 * 86400), now)
+                tail_start = max(tail_from, now - 29 * 86400)
+                if history_floor is not None:
+                    tail_start = max(tail_start, history_floor)
+                ones = self.feed.candles(self.spec.ticker, 60, tail_start, now)
                 if self.spec.feed == "yahoo":
                     ones = self._closed_only(ones, self.spec.ticker)
                 for b in ones:
