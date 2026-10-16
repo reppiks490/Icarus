@@ -34,6 +34,7 @@ class FuturesProduct:
     point_value: float
     cycle: str
     roll_kind: str
+    execution_root: str
     micro_of: Optional[str] = None
     feed_mode: str = "public_delayed"
 
@@ -58,6 +59,7 @@ def _product(
     cycle: str,
     roll_kind: str,
     *,
+    execution_root: Optional[str] = None,
     micro_of: Optional[str] = None,
     calendar: str = "cme",
     session: str = "rth",
@@ -77,6 +79,7 @@ def _product(
         point_value=point_value,
         cycle=cycle,
         roll_kind=roll_kind,
+        execution_root=execution_root or root,
         micro_of=micro_of,
     )
 
@@ -131,9 +134,9 @@ _PRODUCTS = (
     _product("ZN", "10-Year T-Note", "ZN=F", "CBOT:ZN1!", "CBOT", "rates", 0.015625, 1000.0, QUARTERLY, "treasury", session="eth"),
     _product("ZB", "30-Year U.S. Treasury Bond", "ZB=F", "CBOT:ZB1!", "CBOT", "rates", 0.03125, 1000.0, QUARTERLY, "treasury", session="eth"),
 
-    # CME Bitcoin futures.  The static resolver follows the six-consecutive-month
-    # lane; exact last-trade dates are re-qualified by the broker before paper use.
-    _product("BTCF", "Bitcoin futures (CME)", "BTC=F", "CME:BTC1!", "CME", "crypto_futures", 5.0, 5.0, MONTHLY, "crypto", calendar="cme_crypto", session="eth", group="crypto"),
+    # CME Bitcoin futures.  BTCF is the unambiguous ICARUS research root while
+    # the exchange/broker execution root remains CME's actual product root BTC.
+    _product("BTCF", "Bitcoin futures (CME)", "BTC=F", "CME:BTC1!", "CME", "crypto_futures", 5.0, 5.0, MONTHLY, "crypto", execution_root="BTC", calendar="cme_crypto", session="eth", group="crypto"),
     _product("MBT", "Micro Bitcoin futures (CME)", "MBT=F", "CME:MBT1!", "CME", "crypto_futures", 5.0, 0.1, MONTHLY, "crypto", micro_of="BTCF", calendar="cme_crypto", session="eth", group="crypto"),
 )
 
@@ -147,6 +150,8 @@ for _root, _product_value in PRODUCTS.items():
         raise RuntimeError(f"futures product key/root mismatch: {_root!r}")
     if _product_value.tick_size <= 0 or _product_value.point_value <= 0:
         raise RuntimeError(f"{_root}: futures economics must be positive")
+    if not _product_value.execution_root:
+        raise RuntimeError(f"{_root}: execution root is required")
     if _product_value.micro_of:
         _parent = PRODUCTS.get(_product_value.micro_of)
         if _parent is None:
