@@ -1,19 +1,28 @@
 # CL (Claude, Anthropic) — 2026-10-04 — icarus_futures.contracts: CME contract economics, continuous identities, rolls
-"""Qualified dated-contract resolution for ICARUS futures.
+"""Deterministic dated-contract *candidate* resolution for ICARUS futures.
 
-Continuous analytical identities live in :mod:`icarus_engine.futures_catalog`.
-Only products whose dated-contract rules are explicitly marked
-``execution_qualified`` enter :data:`SPECS`; registered-but-unqualified products
-therefore fail closed instead of inheriting another product family's roll rule.
+Continuous analytical identities and contract economics live in
+:mod:`icarus_engine.futures_catalog`. Every statically qualified product enters
+:data:`SPECS`, but a resolved dated symbol is not order authorization. The broker
+adapter must still qualify exact contract details (conId/localSymbol/expiry/
+multiplier/exchange), reconcile the order, pass risk gates, and obey the owner
+execution policy. Live execution remains disabled.
 
-Current qualified families preserve the existing proven behavior:
+The static resolver covers the full 32-root catalog with product-family rules:
 
-* equity index (H M U Z): roll Monday prior to third-Friday expiration;
-* GC/MGC/SI/SIL metals: roll ``METALS_ROLL_BDAYS`` business days before first
-  notice day (last business day of the month before contract month).
+* equity indexes: Monday before third-Friday expiration;
+* GC/MGC/SI/SIL: conservative pre-first-notice roll;
+* PL/PA/HG: third-last-business-day termination, rolled early;
+* MHG: third-last business day of the month preceding contract month;
+* CL/MCL: WTI termination and micro linked-expiry rules;
+* NG/MNG: three-business-day delivery rule and micro linked-expiry rule;
+* CME FX: second business day before the third Wednesday;
+* ZN/ZB: seventh business day before the final business day of delivery month;
+* CME Bitcoin/Micro Bitcoin: last Friday of contract month.
 
-Additional product families are promoted only after product-specific expiry/roll
-semantics and broker contract readback are tested.
+This module intentionally labels its output as a static candidate because actual
+continuous-front mappings can be liquidity/volume driven and exchange holidays
+can alter exact dates. Broker/provider readback remains authoritative.
 """
 from __future__ import annotations
 
@@ -24,14 +33,17 @@ from datetime import date, timedelta
 from icarus_engine.futures_catalog import FUTURES_PRODUCTS, FuturesProduct
 
 MONTH_CODES = "FGHJKMNQUVXZ"
-EQUITY_ROLL_WEEKDAY_BEFORE = 4   # Monday = 3rd Friday - 4 days
-EXPIRY_HOLIDAYS = {date(2026, 6, 19)}  # Juneteenth 2026 fell on a 3rd Friday (verified)
-METALS_ROLL_BDAYS = 2
+EQUITY_ROLL_WEEKDAY_BEFORE = 4
+STATIC_ROLL_LEAD_BDAYS = 2
+# Explicit exchange-holiday overrides needed by deterministic historical tests.
+# Exact broker/provider contract calendars remain the runtime authority.
+EXPIRY_HOLIDAYS = {date(2026, 6, 19)}
 
 
 @dataclass(frozen=True)
 class ContractSpec:
     root: str
+    execution_root: str
     exchange: str
     tick_size: float
     tick_value: float
@@ -48,9 +60,9 @@ class ContractSpec:
     @property
     def kind(self) -> str:
         """Backward-compatible family label for older callers."""
-        if self.roll_model == "equity_third_friday":
+        if self.cluster == "equity_index":
             return "equity"
-        if self.roll_model == "metals_first_notice":
+        if self.cluster == "metal":
             return "metals"
         return self.roll_model
 
@@ -66,6 +78,7 @@ def _contract_spec(product: FuturesProduct) -> ContractSpec:
         raise ValueError(f"{product.root}: cannot build execution spec for unqualified product")
     return ContractSpec(
         root=product.root,
+        execution_root=product.execution_root,
         exchange=product.exchange,
         tick_size=product.tick_size,
         tick_value=product.tick_value,
@@ -83,30 +96,38 @@ SPECS = {
     if product.execution_qualified
 }
 
-_CONT = re.compile(r"^(?:[A-Z0-9_]+:)?([A-Z0-9]+?)(\d)!$")
+# Canonical roots are the primary API. Exchange roots are accepted only when
+# unambiguous (BTC -> BTCF) so CME:BTC1! can be resolved without conflating spot
+# Bitcoin with the internal futures root.
+_EXECUTION_ROOT_ALIASES = {
+    product.execution_root: root
+    for root, product in FUTURES_PRODUCTS.items()
+    if product.execution_root != root
+}
+_CONT = re.compile(r"^(?:[A-Z0-9_]+:)?([A-Z0-9]+?)(\d+)!$")
 
 
 def parse_continuous(symbol: str) -> tuple[ContractSpec, int]:
-    """Return ``(spec, rank)`` for an execution-qualified continuous identity.
-
-    Registration is intentionally insufficient.  A product remains unrouteable until
-    its product-specific resolver and broker-readback path have been qualified.
-    """
+    """Return ``(spec, rank)`` for a statically qualified continuous identity."""
     m = _CONT.match(symbol.strip().upper())
-    if not m or m.group(1) not in SPECS:
+    if not m:
         raise ValueError(f"not a continuous futures identity: {symbol!r}")
-    return SPECS[m.group(1)], int(m.group(2))
+    raw_root = m.group(1)
+    root = raw_root if raw_root in SPECS else _EXECUTION_ROOT_ALIASES.get(raw_root)
+    if root is None or root not in SPECS:
+        raise ValueError(f"not a continuous futures identity: {symbol!r}")
+    rank = int(m.group(2))
+    if rank < 1:
+        raise ValueError("continuous futures rank must be >= 1")
+    return SPECS[root], rank
 
 
-def _third_friday(y: int, m: int) -> date:
-    d = date(y, m, 1)
-    d += timedelta(days=(4 - d.weekday()) % 7)
-    return d + timedelta(days=14)
+def _is_bday(d: date) -> bool:
+    return d.weekday() < 5 and d not in EXPIRY_HOLIDAYS
 
 
-def _last_bday_before(y: int, m: int) -> date:
-    d = date(y, m, 1) - timedelta(days=1)
-    while d.weekday() >= 5:
+def _previous_bday(d: date) -> date:
+    while not _is_bday(d):
         d -= timedelta(days=1)
     return d
 
@@ -114,53 +135,159 @@ def _last_bday_before(y: int, m: int) -> date:
 def _minus_bdays(d: date, n: int) -> date:
     while n:
         d -= timedelta(days=1)
-        if d.weekday() < 5:
+        if _is_bday(d):
             n -= 1
     return d
 
 
+def _third_weekday(y: int, m: int, weekday: int) -> date:
+    d = date(y, m, 1)
+    d += timedelta(days=(weekday - d.weekday()) % 7)
+    return d + timedelta(days=14)
+
+
+def _third_friday(y: int, m: int) -> date:
+    return _third_weekday(y, m, 4)
+
+
+def _third_wednesday(y: int, m: int) -> date:
+    return _third_weekday(y, m, 2)
+
+
+def _last_bday_of_month(y: int, m: int) -> date:
+    if m == 12:
+        d = date(y + 1, 1, 1) - timedelta(days=1)
+    else:
+        d = date(y, m + 1, 1) - timedelta(days=1)
+    return _previous_bday(d)
+
+
+def _last_bday_before(y: int, m: int) -> date:
+    return _previous_bday(date(y, m, 1) - timedelta(days=1))
+
+
+def _nth_last_bday_of_month(y: int, m: int, n: int) -> date:
+    d = _last_bday_of_month(y, m)
+    if n < 1:
+        raise ValueError("n must be >= 1")
+    remaining = n - 1
+    while remaining:
+        d -= timedelta(days=1)
+        if _is_bday(d):
+            remaining -= 1
+    return d
+
+
+def _prior_month(y: int, m: int) -> tuple[int, int]:
+    return (y - 1, 12) if m == 1 else (y, m - 1)
+
+
+def _last_friday(y: int, m: int) -> date:
+    d = _last_bday_of_month(y, m)
+    while d.weekday() != 4:
+        d -= timedelta(days=1)
+    return _previous_bday(d)
+
+
+def _wti_last_trade(y: int, m: int) -> date:
+    """WTI termination: three business days before adjusted prior-month 25th."""
+    py, pm = _prior_month(y, m)
+    anchor = _previous_bday(date(py, pm, 25))
+    return _minus_bdays(anchor, 3)
+
+
+def _ng_last_trade(y: int, m: int) -> date:
+    """Henry Hub termination: three business days before delivery month."""
+    return _minus_bdays(date(y, m, 1), 3)
+
+
 def contract_dates(spec: ContractSpec, y: int, m: int) -> tuple[date, date]:
-    """Return ``(last relevant date, roll date)`` for a qualified contract month."""
-    if spec.roll_model == "equity_third_friday":
+    """Return ``(last_relevant_date, conservative_roll_date)`` for a contract."""
+    model = spec.roll_model
+
+    if model == "equity_third_friday":
         third = _third_friday(y, m)
-        exp = third
-        while exp in EXPIRY_HOLIDAYS or exp.weekday() >= 5:
-            exp -= timedelta(days=1)
-        return exp, third - timedelta(days=EQUITY_ROLL_WEEKDAY_BEFORE)
-    if spec.roll_model == "metals_first_notice":
-        fnd = _last_bday_before(y, m)
-        return fnd, _minus_bdays(fnd, METALS_ROLL_BDAYS)
-    raise ValueError(
-        f"{spec.root}: execution resolver {spec.roll_model!r} is not implemented/qualified"
-    )
+        last = _previous_bday(third)
+        roll = _previous_bday(third - timedelta(days=EQUITY_ROLL_WEEKDAY_BEFORE))
+        return last, roll
+
+    if model == "metals_first_notice":
+        first_notice = _last_bday_before(y, m)
+        return first_notice, _minus_bdays(first_notice, STATIC_ROLL_LEAD_BDAYS)
+
+    if model == "third_last_business_day":
+        last = _nth_last_bday_of_month(y, m, 3)
+        return last, _minus_bdays(last, STATIC_ROLL_LEAD_BDAYS)
+
+    if model == "micro_copper_prior_month_third_last_business_day":
+        py, pm = _prior_month(y, m)
+        last = _nth_last_bday_of_month(py, pm, 3)
+        return last, _minus_bdays(last, STATIC_ROLL_LEAD_BDAYS)
+
+    if model == "wti_25th_prior_month":
+        last = _wti_last_trade(y, m)
+        return last, _minus_bdays(last, STATIC_ROLL_LEAD_BDAYS)
+
+    if model == "micro_wti_one_business_day_before_cl":
+        last = _minus_bdays(_wti_last_trade(y, m), 1)
+        return last, _minus_bdays(last, STATIC_ROLL_LEAD_BDAYS)
+
+    if model == "ng_three_business_days_prior_delivery":
+        last = _ng_last_trade(y, m)
+        return last, _minus_bdays(last, STATIC_ROLL_LEAD_BDAYS)
+
+    if model == "micro_ng_one_business_day_before_ng":
+        last = _minus_bdays(_ng_last_trade(y, m), 1)
+        return last, _minus_bdays(last, STATIC_ROLL_LEAD_BDAYS)
+
+    if model == "fx_two_business_days_before_third_wednesday":
+        last = _minus_bdays(_third_wednesday(y, m), 2)
+        return last, _minus_bdays(last, STATIC_ROLL_LEAD_BDAYS)
+
+    if model == "treasury_seven_business_days_before_month_end":
+        last = _minus_bdays(_last_bday_of_month(y, m), 7)
+        return last, _minus_bdays(last, STATIC_ROLL_LEAD_BDAYS)
+
+    if model == "crypto_last_friday":
+        last = _last_friday(y, m)
+        return last, _minus_bdays(last, STATIC_ROLL_LEAD_BDAYS)
+
+    raise ValueError(f"{spec.root}: static execution resolver {model!r} is not implemented")
 
 
 def code(spec: ContractSpec, y: int, m: int) -> str:
-    return f"{spec.root}{MONTH_CODES[m - 1]}{y % 100:02d}"
+    return f"{spec.execution_root}{MONTH_CODES[m - 1]}{y % 100:02d}"
 
 
 def resolve(symbol: str, on: date) -> dict:
-    """Front (or n-th) dated contract for a qualified continuous identity."""
+    """Return a conservative dated contract candidate for a continuous identity."""
     spec, nth = parse_continuous(symbol)
-    if nth < 1:
-        raise ValueError("continuous futures rank must be >= 1")
     months = [MONTH_CODES.index(c) + 1 for c in spec.cycle]
     chain = []
-    for y in (on.year - 1, on.year, on.year + 1, on.year + 2):
+    for y in (on.year - 1, on.year, on.year + 1, on.year + 2, on.year + 3):
         for m in months:
             last, roll = contract_dates(spec, y, m)
             if roll > on:
                 chain.append((roll, y, m, last))
     chain.sort()
     if len(chain) < nth:
-        raise ValueError(f"{spec.root}{nth}!: no qualified contract available for {on.isoformat()}")
+        raise ValueError(f"{spec.root}{nth}!: no static contract candidate for {on.isoformat()}")
+
     roll, y, m, last = chain[nth - 1]
+    contract = code(spec, y, m)
     return dict(
         continuous=f"{spec.root}{nth}!",
-        contract=code(spec, y, m),
+        execution_root=spec.execution_root,
+        contract=contract,
+        candidate_contract=contract,
         exchange=spec.exchange,
         roll_model=spec.roll_model,
         roll_date=roll.isoformat(),
         last_date=last.isoformat(),
         weekend_roll=roll.weekday() >= 5,
+        front_mapping_basis="static_calendar_candidate",
+        static_resolution=True,
+        broker_qualification_required=True,
+        execution_authorized=False,
+        live_authorized=False,
     )
