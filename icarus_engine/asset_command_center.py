@@ -62,6 +62,8 @@ class AssetCommandState:
     data_verified: bool
     data_fresh: bool
     structural_execution_qualified: bool
+    risk_controls_ready: bool
+    state_journal_ready: bool
     simulated_paper_tradeable: bool
     broker_paper_tradeable: bool
     live_authorized: bool
@@ -107,14 +109,29 @@ def build_asset_command_state(
     data_verified = data.get("verified_access") is True
     data_fresh = data.get("fresh") is True
     structural = execution.get("structural_qualified") is True
-    simulated_paper = bool(structural and data_verified and data_fresh)
-    broker_paper = execution.get("broker_paper_tradeable") is True
+    risk_controls_ready = runtime is not None and runtime.get("risk_controls_ready") is True
+    state_journal_ready = runtime is not None and runtime.get("state_journal_ready") is True
+    paper_authorized = execution.get("simulated_paper_authorized") is True
+    simulated_paper = bool(
+        structural and paper_authorized and data_verified and data_fresh
+        and risk_controls_ready and state_journal_ready
+    )
+    broker_paper = bool(
+        execution.get("broker_paper_tradeable") is True
+        and risk_controls_ready and state_journal_ready
+    )
 
     blockers: list[Optional[str]] = []
     if not (data_verified and data_fresh):
         blockers.append(data.get("blocker") or "market data is not verified and fresh")
     if not structural:
         blockers.append(execution.get("structural_blocker") or "dated-contract resolver is not qualified")
+    if not paper_authorized:
+        blockers.append("simulated-paper authorization is not verified")
+    if not risk_controls_ready:
+        blockers.append("risk controls are not verified")
+    if not state_journal_ready:
+        blockers.append("state/journal capability is not verified")
     if not broker_paper:
         blockers.append(broker.get("blocker") or "broker-paper path is not verified")
     blockers.append("live execution is disabled by owner policy")
@@ -141,6 +158,8 @@ def build_asset_command_state(
         data_verified=data_verified,
         data_fresh=data_fresh,
         structural_execution_qualified=structural,
+        risk_controls_ready=risk_controls_ready,
+        state_journal_ready=state_journal_ready,
         simulated_paper_tradeable=simulated_paper,
         broker_paper_tradeable=broker_paper,
         live_authorized=False,

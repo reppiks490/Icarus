@@ -39,10 +39,27 @@ def test_default_state_is_fail_closed_when_market_data_is_not_verified():
         assert any("provider" in blocker.lower() or "data" in blocker.lower() for blocker in state.blockers)
 
 
-def test_structurally_qualified_root_can_be_simulated_paper_ready_with_verified_data():
+def test_verified_data_alone_does_not_make_structural_root_simulated_paper_ready():
     index = build_system_index(provider_state=_verified_provider_state())
     state = build_asset_command_state("NQ", index=index)
     assert state.structural_execution_qualified is True
+    assert state.simulated_paper_tradeable is False
+    assert state.broker_paper_tradeable is False
+    assert state.live_tradeable is False
+    assert any("risk controls" in blocker.lower() for blocker in state.blockers)
+    assert any("state/journal" in blocker.lower() for blocker in state.blockers)
+
+
+def test_simulated_paper_readiness_requires_risk_and_state_capability():
+    index = build_system_index(provider_state=_verified_provider_state())
+    state = build_asset_command_state(
+        "NQ",
+        index=index,
+        runtime={"risk_controls_ready": True, "state_journal_ready": True},
+    )
+    assert state.structural_execution_qualified is True
+    assert state.risk_controls_ready is True
+    assert state.state_journal_ready is True
     assert state.simulated_paper_tradeable is True
     assert state.broker_paper_tradeable is False
     assert state.live_tradeable is False
@@ -51,7 +68,11 @@ def test_structurally_qualified_root_can_be_simulated_paper_ready_with_verified_
 
 def test_unqualified_root_stays_nontradeable_even_with_verified_data():
     index = build_system_index(provider_state=_verified_provider_state())
-    state = build_asset_command_state("CL", index=index)
+    state = build_asset_command_state(
+        "CL",
+        index=index,
+        runtime={"risk_controls_ready": True, "state_journal_ready": True},
+    )
     assert state.structural_execution_qualified is False
     assert state.simulated_paper_tradeable is False
     assert state.broker_paper_tradeable is False
