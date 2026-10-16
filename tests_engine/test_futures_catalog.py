@@ -106,10 +106,18 @@ def test_runtime_registry_is_derived_from_the_same_32_root_authority():
         assert spec.micro_of == (product.full_root if product.full_root != product.root else None)
 
 
-def test_new_continuous_futures_are_resolvable_but_dated_contracts_remain_forbidden():
-    for root in ("HG", "MHG", "CL", "MCL", "NG", "MNG", "6E", "M6E", "6J", "MJY", "6B", "M6B", "6A", "M6A", "ZN", "ZB"):
-        assert resolve_asset(f"{root}1!").symbol == root
-        assert resolve_asset(FUTURES_PRODUCTS[root].provider_symbol).symbol == root
+def test_catalogued_but_unqualified_futures_are_discoverable_and_runtime_fail_closed():
+    for root, product in FUTURES_PRODUCTS.items():
+        assert REGISTRY[root].symbol == root
+        if product.execution_qualified:
+            assert resolve_asset(f"{root}1!").symbol == root
+            assert resolve_asset(product.provider_symbol).symbol == root
+        else:
+            with pytest.raises(ValueError, match="unsupported continuous futures"):
+                resolve_asset(f"{root}1!")
+            with pytest.raises(ValueError, match="unsupported continuous futures"):
+                resolve_asset(product.provider_symbol)
+
     for dated in ("HGZ26", "MCLF27", "NGH27", "6EM26", "M6BZ27", "ZNH27", "ZBZ27"):
         with pytest.raises(ValueError, match="continuous-only"):
             resolve_asset(dated)
