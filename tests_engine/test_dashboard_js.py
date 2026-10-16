@@ -157,7 +157,7 @@ def test_shadow_excursions_render_only_with_a_positive_denominator(tmp_path):
         r"""
 const fs = require('node:fs');
 const vm = require('node:vm');
-const source = fs.readFileSync(process.argv[2], 'utf8');
+const source = fs.readFileSync(process.argv[2], 'utf8').replace(/\r\n/g, '\n');
 const helper = source.match(/const moneyWithDenominator = [\s\S]*?;\n/);
 if (!helper) throw new Error('excursion rendering helper not found');
 const context = {
