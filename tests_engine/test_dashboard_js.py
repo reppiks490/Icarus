@@ -166,6 +166,8 @@ def test_real_price_shadow_twin_dashboard_is_read_only_and_wired():
     assert "moneyWithDenominator" in ui
     assert "entry-commission adjusted" in ui
     assert "fullBySymbol" in ui
+    assert "position:fixed" in ui
+    assert "state.insertBefore" not in ui
 
 
 def test_strategy_tester_timeframes_are_cache_aware():
@@ -486,6 +488,11 @@ def test_dashboard_surfaces_authentic_market_data_console():
     assert "ts_recv_ns" in ui
     assert "ts_event_ns" in ui
     assert "data-market-history" in ui
+    assert "data-market-history-provider" in ui
+    assert "provider_symbol_candidates" in ui
+    assert "provider:provider" in ui
+    assert "Choose provider" in ui
+    assert "provider:'yahoo'" not in ui
     assert "/api/market-history/" in ui
     assert "localStorage.getItem('icarus-engine-token')" in ui
     assert "'Authorization':'Bearer '+token" in ui

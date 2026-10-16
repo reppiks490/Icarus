@@ -211,6 +211,28 @@ def test_find_history_falls_back_to_finest_other_tf(tmp_path):
     assert minutes == 5 and path.endswith("NQ_5m.csv")
 
 
+def test_find_history_recognizes_hour_suffix_without_upsampling(tmp_path):
+    hist = tmp_path / "history"
+    hist.mkdir()
+    rows = [
+        "ts,open,high,low,close,volume",
+        "2026-09-14T13:00:00Z,100,101,99,100.5,10",
+        "2026-09-14T14:00:00Z,100.5,102,100,101.5,12",
+    ]
+    (hist / "nq_1h.csv").write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+    path, minutes = find_history(str(tmp_path), "NQ", 60)
+
+    assert minutes == 60 and path.endswith("nq_1h.csv")
+    feed = HistoryHub(str(tmp_path))
+    start = ET_0930 - 30 * 60
+    hourly = feed.candles("NQ=F", 3600, start, start + 2 * 3600)
+    finer = feed.candles("NQ=F", 300, start, start + 2 * 3600)
+    assert len(hourly) == 2
+    assert [bar.v for bar in hourly] == [10, 12]
+    assert finer == []
+
+
 def test_warmup_uses_base_dir_not_cwd(tmp_path, monkeypatch):
     hist = tmp_path / "history"
     hist.mkdir()

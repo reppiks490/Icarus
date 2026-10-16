@@ -95,6 +95,7 @@ class USEquitiesCalendar:
     is extended, rather than extrapolating holidays or special closures.
     """
     name = "us_equities"
+    timezone_name = "America/New_York"
     open_24_7 = False
     session = "rth"
     SUPPORTED_YEARS = frozenset((2026, 2027, 2028))
