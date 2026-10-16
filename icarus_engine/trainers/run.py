@@ -8,7 +8,7 @@ from .dataset import attach_labels, walk_slices
 from .families import FAMILIES, family_for
 from .integrity import inspect_ohlc
 from .logit import accuracy, fit
-from . import xgb_slot
+from . import deep_challenger, xgb_slot
 from icarus_engine.spec import artifact
 
 def file_hash(path: Path) -> str:
@@ -41,6 +41,17 @@ def _preflight(asset, slot):
     if ignored_symbol(asset):
         return {"status": "ignored", "reason": "MBT/SOL/ETHUSD are not traded", "asset": asset,
                 "execution_authorized": False}
+    return None
+
+def _challenger_preflight(asset, model):
+    if not asset:
+        return {"status": "blocked", "reason": f"Research challenger {model} needs --asset",
+                "lane": "deep_learning_challenger", "model": model,
+                "execution_authorized": False, "production_decision_authorized": False}
+    if ignored_symbol(asset):
+        return {"status": "ignored", "reason": "MBT/SOL/ETHUSD are not traded", "asset": asset,
+                "lane": "deep_learning_challenger", "model": model,
+                "execution_authorized": False, "production_decision_authorized": False}
     return None
 
 def _too_short(bars, fam, fam_name, asset, path, manifest):
@@ -100,6 +111,36 @@ def train_xgb_file(path, chart_type: str, schema: str = "ohlc", asset: str = "",
     return xgb_slot.train(
         attach_labels(bars, fam_name), asset, fam_name,
         out_path=Path(out) if out else Path(artifact(asset, fam_name, "xgb")),
+        ledger_path=ledger, dataset_sha256=manifest["raw_sha256"],
+        extra={"path": str(path), "index": fam.index, "label": fam.label, "n_bars": len(bars),
+               "dataset_manifest": manifest},
+    )
+
+def train_deep_gru_file(path, chart_type: str, schema: str = "ohlc", asset: str = "", out=None, ledger=None, *, raw_bytes=None):
+    """Fit the optional GRU in an external research lane; frozen trainer slots remain unchanged."""
+    refusal = _challenger_preflight(asset, "gru")
+    if refusal:
+        return refusal
+    path = Path(path)
+    fam_name = family_for(chart_type, schema)
+    fam = FAMILIES[fam_name]
+    bars, manifest, refusal = _load(
+        path, raw_bytes=raw_bytes, family=fam_name, asset=asset,
+        lane="deep_learning_challenger", model="gru",
+    )
+    if refusal:
+        refusal["production_decision_authorized"] = False
+        refusal["auto_promote"] = False
+        return refusal
+    short = _too_short(bars, fam, fam_name, asset, path, manifest)
+    if short:
+        short.update({"lane": "deep_learning_challenger", "model": "gru",
+                      "production_decision_authorized": False, "auto_promote": False})
+        return short
+    default_out = Path("run/trainers") / f"{asset.upper()}_{fam_name}_deep_gru.json"
+    return deep_challenger.train(
+        attach_labels(bars, fam_name), asset, fam_name,
+        out_path=Path(out) if out else default_out,
         ledger_path=ledger, dataset_sha256=manifest["raw_sha256"],
         extra={"path": str(path), "index": fam.index, "label": fam.label, "n_bars": len(bars),
                "dataset_manifest": manifest},

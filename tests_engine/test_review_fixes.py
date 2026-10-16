@@ -140,6 +140,14 @@ def test_newey_west_widens_the_error_of_a_correlated_series():
     assert 0.0 <= paired_test(white)["p"] <= 1.0
 
 
+def test_newey_west_honors_known_overlap_minimum_lag():
+    from icarus_engine.trainers.metrics import paired_test
+    differences = [(-0.02 if i % 2 else 0.01) for i in range(100)]
+
+    assert paired_test(differences)["lag"] == 4
+    assert paired_test(differences, minimum_lag=15)["lag"] == 15
+
+
 def test_valid_requires_significance_against_both_baselines(tmp_path):
     from icarus_engine.trainers.run import train_xgb_file
     r = train_xgb_file(_pattern_csv(tmp_path / "NQ.csv"), "minutes", "ohlc", "NQ", out=tmp_path / "x.json",
