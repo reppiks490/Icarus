@@ -31,6 +31,18 @@ def _qualified_snapshot():
     })
     yahoo = next(item for item in row["provider_symbol_candidates"] if item["provider"] == "yahoo")
     yahoo["mapping_status"] = "VERIFIED"
+    # This is a qualified synthetic catalog, independent of the dated public
+    # listing report shipped in the repository.
+    identity = {key: row[field] for key, field in (
+        ("symbol", "display_symbol"), ("venue", "venue"), ("name", "name"),
+        ("instrument_type", "instrument_type"), ("depositary_ratio", "depositary_ratio"),
+    )}
+    catalog["listing_crosswalk"] = {
+        "status": "CURRENT", "results": [{
+            "instrument_id": row["instrument_id"], "status": "MATCHED",
+            "expected": identity, "observed": deepcopy(identity),
+        }],
+    }
     catalog["counts"].update({
         "source_connected_count": 1,
         "entitlement_verified_count": 1,
@@ -130,6 +142,27 @@ def test_qualified_historical_batch_runs_pulse_in_signal_only_research_mode(monk
     assert runner.em.open == []
     assert runner.em.closed == []
     assert runner.em.fills == []
+
+
+@pytest.mark.parametrize("mutation", ["missing", "stale", "mismatched"])
+def test_research_admission_requires_current_matching_listing_identity(monkeypatch, mutation):
+    catalog, row = _qualified_snapshot()
+    _enable_test_adjustment_witness(monkeypatch)
+    if mutation == "missing":
+        catalog.pop("listing_crosswalk")
+    elif mutation == "stale":
+        catalog["listing_crosswalk"]["status"] = "STALE"
+    else:
+        catalog["listing_crosswalk"]["results"][0]["observed"]["symbol"] = "OTHER"
+    bars, receipt = _qualified_batch(row)
+
+    admission = qualify_a200_pulse_batch(
+        row["instrument_id"], bars, receipt, catalog=catalog,
+        now_ns=receipt.received_at_ns,
+    )
+
+    assert admission.admitted is False
+    assert admission.reasons == ("IDENTITY_NOT_VERIFIED",)
 
 
 def test_admission_and_session_creation_use_one_catalog_snapshot(monkeypatch):
