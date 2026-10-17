@@ -2,6 +2,8 @@
 
 This directory is the canonical onboarding surface for external agents, research systems, provider adapters, and later verification/release agents that need to connect to ICARUS without silently changing trading behavior.
 
+Current scoped verification: [2026-10-17 futures integration](FUTURES_INTEGRATION_VERIFICATION_20261017.md) records the stopped stack's source pins, strict authorization repair, tests, and remaining runtime/release gates.
+
 ## Status
 
 - Added as an **additive coordination layer**.
