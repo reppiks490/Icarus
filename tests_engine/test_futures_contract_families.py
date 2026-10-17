@@ -95,3 +95,18 @@ def test_representative_structural_candidates_are_deterministic_on_current_audit
         assert first["contract"] == code
         assert first["roll_date"] <= first["last_date"]
         assert first["execution_authorized"] is False
+
+
+@pytest.mark.parametrize("root", ["ES", "CL", "BTCF"])
+def test_static_resolution_fails_closed_beyond_supported_calendar_years(root):
+    with pytest.raises(ValueError, match="calendar coverage is limited to 2026-2028"):
+        resolve_candidate(f"{root}1!", date(2029, 1, 2))
+
+
+def test_business_day_helpers_fail_closed_outside_calendar_coverage():
+    from icarus_futures.contracts import _is_bday, _is_london_bday
+
+    with pytest.raises(ValueError, match="calendar coverage is limited to 2026-2028"):
+        _is_bday(date(2029, 1, 1))
+    with pytest.raises(ValueError, match="calendar coverage is limited to 2026-2028"):
+        _is_london_bday(date(2029, 1, 1))

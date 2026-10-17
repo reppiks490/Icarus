@@ -20,8 +20,10 @@ from icarus_engine.futures_catalog import FUTURES_PRODUCTS, FuturesProduct
 MONTH_CODES = "FGHJKMNQUVXZ"
 EQUITY_ROLL_WEEKDAY_BEFORE = 4
 STATIC_ROLL_LEAD_BDAYS = 2
+CALENDAR_FIRST_YEAR = 2026
+CALENDAR_LAST_YEAR = 2028
 
-EQUITY_EXPIRY_HOLIDAYS = frozenset({date(2026, 6, 19)})
+EQUITY_EXPIRY_HOLIDAYS = frozenset({date(2026, 6, 19), date(2027, 6, 18)})
 CME_FULL_CLOSURES = frozenset({
     date(2026, 1, 1), date(2026, 4, 3), date(2026, 12, 25),
     date(2027, 1, 1), date(2027, 3, 26), date(2027, 12, 24),
@@ -146,11 +148,21 @@ def parse_continuous(symbol: str) -> tuple[ContractSpec, int]:
 
 
 def _is_bday(d: date) -> bool:
+    _require_calendar_coverage(d)
     return d.weekday() < 5 and d not in CME_FULL_CLOSURES
 
 
 def _is_london_bday(d: date) -> bool:
+    _require_calendar_coverage(d)
     return d.weekday() < 5 and d not in LONDON_BANK_HOLIDAYS
+
+
+def _require_calendar_coverage(d: date) -> None:
+    if not CALENDAR_FIRST_YEAR <= d.year <= CALENDAR_LAST_YEAR:
+        raise ValueError(
+            f"static futures calendar coverage is limited to "
+            f"{CALENDAR_FIRST_YEAR}-{CALENDAR_LAST_YEAR}; got {d.isoformat()}"
+        )
 
 
 def _previous_bday(d: date) -> date:
@@ -287,10 +299,20 @@ def code(spec: ContractSpec, y: int, m: int) -> str:
 
 
 def _resolve_spec(spec: ContractSpec, nth: int, on: date) -> dict:
+    _require_calendar_coverage(on)
     months = [MONTH_CODES.index(c) + 1 for c in spec.cycle]
     chain = []
-    for y in (on.year - 1, on.year, on.year + 1, on.year + 2, on.year + 3):
+    # A candidate's roll date is within its contract year for every supported
+    # family, so earlier contract years cannot contribute future candidates.
+    first_year = max(CALENDAR_FIRST_YEAR, on.year)
+    last_year = min(CALENDAR_LAST_YEAR, on.year + 3)
+    for y in range(first_year, last_year + 1):
         for m in months:
+            # Earlier delivery months have already passed their conservative
+            # roll dates. In January the January delivery has already rolled
+            # before the first calendar day, so it can be omitted as well.
+            if (y, m) < (on.year, on.month) or (y == on.year and m == 1 and on.month == 1):
+                continue
             last, roll = contract_dates(spec, y, m)
             if roll > on:
                 chain.append((roll, y, m, last))
