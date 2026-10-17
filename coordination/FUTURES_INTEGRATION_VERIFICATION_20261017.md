@@ -30,7 +30,7 @@ python -m pip install -e '.[dev,ml,bridge,databento]'
 python -m pytest tests_engine -q -o addopts='' --tb=short
 ```
 
-Hosted exact-head checks and independent integration review are still required. Local Linux success is not Windows or browser visual verification. Documentation added after the pinned code run changes no tested Python source.
+Hosted exact-head checks and independent integration review are still required. Local Linux success is not Windows or browser visual verification. Changes after the pinned code run add documentation and append the seven new Brain/futures/index/command-state/A200 test modules to the existing Windows pytest list. They change no runtime Python source or scheduler. The older green Windows subset did not exercise these modules; only a later exact-head run with the expanded list can establish that coverage.
 
 ## Reach and remaining gates
 
