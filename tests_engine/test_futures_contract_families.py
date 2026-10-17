@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pytest
 
@@ -110,3 +110,35 @@ def test_business_day_helpers_fail_closed_outside_calendar_coverage():
         _is_bday(date(2029, 1, 1))
     with pytest.raises(ValueError, match="calendar coverage is limited to 2026-2028"):
         _is_london_bday(date(2029, 1, 1))
+
+
+@pytest.mark.parametrize("gold,quantity", [("GCZ26", 1), ("MGCZ26", 10)])
+@pytest.mark.parametrize("silver,position", [("SIZ26", 1), ("SILZ26", 5)])
+def test_full_and_micro_metals_share_the_existing_portfolio_risk_budget(gold, quantity, silver, position):
+    from icarus_futures.orders import Intent
+    from icarus_futures.risk import PortfolioState, RiskGovernor
+
+    state = PortfolioState(
+        positions={silver: position},
+        marks={silver: 40.0, gold: 4000.0},
+        data_age_s={gold: 0.0},
+    )
+    intent = Intent("risk-regression", gold, "BUY", quantity, "MARKET")
+    now = datetime(2026, 10, 17, tzinfo=timezone.utc)
+    decision = RiskGovernor().evaluate(intent, state, now)
+
+    # $200k silver + $400k gold breaches the existing $500k metals budget.
+    assert decision.allowed is False
+    assert decision.codes == ["CLUSTER_LIMIT"]
+
+    # Exactly $500k is still permitted: the correction must preserve the limit.
+    state.marks[gold] = 3000.0
+    at_limit = RiskGovernor().evaluate(intent, state, now)
+    assert at_limit.allowed is True
+    assert at_limit.codes == []
+
+
+@pytest.mark.parametrize("root", ["GC", "MGC", "SI", "SIL"])
+def test_metals_keep_legacy_contract_kind_independently_of_catalog_class(root):
+    assert FUTURES_PRODUCTS[root].asset_class == "metal"
+    assert SPECS[root].kind == "metals"

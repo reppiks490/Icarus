@@ -61,7 +61,7 @@ class ContractSpec:
     def kind(self) -> str:
         if self.cluster == "equity_index":
             return "equity"
-        if self.cluster == "metal":
+        if self.cluster in {"metal", "metals"}:
             return "metals"
         return self.roll_model
 
@@ -79,7 +79,9 @@ def _contract_spec(product: FuturesProduct) -> ContractSpec:
         exchange=product.exchange,
         tick_size=product.tick_size,
         tick_value=product.tick_value,
-        cluster=product.asset_class,
+        # RiskConfig's established budget keys are a separate public contract
+        # from the catalog's asset classification.
+        cluster="metals" if product.asset_class == "metal" else product.asset_class,
         full_root=product.full_root,
         ratio_to_full=product.ratio_to_full,
         cycle=product.cycle,
