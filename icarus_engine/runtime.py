@@ -15,6 +15,7 @@ import collections
 import copy
 import csv
 import hashlib
+import importlib.util
 import dataclasses
 import io
 import json
@@ -228,6 +229,20 @@ class Journal:
         with self._lock:
             self.con.execute("INSERT INTO equity VALUES (?,?)", (time.time(), equity))
             self.con.commit()
+
+    def closed_paper_profit(self) -> Dict[str, Any]:
+        """Persisted closures processed after the live paper cutover, across runs.
+
+        A trade can have entered during warmup and closed after cutover. This is
+        deliberately a closure-time measure, not a broker account statement.
+        """
+        with self._lock:
+            profit, count, last_close = self.con.execute(
+                "SELECT COALESCE(SUM(profit), 0), COUNT(*), MAX(exit_ts) "
+                "FROM trades WHERE live=1"
+            ).fetchone()
+        return {"realized_pnl": float(profit), "closed_pieces": int(count),
+                "last_close_ts": int(last_close) if last_close is not None else None}
 
     def export_trades_csv(self, path: str, *, live_only: bool = False) -> int:
         with self._lock:
@@ -487,6 +502,7 @@ class AssetRunner:
         self.latency_telemetry = None
         feeds = feeds or {}
         self.feed = feeds.get(self.spec.feed) or (Yahoo() if self.spec.feed == "yahoo" else Coinbase())
+        self.history_feed = feeds.get("databento_history")
         self.kraken = Kraken()
         self.cal = get_calendar(self.spec.calendar, self.spec.anchor_et, session=self.spec.session, group=self.spec.group)
         self.chart_mode, self.chart_value = chart_timeframe_parts(self.spec.chart_tf)
@@ -520,8 +536,8 @@ class AssetRunner:
         self.T_w: Optional[int] = None
         self._build_engine()
         self.bar_index = -1
-        self.bars: Deque[Bar] = collections.deque(maxlen=900)
-        self.overlays: Deque[Dict[str, Any]] = collections.deque(maxlen=900)
+        self.bars: Deque[Bar] = collections.deque(maxlen=2000)
+        self.overlays: Deque[Dict[str, Any]] = collections.deque(maxlen=2000)
         self.state: Dict[str, Any] = {}
         self.live_from_ts: Optional[int] = None
         self.live_closed_start: int = 0               # exact closed-trade boundary; avoids bar-start timestamp misclassification
@@ -661,6 +677,15 @@ class AssetRunner:
         self.overlays.append({"ts": chart.ts, "st": st["rate_st_line"], "up": st["rate_uptrend"], "tp1": st["tp1_price"], "tp2": st["tp2_price"],
                               "sl": st["sl_price"], "vwap": st["vwap"], "kf": st["kf_level"], "pos": st["rate_qty_open"] * (1 if st["rate_pos_long"] else -1),
                               "tide_hi": st["tide_hi"], "tide_lo": st["tide_lo"], "pulse": max(st["pulse_l"], st["pulse_s"]), "real_c": real.c})
+        self._record_new_execution(live=live)
+        for ev in self.strat.events:
+            self.recent_events.append(dict(ev, live=live))
+            if live:
+                self.journal.log("INFO", f"[{self.symbol}] {ev['text']}")
+        self.strat.events.clear()
+
+    def _record_new_execution(self, *, live: bool) -> None:
+        """Journal emulator fills from both market bars and manual paper flatten."""
         for f in self.em.fills[self._fills_seen:]:
             self.recent_fills.append({"ts": f.ts, "bar": f.bar, "id": f.entry_id, "side": f.side, "qty": f.qty, "price": f.price,
                                       "kind": f.kind, "comment": f.comment, "profit": f.profit, "pos": f.position_after, "live": live})
@@ -680,11 +705,6 @@ class AssetRunner:
         self._closed_seen = len(self.em.closed)
         if live and len(self.em.closed) > closed_before_count:
             self._refresh_performance_guard()
-        for ev in self.strat.events:
-            self.recent_events.append(dict(ev, live=live))
-            if live:
-                self.journal.log("INFO", f"[{self.symbol}] {ev['text']}")
-        self.strat.events.clear()
 
     def on_sub_bar(self, b: Bar, sub_minutes: int, live: bool, record: bool = True) -> None:
         """Feed one genuine minute-or-coarser sub-bar to HTF chains and minute charts."""
@@ -753,6 +773,8 @@ class AssetRunner:
     # ── warm-up ──
     def warmup(self, now_ts: Optional[int] = None) -> None:
         now = int(now_ts or time.time())
+        base = self.cfg.base_dir or os.getcwd()
+        hist, minutes = find_history(base, self.symbol, self.chart_minutes)  # Grok (xAI) — 2026-09-20: prefer history/ over Yahoo; plant root over cwd
         span = self.cfg.warmup_bars * self.chart_minutes * 60
         if not self.cal.open_24_7:
             if getattr(self.cal, "session", "eth") == "rth":  # ~20 bars per trading day (09:30-16:15 ET), 5 days a week
@@ -760,25 +782,55 @@ class AssetRunner:
                 span = int(self.cfg.warmup_bars / per_day * 7 / 5 * 86400) + 3 * 86400
             else:                                             # 5 sessions of 23h per week → stretch the calendar window
                 span = int(span * 7 / 5 * 24 / 23) + 86400
+        provider_days = None
+        if not hist and type(self.feed).__name__ == "Yahoo" and 0 < self.chart_minutes < 1440:
+            # Use Yahoo's available intraday range when the configured bar count is
+            # shorter. The current replay path uses 1m candles (29d) for charts
+            # below 5m and 5m+1m candles (59d) for 5m-aligned charts. Never extend
+            # the requested window past the bars the provider can actually supply.
+            provider_days = 59 if self.chart_minutes >= 5 and self.chart_minutes % 5 == 0 else 29
+            span = max(span, provider_days * 86400)
+        databento_feed = self.spec.kind == "futures" and type(self.feed).__name__ == "Databento"
+        databento_primary = not hist and databento_feed
+        databento_days = self._databento_history_days() if databento_feed else 0
+        history_floor = now - databento_days * 86400 if databento_feed else None
+        if databento_primary:
+            provider_days = databento_days
         T_w = self.cal.bucket_start(now - span, 1440)
+        if history_floor is not None:
+            T_w = max(T_w, history_floor)
         self.T_w = T_w
-        base = self.cfg.base_dir or os.getcwd()
-        hist, minutes = find_history(base, self.symbol, self.chart_minutes)  # Grok (xAI) — 2026-09-20: prefer history/ over Yahoo; plant root over cwd
+        display_capacity = max(2000, self.cfg.warmup_bars)
+        if provider_days:
+            if getattr(self.cal, "session", "eth") == "rth":
+                per_day = max(1, 405 // self.chart_minutes)
+            else:
+                per_day = max(1, (23 * 60) // self.chart_minutes)
+            sessions = math.ceil(provider_days * 5 / 7)
+            display_capacity = max(display_capacity, per_day * sessions + 2)
+        display_capacity = min(50000, display_capacity)
+        self.bars = collections.deque(self.bars, maxlen=display_capacity)
+        self.overlays = collections.deque(self.overlays, maxlen=display_capacity)
         if hist:
             src = f"history/{os.path.basename(hist)} ({minutes}m)"
         elif file_feed_mode():
             src = f"HistoryHub ({base}/history) — no CSV yet, Yahoo is not contacted"
         else:
             src = self.spec.feed
-        self.journal.log("INFO", f"[{self.symbol}] warm-up from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={_session_mode(self.cal)} security={self.spec.security_source}" + (f" continuous={self.spec.tv_symbol or self.spec.ticker}" if self.spec.kind == "futures" else ""))
+        horizon = f", source horizon up to {provider_days}d" if provider_days else ""
+        if databento_primary:
+            horizon = f", Databento-only history up to {databento_days}d"
+        self.journal.log("INFO", f"[{self.symbol}] warm-up requested from {time.strftime('%Y-%m-%d %H:%M', time.gmtime(T_w))}Z ({self.cfg.warmup_bars} x {self.chart_minutes}m bars requested{horizon}, {src}) mintick={self.mintick} x{self.spec.multiplier} slip={self.spec.slippage_ticks}t chart={self.spec.chart_type} fills={self.spec.fill_on} session={_session_mode(self.cal)} security={self.spec.security_source}" + (f" continuous={self.spec.tv_symbol or self.spec.ticker}" if self.spec.kind == "futures" else ""))
         if hist:
-            self._warmup_from_csv(hist, now, source_minutes=minutes)
+            self._warmup_from_csv(hist, now, source_minutes=minutes, history_floor=history_floor)
             self._file_waiting = False
         elif file_feed_mode():
             self._file_waiting = True
             self.journal.log("WARN", f"[{self.symbol}] ICARUS_FEED=file and no history/{self.symbol}_*m.csv — waiting for drop ingest; Yahoo is not contacted")
         elif self.spec.feed == "yahoo":
-            self._warmup_yahoo(T_w, now)  # same interface for Yahoo or Databento continuous futures
+            self._warmup_yahoo(T_w, now, history_floor=history_floor)  # selected primary feed only; provider series are never stitched
+            if databento_primary and not self.subbars:
+                raise RuntimeError(f"[{self.symbol}] Databento returned no replay bars inside the configured history window")
         else:
             self._warmup_coinbase(T_w, now)
         self.live_from_ts = now
@@ -791,9 +843,21 @@ class AssetRunner:
         self._refresh_performance_guard()
         self.journal.log("INFO", f"[{self.symbol}] warm-up done: {self.bar_index + 1} chart bars, {len(self.em.closed)} historical trades, net {self.em.netprofit:+.2f}; market {self.cal.describe(now)}")
 
-    def _closed_only(self, bars: List[Bar], ticker: str) -> List[Bar]:
+    @staticmethod
+    def _databento_history_days() -> int:
+        raw = os.environ.get("ICARUS_DATABENTO_HISTORY_DAYS", "365").strip()
+        try:
+            days = int(raw)
+        except ValueError as ex:
+            raise ValueError("ICARUS_DATABENTO_HISTORY_DAYS must be an integer from 1 to 3650") from ex
+        if not 1 <= days <= 3650:
+            raise ValueError("ICARUS_DATABENTO_HISTORY_DAYS must be between 1 and 3650")
+        return days
+
+    def _closed_only(self, bars: List[Bar], ticker: str, *, feed: Any = None) -> List[Bar]:
         """Drop the feed's still-forming minute: closed <=> ts + 60 <= the feed's clock (regularMarketTime)."""
-        ft = int((getattr(self.feed, "_meta", {}).get(ticker) or {}).get("regularMarketTime") or 0)
+        source = feed if feed is not None else self.feed
+        ft = int((getattr(source, "_meta", {}).get(ticker) or {}).get("regularMarketTime") or 0)
         if ft:
             self.feed_time = ft
             return [b for b in bars if b.ts + 60 <= ft]
@@ -879,26 +943,31 @@ class AssetRunner:
         for b in ones:
             self.on_sub_bar(b, 1, live=False)
 
-    def _warmup_yahoo(self, T_w: int, now: int) -> None:
+    def _warmup_yahoo(self, T_w: int, now: int, *, history_floor: Optional[int] = None) -> None:
         y: Yahoo = self.feed
         tk = self.spec.ticker                                 # provider-native continuous symbol (e.g. NQ=F)
         tki = self.spec.ticker                                # intraday also stays continuous; no month-coded expiry contract
-        daily = self._fetch_historical_candles(y, tk, 86400, T_w - 900 * 86400, T_w)
+        bounded = lambda start: max(start, history_floor) if history_floor is not None else start
+        daily_start = bounded(T_w - 900 * 86400)
+        daily = self._fetch_historical_candles(y, tk, 86400, daily_start, T_w) if daily_start < T_w else []
         daily = [Bar(self.cal.bucket_start(b.ts, 1440), b.o, b.h, b.l, b.c, b.v) for b in daily]   # stamp at the session open
         self._feed_deep([m for m in self.chains if m >= 1440], daily, 1440)
         rth = getattr(self.cal, "session", "eth") == "rth"
         if rth:                                               # RTH hourly buckets sit at :30 - build them from 15-minute bars (60 days)
             hourly = []
         else:
-            hourly = self._fetch_historical_candles(y, tki, 3600, max(T_w - 400 * 86400, now - 729 * 86400), T_w)
+            hourly_start = bounded(max(T_w - 400 * 86400, now - 729 * 86400))
+            hourly = self._fetch_historical_candles(y, tki, 3600, hourly_start, T_w) if hourly_start < T_w else []
             self._feed_deep([m for m in self.chains if 60 <= m < 1440], hourly, 60)
-        q15 = self._fetch_historical_candles(y, tki, 900, max(T_w - 40 * 86400, now - 59 * 86400), T_w)
+        q15_start = bounded(max(T_w - 40 * 86400, now - 59 * 86400))
+        q15 = self._fetch_historical_candles(y, tki, 900, q15_start, T_w) if q15_start < T_w else []
         self._feed_deep([m for m in self.chains if 15 <= m < 1440 and m % 15 == 0 and (rth or m < 60)], q15, 15)
-        fives_deep = self._fetch_historical_candles(y, tki, 300, max(T_w - 20 * 86400, now - 59 * 86400), T_w)
+        fives_deep_start = bounded(max(T_w - 20 * 86400, now - 59 * 86400))
+        fives_deep = self._fetch_historical_candles(y, tki, 300, fives_deep_start, T_w) if fives_deep_start < T_w else []
         self._feed_deep([m for m in self.chains if 5 <= m < 15 and m % 5 == 0], fives_deep, 5)
-        one_from = max(T_w, now - 29 * 86400)
-        fives = self._fetch_historical_candles(y, tki, 300, T_w, one_from) if one_from > T_w else []
-        ones = self._closed_only(self._fetch_historical_candles(y, tki, 60, one_from, now), tki)
+        one_from = bounded(max(T_w, now - 29 * 86400))
+        fives = self._fetch_historical_candles(y, tki, 300, bounded(T_w), one_from) if one_from > bounded(T_w) else []
+        ones = self._closed_only(self._fetch_historical_candles(y, tki, 60, one_from, now), tki) if one_from < now else []
         self.journal.log("INFO", f"[{self.symbol}] deep {len(daily)}d/{len(hourly)}h/{len(q15)}x15m/{len(fives_deep)}x5m; {len(fives)} five-minute + {len(ones)} one-minute sub-bars; replaying")
         for b in fives:
             self.on_sub_bar(b, 5, live=False)
@@ -907,7 +976,10 @@ class AssetRunner:
                 continue
             self.on_sub_bar(b, 1, live=False)
 
-    def _warmup_from_csv(self, path: str, now: int, source_minutes: Optional[int] = None) -> None:
+    def _warmup_from_csv(
+        self, path: str, now: int, source_minutes: Optional[int] = None,
+        *, history_floor: Optional[int] = None,
+    ) -> None:
         """Warm up from a TradingView Supercharts export (or canonical history/*.csv).
 
         Grok (xAI) — 2026-09-20. Prefer a 1-minute dump: HTF/LTF chains then
@@ -919,6 +991,10 @@ class AssetRunner:
         if source_minutes is None:
             source_minutes = max(1, detect_granularity(rows) // 60)
         source_minutes = int(source_minutes)
+        display_capacity = min(50000, max(self.bars.maxlen, len(rows)))
+        if display_capacity > self.bars.maxlen:
+            self.bars = collections.deque(self.bars, maxlen=display_capacity)
+            self.overlays = collections.deque(self.overlays, maxlen=display_capacity)
         span = (
             time.strftime("%Y-%m-%d", time.gmtime(rows[0].ts)) + " → " +
             time.strftime("%Y-%m-%d", time.gmtime(rows[-1].ts))
@@ -933,7 +1009,10 @@ class AssetRunner:
                 return  # Grok (xAI) — offline plant: the CSV is the whole tape; do not call Yahoo for a tail
             tail_from = rows[-1].ts + source_minutes * 60
             try:
-                ones = self._fetch_historical_candles(self.feed, self.spec.ticker, 60, max(tail_from, now - 29 * 86400), now)
+                tail_start = max(tail_from, now - 29 * 86400)
+                if history_floor is not None:
+                    tail_start = max(tail_start, history_floor)
+                ones = self._fetch_historical_candles(self.feed, self.spec.ticker, 60, tail_start, now)
                 if self.spec.feed == "yahoo":
                     ones = self._closed_only(ones, self.spec.ticker)
                 for b in ones:
@@ -1267,6 +1346,8 @@ class AssetRunner:
                     mark = float(self.last_price)
                     fake = Bar(int(time.time()), mark, mark, mark, mark, 0.0)
                     self.em.process_bar(fake, self.bar_index)
+                self._record_new_execution(live=True)
+                self.publish_read_views()
             self.journal.log("WARN", f"[{self.symbol}] FLATTEN ({reason}): {len(entry_ids)} position(s), {cancelled} pending entry intent(s) cancelled")
             return len(entry_ids)
 
@@ -1296,7 +1377,7 @@ class AssetRunner:
     def publish_read_views(self) -> None:
         """Publish immutable display-only views while holding the runner lock."""
         captured = time.time()
-        self._public_views = ((self._summary(), captured), (self._chart(900), captured))
+        self._public_views = ((self._summary(), captured), (self._chart(self.bars.maxlen), captured))
 
     def _busy_read_view(self, index: int) -> Dict[str, Any]:
         views = self._public_views
@@ -1322,6 +1403,9 @@ class AssetRunner:
 
     def _feed_health_view(self) -> Dict[str, Any]:
         """Return provider health from memory only; status endpoints must never do I/O."""
+        cached_meta = getattr(self.feed, "cached_meta", None)
+        if callable(cached_meta):
+            return cached_meta(self.spec.ticker)
         if type(self.feed).__name__ == "Databento" and hasattr(self.feed, "meta"):
             return self.feed.meta(self.spec.ticker)
         cached = getattr(self.feed, "_meta", None)
@@ -1375,7 +1459,8 @@ class AssetRunner:
             "continuous_contract": bool(self.spec.kind == "futures"), "contract_policy": "continuous_only" if self.spec.kind == "futures" else "not_applicable",
             "continuous_symbol": self.spec.tv_symbol or self.spec.ticker,
             "provider_symbol": self.spec.ticker,
-            "feed_provider": ("databento" if type(self.feed).__name__ == "Databento" else self.spec.feed),
+            "feed_provider": getattr(self.feed, "provider_name", None) or (
+                "databento" if type(self.feed).__name__ == "Databento" else self.spec.feed),
             "feed_capabilities": (self.feed.capabilities() if hasattr(self.feed, "capabilities") else {}),
             "feed_health": self._feed_health_view(),
             "last_bar_batch_receipt": self.last_bar_batch_receipt,
@@ -1442,27 +1527,31 @@ class AssetRunner:
             "htf_tfs": self.htf_tfs,
         })
 
-    def chart(self, n: int = 240, *, nonblocking: bool = False) -> Dict[str, Any]:
+    def chart(self, n: int = 240, *, offset: int = 0, nonblocking: bool = False) -> Dict[str, Any]:
+        n = max(1, min(int(n), 5000))
+        offset = max(0, min(int(offset), 50000))
+        def page(row: Dict[str, Any]) -> Dict[str, Any]:
+            total = len(row["bars"])
+            end = max(0, total - offset)
+            start = max(0, end - n)
+            row["bars"] = row["bars"][start:end]
+            row["overlays"] = row["overlays"][start:end]
+            row["fills"] = [f for f in row["fills"] if row["bars"] and row["bars"][0][0] <= f["ts"] <= row["bars"][-1][0]]
+            row["history"] = {"available": total, "offset": offset, "page_size": n, "has_older": start > 0, "has_newer": offset > 0}
+            return row
         if not nonblocking:
             with self.lock:
-                return self._chart(n)
+                return page(self._chart(self.bars.maxlen))
         if not self.lock.acquire(timeout=0.05):
             row = self._busy_read_view(1)
-            row["bars"] = row["bars"][-n:]
-            row["overlays"] = row["overlays"][-n:]
-            row["fills"] = [f for f in row["fills"] if row["bars"] and f["ts"] >= row["bars"][0][0]]
-            return row
+            return page(row)
         try:
-            row = self._chart(900)
+            row = self._chart(self.bars.maxlen)
             views = self._public_views or (None, None)
             self._public_views = (views[0], (row, time.time()))
         finally:
             self.lock.release()
-        row = copy.deepcopy(row)
-        row["bars"] = row["bars"][-n:]
-        row["overlays"] = row["overlays"][-n:]
-        row["fills"] = [f for f in row["fills"] if row["bars"] and f["ts"] >= row["bars"][0][0]]
-        return row
+        return page(copy.deepcopy(row))
 
     def _chart(self, n: int = 240) -> Dict[str, Any]:
         bars = list(self.bars)[-n:]
@@ -1515,19 +1604,30 @@ class Portfolio:
         if feeds is not None:
             self.feeds = feeds
             self.feed_mode = "file" if file_feed_mode() else ("databento" if requested_feed == "databento" else "live")
+            self.feeds.setdefault("databento_history", None)
         elif file_feed_mode():
             hub = HistoryHub(base_dir)
-            self.feeds: Dict[str, Any] = {"yahoo": hub, "coinbase": hub}
+            self.feeds = {"yahoo": hub, "coinbase": hub, "databento_history": None}
             self.feed_mode = "file"
             journal.log("INFO", f"ICARUS_FEED=file — HistoryHub at {base_dir}/history; Yahoo/Coinbase are not contacted")
         elif requested_feed == "databento":
             db_feed = Databento()
-            self.feeds = {"yahoo": db_feed, "coinbase": Coinbase()}
+            self.feeds = {"yahoo": db_feed, "coinbase": Coinbase(), "databento_history": Yahoo()}
             self.feed_mode = "databento"
-            journal.log("INFO", "ICARUS_FEED=databento — CME futures use Databento GLBX.MDP3 volume-front continuous contracts")
+            journal.log("INFO", "ICARUS_FEED=databento — CME futures use Databento GLBX.MDP3 as the sole replay source")
         else:
-            self.feeds = {"yahoo": Yahoo(), "coinbase": Coinbase()}
+            self.feeds = {"yahoo": Yahoo(), "coinbase": Coinbase(), "databento_history": None}
             self.feed_mode = "live"
+            if os.environ.get("DATABENTO_API_KEY", "").strip():
+                try:
+                    if importlib.util.find_spec("databento") is None:
+                        raise RuntimeError("Databento SDK is not installed; install ICARUS with .[databento]")
+                    self.feeds["databento_history"] = Databento()
+                    journal.log("INFO", "Databento auxiliary history configured; Yahoo remains the replay source because provider roll bases are not reconciled")
+                except Exception as ex:
+                    journal.log("WARN", f"Databento historical source unavailable; using Yahoo-only warm-up ({type(ex).__name__}: {ex})")
+            else:
+                journal.log("INFO", "Databento history key is not configured; CME warm-up uses Yahoo's available history")
         self.runners: Dict[str, AssetRunner] = {}
         self.order: List[str] = []
         self.started = time.time()
@@ -1542,6 +1642,9 @@ class Portfolio:
         # Optional measured latency sink. The HTTP server binds one instance and
         # make_runner propagates it to assets added after startup.
         self.latency_telemetry = None
+        # A200 historical Pulse remains isolated from the normal asset/emulator
+        # registry and is initialized only by an explicit qualified-batch call.
+        self._a200_pulse_research = None
 
     # ── assets ──
     def _ref_price(self, now: Optional[int] = None) -> float:
@@ -1614,6 +1717,52 @@ class Portfolio:
                 except Exception:
                     pass
             raise
+
+    def ingest_a200_research_history(self, instrument_id: str, bars, receipt, *,
+                                     chart_minutes: int = 5) -> Dict[str, Any]:
+        """Feed a qualified A200 historical batch into isolated Pulse research.
+
+        This entry point never registers an asset in the live Portfolio, starts a
+        feed thread, records trades to the Portfolio journal, or authorizes a
+        broker. Current unqualified catalog rows return explicit blockers.
+        """
+        from .a200_runtime_feed import A200PulseResearchRuntime
+
+        with self._lock:
+            if self._a200_pulse_research is None:
+                self._a200_pulse_research = A200PulseResearchRuntime(chart_minutes=chart_minutes)
+            elif self._a200_pulse_research.chart_minutes != chart_minutes:
+                raise ValueError("A200 Pulse research chart timeframe is fixed for this Portfolio instance")
+            runtime = self._a200_pulse_research
+        return runtime.ingest_history(instrument_id, bars, receipt)
+
+    def fetch_a200_research_history(self, instrument_id: str, interval_seconds: int,
+                                    start_ts: int, end_ts: int, *, provider: str = "yahoo",
+                                    chart_minutes: int = 5) -> Dict[str, Any]:
+        """Fail closed until a provider can attest entitlement and bar-close status.
+
+        MarketUniverseAdapter intentionally emits UNKNOWN for those fields. Calling
+        it here would make a network request whose result cannot enter Pulse, so
+        this API reports the missing capability without contacting a provider.
+        """
+        return {
+            "admission": {
+                "admitted": False,
+                "instrument_id": str(instrument_id),
+                "symbol": None,
+                "provider": str(provider),
+                "reasons": ["PROVIDER_ADAPTER_NOT_QUALIFICATION_CAPABLE"],
+                "receipt_id": None,
+                "execution_authorized": False,
+                "live_authorized": False,
+            },
+            "provider_call_made": False,
+            "processed_bars": 0,
+            "pulse": None,
+            "research_only": True,
+            "execution_authorized": False,
+            "live_authorized": False,
+        }
 
     def remove_asset(self, symbol: str) -> bool:
         raw = str(symbol).strip().upper()
@@ -1847,6 +1996,12 @@ class Portfolio:
                 break
             thread.join(remaining)
 
+        if self._a200_pulse_research is not None:
+            try:
+                self._a200_pulse_research.close()
+            except Exception as ex:
+                self.journal.log("WARN", f"A200 research shutdown: {type(ex).__name__}: {ex}")
+
         # Paid/live adapters own background network sessions. Close each distinct
         # feed once so supervised restarts do not leak or reopen Databento connections.
         if self._owns_feeds:
@@ -1870,6 +2025,42 @@ class Portfolio:
     def runner_list(self) -> List[AssetRunner]:
         return [self.runners[s] for s in self.order if s in self.runners]
 
+    @staticmethod
+    def _withhold_shadow_metrics(shadow: Dict[str, Any]) -> Dict[str, Any]:
+        """Redact comparison values from a non-ready public shadow snapshot."""
+        view = dict(shadow)
+        view["metrics_available"] = False
+        view["metrics_unavailable_reason"] = (
+            "per-asset comparisons require READY shadow evidence")
+        for field in (
+            "intents", "primary_entry_fills", "shadow_entry_fills", "entry_fill_parity",
+            "primary_only_entry_fills", "shadow_only_entry_fills",
+            "matched_entry_intents",
+            "entry_price_delta_points_shadow_minus_primary",
+            "entry_price_delta_ticks_shadow_minus_primary",
+            "entry_price_delta_dollars_shadow_minus_primary", "recent_entry_fill_pairs",
+            "primary_only_closed_episodes", "shadow_only_closed_episodes",
+            "pairable_closed_episodes", "excluded_admin_flatten_lot_trade_pieces",
+            "administrative_censored_shadow_positions", "recent_administrative_censors",
+            "outcome_agreement_denominator", "outcome_agreement_rate",
+            "outcome_agreement_count", "outcome_matrix", "primary_break_even_episodes",
+            "shadow_break_even_episodes", "primary_win_count",
+            "primary_win_preserved_count", "primary_win_preservation", "primary",
+            "real_price_shadow", "net_realization_ratio",
+            "net_realization_ratio_unavailable_reason", "paired_profit_capture",
+            "paired_profit_capture_unavailable_reason", "paired_primary_winner_net",
+            "paired_shadow_net_on_primary_winners", "primary_closed_episode_excursions",
+            "real_price_shadow_closed_episode_excursions",
+            "matched_closed_episode_favorable_excursion_delta_shadow_minus_primary",
+            "matched_closed_episode_adverse_excursion_delta_shadow_minus_primary",
+            "bar_close_equity_observations", "primary_bar_close_max_drawdown",
+            "real_price_shadow_bar_close_max_drawdown", "open_primary", "open_shadow",
+            "recent_intents",
+        ):
+            if field in view:
+                view[field] = None
+        return view
+
     def status(self, *, nonblocking: bool = False) -> Dict[str, Any]:
         rs = [r.summary(nonblocking=True) if nonblocking else r.summary() for r in self.runner_list()]
         shadow_rows = [x["real_price_shadow"] for x in rs if x.get("real_price_shadow")]
@@ -1883,6 +2074,7 @@ class Portfolio:
         shadow_status = ("INVALID" if any(x["status"] == "INVALID" for x in shadow_rows)
                          else "DEGRADED" if any(x["status"] != "READY" for x in shadow_rows)
                          else "READY") if shadow_rows else "DISABLED"
+        metrics_available = shadow_status == "READY"
         primary_entries = sum(x["primary_entry_fills"] for x in shadow_rows)
         shadow_entries = sum(x["shadow_entry_fills"] for x in shadow_rows)
         matched_entries = sum(x["matched_entry_intents"] for x in shadow_rows)
@@ -1909,10 +2101,31 @@ class Portfolio:
         portfolio_profit_capture = (
             portfolio_shadow_on_primary_winners / portfolio_primary_winner_net
             if portfolio_primary_winner_net > 1e-8 else None)
+        summaries_by_asset = {str(row.get("symbol")): row for row in rs if row.get("symbol")}
+
+        def observed_bar_age(summary: Dict[str, Any]) -> Optional[float]:
+            age = summary.get("bar_age")
+            captured_at = summary.get("view_captured_at")
+            if age is None:
+                return None
+            if summary.get("view_stale") and captured_at is not None:
+                try:
+                    age = float(age) + max(0.0, time.time() - float(captured_at))
+                except (TypeError, ValueError):
+                    pass
+            return age
+
         shadow_portfolio = ({
             "schema": "icarus.real_price_shadow.portfolio/1",
             "enabled": True,
             "status": shadow_status,
+            "metrics_available": metrics_available,
+            "metrics_unavailable_reason": (
+                None if metrics_available else
+                "portfolio comparisons require every evidenced asset to be READY"),
+            "metrics_time_basis": (
+                "historical emulator evidence through each asset's last observed bar; "
+                "current feed health is reported separately"),
             "execution_authorized": False,
             "asset_count": len(shadow_rows),
             "primary_entry_fills": primary_entries,
@@ -1946,10 +2159,45 @@ class Portfolio:
             "real_price_shadow_live_net": round(sum(x["real_price_shadow"]["live_net"] for x in shadow_rows), 8),
             "drawdown_aggregation": "per_asset_only; cross_asset_close_timestamps_are_not_yet_aligned",
             "assets": [{"asset": x["asset"], "status": x["status"], "reason": x["reason"],
-                        "administrative_censored_shadow_positions": x["administrative_censored_shadow_positions"],
+                        "administrative_censored_shadow_positions": (
+                            x["administrative_censored_shadow_positions"]
+                            if x["status"] == "READY" else None),
+                        "last_bar_ts": summaries_by_asset.get(x["asset"], {}).get("last_bar_ts"),
+                        "bar_age_seconds": observed_bar_age(summaries_by_asset.get(x["asset"], {})),
+                        "view_stale": bool(summaries_by_asset.get(x["asset"], {}).get("view_stale")),
+                        "feed_health": ((x.get("provenance") or {}).get("feed_health")
+                                        or summaries_by_asset.get(x["asset"], {}).get("feed_health")),
                         "provenance": x.get("provenance")}
                        for x in shadow_rows],
         } if shadow_rows else None)
+        if shadow_portfolio is not None and not metrics_available:
+            # Never present a mixture of current primary results and a frozen or
+            # invalid shadow lane as a portfolio comparison. Keep status, asset
+            # count, reasons, and provenance available for diagnosis.
+            unavailable_metrics = (
+                "primary_entry_fills", "shadow_entry_fills", "entry_fill_parity",
+                "matched_entry_intents", "primary_only_entry_fills",
+                "shadow_only_entry_fills", "administrative_censored_shadow_positions",
+                "pairable_closed_episodes", "outcome_agreement_denominator",
+                "outcome_agreement_rate", "outcome_matrix", "primary_win_preservation",
+                "primary_net", "real_price_shadow_net", "net_realization_ratio",
+                "net_realization_ratio_unavailable_reason", "paired_profit_capture",
+                "paired_profit_capture_unavailable_reason", "paired_primary_winner_net",
+                "paired_shadow_net_on_primary_winners", "primary_warmup_net",
+                "primary_live_net", "real_price_shadow_warmup_net",
+                "real_price_shadow_live_net",
+            )
+            for field in unavailable_metrics:
+                shadow_portfolio[field] = None
+        for row in rs:
+            shadow = row.get("real_price_shadow")
+            if shadow is None:
+                continue
+            if shadow.get("status") == "READY":
+                shadow["metrics_available"] = True
+                shadow["metrics_unavailable_reason"] = None
+            else:
+                row["real_price_shadow"] = self._withhold_shadow_metrics(shadow)
         return _clean({
             "now": time.time(), "uptime_sec": time.time() - self.started, "paused": self.paused,
             "global_pause_intent": self.paused,

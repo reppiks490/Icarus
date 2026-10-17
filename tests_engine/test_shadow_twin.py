@@ -1,4 +1,5 @@
 import json
+import time
 
 import pytest
 
@@ -385,6 +386,50 @@ def test_portfolio_shadow_view_aggregates_counts_and_ratios_without_faking_drawd
         assert result["drawdown_aggregation"].startswith("per_asset_only")
         assert "max_drawdown" not in result
         assert len(fabric.query(channel="real_price_shadow", assets=["TEST"])) == 1
+
+        class DegradedSummaryRunner:
+            def summary(self, *, nonblocking=False):
+                shadow = twin.summary()
+                shadow["status"] = "DEGRADED"
+                shadow["reason"] = "missing real-price bar"
+                return {"symbol": "TEST", "equity": 10_000, "capital": 10_000,
+                        "live_profit": 0, "open_profit": 0, "position": 0,
+                        "paused": False, "warm": True, "last_bar_ts": 180,
+                        "bar_age": 45, "view_stale": True,
+                        "view_captured_at": time.time() - 10,
+                        "feed_health": {"status": "STALE"},
+                        "real_price_shadow": shadow}
+
+        portfolio.runners["TEST"] = DegradedSummaryRunner()
+        degraded = portfolio.status()["real_price_shadow"]
+        assert degraded["status"] == "DEGRADED"
+        assert degraded["metrics_available"] is False
+        assert "every evidenced asset to be READY" in degraded["metrics_unavailable_reason"]
+        assert degraded["primary_net"] is None
+        assert degraded["real_price_shadow_net"] is None
+        assert degraded["outcome_matrix"] is None
+        assert degraded["pairable_closed_episodes"] is None
+        assert degraded["assets"][0]["reason"] == "missing real-price bar"
+        assert degraded["assets"][0]["administrative_censored_shadow_positions"] is None
+        assert degraded["assets"][0]["last_bar_ts"] == 180
+        assert 54 <= degraded["assets"][0]["bar_age_seconds"] <= 60
+        assert degraded["assets"][0]["view_stale"] is True
+        assert degraded["assets"][0]["feed_health"] == {"status": "STALE"}
+        assert "historical emulator evidence" in degraded["metrics_time_basis"]
+        public_asset = portfolio.status()["assets"][0]["real_price_shadow"]
+        assert public_asset["metrics_available"] is False
+        assert public_asset["primary"] is None
+        assert public_asset["real_price_shadow"] is None
+        assert public_asset["primary_only_entry_fills"] is None
+        assert public_asset["shadow_only_entry_fills"] is None
+        assert public_asset["matched_entry_intents"] is None
+        assert public_asset["outcome_matrix"] is None
+        assert public_asset["primary_bar_close_max_drawdown"] is None
+        assert public_asset["real_price_shadow_bar_close_max_drawdown"] is None
+        assert public_asset["open_primary"] is None
+        assert public_asset["open_shadow"] is None
+        assert public_asset["recent_intents"] is None
+        assert public_asset["reason"] == "missing real-price bar"
 
 
 def test_admin_pause_cancels_shadow_only_pending_limit_order():

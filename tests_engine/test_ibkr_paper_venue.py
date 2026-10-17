@@ -1,4 +1,5 @@
 from decimal import Decimal
+import os
 from tempfile import TemporaryDirectory
 import unittest
 from types import SimpleNamespace
@@ -330,14 +331,17 @@ class IbkrPaperVenueTests(unittest.TestCase):
     submitted = venue.submit(intent.intent_id, intent.symbol, intent.side, intent.qty,
                              intent.kind, intent.price)
     venue.poll()  # consume the direct venue ack before attaching the engine
-    engine = ExecutionEngine(venue, RiskGovernor(), Journal(":memory:"), mode="SIM")
-    order, _created = engine.book.add(intent)
-    order.state = S.WORKING
-    order.broker_id = submitted["broker_id"]
+    with TemporaryDirectory() as temp:
+      engine = ExecutionEngine(
+          venue, RiskGovernor(), Journal(os.path.join(temp, "journal.jsonl")), mode="SIM"
+      )
+      order, _created = engine.book.add(intent)
+      order.state = S.WORKING
+      order.broker_id = submitted["broker_id"]
 
-    assert engine.cancel(order.id) is True
-    assert cancelled == [submitted["broker_id"]]
-    assert order.state is S.CANCELLED
+      assert engine.cancel(order.id) is True
+      assert cancelled == [submitted["broker_id"]]
+      assert order.state is S.CANCELLED
 
 
   def test_callback_readback_preserves_partial_fill_and_cumulative_quantity(self):

@@ -29,6 +29,8 @@
   function draw(ctx,w,h,t,dt,{intro=false,pointer={x:0,y:0},detail='rich'}={}) {
     if(!ctx || !w || !h) return;
     const world=root.dataset.world || 'divine';
+    // These three newer scenes use original CSS and SVG artwork in the scenic layer.
+    if(world==='galaxy'||world==='cyberpunk'||world==='chibi')return;
     const [color,light,other]=palettes[world]||palettes.divine;
     const mobile=w<700,lean=detail==='light';
     const cameraX=Math.max(-.5,Math.min(.5,Number(pointer.x)||0)),cameraY=Math.max(-.5,Math.min(.5,Number(pointer.y)||0));

@@ -82,6 +82,18 @@ icarus-bridge serve --tunnel ngrok
 
 Paste `pine/ALERT_TEMPLATE.json` into the strategy alert. `NQ1!` → `QQQ` is the default map. That is an equity proxy, not CME.
 
+The Icarus Plant owns runtime credentials in `$ICARUS_HOME/.env` (created from
+`icarus_bridge/.env.example`; the repo-root `.env` is the standalone fallback).
+Set `ICARUS_FEED=databento` to use an entitled Databento account as the primary
+CME feed; `ICARUS_DATABENTO_HISTORY_DAYS` bounds its history window (default 365,
+range 1–3650 days). The default Yahoo mode replays Yahoo history only. Databento
+history is not joined to Yahoo history because continuous-contract roll bases
+have not been reconciled, so the two price series must remain separate. If a
+Databento history request fails, warmup fails closed instead of switching to
+Yahoo.
+GitHub Actions credentials are managed separately by a repository administrator
+under Settings → Secrets and variables → Actions.
+
 ## What this repo will not do for free
 
 - Scrape TradingView or invent ticks / queue / spread

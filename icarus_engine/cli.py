@@ -368,7 +368,7 @@ def main(argv: Optional[list] = None) -> int:
         s.add_argument("--security-source", default=None, choices=["chart", "standard"], help="what the HTF/LTF request.security chains see on a Heikin Ashi chart: chart = HA bars (TradingView, default), standard = real bars")
         s.add_argument("--feed", default=None, choices=["yahoo", "file", "databento"], help="yahoo (default), file = HistoryHub, or databento = real-time/historical CME GLBX.MDP3 continuous futures (requires DATABENTO_API_KEY)")
         s.add_argument("--capital", type=float, default=None, help="override initial capital per asset")
-        s.add_argument("--warmup", type=int, default=1200, help="chart bars of history to replay before going live")
+        s.add_argument("--warmup", type=int, default=1200, help="minimum chart bars to replay; configured Yahoo/Databento sources may extend history")
         s.add_argument("--pts-ref-symbol", default="NQ", help="asset whose price anchors the *_pts inputs (they are NQ points)")
         s.add_argument("--db", default=None, help="journal database (run: icarus_engine.db; backtest/parity: in memory unless given)")
 

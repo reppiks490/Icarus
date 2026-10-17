@@ -44,6 +44,11 @@ for(const mode of ['balanced','focus']){
  assert.equal(await canvas.evaluate(c=>c.toDataURL()),a,`${mode} must stop canvas rendering`);
 }
 await page.locator('#experienceMode').selectOption('cinematic');
+await page.locator('.experience-settings summary').click();
+const scrollBeforeSettings=await page.evaluate(()=>{window.scrollTo(0,document.body.scrollHeight);return window.scrollY;});
+assert.ok(scrollBeforeSettings>0,'The dashboard must scroll before reopening sticky-header settings');
+await page.locator('.experience-settings summary').click();
+await page.waitForTimeout(80);
 // The settings drawer is internally scrollable and its lower controls can sit
 // below the visible section. Scroll the drawer itself before interacting with
 // the sound opt-in, then verify the target is in the viewport.
@@ -157,6 +162,25 @@ assert.deepEqual(readouts,{loading:true,unavailable:true,error:true});
 await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 await page.screenshot({path:`${output}/cinema-mobile.png`,fullPage:true});
+const compact=await context.newPage();await compact.setViewportSize({width:800,height:600});
+await compact.goto(process.env.ICARUS_PREVIEW_URL||'http://127.0.0.1:8879');
+await compact.locator('.experience-settings summary').waitFor();
+await compact.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));
+await compact.locator('.experience-settings summary').click();
+await compact.waitForTimeout(80);
+const compactPanel=compact.locator('.experience-settings > div');
+await compactPanel.evaluate(el=>Promise.all(el.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
+const compactBounds=await compactPanel.boundingBox();
+const compactTrigger=await compact.locator('.experience-settings summary').boundingBox();
+assert.ok(compactBounds&&compactTrigger&&(compactBounds.y+compactBounds.height<=compactTrigger.y||compactBounds.y>=compactTrigger.y+compactTrigger.height),'Wrapped settings must not cover their trigger: '+JSON.stringify({compactBounds,compactTrigger}));
+assert.ok(compactBounds.y+compactBounds.height<=600,'Wrapped settings must remain inside a short viewport: '+JSON.stringify({compactBounds,compactTrigger}));
+await compact.setViewportSize({width:390,height:844});
+await compact.waitForTimeout(80);
+const resizedPanel=await compactPanel.boundingBox();
+const resizedInline=await compactPanel.evaluate(el=>({left:el.style.left,right:el.style.right,top:el.style.top,maxHeight:el.style.maxHeight}));
+assert.deepEqual(resizedInline,{left:'',right:'',top:'',maxHeight:''},'Mobile settings must clear desktop inline placement');
+assert.ok(resizedPanel&&resizedPanel.x>=12&&resizedPanel.x+resizedPanel.width<=390&&resizedPanel.y>=0&&resizedPanel.y+resizedPanel.height<=844,'Resized settings must remain inside a mobile viewport: '+JSON.stringify({resizedPanel}));
+await compact.close();
 // Fault injection: unavailable canvas must preserve navigation and a static visual fallback.
 const fallback=await context.newPage();
 await fallback.addInitScript(()=>{sessionStorage.setItem('icarus-intro-seen','1');HTMLCanvasElement.prototype.getContext=()=>null;});

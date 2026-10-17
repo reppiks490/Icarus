@@ -95,6 +95,7 @@
     function pause(){last=-1;canvas.style.opacity='0';if(ready&&!lost)gl.clear(gl.COLOR_BUFFER_BIT);}
     function draw(time,world,width,height,pointer={x:0,y:0},detail='rich') {
       if(!ready||lost||disposed||!width||!height)return;
+      if(world!=='divine'&&world!=='void'&&world!=='astral'){pause();return;}
       if(detail==='light'){pause();return;}
       if(last>=0&&time-last<1/15)return;last=time;
       const ratio=Math.min(.65,900/width,480/height),w=Math.max(1,Math.round(width*ratio)),h=Math.max(1,Math.round(height*ratio));

@@ -5,7 +5,9 @@ from dataclasses import asdict, dataclass
 import hashlib
 import json
 import math
-from typing import Any, Callable, Iterable
+from datetime import datetime, timedelta, timezone
+from typing import Any, Callable, Iterable, Mapping
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .pine.timeframe import Bar
 
@@ -42,6 +44,10 @@ class BarBatchReceipt:
     received_at_ns: int
     historical_bars_qualified: bool
     execution_authorized: bool = False
+    calendar_timezone: str | None = None
+    corporate_action_policy: str = "UNKNOWN"
+    corporate_action_witness: Mapping[str, Any] | None = None
+    corporate_action_witness_sha256: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -55,8 +61,11 @@ def make_bar_batch_receipt(
     session_validation_status: str = "UNKNOWN", provider_mapping_status: str = "VERIFIED",
     alignment_validator: Callable[[int], bool] | None = None,
     expected_bar_timestamps: Iterable[int] | None = None,
+    calendar_timezone: str | None = None,
     bar_close_status: str = "UNKNOWN",
     timestamp_normalization: str = "NONE",
+    corporate_action_policy: str = "UNKNOWN",
+    corporate_action_witness: Mapping[str, Any] | None = None,
 ) -> tuple[list[Bar], BarBatchReceipt]:
     """Validate exact response identity and OHLCV before returning bars to runtime.
 
@@ -65,6 +74,8 @@ def make_bar_batch_receipt(
     A qualifying receipt also needs the complete expected bar-start schedule,
     generated from the instrument's authoritative exchange calendar for the
     requested session window; a pairwise gap callback cannot prove edge coverage.
+    When that calendar has a DST-shortened interval, calendar_timezone must be
+    the same authoritative calendar's timezone, not an ad hoc caller selection.
     """
     if not instrument_id or not provider or not expected_provider_symbol:
         raise ValueError("bar receipt requires instrument, provider, and expected symbol")
@@ -78,6 +89,10 @@ def make_bar_batch_receipt(
         raise ValueError("invalid session validation status")
     if bar_close_status not in ("UNKNOWN", "VERIFIED", "FAILED"):
         raise ValueError("invalid bar close status")
+    if corporate_action_policy not in ("UNKNOWN", "SPLIT_ADJUSTED", "RAW_WITH_ACTIONS"):
+        raise ValueError("invalid corporate action policy")
+    if corporate_action_witness is not None and not isinstance(corporate_action_witness, Mapping):
+        raise ValueError("corporate_action_witness must be a mapping")
     if timestamp_normalization not in ("NONE", "YAHOO_SESSION_CLOSE_TO_SESSION_OPEN"):
         raise ValueError("invalid bar timestamp normalization")
     for name, value in (("requested_start_ts", requested_start_ts), ("requested_end_ts", requested_end_ts),
@@ -96,11 +111,24 @@ def make_bar_batch_receipt(
             raise ValueError("expected bar timestamps must be integer starts inside the requested window")
         if expected != sorted(set(expected)):
             raise ValueError("expected bar timestamps must be strictly increasing and unique")
-        # Calendar-based daily and slower schedules can be 23 hours apart at a
-        # DST boundary. Keep that documented one-hour exception while refusing
-        # schedules that claim overlapping or too-frequent bars.
-        minimum_spacing = interval_seconds - 3600 if interval_seconds >= 86400 else interval_seconds
-        if any(later - earlier < minimum_spacing for earlier, later in zip(expected, expected[1:])):
+        try:
+            calendar_zone = ZoneInfo(calendar_timezone) if calendar_timezone else None
+        except (ValueError, ZoneInfoNotFoundError) as exc:
+            raise ValueError("calendar_timezone must name a valid IANA timezone") from exc
+
+        def is_dst_shortened_calendar_interval(earlier: int, later: int) -> bool:
+            if calendar_zone is None or interval_seconds < 86400 or interval_seconds % 86400:
+                return False
+            earlier_local = datetime.fromtimestamp(earlier, timezone.utc).astimezone(calendar_zone)
+            later_local = datetime.fromtimestamp(later, timezone.utc).astimezone(calendar_zone)
+            wall_delta = later_local.replace(tzinfo=None) - earlier_local.replace(tzinfo=None)
+            offset_delta = later_local.utcoffset() - earlier_local.utcoffset()
+            return (offset_delta > timedelta(0)
+                    and later - earlier == interval_seconds - int(offset_delta.total_seconds())
+                    and wall_delta == timedelta(seconds=interval_seconds))
+
+        if any(later - earlier < interval_seconds and not is_dst_shortened_calendar_interval(earlier, later)
+               for earlier, later in zip(expected, expected[1:])):
             raise ValueError("expected bar timestamps cannot be closer than the declared interval")
     observed = str(observed_provider_symbol) if observed_provider_symbol else None
     if observed is not None and observed.upper() != expected_provider_symbol.upper():
@@ -149,6 +177,10 @@ def make_bar_batch_receipt(
         separators=(",", ":"), allow_nan=False,
     ).encode("utf-8")
     checksum = hashlib.sha256(encoded).hexdigest()
+    witness_bytes = (json.dumps(dict(corporate_action_witness), sort_keys=True, separators=(",", ":"),
+                                allow_nan=False).encode("utf-8")
+                     if corporate_action_witness is not None else None)
+    witness_sha256 = hashlib.sha256(witness_bytes).hexdigest() if witness_bytes is not None else None
     provider_symbol_match_status = "MATCHED" if observed is not None else "UNKNOWN"
     identity_status = ("VERIFIED" if provider_symbol_match_status == "MATCHED" and provider_mapping_status == "VERIFIED"
                        else "PROVISIONAL" if provider_symbol_match_status == "MATCHED" else "UNKNOWN")
@@ -163,12 +195,15 @@ def make_bar_batch_receipt(
         "expected_schedule_sha256": hashlib.sha256(
             json.dumps(expected, separators=(",", ":")).encode("utf-8")
         ).hexdigest() if expected is not None else None,
+        "calendar_timezone": calendar_timezone,
         "interval_gap_count": gap_count,
         "gap_validation_status": "VERIFIED" if gaps_validated else "UNKNOWN",
         "timestamp_alignment_status": "UNKNOWN" if alignment_validator is None else "VERIFIED" if aligned else "FAILED",
         "timestamp_normalization": timestamp_normalization,
         "session_validation_status": session_validation_status,
         "bar_close_status": bar_close_status,
+        "corporate_action_policy": corporate_action_policy,
+        "corporate_action_witness_sha256": witness_sha256,
         "checksum_sha256": checksum,
     }
     receipt_identity = json.dumps(
@@ -205,5 +240,9 @@ def make_bar_batch_receipt(
         fetched_at_ns=fetched_at_ns,
         received_at_ns=received_at_ns,
         historical_bars_qualified=qualified,
+        calendar_timezone=calendar_timezone,
+        corporate_action_policy=corporate_action_policy,
+        corporate_action_witness=(dict(corporate_action_witness) if corporate_action_witness is not None else None),
+        corporate_action_witness_sha256=witness_sha256,
     )
     return rows, receipt
