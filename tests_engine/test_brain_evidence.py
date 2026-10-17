@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from icarus_engine.brain_evidence import (
     BrainEvidence,
     EvidenceSource,
@@ -123,3 +125,30 @@ def test_live_execution_cannot_be_authorized_through_brain_evidence():
     result = validate_brain_evidence(evidence, decision_time=_t(12, 1), now=_t(12, 1))
     assert result.valid is False
     assert any("live execution" in item.lower() or "owner policy" in item.lower() for item in result.blockers)
+
+
+@pytest.mark.parametrize("value", [1, 0, "true", "false", "", None, [], {}])
+def test_decision_authorization_requires_the_boolean_true(value):
+    result = validate_brain_evidence(
+        _evidence(decision_authorized=value), decision_time=_t(12, 1),
+    )
+    assert result.valid is False
+    assert any("decision authorization" in item for item in result.blockers)
+
+
+@pytest.mark.parametrize("value", [0, 1, "false", "", None, [], {}])
+def test_execution_authorization_requires_the_boolean_false(value):
+    result = validate_brain_evidence(
+        _evidence(execution_authorized=value), decision_time=_t(12, 1),
+    )
+    assert result.valid is False
+    assert any("execution authorization" in item for item in result.blockers)
+
+
+@pytest.mark.parametrize("value", [0, 1, "false", "", None, [], {}])
+def test_source_requirement_flag_must_be_a_boolean(value):
+    result = validate_brain_evidence(
+        _evidence(sources=(_source(required=value),)), decision_time=_t(12, 1),
+    )
+    assert result.valid is False
+    assert any("required" in item for item in result.blockers)

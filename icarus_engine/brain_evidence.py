@@ -119,6 +119,8 @@ def validate_brain_evidence(
 
     for source in evidence.sources:
         label = source.source_id or source.provider or "source"
+        if type(source.required) is not bool:
+            blockers.append(f"{label}: required flag must be a boolean")
         event_time = _aware(source.event_time, f"{label} event_time")
         retrieved_at = _aware(source.retrieved_at, f"{label} retrieved_at")
         if not str(source.source_id or "").strip():
@@ -165,9 +167,9 @@ def validate_brain_evidence(
     for gate in evidence.unresolved_validation_gates:
         blockers.append(f"unresolved validation gate: {gate}")
 
-    if not evidence.decision_authorized:
+    if evidence.decision_authorized is not True:
         blockers.append("decision authorization is false")
-    if evidence.execution_authorized:
+    if evidence.execution_authorized is not False:
         blockers.append("live execution authorization violates current owner policy")
 
     # Stable de-duplication keeps downstream evidence receipts deterministic.
