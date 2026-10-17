@@ -11,7 +11,7 @@
     "unresolved_operations": 4
   },
   "chatgpt_tokens_used": 0,
-  "completed_at_utc": "2026-10-17T13:42:23.912577+00:00",
+  "completed_at_utc": "2026-10-17T17:08:00.399284+00:00",
   "databento_excluded": true,
   "execution_authorized": false,
   "paid_model_calls": 0,
@@ -31,7 +31,7 @@
   },
   "raw_payloads_public": false,
   "requests": 0,
-  "run_id": "providers-39037647773-1-twelve",
+  "run_id": "providers-39052396736-1-twelve",
   "schema_version": "icarus-provider-collection-cycle-v1",
-  "started_at_utc": "2026-10-17T13:42:23.912172+00:00"
+  "started_at_utc": "2026-10-17T17:08:00.398891+00:00"
 }
