@@ -14,7 +14,9 @@ Preserved inputs, integrated using ordinary non-rewriting merges:
 - Main `335148c8d911f3320b5bde1ed77b38df1ba9704e`: intervening runtime, UI and provider changes preserved.
 - #447 `a9217cc16086130a30883162903bccb3f67e9357`: dated listing/research test fixtures made deterministic.
 
-The additional production repair is in `icarus_engine/brain_evidence.py`. Dataclass annotations do not enforce runtime types: truthy strings such as `"false"` previously satisfied decision authorization, and false-like values such as `0` satisfied the disabled-execution check. Validation now requires `decision_authorized is True`, `execution_authorized is False`, and an actual boolean for each source's `required` flag. Values are rejected rather than coerced. Existing causal, freshness, provenance and unresolved-gate checks remain in force.
+The first additional production repair is in `icarus_engine/brain_evidence.py`. Dataclass annotations do not enforce runtime types: truthy strings such as `"false"` previously satisfied decision authorization, and false-like values such as `0` satisfied the disabled-execution check. Validation now requires `decision_authorized is True`, `execution_authorized is False`, and an actual boolean for each source's `required` flag. Values are rejected rather than coerced. Existing causal, freshness, provenance and unresolved-gate checks remain in force.
+
+Independent review of `4f6ef403` also found a portfolio-risk regression: the catalog calls the metal asset class `metal`, while `RiskConfig.max_cluster_notional` uses the established `metals` budget key. Mapping the catalog value directly into `ContractSpec.cluster` bypassed the $500,000 combined gold/silver cap. The repair preserves the catalog classification and restores the risk cluster key; all four full/micro gold/silver combinations reject $600,000 and allow exactly $500,000. `kind="metals"` remains compatible.
 
 ## Verification
 
@@ -30,7 +32,11 @@ python -m pip install -e '.[dev,ml,bridge,databento]'
 python -m pytest tests_engine -q -o addopts='' --tb=short
 ```
 
-Hosted exact-head checks and independent integration review are still required. Local Linux success is not Windows or browser visual verification. Changes after the pinned code run add documentation and append the seven new Brain/futures/index/command-state/A200 test modules to the existing Windows pytest list. They change no runtime Python source or scheduler. The older green Windows subset did not exercise these modules; only a later exact-head run with the expanded list can establish that coverage.
+- Risk regression before repair: 4 failed, 32 passed; every over-budget gold/silver combination was incorrectly allowed.
+- Full repaired runtime source at `e2fff7f379dbb278477a0cda9d8b260c16f51c87`: **2,983 passed, 3 skipped, 111 subtests passed**, in 144.57 seconds.
+- Risk repair `e2fff7f379dbb278477a0cda9d8b260c16f51c87`: 174 focused tests and 21 subtests pass. Independent read-only re-review is CLEAR, including the original $600,000 reproducer, all four $500,000 boundaries and all 32 cluster/qualification invariants (88 tests, 21 subtests in the reviewer's selection).
+
+Hosted run `39079800021` passed Linux and the expanded Windows selection at the older `4f6ef403` head. That result predates the risk repair and does not certify the new source. Fresh exact-head hosted checks are required for the repaired head. Local Linux success is not Windows or browser visual verification. Seven new Brain/futures/index/command-state/A200 test modules were appended to the existing Windows pytest list; the earlier subset omitted them.
 
 ## Reach and remaining gates
 
