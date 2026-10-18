@@ -248,7 +248,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     try:
         from .account_connections import ConnectionManager
         account_connections = ConnectionManager(port.base_dir or os.getcwd())
-    except ImportError:
+    except (ImportError, OSError, ValueError):
         account_connections = None
 
     workspace_ids = frozenset(("cc1", "cc2", "cc3", "cc4"))
@@ -263,7 +263,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         complete = (len(rows) == 4 and {row.get("id") for row in rows} == workspace_ids
                     and all(key in command_centers.portfolios for key in workspace_ids))
         def finite(value):
-            return type(value) in (float, int) and math.isfinite(value)
+            return type(value) in (float, int) and -1e18 < value < 1e18 and math.isfinite(value)
         complete = complete and all(finite(row.get("pnl", {}).get(field))
                                     for row in rows for field in ("realized_pnl", "open_pnl"))
         aggregate = state.get("aggregate", {})
@@ -1452,7 +1452,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(401, {"detail": "authentication required"})
                 if account_connections is None:
                     return self._json(503, {"detail": "account connections module unavailable", "execution_authorized": False})
-                return self._json(200, account_connections.snapshot())
+                try:
+                    return self._json(200, account_connections.snapshot())
+                except (OSError, ValueError, TypeError):
+                    return self._json(503, {"detail": "account connection unavailable", "execution_authorized": False})
             if p.path == "/connections":
                 return self._send(200, (html_path.parent / "workspace-dashboard.html").read_bytes(), "text/html")
             if p.path == "/connections-ui.js":

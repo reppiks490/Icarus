@@ -102,7 +102,8 @@ def test_complete_paper_accounting_reuses_manager_totals(engine, monkeypatch):
     snapshot = srv.command_centers.snapshot()
     for i, profile in enumerate(snapshot["profiles"], 1):
         profile["pnl"].update(realized_pnl=10 * i, open_pnl=i)
-    snapshot["aggregate"].update(realized_pnl=100, open_pnl=10)
+        profile.update(runtime_available=True, valuation_complete=True)
+    snapshot["aggregate"].update(realized_pnl=100, open_pnl=10, accounting_complete=True)
     monkeypatch.setattr(srv.command_centers, "snapshot", lambda: snapshot)
     srv.command_centers.portfolios = {key: object() for key in ("cc1", "cc2", "cc3", "cc4")}
     status, result = request("/api/command-centers/cc3")
@@ -121,7 +122,7 @@ def test_old_ui_links_all_four_separate_views(engine):
     assert '/dashboards/connections' in script
 
 
-@pytest.mark.parametrize("bad_value", [float("nan"), float("inf"), True, "12.50"])
+@pytest.mark.parametrize("bad_value", [float("nan"), float("inf"), True, "12.50", 10 ** 1000])
 def test_invalid_accounting_values_never_produce_complete_aggregate(engine, monkeypatch, bad_value):
     srv, request = engine
     snapshot = srv.command_centers.snapshot()
@@ -140,6 +141,16 @@ def test_connections_routes_authenticate_before_any_account_read(engine):
     assert request("/api/account-connections")[0] == 401
     assert request("/admin/account-connections", method="POST", body={})[0] == 401
     assert request("/admin/account-connections/arbitrary/connect", method="POST", body={})[0] == 401
+
+
+def test_unavailable_private_account_store_does_not_disable_dashboards(monkeypatch, request):
+    constructor = Mock(side_effect=ValueError("PRIVATE_FAILURE_MARKER"))
+    monkeypatch.setitem(sys.modules, "icarus_engine.account_connections", types.SimpleNamespace(ConnectionManager=constructor))
+    srv, http = request.getfixturevalue("engine")
+    assert http("/dashboards/cc1")[0] == 200
+    code, result = http("/api/account-connections", token="owner-test")
+    assert code == 503
+    assert "PRIVATE_FAILURE_MARKER" not in json.dumps(result)
 
 
 def test_corrupt_duplicate_workspace_accounting_is_unavailable(engine, monkeypatch):
