@@ -248,6 +248,7 @@ def test_independent_experts_reconcile_without_claiming_calibration():
         "sample_count": 100, "independent_sessions": 50,
         "drift_state": "NO_LARGE_SHIFT_DETECTED",
         "brier": 0.08, "as_of": iso(BASE + timedelta(days=60)),
+        "source_commit": SHA,
     }
     a = ExpertClaim("omega", SCOPE, iso(BASE + timedelta(days=70)),
                     iso(BASE + timedelta(days=70)), SHA, 0.65,
@@ -286,3 +287,34 @@ def test_walkforward_retains_a_frozen_final_fold():
     assert result["execution_authorized"] is False
     assert result["folds"][0]["test_window_episodes"] == 60
     assert all(0 <= fold["coverage"] <= 1 for fold in result["folds"])
+
+
+def test_revisions_cannot_share_calibration_without_explicit_selection(tmp_path):
+    ledger = ForecastLedger(tmp_path / "fc-revision.sqlite")
+    first = forecast(0)
+    from dataclasses import replace
+    second = replace(forecast(1), source_commit="b" * 40)
+    ledger.commit(first)
+    ledger.commit(second)
+    ledger.settle(resolution(0))
+    ledger.settle(resolution(1))
+    with pytest.raises(ValueError, match="mixed model revisions"):
+        calibration_report(ledger, producer="omega", scope=SCOPE,
+                           as_of=iso(BASE + timedelta(days=4)))
+    filtered = calibration_report(ledger, producer="omega", scope=SCOPE,
+                as_of=iso(BASE + timedelta(days=4)), source_commit=SHA)
+    assert filtered["sample_count"] == 1
+    assert filtered["source_commit"] == SHA
+    ledger.close()
+
+
+def test_analogues_reject_other_model_revisions(tmp_path):
+    from dataclasses import replace
+    store = EpisodicStore(tmp_path / "rev.sqlite")
+    prior = episode(0)
+    changed = Episode(replace(prior.situation, source_commit="b" * 40),
+                      prior.maturity_at, prior.outcome_received_at, prior.outcome,
+                      prior.source_dataset_id, prior.session_id, prior.root_family)
+    store.add(changed)
+    assert not store.eligible(situation("query", BASE + timedelta(days=1)))
+    store.close()
