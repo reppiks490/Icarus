@@ -63,6 +63,7 @@ def test_exact_compressed_snapshot_becomes_immutable_dataset_and_safe_receipt(tm
     assert dataset.receipt.source_sha256 == hashlib.sha256((args["restored_dir"] / args["filename"]).read_bytes()).hexdigest()
     safe = dataset.receipt.to_dict()
     assert safe["provider"] == "databento" and safe["native_interval_seconds"] == 300
+    assert safe["identity_status"] == "CATALOG_MAPPED"
     assert safe["execution_authorized"] is safe["strategy_qualified"] is False
     assert safe["entitlement_status"] == "UNVERIFIED"
     assert "100.125" not in json.dumps(safe) and "not-public" not in json.dumps(safe)
@@ -75,6 +76,7 @@ def test_exact_compressed_snapshot_becomes_immutable_dataset_and_safe_receipt(tm
 
 @pytest.mark.parametrize("changes", [
     {"filename": "../databento_mnq_5m.csv.gz"}, {"filename": "databento_unknown_5m.csv.gz"},
+    {"filename": "databento_other_5m.csv.gz"},
     {"filename": "databento_mnq_hist_5m.csv.gz"}, {"cache_name": "bars_fourth"},
     {"source_repo": "another/repository"}, {"source_commit": "short"}, {"source_commit": "g" * 40},
     {"available_at_ns": NOW + 1}, {"available_at_ns": True}, {"asof_ns": True},
@@ -194,6 +196,34 @@ def test_canonical_historical_vault_filename_preserves_identity_and_root(tmp_pat
     assert historical.receipt.source_sha256 == plain.receipt.source_sha256
     assert historical.receipt.dataset_id != plain.receipt.dataset_id
     assert historical.receipt.live_feed_qualified is False
+
+
+@pytest.mark.parametrize("root", ["DX", "VXM", "SR3", "ZT", "ZF", "ZC", "ZS", "ZW"])
+def test_whitelisted_archive_context_has_native_reads_without_trading_spec(tmp_path, root):
+    args = _source(tmp_path, _csv(_rows(500)), filename=f"databento_{root.lower()}_5m.csv.gz")
+    if root in ("DX", "VXM"):
+        manifest = json.loads(args["manifest_path"].read_text())
+        manifest["caches"]["bars_secondary"] = manifest["caches"].pop("bars_primary")
+        args["manifest_path"].write_text(json.dumps(manifest))
+        args["cache_name"] = "bars_secondary"
+    end = BASE + 500 * 300
+    dataset = _load(args, available_at_ns=end * NS, asof_ns=(end + 60) * NS)
+    assert dataset.symbol == dataset.provider_root == root
+    assert dataset.receipt.identity_status == "ARCHIVE_CONTEXT_ONLY"
+    assert dataset.receipt.strategy_qualified is dataset.receipt.execution_authorized is False
+    reader = _api().CorpusFeed(dataset).for_consumer("archive_quality")
+    assert reader.GRANULARITIES == (300,)
+    assert reader.candles(root, 300, BASE, end) == list(dataset.bars)
+    assert reader.recent_ex(root, 300) == (list(dataset.bars), end, 101)
+    assert reader.consumption_receipts[-1].identity_status == "ARCHIVE_CONTEXT_ONLY"
+    with pytest.raises(ValueError, match="specification"):
+        reader.mintick(root)
+    with pytest.raises(ValueError, match="context"):
+        reader.candles(root, 600, BASE, end)
+    with pytest.raises(ValueError, match="symbol"):
+        reader.candles(root + "=F", 300, BASE, end)
+    with pytest.raises(ValueError, match="identity"):
+        replace(dataset, receipt=replace(dataset.receipt, identity_status="CATALOG_MAPPED"))
 
 
 def test_feed_reads_actual_bound_snapshot_and_records_each_consumer(tmp_path):
