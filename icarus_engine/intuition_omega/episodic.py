@@ -118,7 +118,7 @@ class EpisodicStore:
             item = _decode(raw)
             # Full identity prevents confusing real vs synthetic fills, even
             # when the source market and chart look superficially identical.
-            if item.situation.scope != query.scope:
+            if item.situation.scope != query.scope or item.situation.source_commit != query.source_commit:
                 continue
             if set(item.situation.features) != set(query.features):
                 continue
