@@ -3,30 +3,94 @@
   "execution_authorized": false,
   "policies": [
     {
-      "id": "independent-paper", "firm": "independent", "program": "paper",
-      "status": "UNVERIFIED", "sources": ["https://docs.alpaca.markets/docs/paper-trading"],
+      "id": "independent-paper",
+      "firm": "independent",
+      "program": "paper",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://docs.alpaca.markets/docs/paper-trading"
+      ],
       "faq_coverage_complete": false,
-      "unknown_clauses": ["Account-specific restrictions, product eligibility and complete risk configuration"],
-      "unsupported_clauses": ["Order routing is not implemented by the connection manager"],
+      "unknown_clauses": [
+        "Account-specific restrictions, product eligibility and complete risk configuration"
+      ],
+      "unsupported_clauses": [
+        "Order routing is not implemented by the connection manager"
+      ],
       "explanation": "Paper account monitoring is supported. An account read does not establish a trading strategy, order permission or risk-policy approval.",
-      "new_intents_blocked": true, "execution_authorized": false
+      "new_intents_blocked": true,
+      "execution_authorized": false
     },
     {
-      "id": "topstep-unassigned", "firm": "Topstep", "program": "UNASSIGNED",
-      "status": "UNVERIFIED", "sources": ["https://help.topstep.com/"],
+      "id": "topstep-unassigned",
+      "firm": "Topstep",
+      "program": "UNASSIGNED",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.topstep.com/en/articles/11187768-topstepx-api-access"
+      ],
       "faq_coverage_complete": false,
-      "unknown_clauses": ["Exact program and account stage", "Maximum loss and trailing drawdown calculation", "Daily loss rules", "Product and contract limits including micros", "Sessions, holidays and news restrictions", "Consistency and payout requirements", "Automation, copying and prohibited conduct", "Effective rule version and full FAQ coverage"],
-      "unsupported_clauses": ["Official platform account adapter not yet verified", "All order operations"],
-      "explanation": "No Topstep program is marked compliant. Connectable platform, exact account stage and every applicable official FAQ clause must be verified independently.",
-      "new_intents_blocked": true, "execution_authorized": false
+      "unknown_clauses": [
+        "Exact program and account stage",
+        "Maximum loss and trailing drawdown calculation",
+        "Daily loss rules",
+        "Product and contract limits including micros",
+        "Sessions, holidays and news restrictions",
+        "Consistency and payout requirements",
+        "Automation, copying and prohibited conduct",
+        "Effective rule version and full FAQ coverage"
+      ],
+      "unsupported_clauses": [
+        "Official platform account adapter not yet verified",
+        "All order operations"
+      ],
+      "explanation": "Official API FAQ permits read-only monitoring on private servers, requires a separately billed API subscription, prohibits remote order transmission and excludes Live Funded API trading. This implementation never routes orders or purchases access. Exact program, account stage and remaining FAQ clauses remain unverified.",
+      "new_intents_blocked": true,
+      "execution_authorized": false,
+      "source_review": {
+        "page_date": "2026-09-17",
+        "retrieved_at_utc": "2026-10-18T14:54:15Z",
+        "page_sha256": "b93c21e559f178342209f3968b85039bccb9a1da18e01546f911515ba40cc233",
+        "full_program_faq_verified": false
+      },
+      "confirmed_source_clauses": [
+        {
+          "clause": "API subscription",
+          "detail": "Published price USD29/month, or USD14.50/month with the stated Topstep discount. No subscription has been purchased."
+        },
+        {
+          "clause": "Private servers",
+          "detail": "Read-only dashboards, historical storage, research and copies of fills/positions/P&L are allowed. Placing, modifying, cancelling or relaying orders from private servers is prohibited."
+        },
+        {
+          "clause": "Live Funded",
+          "detail": "ProjectX API Gateway is for simulated environments and is unavailable on Live Funded accounts."
+        },
+        {
+          "clause": "Automation",
+          "detail": "Custom bots are permitted subject to platform rules and the HFT prohibition. This does not establish account-specific compliance."
+        }
+      ]
     },
     {
-      "id": "custom-unassigned", "firm": "Other / custom", "program": "UNASSIGNED",
-      "status": "UNVERIFIED", "sources": [], "faq_coverage_complete": false,
-      "unknown_clauses": ["Firm identity and program", "Official dated FAQ and account agreement", "All loss, drawdown, exposure, session, news, consistency, payout and conduct rules"],
-      "unsupported_clauses": ["Unverified platform adapter", "All order operations"],
+      "id": "custom-unassigned",
+      "firm": "Other / custom",
+      "program": "UNASSIGNED",
+      "status": "UNVERIFIED",
+      "sources": [],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Firm identity and program",
+        "Official dated FAQ and account agreement",
+        "All loss, drawdown, exposure, session, news, consistency, payout and conduct rules"
+      ],
+      "unsupported_clauses": [
+        "Unverified platform adapter",
+        "All order operations"
+      ],
       "explanation": "Configuration is available for inventory and future adapters. Unknown firms and unsupported platforms cannot grant new-intent permission.",
-      "new_intents_blocked": true, "execution_authorized": false
+      "new_intents_blocked": true,
+      "execution_authorized": false
     }
   ]
 }

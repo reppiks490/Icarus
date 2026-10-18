@@ -1195,8 +1195,21 @@ class AssetRunner:
                 feed_now = ft  # Close on the source clock, never on wall time.
                 self.feed_delay = now - ft
             closed_before = feed_now if self.spec.feed == "yahoo" else now - 5
-            new = [b for b in bars if (self.last_sub_ts is None or b.ts > self.last_sub_ts)
-                   and b.ts + source_seconds <= closed_before]
+            closed_rows = [b for b in bars if b.ts + source_seconds <= closed_before]
+            new = [b for b in closed_rows if self.last_sub_ts is None or b.ts > self.last_sub_ts]
+            if new:
+                from .corpus_intake import CorpusDataset
+                dataset = getattr(self.feed, "dataset", None)
+                if isinstance(dataset, CorpusDataset):
+                    # Native reads cannot bypass the corpus feed's same-contract
+                    # gate merely because the chart aggregates those rows later.
+                    contracts = {bar.ts: identity for bar, identity in zip(dataset.bars, dataset.contract_ids)}
+                    identities = {contracts.get(bar.ts) for bar in new}
+                    if self.last_sub_ts is not None:
+                        identities.add(contracts.get(self.last_sub_ts))
+                    if None in identities or len(identities) != 1:
+                        self._feed_failed("corpus strategy polling requires one verified contract identity; context reads remain available")
+                        return
             for b in new:
                 self.on_sub_bar(b, source_seconds // 60, live=True)
             for ch in self.chains.values():
@@ -1204,7 +1217,11 @@ class AssetRunner:
             stale = self.chart_agg.flush_if_stale(feed_now - 45)
             if stale is not None:
                 self._on_chart_bar(stale, True)
-            if px is None and bars:
+            if source_seconds > 60:
+                # Coarse-source quotes have no separate observation timestamp.
+                # Use only a demonstrably closed row for strategy valuation.
+                px = closed_rows[-1].c if closed_rows else None
+            elif px is None and bars:
                 px = bars[-1].c
             if px:
                 self.last_price = px

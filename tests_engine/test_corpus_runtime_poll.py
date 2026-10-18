@@ -1,5 +1,8 @@
 """Native source intervals must survive polling without invented finer bars."""
 import copy
+import gzip
+import hashlib
+import json
 from datetime import datetime, timezone
 
 import pytest
@@ -19,6 +22,7 @@ class NativeFeed:
         self.rows = [Bar(START, 100, 101, 99, 100, 10),
                      Bar(START + 300, 100, 102, 99, 101, 11)]
         self.clock = START + 600 if clock is None else clock
+        self.quote = 101.0
 
     def mintick(self, symbol):
         return 0.25
@@ -31,14 +35,14 @@ class NativeFeed:
 
     def recent_ex(self, symbol, granularity, since_ts=None):
         self.requests.append(granularity)
-        return self.rows, self.clock, 101.0
+        return self.rows, self.clock, self.quote
 
 
-def _runner(tmp_path, feed, chart="5"):
+def _runner(tmp_path, feed, chart="5", symbol="NQ"):
     journal = Journal(":memory:")
-    portfolio = Portfolio(journal, str(tmp_path), pts_ref_symbol="NQ",
+    portfolio = Portfolio(journal, str(tmp_path), pts_ref_symbol=symbol,
                           feeds={"yahoo": feed, "coinbase": feed})
-    spec = apply_chart_config(copy.deepcopy(REGISTRY["NQ"]), {"timeframe": chart}, pin=True)
+    spec = apply_chart_config(copy.deepcopy(REGISTRY[symbol]), {"timeframe": chart}, pin=True)
     runner = portfolio.make_runner(spec)
     assert runner.chart_minutes == int(chart)
     return runner, journal
@@ -121,5 +125,57 @@ def test_workspace_shared_transport_retains_native_five_minute_interval(tmp_path
         assert feed.requests == [300]
         assert len(runner.subbars) == 2
         assert all(minutes == 5 for _, minutes in runner.subbars)
+    finally:
+        journal.close()
+
+
+def test_unclosed_native_rows_never_supply_a_fallback_mark(tmp_path):
+    feed = NativeFeed(clock=START + 240)
+    feed.quote = None
+    runner, journal = _runner(tmp_path, feed)
+    try:
+        runner.poll()
+        assert runner.last_price is None
+        assert runner.last_price_ts == 0
+    finally:
+        journal.close()
+
+
+def _corpus(tmp_path, contracts):
+    from icarus_engine.corpus_intake import CorpusFeed, load_vault_bars
+    filename = "databento_mnq_5m.csv.gz"
+    rows = ["ts_open,open,high,low,close,volume,instrument_id"]
+    for i, contract in enumerate(contracts):
+        stamp = datetime.fromtimestamp(START + i * 300, timezone.utc).isoformat()
+        rows.append(f"{stamp},100,101,99,100,10,{contract if contract is not None else ''}")
+    raw = gzip.compress(("\n".join(rows) + "\n").encode())
+    (tmp_path / filename).write_bytes(raw)
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"caches": {"bars_primary": {filename: {"bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}}}}))
+    clock = (START + len(contracts) * 300 + 1) * 10**9
+    return CorpusFeed(load_vault_bars(tmp_path, manifest, "bars_primary", filename,
+        source_repo="reppiks490/Icarus-engine", source_commit="a" * 40,
+        available_at_ns=clock, asof_ns=clock))
+
+
+@pytest.mark.parametrize("contracts", [(111, 111, 222, 222), (None, None, None, None)])
+def test_native_corpus_cannot_bypass_contract_identity_by_chart_aggregation(tmp_path, contracts):
+    feed = _corpus(tmp_path, contracts)
+    runner, journal = _runner(tmp_path, feed, "20", "MNQ")
+    try:
+        runner.poll()
+        assert not runner.subbars and not runner.bars
+        assert runner.feed_error
+    finally:
+        journal.close()
+
+
+def test_single_contract_corpus_still_supplies_strategy_native_bars(tmp_path):
+    feed = _corpus(tmp_path, (111, 111, 111, 111))
+    runner, journal = _runner(tmp_path, feed, "20", "MNQ")
+    try:
+        runner.poll()
+        assert len(runner.subbars) == 4
+        assert not runner.feed_error
     finally:
         journal.close()
