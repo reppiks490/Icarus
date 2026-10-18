@@ -181,6 +181,21 @@ def test_optional_contract_column_and_exact_btc_catalog_alias(tmp_path):
     assert dataset.contract_ids == (None,) * 4
 
 
+def test_canonical_historical_vault_filename_preserves_identity_and_root(tmp_path):
+    historical_dir = tmp_path / "historical"
+    plain_dir = tmp_path / "plain"
+    historical_dir.mkdir()
+    plain_dir.mkdir()
+    historical = _load(_source(historical_dir, filename="databento_hist_nq_5m.csv.gz"))
+    plain = _load(_source(plain_dir, filename="databento_nq_5m.csv.gz"))
+    assert historical.symbol == historical.provider_root == "NQ"
+    assert historical.receipt.filename == "databento_hist_nq_5m.csv.gz"
+    assert historical.bars == plain.bars
+    assert historical.receipt.source_sha256 == plain.receipt.source_sha256
+    assert historical.receipt.dataset_id != plain.receipt.dataset_id
+    assert historical.receipt.live_feed_qualified is False
+
+
 def test_feed_reads_actual_bound_snapshot_and_records_each_consumer(tmp_path):
     args = _source(tmp_path)
     dataset = _load(args)
