@@ -27,7 +27,7 @@ from icarus_engine.paper_workspaces import WorkspacePortfolio, _PROFILE_DEFAULTS
 from icarus_engine.runtime import Journal
 
 
-_NATIVE_NAME = re.compile(r"databento_[a-z0-9]+_5m\.csv\.gz\Z")
+_NATIVE_NAME = re.compile(r"databento_(?:hist_)?([a-z0-9]+)_5m\.csv\.gz\Z")
 _WORKSPACES = ("cc1", "cc2", "cc3", "cc4")
 
 
@@ -205,6 +205,7 @@ def main(argv=None):
     report = {"schema_version": "icarus-corpus-consumption-v1", "source_repo": args.source_repo,
               "source_commit": args.source_commit, "asof_ns": asof, "datasets": [],
               "blocked_datasets": [], "workspaces": [], "read_receipts": [], "corpus_used": False,
+              "paper_warmup_used": False, "consumption_purposes": [],
               "execution_authorized": False, "production_decision_authorized": False,
               "market_validation": False, "raw_payloads_included": False}
     try:
@@ -220,8 +221,14 @@ def main(argv=None):
         entries = manifest["caches"].get(args.cache_name)
         if not isinstance(entries, dict):
             return 2
-        filenames = args.filename or sorted(name for name in manifest["caches"][args.cache_name]
-                                             if _NATIVE_NAME.fullmatch(name))
+        # Prefer one canonical snapshot per root, falling back to retained history.
+        # Never stitch two independently archived series into a fabricated input.
+        selected = {}
+        for name in sorted(entries, key=lambda value: (value.startswith("databento_hist_"), value)):
+            match = _NATIVE_NAME.fullmatch(name)
+            if match:
+                selected.setdefault(match[1], name)
+        filenames = args.filename or list(selected.values())
         datasets = []
         for filename in filenames:
             try:
@@ -237,8 +244,13 @@ def main(argv=None):
             with _offline_private_process():
                 workspaces, reads = consume(datasets, args.private_dir, asof)
             report["workspaces"], report["read_receipts"] = workspaces, reads
-            report["corpus_used"] = any(asset["warm"] and asset["chart_bars"] > 0
-                                        for row in workspaces for asset in row["assets"])
+            report["corpus_used"] = any(row["row_count"] > 0 for row in reads)
+            report["paper_warmup_used"] = any(asset["warm"] and asset["chart_bars"] > 0
+                                              for row in workspaces for asset in row["assets"])
+            if report["corpus_used"]:
+                report["consumption_purposes"] = ["QUALITY_AND_COVERAGE", "PRIVATE_HISTORY_INPUT"]
+            if report["paper_warmup_used"]:
+                report["consumption_purposes"].append("PAPER_CONFIGURATION_WARMUP")
         args.receipt.parent.mkdir(parents=True, exist_ok=True)
         _exclusive(args.receipt, _json_bytes(report))
         return (1 if report["blocked_datasets"] else 0) if report["corpus_used"] else 2

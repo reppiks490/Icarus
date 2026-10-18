@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 
-def _bundle(tmp_path, *, corrupt=False, contracts=False):
+def _bundle(tmp_path, *, corrupt=False, contracts=False, filename="databento_mnq_5m.csv.gz"):
     restored = tmp_path / "restored"
     restored.mkdir()
     start = datetime(2026, 10, 12, tzinfo=timezone.utc)
@@ -20,7 +20,6 @@ def _bundle(tmp_path, *, corrupt=False, contracts=False):
         contract = 1 if contracts and i < 256 else 2
         lines.append(f"{stamp},100.25,101.5,99.75,100.75,10,{contract}")
     payload = gzip.compress(("\n".join(lines) + "\n").encode())
-    filename = "databento_mnq_5m.csv.gz"
     (restored / filename).write_bytes(payload + (b"corrupt" if corrupt else b""))
     manifest = tmp_path / "vault-manifest.json"
     manifest.write_text(json.dumps({"caches": {"bars_primary": {filename: {
@@ -46,6 +45,7 @@ def test_actual_corpus_reaches_all_four_icarus_workspaces(tmp_path, monkeypatch)
     assert main(args) == 0
     report = json.loads(report_path.read_text())
     assert report["corpus_used"] is True
+    assert report["paper_warmup_used"] is True
     assert report["execution_authorized"] is False
     assert report["market_validation"] is False
     assert len(report["datasets"]) == 1
@@ -172,3 +172,44 @@ def test_deep_manifest_rejected_without_traceback_or_runtime(tmp_path):
     manifest.write_text("[" * 10_000 + "0" + "]" * 10_000)
     assert intake.main(args) == 2
     assert not private.exists() and not report.exists()
+
+
+def test_non_workspace_corpus_has_real_coverage_consumption_without_paper_claim(tmp_path):
+    from tools.provider_corpus_intake import main
+
+    args, report, _, _ = _bundle(tmp_path, filename="databento_dx_5m.csv.gz")
+    assert main(args) == 0
+    result = json.loads(report.read_text())
+    assert result["corpus_used"] is True
+    assert result["paper_warmup_used"] is False
+    assert result["consumption_purposes"] == ["QUALITY_AND_COVERAGE", "PRIVATE_HISTORY_INPUT"]
+    assert all(row["assets"] == [] for row in result["workspaces"])
+    assert any(row["consumer_id"] == "history_intake" and row["row_count"] == 512
+               for row in result["read_receipts"])
+
+
+def test_historical_filename_is_used_when_no_canonical_snapshot_exists(tmp_path):
+    from tools.provider_corpus_intake import main
+
+    args, report, _, _ = _bundle(tmp_path, filename="databento_hist_mnq_5m.csv.gz")
+    assert main(args) == 0
+    result = json.loads(report.read_text())
+    assert result["datasets"][0]["filename"] == "databento_hist_mnq_5m.csv.gz"
+    assert result["corpus_used"] is True
+
+
+def test_autodiscovery_prefers_canonical_snapshot_without_stitching_history(tmp_path):
+    from tools.provider_corpus_intake import main
+
+    args, report, _, payload = _bundle(tmp_path)
+    restored = Path(args[args.index("--restored-dir") + 1])
+    manifest_path = Path(args[args.index("--vault-manifest") + 1])
+    manifest = json.loads(manifest_path.read_text())
+    name = "databento_hist_mnq_5m.csv.gz"
+    (restored / name).write_bytes(payload)
+    manifest["caches"]["bars_primary"][name] = dict(manifest["caches"]["bars_primary"]["databento_mnq_5m.csv.gz"])
+    manifest_path.write_text(json.dumps(manifest))
+    assert main(args) == 0
+    result = json.loads(report.read_text())
+    assert len(result["datasets"]) == 1
+    assert result["datasets"][0]["filename"] == "databento_mnq_5m.csv.gz"
