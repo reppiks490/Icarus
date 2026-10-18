@@ -177,7 +177,7 @@ def _workspaces(values, datasets, positive):
             {"chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart", "timeframe": "5"}))
         inputs = value["inputs"]
         _require(type(inputs) is dict and set(inputs) <= {"qty_contracts", "tp1_pts", "tp2_pts"})
-        _require(all(type(v) in (float, int) and math.isfinite(v) and 0 < v <= 10_000 for v in inputs.values()))
+        _require(all(type(v) in (float, int) and 0 < v <= 10_000 and math.isfinite(v) for v in inputs.values()))
         _require(type(value["unavailable_assets"]) is list and len(value["unavailable_assets"]) <= 256)
         _require(all(type(s) is str and re.fullmatch(r"[A-Z0-9]{1,12}", s) for s in value["unavailable_assets"]))
         _require(len(set(value["unavailable_assets"])) == len(value["unavailable_assets"]))

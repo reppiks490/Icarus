@@ -128,3 +128,9 @@ def test_later_clock_increases_source_age_without_promoting_qualification():
     later = _api().snapshot(now_ns=NOW + 86400 * 10**9)
     assert later["corpora"][0]["age_seconds"] == initial["corpora"][0]["age_seconds"] + 86400
     assert later["live_feed_qualified"] is False
+
+
+def test_oversized_configuration_integer_fails_closed_without_overflow(tmp_path, monkeypatch):
+    def change(receipt):
+        receipt["workspaces"][0]["inputs"]["qty_contracts"] = 10 ** 1000
+    _unavailable(_fault(tmp_path, monkeypatch, change))
