@@ -21,6 +21,7 @@ function paperWorkspacesHtml() {
     <header class="paper-deck-head"><div><p class="paper-kicker">ICARUS / SIMULATION DECK</p><h2>Four independent paper portfolios</h2><p>Separate strategy runners, positions, journals and paper P&amp;L. Shared market data, isolated controls.</p></div>
       <div class="paper-deck-actions"><span class="paper-mode">SIMULATED PAPER ONLY</span><button type="button" class="sm" data-paper-refresh>Refresh state</button></div></header>
     <p id="paperSnapshotNotice" class="small muted" role="status">Loading paper ledger state…</p>
+    <nav aria-label="Separate dashboards">${['cc1','cc2','cc3','cc4'].map(id=>`<a href="/dashboards/${id}">${id.toUpperCase()} dashboard ↗</a>`).join(' · ')} · <a href="/dashboards/connections">Connections ↗</a></nav>
     <div id="paperAggregate" class="paper-aggregate"></div>
     <div id="paperWorkspaceTabs" class="paper-workspace-grid" role="group" aria-label="Select a paper portfolio"></div>
     <div id="paperConnections" class="paper-connections"></div>
@@ -34,7 +35,7 @@ function paperMoney(x) { const n=paperValue(x); return n==null?'—':n.toLocaleS
 function paperSetHeader(data) {
   const el=document.querySelector('#combinedPaperPnl'); if(!el)return;
   const profiles=data?.profiles;
-  const value=data?.mode==='concurrent_paper'&&Array.isArray(profiles)&&profiles.length===4?paperCurrentPnl(paperRealized(data.aggregate),data.aggregate?.open_pnl):null;
+  const value=data?.mode==='concurrent_paper'&&Array.isArray(profiles)&&profiles.length===4&&data.aggregate?.accounting_complete!==false?paperCurrentPnl(paperRealized(data.aggregate),data.aggregate?.open_pnl):null;
   el.textContent=paperMoney(value);el.className='value '+paperTone(value);
   el.title=value==null?'Four paper ledger results unavailable.':`Closed live paper results plus current open marks across ${profiles.length} separate simulated ledgers. Open marks may include warmup-origin positions; replay-inclusive synthetic net is shown below.`;
 }
@@ -68,9 +69,9 @@ async function loadPaperWorkspaces(full=false) {
 }
 
 function paperAggregateHtml(data) {
-  const a=data.aggregate||{},realized=paperRealized(a),current=paperCurrentPnl(realized,a.open_pnl);
+  const a=data.aggregate||{},complete=a.accounting_complete!==false,realized=complete?paperRealized(a):null,current=complete?paperCurrentPnl(realized,a.open_pnl):null;
   return `<div class="paper-aggregate-main"><span class="paper-metric-label">COMBINED PAPER P&amp;L · CLOSED + OPEN</span><strong class="tnum ${paperTone(current)}">${paperSigned(current)}</strong><span>Sum of all four current paper portfolios</span></div>
-    <div class="paper-aggregate-side"><div><span>Persistent closed P&amp;L</span><b class="tnum ${paperTone(realized)}">${paperSigned(realized)}</b></div><div><span>Current open mark</span><b class="tnum ${paperTone(a.open_pnl)}">${paperSigned(a.open_pnl)}</b></div><div><span>Replay inclusive net</span><b class="tnum ${paperTone(a.net)}">${paperSigned(a.net)}</b></div></div>
+    <div class="paper-aggregate-side"><div><span>Persistent closed P&amp;L</span><b class="tnum ${paperTone(realized)}">${paperSigned(realized)}</b></div><div><span>Current open mark</span><b class="tnum ${paperTone(a.open_pnl)}">${paperSigned(complete?a.open_pnl:null)}</b></div><div><span>Replay inclusive net</span><b class="tnum ${paperTone(a.net)}">${paperSigned(complete?a.net:null)}</b></div></div>
     <p class="paper-basis">${current==null?'Aggregate ledger fields require the updated engine server.':`${paperEsc(a.open_positions??'—')} open positions. Closed P&L comes from persisted live paper trades; open marks may include warmup-origin positions. Replay-inclusive net and equity use synthetic per-asset capital.`}</p>`;
 }
 
