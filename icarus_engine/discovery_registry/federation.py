@@ -180,7 +180,7 @@ class ProviderFederator:
                     if parameter.get("location") != "query" or parameter.get("required") is not True:
                         continue
                     value = parameter.get("example")
-                    if isinstance(value, (str, int, float, bool)):
+                    if isinstance(value, (str, int, float, bool)) and str(value).strip():
                         examples[parameter["name"]] = str(value)
                 result.setdefault(provider, {})[operation_id] = {
                     "path": path, "method": method.upper(), "query_examples": examples}
