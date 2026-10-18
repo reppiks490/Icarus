@@ -134,7 +134,9 @@ class ForecastLedger:
                 _iso(resolution.received_at), raw, digest))
         return True
 
-    def rows(self, *, producer: str, scope: Scope, as_of: str) -> list[tuple[Forecast, Resolution]]:
+    def rows(self, *, producer: str, scope: Scope, as_of: str, source_commit: str | None = None) -> list[tuple[Forecast, Resolution]]:
+        if source_commit is not None:
+            check_sha(source_commit)
         boundary = _iso(as_of)
         records: list[tuple[Forecast, Resolution]] = []
         query = self._db.execute(
@@ -151,8 +153,11 @@ class ForecastLedger:
             f_obj["evidence_ids"] = tuple(f_obj["evidence_ids"])
             r_obj["evidence_ids"] = tuple(r_obj["evidence_ids"])
             f, r = Forecast(**f_obj), Resolution(**r_obj)
-            if f.scope == scope and timestamp(f.maturity_at, "maturity_at") <= timestamp(as_of, "as_of"):
+            if (f.scope == scope and (source_commit is None or f.source_commit == source_commit)
+                    and timestamp(f.maturity_at, "maturity_at") <= timestamp(as_of, "as_of")):
                 records.append((f, r))
+        if source_commit is None and len({f.source_commit for f, _ in records}) > 1:
+            raise ValueError("mixed model revisions require an explicit source_commit")
         # Overlapping label horizons share outcomes and cannot count as
         # independent proof. A deterministic earliest-first purge is applied.
         chosen: list[tuple[Forecast, Resolution]] = []
@@ -202,6 +207,7 @@ def calibration_report(
     ledger: ForecastLedger, *, producer: str, scope: Scope, as_of: str,
     minimum_episodes: int = 60, minimum_sessions: int = 20,
     baseline_probability: float | None = None,
+    source_commit: str | None = None,
 ) -> dict:
     """Metrics apply only to prior, mature, non-overlapping forecasts."""
     if type(minimum_episodes) is not int or minimum_episodes < 30:
@@ -210,12 +216,13 @@ def calibration_report(
         raise ValueError("minimum_sessions must be >=10")
     if baseline_probability is not None:
         probability(baseline_probability, "baseline_probability")
-    pairs = ledger.rows(producer=producer, scope=scope, as_of=as_of)
+    pairs = ledger.rows(producer=producer, scope=scope, as_of=as_of, source_commit=source_commit)
     data = [(f.probability, r.label) for f, r in pairs]
     sessions = len({f.session_id for f, _ in pairs})
     result = {
         "schema_version": "icarus-intuition-calibration-v1",
         "producer": producer, "scope": asdict(scope), "as_of": _iso(as_of),
+        "source_commit": source_commit or (pairs[0][0].source_commit if pairs else None),
         "status": "UNMEASURED", "sample_count": len(data),
         "independent_sessions": sessions, "brier": None,
         "log_loss": None, "ece": None, "brier_skill_vs_locked_baseline": None,
