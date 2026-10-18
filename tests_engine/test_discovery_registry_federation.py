@@ -224,3 +224,104 @@ def test_operation_denials_remain_separate_from_provider_aggregate(tmp_path):
     assert links["twelve:get:/time_series"].metadata["operation_blockers"] == ["403"]
     assert "SECRET_SENTINEL" not in str([link.to_dict() for link in links.values()])
     assert f.evidence_events(tuple(links.values())) == ()
+
+
+def bybit_files(tmp_path, *, verified_category="spot"):
+    catalog, latest = files(tmp_path)
+    catalog.write_text(json.dumps({"operations": [
+        {"provider": "bybit", "id": f"bybit:get:/v5/market/kline:{category}",
+         "method": "GET", "path": "/v5/market/kline", "parameters": [
+             {"location": "query", "name": "category", "required": True, "example": category},
+             {"location": "query", "name": "symbol", "required": True, "example": None},
+         ]}
+        for category in ("spot", "linear", "inverse", "option")
+    ]}))
+    (latest / "bybit.json").write_text(json.dumps({
+        "completed_at_utc": NOW.isoformat(), "providers": {"bybit": {
+            "status": "COLLECTED_PARTIAL", "collected_pages": 1,
+            "substantive_work_performed": True,
+            "verified_operations": [f"bybit:get:/v5/market/kline:{verified_category}"],
+        }}}))
+    return catalog, latest
+
+
+@pytest.mark.parametrize("query", [
+    "category=option&symbol=BTC-OPTION", "symbol=BTCUSDT", "category=&symbol=BTCUSDT",
+    "category=spot&category=option", "category=spot&category=spot",
+])
+def test_spot_access_cannot_qualify_another_or_ambiguous_query_variant(tmp_path, query):
+    f = federator(bybit_files(tmp_path))
+    links = f.links_for([candidate("https://api.bybit.com/v5/market/kline?" + query)])
+    assert links  # Preserve ancestry even when operation access cannot be established.
+    assert f.evidence_events(links) == ()
+
+
+@pytest.mark.parametrize("category", ["spot", "option"])
+def test_matching_query_variant_qualifies_only_its_verified_operation(tmp_path, category):
+    f = federator(bybit_files(tmp_path, verified_category=category))
+    links = f.links_for([candidate(
+        f"https://api.bybit.com/v5/market/kline?symbol=BTCUSDT&category={category}")])
+    events = f.evidence_events(links)
+    assert len(events) == 1
+    assert events[0].metadata["operation_id"] == f"bybit:get:/v5/market/kline:{category}"
+    assert events[0].metadata["operation_query_bindings"] == {"category": category}
+    assert events[0].to_dict()["execution_authorized"] is False
+    assert events[0].to_dict()["production_decision_authorized"] is False
+
+
+@pytest.mark.parametrize("host", ["twelvedata.com", "www.twelvedata.com"])
+def test_marketing_host_keeps_ancestry_without_api_access_evidence(tmp_path, host):
+    f = federator(files(tmp_path, verified_operations=["twelve:get:/time_series"]))
+    links = f.links_for([candidate(f"https://{host}/time_series")])
+    assert len(links) == 1
+    assert links[0].metadata["transport_access_evidence"] is False
+    assert f.evidence_events(links) == ()
+
+
+def test_bybit_marketing_host_does_not_borrow_api_origin_evidence(tmp_path):
+    f = federator(bybit_files(tmp_path))
+    links = f.links_for([candidate("https://bybit.com/v5/market/kline?category=spot")])
+    assert links
+    assert f.evidence_events(links) == ()
+
+
+def test_persisted_legacy_links_cannot_bypass_current_provenance_checks(tmp_path):
+    from dataclasses import replace
+
+    f = federator(files(tmp_path, verified_operations=["twelve:get:/time_series"]))
+    current = f.links_for([candidate()])[0]
+    legacy = replace(current, metadata=dict(current.metadata) | {"federation_revision": "registry-federation-v3"})
+    assert f.evidence_events([legacy]) == ()
+
+
+def test_indistinguishable_variant_descriptors_cannot_prove_access(tmp_path):
+    catalog, latest = bybit_files(tmp_path, verified_category="option")
+    payload = json.loads(catalog.read_text())
+    # The linear descriptor no longer distinguishes itself from the option one.
+    payload["operations"][1]["parameters"][0]["example"] = "option"
+    catalog.write_text(json.dumps(payload))
+    f = federator((catalog, latest))
+    links = f.links_for([candidate("https://api.bybit.com/v5/market/kline?category=option")])
+    assert links
+    assert f.evidence_events(links) == ()
+
+
+def test_singleton_id_qualified_variant_still_requires_its_query_binding(tmp_path):
+    catalog, latest = bybit_files(tmp_path)
+    payload = json.loads(catalog.read_text())
+    payload["operations"] = payload["operations"][:1]
+    catalog.write_text(json.dumps(payload))
+    f = federator((catalog, latest))
+    for query, expected_count in (("category=option", 0), ("category=spot", 1), ("", 0)):
+        assert len(f.evidence_events(f.links_for([candidate(
+            "https://api.bybit.com/v5/market/kline?" + query)]))) == expected_count
+
+
+@pytest.mark.parametrize("suffix", [":443", ":8443", "", ".evil.example"])
+def test_api_origin_binding_preserves_effective_https_origin(tmp_path, suffix):
+    f = federator(files(tmp_path, verified_operations=["twelve:get:/time_series"]))
+    links = f.links_for([candidate(f"https://api.twelvedata.com{suffix}/time_series")])
+    events = f.evidence_events(links)
+    assert len(events) == (1 if suffix in {"", ":443"} else 0)
+    if events:
+        assert events[0].metadata["api_origin"] == "https://api.twelvedata.com"

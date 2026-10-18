@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import re
 from typing import Callable, Iterable
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from .contracts import Candidate, ProviderLink, QualificationEvent, QualificationState, utc_iso
 from .normalize import normalize_name, normalize_url
@@ -25,6 +25,16 @@ PROVIDER_DOMAINS = {
     "bybit": ("api.bybit.com", "bybit.com"),
     "tickstream": ("api.tick-stream.xyz", "tick-stream.xyz"),
 }
+# Approved collector origins (tools/provider_exhaustive_collection.py:PROVIDERS).
+# Marketing/identity aliases above establish ancestry, never API-origin access.
+_PROVIDER_API_ORIGINS = {
+    "massive": "https://api.massive.com", "twelve": "https://api.twelvedata.com",
+    "fmp": "https://financialmodelingprep.com", "eodhd": "https://eodhd.com",
+    "tiingo": "https://api.tiingo.com", "intrinio": "https://api-v2.intrinio.com",
+    "quiver": "https://api.quiverquant.com", "fred": "https://api.stlouisfed.org",
+    "alpaca": "https://data.alpaca.markets", "bybit": "https://api.bybit.com",
+    "tickstream": "https://api.tick-stream.xyz",
+}
 _NAMES = {
     "massive": "massive", "polygon": "massive", "polygon.io": "massive",
     "twelve": "twelve", "twelve data": "twelve", "twelvedata": "twelve",
@@ -39,7 +49,7 @@ _BLOCKER_CODES = {"401", "402", "403", "429", "REDIRECT_BLOCKED", "PAYLOAD_LIMIT
     "PROVIDER_ERROR", "UNSUPPORTED_RESPONSE_FORMAT", "PAGINATION_REPEAT_INCOMPLETE",
     "PAGINATION_DID_NOT_ADVANCE", "HTTPError", "URLError", "TimeoutError", "ConnectionError",
     "JSONDecodeError", "ValueError", "OSError", "SSLError", "IncompleteRead"}
-FEDERATION_REVISION = "registry-federation-v3"
+FEDERATION_REVISION = "registry-federation-v4"
 
 
 def _normalized_path(path: str) -> str:
@@ -148,13 +158,13 @@ class ProviderFederator:
             result["status"] = "MALFORMED_PROVIDER_EVIDENCE"
         return result
 
-    def _operations(self) -> dict[str, tuple[dict[str, str], ...]]:
+    def _operations(self) -> dict[str, tuple[dict, ...]]:
         with self.endpoint_catalog_path.open("rb") as handle:
             raw = handle.read(20_000_001)
         if len(raw) > 20_000_000:
             raise ValueError("provider catalog limit")
         catalog = _strict_json(raw)
-        result: dict[str, dict[str, str]] = {}
+        result: dict[str, dict[str, dict]] = {}
         for operation in catalog["operations"]:
             operation_id = operation.get("id")
             if not isinstance(operation_id, str) or ":" not in operation_id:
@@ -165,7 +175,39 @@ class ProviderFederator:
                 method = operation.get("method")
                 if not isinstance(method, str) or not method:
                     raise ValueError("malformed provider operation method")
-                result.setdefault(provider, {})[operation_id] = {"path": path, "method": method.upper()}
+                examples = {}
+                for parameter in operation.get("parameters", []):
+                    if parameter.get("location") != "query" or parameter.get("required") is not True:
+                        continue
+                    value = parameter.get("example")
+                    if isinstance(value, (str, int, float, bool)):
+                        examples[parameter["name"]] = str(value)
+                result.setdefault(provider, {})[operation_id] = {
+                    "path": path, "method": method.upper(), "query_examples": examples}
+        for provider, entries in result.items():
+            routes = {}
+            for operation_id, details in entries.items():
+                routes.setdefault((details["method"], details["path"]), []).append(operation_id)
+            for (method, path), siblings in routes.items():
+                names = {name for oid in siblings for name in entries[oid]["query_examples"]}
+                discriminants = {name for name in names if len({
+                    entries[oid]["query_examples"].get(name) for oid in siblings}) > 1}
+                for oid in siblings:
+                    details = entries[oid]
+                    examples = details.pop("query_examples")
+                    # An ID-qualified singleton still needs its declared query binding.
+                    suffix = oid.removeprefix(f"{provider}:{method.lower()}:{path}:")
+                    binding_names = discriminants or {
+                        name for name, value in examples.items() if suffix != oid and value == suffix}
+                    ambiguous = len(siblings) > 1 and not binding_names
+                    qualified_id = oid != f"{provider}:{method.lower()}:{path}"
+                    unresolved = ambiguous or (qualified_id and not binding_names)
+                    details["query_bindings"] = None if unresolved or not binding_names <= examples.keys() else {
+                        name: examples[name] for name in sorted(binding_names)}
+                bindings = [entries[oid]["query_bindings"] for oid in siblings]
+                for oid in siblings:
+                    if bindings.count(entries[oid]["query_bindings"]) != 1:
+                        entries[oid]["query_bindings"] = None
         return {provider: tuple(
             {"id": operation_id, **details}
             for operation_id, details in sorted(entries.items())
@@ -190,27 +232,36 @@ class ProviderFederator:
                 receipts[provider] = self._receipt(provider)
             receipt = receipts[provider]
             candidate_path = _normalized_path(urlsplit(normalized.identity_url).path or "/")
+            candidate_origin = f"{transport.scheme}://{transport.netloc}"
+            candidate_query = parse_qs(transport.query, keep_blank_values=True)
             metadata = {key: value for key, value in receipt.items() if key != "operation_blockers"} | {
                 "match_basis": "EXACT_DOMAIN" if exact_domain else "CANONICAL_PROVIDER_NAME",
-                "transport_access_evidence": exact_domain and transport.scheme == "https"
-                    and transport.hostname in PROVIDER_DOMAINS[provider]
-                    and transport.port in {None, 443} and not candidate.capability_only,
+                "transport_access_evidence": exact_domain
+                    and candidate_origin == _PROVIDER_API_ORIGINS[provider] and not candidate.capability_only,
+                "api_origin": candidate_origin,
                 "qualification_scope": "operation_specific_access_only", "federation_revision": FEDERATION_REVISION}
             for operation in operations[provider]:
                 operation_id = operation["id"]
                 path_match = _operation_path_match(operation["path"], candidate_path)
                 if path_match is None:
                     continue
+                query_bindings = operation["query_bindings"]
+                query_match = query_bindings is not None and all(
+                    candidate_query.get(name) == [value] for name, value in query_bindings.items())
                 operation_metadata = metadata | {
                     "candidate_path": candidate_path,
                     "operation_path": operation["path"],
                     "operation_method": operation["method"],
                     "operation_path_match": path_match,
+                    "operation_query_bindings": query_bindings,
+                    "operation_query_match": query_match,
                     "operation_verified": operation_id in receipt["verified_operations"],
                     "operation_blockers": receipt["operation_blockers"].get(operation_id, []),
                 }
                 material = "\0".join((FEDERATION_REVISION, candidate.candidate_id, provider, operation_id,
-                    candidate_path, receipt["receipt_sha256"] or "missing", receipt["status"], metadata["match_basis"]))
+                    candidate_path, candidate_origin, operation["method"], operation["path"],
+                    json.dumps(query_bindings, sort_keys=True), str(query_match),
+                    receipt["receipt_sha256"] or "missing", receipt["status"], metadata["match_basis"]))
                 links.append(ProviderLink(candidate_id=candidate.candidate_id, provider_id=provider,
                     operation_id=operation_id, linked_at=receipt["completed_at_utc"] or now,
                     evidence_ref=receipt["receipt_path"], link_id=hashlib.sha256(material.encode()).hexdigest(),
@@ -220,7 +271,11 @@ class ProviderFederator:
     def evidence_events(self, links: Iterable[ProviderLink]) -> tuple[QualificationEvent, ...]:
         events, receipts = {}, {}
         for link in links:
-            if link.provider_id not in PROVIDER_DOMAINS or link.metadata.get("transport_access_evidence") is not True:
+            if (link.provider_id not in PROVIDER_DOMAINS
+                or link.metadata.get("federation_revision") != FEDERATION_REVISION
+                or link.metadata.get("transport_access_evidence") is not True
+                or link.metadata.get("api_origin") != _PROVIDER_API_ORIGINS[link.provider_id]
+                or link.metadata.get("operation_query_match") is not True):
                 continue
             if link.provider_id not in receipts:
                 receipts[link.provider_id] = self._receipt(link.provider_id)
@@ -236,7 +291,7 @@ class ProviderFederator:
                 or link.operation_id not in receipt["verified_operations"]
                 or receipt["operation_blockers"].get(link.operation_id)):
                 continue
-            material = "\0".join((link.candidate_id, link.provider_id, link.operation_id,
+            material = "\0".join((FEDERATION_REVISION, link.candidate_id, link.provider_id, link.operation_id,
                                    receipt["receipt_sha256"], "ACCESS_TESTED"))
             events.setdefault(link.candidate_id, QualificationEvent(candidate_id=link.candidate_id,
                 old_state=QualificationState.DISCOVERED, new_state=QualificationState.ACCESS_TESTED,
@@ -244,6 +299,8 @@ class ProviderFederator:
                 event_id=hashlib.sha256(material.encode()).hexdigest(), reason_code="EXISTING_PROVIDER_ACCESS_EVIDENCE",
                 metadata={"provider_id": link.provider_id, "receipt_sha256": receipt["receipt_sha256"],
                           "operation_id": link.operation_id,
+                          "api_origin": link.metadata["api_origin"],
+                          "operation_query_bindings": link.metadata["operation_query_bindings"],
                           "qualification_scope": "operation_specific_access_only"}))
         return tuple(events[key] for key in sorted(events))
 
