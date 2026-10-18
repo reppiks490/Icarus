@@ -270,7 +270,7 @@ def load_vault_bars(restored_dir, manifest_path, cache_name, filename, *, source
         manifest = json.loads(manifest_bytes, object_pairs_hook=_unique_object)
         entry = manifest["caches"][cache_name][filename]
         digest, length = entry["sha256"], entry["bytes"]
-    except (KeyError, TypeError, UnicodeError, json.JSONDecodeError) as exc:
+    except (KeyError, TypeError, UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise ValueError("invalid or missing vault manifest entry") from exc
     if not isinstance(digest, str) or not _SHA.fullmatch(digest) or type(length) is not int or length <= 0:
         raise ValueError("invalid vault manifest byte identity")
