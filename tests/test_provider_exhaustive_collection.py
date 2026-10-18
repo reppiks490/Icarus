@@ -225,3 +225,28 @@ def test_empty_operation_cannot_inherit_access_from_another_operation(tmp_path):
     federator=ProviderFederator(catalog,tmp_path/p.ROOT/'latest')
     assert result['providers']['twelve']['substantive_work_performed'] is True
     assert federator.evidence_events(federator.links_for([candidate]))==()
+
+
+@pytest.mark.parametrize('value',[
+    {'payload':[]}, [None], {'payload':{'empty':{},'missing':None,'blank':'  '}},
+    {'payload':[float('nan'), {'missing':None}, float('inf')]},
+])
+def test_nested_empty_or_nonfinite_content_does_not_verify_operation(tmp_path,value):
+    result=p.cycle(tmp_path,[operation()],{'TWELVE_DATA_API_KEY':'fixture'},run_id='nested-empty',
+                   request_budget=1,fetch=lambda *args:{'data':[{'nested':value}]})
+    assert result['providers']['twelve']['verified_operations']==[]
+
+
+@pytest.mark.parametrize('value',[{'payload':[0]}, {'payload':[False]}, {'payload':{'flag':True}}])
+def test_populated_nested_zero_and_boolean_leaves_verify_operation(tmp_path,value):
+    result=p.cycle(tmp_path,[operation()],{'TWELVE_DATA_API_KEY':'fixture'},run_id='nested-value',
+                   request_budget=1,fetch=lambda *args:{'data':[{'nested':value}]})
+    assert result['providers']['twelve']['verified_operations']==[operation()['id']]
+
+
+def test_content_beyond_depth_bound_is_unverified(tmp_path):
+    value=0
+    for _ in range(100):value={'nested':value}
+    result=p.cycle(tmp_path,[operation()],{'TWELVE_DATA_API_KEY':'fixture'},run_id='nested-depth',
+                   request_budget=1,fetch=lambda *args:{'data':[value]})
+    assert result['providers']['twelve']['verified_operations']==[]
