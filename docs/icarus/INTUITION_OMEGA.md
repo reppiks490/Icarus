@@ -78,3 +78,8 @@ Then full suite: python -m pytest tests_engine -q
 Run Windows/Linux CI and manually inspect no-leakage and archival provenance. This branch has not yet been connected to current Learning Fabric/API/UI or authenticated providers. Implementation acceptance requires an approved, locally timestamped adapter, protected real-data tests and an independently verified prospective scorecard. Never trust caller-created model scorecards as proof at an untrusted HTTP boundary: authenticate and load immutable source receipts server-side before using expert reconciliation.
 
 No active ICARUS loop or workflow, production UI, broker configuration, main branch or trading permission is changed here.
+
+
+## Trusted Learning Fabric bridge (added after initial draft)
+
+The optional research adapter intuition_omega/learning_bridge.py can inspect the *existing* Learning Fabric predictions/outcomes tables through SQLite read-only mode and transfer verifiable prospective binary forecasts to the Intuition Ω immutable forecast ledger. It does not mutate Learning Fabric, invent missing chart/fill/timeframe/label metadata, recover secrets or treat retrospectively uploaded historical forecasts as advance predictions. It requires the source database's actual recorded_at timestamps to precede the forecast maturity and the outcome's engine-recorded receipt to be no earlier than observation. Inputs missing an exact scope or source evidence fail closed with counted rejection reasons. The invoking future authenticated service must control which trusted SQLite source path may be read. This bridge is opt-in and not attached to the live scheduler.
