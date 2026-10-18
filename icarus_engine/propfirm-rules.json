@@ -41,7 +41,7 @@
         "Effective rule version and full FAQ coverage"
       ],
       "unsupported_clauses": [
-        "Official platform account adapter not yet verified",
+        "Read-only adapter is coded and mock-tested; no actual account or subscription readback is verified",
         "All order operations"
       ],
       "explanation": "Official API FAQ permits read-only monitoring on private servers, requires a separately billed API subscription, prohibits remote order transmission and excludes Live Funded API trading. This implementation never routes orders or purchases access. Exact program, account stage and remaining FAQ clauses remain unverified.",
@@ -91,6 +91,2629 @@
       "explanation": "Configuration is available for inventory and future adapters. Unknown firms and unsupported platforms cannot grant new-intent permission.",
       "new_intents_blocked": true,
       "execution_authorized": false
+    },
+    {
+      "id": "apex-0",
+      "firm": "Apex Trader Funding",
+      "program": "EOD Trailing Drawdown",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://apextraderfunding.com/help-center/eod-trailing-drawdown-accounts/eod-evaluations/",
+        "https://apextraderfunding.com/help-center/eod-trailing-drawdown-accounts/eod-performance-accounts-pa/"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "No automation or algorithm usage allowed.",
+        "Legacy and current programs have distinct rules and cannot be silently converted.",
+        "Official legacy FAQ says purchases retired March1,2026; conflicting marketing eligibility is unresolved."
+      ],
+      "explanation": "Free local account inventory only. No automation or algorithm usage allowed. Legacy and current programs have distinct rules and cannot be silently converted. Official legacy FAQ says purchases retired March1,2026; conflicting marketing eligibility is unresolved.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "apex-1",
+      "firm": "Apex Trader Funding",
+      "program": "Intraday Trailing Drawdown",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://apextraderfunding.com/help-center/evaluation-accounts-ea/intraday-trailing-drawdown-evaluations/",
+        "https://apextraderfunding.com/help-center/intraday-trailing-drawdown-accounts/intraday-trailing-drawdown-performance-accounts-pa/"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "No automation or algorithm usage allowed.",
+        "Legacy and current programs have distinct rules and cannot be silently converted.",
+        "Official legacy FAQ says purchases retired March1,2026; conflicting marketing eligibility is unresolved."
+      ],
+      "explanation": "Free local account inventory only. No automation or algorithm usage allowed. Legacy and current programs have distinct rules and cannot be silently converted. Official legacy FAQ says purchases retired March1,2026; conflicting marketing eligibility is unresolved.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "apex-2",
+      "firm": "Apex Trader Funding",
+      "program": "Legacy Evaluation / Performance",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://apextraderfunding.com/help-center/legacy-products/legacy-products-overview/"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "No automation or algorithm usage allowed.",
+        "Legacy and current programs have distinct rules and cannot be silently converted.",
+        "Official legacy FAQ says purchases retired March1,2026; conflicting marketing eligibility is unresolved."
+      ],
+      "explanation": "Free local account inventory only. No automation or algorithm usage allowed. Legacy and current programs have distinct rules and cannot be silently converted. Official legacy FAQ says purchases retired March1,2026; conflicting marketing eligibility is unresolved.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "lucid-0",
+      "firm": "Lucid Trading",
+      "program": "LucidPro",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://support.lucidtrading.com/en/articles/12890029-lucidpro-evaluation-account",
+        "https://support.lucidtrading.com/en/articles/12890069-lucidpro-funded-account",
+        "https://support.lucidtrading.com/en/articles/13432107-lucidpro-live-legacy"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "High frequency trading, microscalping and prohibited hedging restrictions apply.",
+        "New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules."
+      ],
+      "explanation": "Free local account inventory only. High frequency trading, microscalping and prohibited hedging restrictions apply. New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "lucid-1",
+      "firm": "Lucid Trading",
+      "program": "LucidFlex",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://support.lucidtrading.com/en/articles/12945790-lucidflex-evaluation-account",
+        "https://support.lucidtrading.com/en/articles/12945795-lucidflex-funded-account",
+        "https://support.lucidtrading.com/en/articles/13424914-lucidflex-live-legacy"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "High frequency trading, microscalping and prohibited hedging restrictions apply.",
+        "New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules."
+      ],
+      "explanation": "Free local account inventory only. High frequency trading, microscalping and prohibited hedging restrictions apply. New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "lucid-2",
+      "firm": "Lucid Trading",
+      "program": "LucidDirect",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://support.lucidtrading.com/en/articles/12890148-luciddirect-funded-account",
+        "https://support.lucidtrading.com/en/articles/13425070-luciddirect-live-legacy"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "High frequency trading, microscalping and prohibited hedging restrictions apply.",
+        "New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules."
+      ],
+      "explanation": "Free local account inventory only. High frequency trading, microscalping and prohibited hedging restrictions apply. New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "lucid-3",
+      "firm": "Lucid Trading",
+      "program": "LucidDaily",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://support.lucidtrading.com/en/articles/15996664-luciddaily-evaluation",
+        "https://support.lucidtrading.com/en/articles/15997244-luciddaily-funded-account",
+        "https://support.lucidtrading.com/en/articles/16010520-luciddaily-live"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "High frequency trading, microscalping and prohibited hedging restrictions apply.",
+        "New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules."
+      ],
+      "explanation": "Free local account inventory only. High frequency trading, microscalping and prohibited hedging restrictions apply. New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "lucid-4",
+      "firm": "Lucid Trading",
+      "program": "LucidMaxx (new)",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://support.lucidtrading.com/en/articles/17327076-new-lucidmaxx-program"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "High frequency trading, microscalping and prohibited hedging restrictions apply.",
+        "New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules."
+      ],
+      "explanation": "Free local account inventory only. High frequency trading, microscalping and prohibited hedging restrictions apply. New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "lucid-5",
+      "firm": "Lucid Trading",
+      "program": "LucidMaxx (legacy)",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://support.lucidtrading.com/en/articles/13891785-legacy-lucidmaxx-overview"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "High frequency trading, microscalping and prohibited hedging restrictions apply.",
+        "New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules."
+      ],
+      "explanation": "Free local account inventory only. High frequency trading, microscalping and prohibited hedging restrictions apply. New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "lucid-6",
+      "firm": "Lucid Trading",
+      "program": "LucidBlack (legacy)",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://support.lucidtrading.com/en/collections/17988163-lucidblack-legacy",
+        "https://support.lucidtrading.com/en/articles/13424903-lucidblack-scaling-plan",
+        "https://support.lucidtrading.com/en/articles/13424894-lucidblack-evaluation-account",
+        "https://support.lucidtrading.com/en/articles/13424896-lucidblack-funded-account",
+        "https://support.lucidtrading.com/en/articles/13424907-lucidblack-live",
+        "https://support.lucidtrading.com/en/articles/13424900-lucidblack-consistency-percentage",
+        "https://support.lucidtrading.com/en/articles/13424897-lucidblack-payout-objectives",
+        "https://support.lucidtrading.com/en/articles/13424906-lucidblack-drawdown"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "High frequency trading, microscalping and prohibited hedging restrictions apply.",
+        "New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules."
+      ],
+      "explanation": "Free local account inventory only. High frequency trading, microscalping and prohibited hedging restrictions apply. New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "myfundedfutures-0",
+      "firm": "My Funded Futures",
+      "program": "Pro",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.myfundedfutures.com/en/articles/17573707-comprehensive-look-into-redesigned-pro-plan"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Studio #003 effective October14,2026; allocation availability is limited.",
+        "Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records."
+      ],
+      "explanation": "Free local account inventory only. Studio #003 effective October14,2026; allocation availability is limited. Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "myfundedfutures-1",
+      "firm": "My Funded Futures",
+      "program": "Pro 50K One Day",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.myfundedfutures.com/en/articles/17573707-comprehensive-look-into-redesigned-pro-plan"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Studio #003 effective October14,2026; allocation availability is limited.",
+        "Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records."
+      ],
+      "explanation": "Free local account inventory only. Studio #003 effective October14,2026; allocation availability is limited. Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "myfundedfutures-2",
+      "firm": "My Funded Futures",
+      "program": "Builder",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.myfundedfutures.com/en/articles/14290805-builder-plan-50k-a-comprehensive-guide",
+        "https://help.myfundedfutures.com/en/articles/17036130-builder-plan-25k-a-comprehensive-look",
+        "https://help.myfundedfutures.com/en/articles/17005296-builder-plan-100k-comprehensive-guide",
+        "https://help.myfundedfutures.com/en/articles/17035331-builder-plan-150k-comprehensive-guide"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Studio #003 effective October14,2026; allocation availability is limited.",
+        "Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records."
+      ],
+      "explanation": "Free local account inventory only. Studio #003 effective October14,2026; allocation availability is limited. Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "myfundedfutures-3",
+      "firm": "My Funded Futures",
+      "program": "Rapid",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.myfundedfutures.com/en/articles/13134709-rapid-plan-50k-a-comprehensive-look",
+        "https://help.myfundedfutures.com/en/articles/14116402-rapid-plan-25k-a-comprehensive-look",
+        "https://help.myfundedfutures.com/en/articles/13286542-rapid-plan-100k-a-comprehensive-look",
+        "https://help.myfundedfutures.com/en/articles/13286582-rapid-plan-150k-a-comprehensive-look"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Studio #003 effective October14,2026; allocation availability is limited.",
+        "Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records."
+      ],
+      "explanation": "Free local account inventory only. Studio #003 effective October14,2026; allocation availability is limited. Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "myfundedfutures-4",
+      "firm": "My Funded Futures",
+      "program": "Rapid EOD",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.myfundedfutures.com/en/articles/16727601-rapid-eod-25k-a-comprehensive-look",
+        "https://help.myfundedfutures.com/en/articles/16158363-rapid-eod-50k-a-comprehensive-look"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Studio #003 effective October14,2026; allocation availability is limited.",
+        "Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records."
+      ],
+      "explanation": "Free local account inventory only. Studio #003 effective October14,2026; allocation availability is limited. Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "myfundedfutures-5",
+      "firm": "My Funded Futures",
+      "program": "Studio #001",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.myfundedfutures.com/en/articles/17589665-studio-plans-a-comprehensive-guide"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Studio #003 effective October14,2026; allocation availability is limited.",
+        "Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records."
+      ],
+      "explanation": "Free local account inventory only. Studio #003 effective October14,2026; allocation availability is limited. Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "myfundedfutures-6",
+      "firm": "My Funded Futures",
+      "program": "Studio #002",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.myfundedfutures.com/en/articles/17589665-studio-plans-a-comprehensive-guide"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Studio #003 effective October14,2026; allocation availability is limited.",
+        "Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records."
+      ],
+      "explanation": "Free local account inventory only. Studio #003 effective October14,2026; allocation availability is limited. Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "myfundedfutures-7",
+      "firm": "My Funded Futures",
+      "program": "Studio #003",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.myfundedfutures.com/en/articles/17589665-studio-plans-a-comprehensive-guide"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Studio #003 effective October14,2026; allocation availability is limited.",
+        "Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records."
+      ],
+      "explanation": "Free local account inventory only. Studio #003 effective October14,2026; allocation availability is limited. Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "myfundedfutures-8",
+      "firm": "My Funded Futures",
+      "program": "Flex (legacy)",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.myfundedfutures.com/en/collections/16162798-legacy-plans",
+        "https://help.myfundedfutures.com/en/articles/15070844-flex-plan-25-000-a-comprehensive-guide",
+        "https://help.myfundedfutures.com/en/articles/15072271-flex-plan-50-000-a-comprehensive-guide"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Studio #003 effective October14,2026; allocation availability is limited.",
+        "Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records."
+      ],
+      "explanation": "Free local account inventory only. Studio #003 effective October14,2026; allocation availability is limited. Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "myfundedfutures-9",
+      "firm": "My Funded Futures",
+      "program": "Builder25K no DLL (legacy)",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.myfundedfutures.com/en/collections/16162798-legacy-plans"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Studio #003 effective October14,2026; allocation availability is limited.",
+        "Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records."
+      ],
+      "explanation": "Free local account inventory only. Studio #003 effective October14,2026; allocation availability is limited. Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "goat-0",
+      "firm": "Goat Funded Futures",
+      "program": "EOD",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.goatfundedfutures.com/plans.html",
+        "https://help.goatfundedfutures.com/trading-rules.html"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Instant Lite and Daily Payouts prohibit bots.",
+        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+      ],
+      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "goat-1",
+      "firm": "Goat Funded Futures",
+      "program": "1 Day Pass",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.goatfundedfutures.com/plans.html",
+        "https://help.goatfundedfutures.com/trading-rules.html"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Instant Lite and Daily Payouts prohibit bots.",
+        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+      ],
+      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "goat-2",
+      "firm": "Goat Funded Futures",
+      "program": "Instant Classic",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.goatfundedfutures.com/plans.html",
+        "https://help.goatfundedfutures.com/trading-rules.html"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Instant Lite and Daily Payouts prohibit bots.",
+        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+      ],
+      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "goat-3",
+      "firm": "Goat Funded Futures",
+      "program": "Flex",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.goatfundedfutures.com/plans.html",
+        "https://help.goatfundedfutures.com/trading-rules.html"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Instant Lite and Daily Payouts prohibit bots.",
+        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+      ],
+      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "goat-4",
+      "firm": "Goat Funded Futures",
+      "program": "Instant Lite",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.goatfundedfutures.com/plans.html",
+        "https://help.goatfundedfutures.com/trading-rules.html"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Instant Lite and Daily Payouts prohibit bots.",
+        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+      ],
+      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "goat-5",
+      "firm": "Goat Funded Futures",
+      "program": "Daily Payouts",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.goatfundedfutures.com/plans.html",
+        "https://help.goatfundedfutures.com/trading-rules.html"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Instant Lite and Daily Payouts prohibit bots.",
+        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+      ],
+      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "tradeify-0",
+      "firm": "Tradeify",
+      "program": "Select",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.tradeify.co/en/articles/12853921-select-evaluation-accounts"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership.",
+        "Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed."
+      ],
+      "explanation": "Free local account inventory only. Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership. Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "tradeify-1",
+      "firm": "Tradeify",
+      "program": "Growth",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.tradeify.co/en/articles/10495915-growth-evaluation-accounts",
+        "https://help.tradeify.co/en/articles/11083796-growth-funded-account-payout-policy"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership.",
+        "Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed."
+      ],
+      "explanation": "Free local account inventory only. Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership. Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "tradeify-2",
+      "firm": "Tradeify",
+      "program": "Lightning",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.tradeify.co/en/articles/10495938-lightning-funded-accounts",
+        "https://help.tradeify.co/en/articles/10495932-lightning-funded-account-payout-policy"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership.",
+        "Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed."
+      ],
+      "explanation": "Free local account inventory only. Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership. Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "tradeify-3",
+      "firm": "Tradeify",
+      "program": "Elite",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.tradeify.co/en/articles/12969284-tradeify-elite-program"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership.",
+        "Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed."
+      ],
+      "explanation": "Free local account inventory only. Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership. Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "tradeify-4",
+      "firm": "Tradeify",
+      "program": "Legacy Live",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.tradeify.co/en/articles/12999764-legacy-live-program-complete-guide"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership.",
+        "Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed."
+      ],
+      "explanation": "Free local account inventory only. Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership. Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "tradeify-5",
+      "firm": "Tradeify",
+      "program": "Level Up v1",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.tradeify.co/en/articles/17281277-level-up-v1-legacy-faq"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership.",
+        "Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed."
+      ],
+      "explanation": "Free local account inventory only. Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership. Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "tradeify-6",
+      "firm": "Tradeify",
+      "program": "Level Up v2",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.tradeify.co/en/articles/17612402-level-up-v2-faq"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership.",
+        "Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed."
+      ],
+      "explanation": "Free local account inventory only. Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership. Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "takeprofittrader-0",
+      "firm": "Take Profit Trader",
+      "program": "Test",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/15141145057053-Test-Subscriptions"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "PRO prohibits trading bots/algorithms; trades must be manually executed.",
+        "PRO/PRO+ prohibit open positions and orders from1minute before through1minute after FOMC announcements, NFP and CPI."
+      ],
+      "explanation": "Free local account inventory only. PRO prohibits trading bots/algorithms; trades must be manually executed. PRO/PRO+ prohibit open positions and orders from1minute before through1minute after FOMC announcements, NFP and CPI.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "takeprofittrader-1",
+      "firm": "Take Profit Trader",
+      "program": "PRO",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/15171769361053-PRO-Account-Rules"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "PRO prohibits trading bots/algorithms; trades must be manually executed.",
+        "PRO/PRO+ prohibit open positions and orders from1minute before through1minute after FOMC announcements, NFP and CPI."
+      ],
+      "explanation": "Free local account inventory only. PRO prohibits trading bots/algorithms; trades must be manually executed. PRO/PRO+ prohibit open positions and orders from1minute before through1minute after FOMC announcements, NFP and CPI.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "takeprofittrader-2",
+      "firm": "Take Profit Trader",
+      "program": "PRO+",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/36429526878237-PRO-Development-Accounts"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "PRO prohibits trading bots/algorithms; trades must be manually executed.",
+        "PRO/PRO+ prohibit open positions and orders from1minute before through1minute after FOMC announcements, NFP and CPI."
+      ],
+      "explanation": "Free local account inventory only. PRO prohibits trading bots/algorithms; trades must be manually executed. PRO/PRO+ prohibit open positions and orders from1minute before through1minute after FOMC announcements, NFP and CPI.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "takeprofittrader-3",
+      "firm": "Take Profit Trader",
+      "program": "PRO+ Development",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/36429526878237-PRO-Development-Accounts"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "PRO prohibits trading bots/algorithms; trades must be manually executed.",
+        "PRO/PRO+ prohibit open positions and orders from1minute before through1minute after FOMC announcements, NFP and CPI."
+      ],
+      "explanation": "Free local account inventory only. PRO prohibits trading bots/algorithms; trades must be manually executed. PRO/PRO+ prohibit open positions and orders from1minute before through1minute after FOMC announcements, NFP and CPI.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "earn2trade-0",
+      "firm": "Earn2Trade",
+      "program": "Trader Career Path",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://www.earn2trade.com/trader-career-path",
+        "https://help.earn2trade.com/en/articles/5922873-what-is-the-progression-ladder-on-the-trader-career-path"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Current official main pages state no minimum trading days; older10/15-day summaries are not authoritative.",
+        "Progression-ladder total exposure is enforced in real time; only specified micros get the documented10:1 treatment.",
+        "Funded partner, exchange-data and account costs require exact funding agreements."
+      ],
+      "explanation": "Free local account inventory only. Current official main pages state no minimum trading days; older10/15-day summaries are not authoritative. Progression-ladder total exposure is enforced in real time; only specified micros get the documented10:1 treatment. Funded partner, exchange-data and account costs require exact funding agreements.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "earn2trade-1",
+      "firm": "Earn2Trade",
+      "program": "Gauntlet Mini",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://www.earn2trade.com/gauntlet-mini"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Current official main pages state no minimum trading days; older10/15-day summaries are not authoritative.",
+        "Progression-ladder total exposure is enforced in real time; only specified micros get the documented10:1 treatment.",
+        "Funded partner, exchange-data and account costs require exact funding agreements."
+      ],
+      "explanation": "Free local account inventory only. Current official main pages state no minimum trading days; older10/15-day summaries are not authoritative. Progression-ladder total exposure is enforced in real time; only specified micros get the documented10:1 treatment. Funded partner, exchange-data and account costs require exact funding agreements.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "bulenox-0",
+      "firm": "Bulenox",
+      "program": "Qualification",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://bulenox.com/help-center/qualification",
+        "https://bulenox.com/help-center/master"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Rithmic third-party API or composite software costs an additionalUSD100/month according to official FAQ.",
+        "Only personally built tools solely for personal use are permitted; commercial/shared/rented/public automation is prohibited.",
+        "No API subscription is enabled; local inventory is free."
+      ],
+      "explanation": "Free local account inventory only. Rithmic third-party API or composite software costs an additionalUSD100/month according to official FAQ. Only personally built tools solely for personal use are permitted; commercial/shared/rented/public automation is prohibited. No API subscription is enabled; local inventory is free.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "bulenox-1",
+      "firm": "Bulenox",
+      "program": "Fast Track",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://bulenox.com/help-center/fast-track"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Rithmic third-party API or composite software costs an additionalUSD100/month according to official FAQ.",
+        "Only personally built tools solely for personal use are permitted; commercial/shared/rented/public automation is prohibited.",
+        "No API subscription is enabled; local inventory is free."
+      ],
+      "explanation": "Free local account inventory only. Rithmic third-party API or composite software costs an additionalUSD100/month according to official FAQ. Only personally built tools solely for personal use are permitted; commercial/shared/rented/public automation is prohibited. No API subscription is enabled; local inventory is free.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "bulenox-2",
+      "firm": "Bulenox",
+      "program": "Momentum",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://bulenox.com/help-center/momentum"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Rithmic third-party API or composite software costs an additionalUSD100/month according to official FAQ.",
+        "Only personally built tools solely for personal use are permitted; commercial/shared/rented/public automation is prohibited.",
+        "No API subscription is enabled; local inventory is free."
+      ],
+      "explanation": "Free local account inventory only. Rithmic third-party API or composite software costs an additionalUSD100/month according to official FAQ. Only personally built tools solely for personal use are permitted; commercial/shared/rented/public automation is prohibited. No API subscription is enabled; local inventory is free.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
     }
-  ]
+  ],
+  "firms": [
+    {
+      "id": "apex",
+      "name": "Apex Trader Funding",
+      "local_integration_cost_usd": 0,
+      "integration_scope": "LOCAL_ACCOUNT_INVENTORY_ONLY",
+      "free_account_or_api_verified": false,
+      "external_account_fees": "Firm evaluation, activation, data and API fees may apply; no purchase or enrollment performed",
+      "connection_verified": false,
+      "execution_authorized": false,
+      "new_intents_blocked": true,
+      "account_types": [
+        {
+          "name": "EOD Trailing Drawdown",
+          "stages": [
+            "Evaluation",
+            "Performance Account (PA)"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-29214f83150e689a",
+            "official-98f6084bf2b349c6"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Intraday Trailing Drawdown",
+          "stages": [
+            "Evaluation",
+            "Performance Account (PA)"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-e8b6a0aa6866e6f5",
+            "official-445acc03ec878f40"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Legacy Evaluation / Performance",
+          "stages": [
+            "Legacy Evaluation",
+            "Legacy Performance Account"
+          ],
+          "documented_sizes_usd": [],
+          "source_refs": [
+            "official-afa4306f600e85bc"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "availability": "LEGACY_RULES_NO_AUTOMATIC_CONVERSION_PURCHASE_ELIGIBILITY_CONFLICT"
+        }
+      ],
+      "automation_status": "PROHIBITED",
+      "confirmed_restrictions": [
+        "No automation or algorithm usage allowed.",
+        "Legacy and current programs have distinct rules and cannot be silently converted.",
+        "Official legacy FAQ says purchases retired March1,2026; conflicting marketing eligibility is unresolved."
+      ],
+      "source_review": [
+        {
+          "id": "official-eee51ecb3c3bc22b",
+          "url": "https://apextraderfunding.com/help-center/getting-started/prohibited-activities",
+          "final_url": "https://apextraderfunding.com/help-center/getting-started/prohibited-activities/",
+          "retrieved_at_utc": "2026-10-18T15:15:18.108516+00:00",
+          "html_sha256": "7e1f77c25238162b6aba76568972bad7f79704c980687543ac30e5d88c01b45d"
+        },
+        {
+          "id": "official-29214f83150e689a",
+          "url": "https://apextraderfunding.com/help-center/eod-trailing-drawdown-accounts/eod-evaluations/",
+          "final_url": "https://apextraderfunding.com/help-center/eod-trailing-drawdown-accounts/eod-evaluations/",
+          "retrieved_at_utc": "2026-10-18T15:14:50.429405+00:00",
+          "html_sha256": "4e81548e31e4c3c78347ea0272467755e39e17304b2658fcc7765c139adbda0e"
+        },
+        {
+          "id": "official-98f6084bf2b349c6",
+          "url": "https://apextraderfunding.com/help-center/eod-trailing-drawdown-accounts/eod-performance-accounts-pa/",
+          "final_url": "https://apextraderfunding.com/help-center/eod-trailing-drawdown-accounts/eod-performance-accounts-pa/",
+          "retrieved_at_utc": "2026-10-18T15:14:50.394447+00:00",
+          "html_sha256": "1a8e0e2a23b7c9419d4a246ae34a7516e86e0894051a37621ff48d54b0c64954"
+        },
+        {
+          "id": "official-e8b6a0aa6866e6f5",
+          "url": "https://apextraderfunding.com/help-center/evaluation-accounts-ea/intraday-trailing-drawdown-evaluations/",
+          "final_url": "https://apextraderfunding.com/help-center/evaluation-accounts-ea/intraday-trailing-drawdown-evaluations/",
+          "retrieved_at_utc": "2026-10-18T15:14:50.384011+00:00",
+          "html_sha256": "0f9aaee415292064ba44b3143e7244994774f1d6521185a0b9c9fef98d8e2831"
+        },
+        {
+          "id": "official-445acc03ec878f40",
+          "url": "https://apextraderfunding.com/help-center/intraday-trailing-drawdown-accounts/intraday-trailing-drawdown-performance-accounts-pa/",
+          "final_url": "https://apextraderfunding.com/help-center/intraday-trailing-drawdown-accounts/intraday-trailing-drawdown-performance-accounts-pa/",
+          "retrieved_at_utc": "2026-10-18T15:14:50.421950+00:00",
+          "html_sha256": "d812aba364d04a66023ad9d64d84d4aba51e8a9e6d600a57e278d061dcd25eb3"
+        },
+        {
+          "id": "official-afa4306f600e85bc",
+          "url": "https://apextraderfunding.com/help-center/legacy-products/legacy-products-overview/",
+          "final_url": "https://apextraderfunding.com/help-center/legacy-products/legacy-products-overview/",
+          "retrieved_at_utc": "2026-10-18T15:14:50.717059+00:00",
+          "html_sha256": "56fdfd68b2f123b41ee47b7941ccc62a9247d96b38795041114e43e15ab363ee"
+        }
+      ],
+      "faq_coverage_complete": false,
+      "coverage_limitations": [
+        "Documented current and legacy types are configurable; enrollment eligibility and exact dated account agreement remain unverified.",
+        "No account credentials, verified balances, complete machine-readable FAQ policy or supported free remote account API are established.",
+        "Unknown clauses fail closed for new intents; local records do not connect a broker or establish trading permission."
+      ]
+    },
+    {
+      "id": "lucid",
+      "name": "Lucid Trading",
+      "local_integration_cost_usd": 0,
+      "integration_scope": "LOCAL_ACCOUNT_INVENTORY_ONLY",
+      "free_account_or_api_verified": false,
+      "external_account_fees": "Firm evaluation, activation, data and API fees may apply; no purchase or enrollment performed",
+      "connection_verified": false,
+      "execution_authorized": false,
+      "new_intents_blocked": true,
+      "account_types": [
+        {
+          "name": "LucidPro",
+          "stages": [
+            "Evaluation",
+            "Sim Funded",
+            "Legacy Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-523483df50487006",
+            "official-5725295a55d68076",
+            "official-9128550fb4dd7066"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "LucidFlex",
+          "stages": [
+            "Evaluation",
+            "Sim Funded",
+            "Legacy Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-ac2cf87ebb900d57",
+            "official-00e2196890630254",
+            "official-fbd0757326496b77"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "LucidDirect",
+          "stages": [
+            "Sim Funded",
+            "Legacy Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-7da0944addc4c005",
+            "official-330ac052b5f7f42f"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "LucidDaily",
+          "stages": [
+            "Evaluation",
+            "Sim Funded",
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-e054aee2f610e028",
+            "official-ac4a6efddfe43ac9",
+            "official-fb706a53f67c71b6"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "LucidMaxx (new)",
+          "stages": [
+            "Evaluation",
+            "Pre-Live",
+            "Live"
+          ],
+          "documented_sizes_usd": [],
+          "source_refs": [
+            "official-c913f554fe099b81"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "availability": "INVITATION_ONLY"
+        },
+        {
+          "name": "LucidMaxx (legacy)",
+          "stages": [
+            "Legacy Evaluation",
+            "Legacy Live"
+          ],
+          "documented_sizes_usd": [],
+          "source_refs": [
+            "official-8b8d234d8d056e81"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "availability": "LEGACY"
+        },
+        {
+          "name": "LucidBlack (legacy)",
+          "stages": [
+            "Legacy Evaluation",
+            "Legacy Sim Funded",
+            "Legacy Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000
+          ],
+          "source_refs": [
+            "official-ba848a6c098f685d",
+            "official-9354b8978cf5f69f",
+            "official-4505c51fab8ba6dc",
+            "official-7af239c20cd5d9e6",
+            "official-4f51caa9523eba69",
+            "official-80bcf5a0e9edb3a0",
+            "official-d0761bfaac8c820b",
+            "official-2cf51f6e7c007854"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "availability": "LEGACY"
+        }
+      ],
+      "automation_status": "NOT_VERIFIED",
+      "confirmed_restrictions": [
+        "High frequency trading, microscalping and prohibited hedging restrictions apply.",
+        "New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules."
+      ],
+      "source_review": [
+        {
+          "id": "official-dc90844bbe574e38",
+          "url": "https://support.lucidtrading.com/en/articles/11404736-prohibited-high-frequency-trading",
+          "final_url": "https://support.lucidtrading.com/en/articles/11404736-prohibited-high-frequency-trading",
+          "retrieved_at_utc": "2026-10-18T15:14:51.608556+00:00",
+          "html_sha256": "b4e2a6ca31cd3e89b91116605486724c351f3f4cebe63f02e2220e660f4e4bb7"
+        },
+        {
+          "id": "official-523483df50487006",
+          "url": "https://support.lucidtrading.com/en/articles/12890029-lucidpro-evaluation-account",
+          "final_url": "https://support.lucidtrading.com/en/articles/12890029-lucidpro-evaluation-account",
+          "retrieved_at_utc": "2026-10-18T15:14:51.742232+00:00",
+          "html_sha256": "3ed88941fd75bc2400f8e4a01d8e425fe4560f468c298e1f090d9cf4ef43dfb2"
+        },
+        {
+          "id": "official-5725295a55d68076",
+          "url": "https://support.lucidtrading.com/en/articles/12890069-lucidpro-funded-account",
+          "final_url": "https://support.lucidtrading.com/en/articles/12890069-lucidpro-funded-account",
+          "retrieved_at_utc": "2026-10-18T15:14:51.800506+00:00",
+          "html_sha256": "4148a1ca757480ef61a7e9eade7670912e9940c5eb8c6a2663cd43ad6a5116de"
+        },
+        {
+          "id": "official-9128550fb4dd7066",
+          "url": "https://support.lucidtrading.com/en/articles/13432107-lucidpro-live-legacy",
+          "final_url": "https://support.lucidtrading.com/en/articles/13432107-lucidpro-live-legacy",
+          "retrieved_at_utc": "2026-10-18T15:14:53.883484+00:00",
+          "html_sha256": "151adf75855a76d53aa618bf8daded753f1ab10a42f5914d0003bde2284367b6"
+        },
+        {
+          "id": "official-ac2cf87ebb900d57",
+          "url": "https://support.lucidtrading.com/en/articles/12945790-lucidflex-evaluation-account",
+          "final_url": "https://support.lucidtrading.com/en/articles/12945790-lucidflex-evaluation-account",
+          "retrieved_at_utc": "2026-10-18T15:14:52.636742+00:00",
+          "html_sha256": "47ecb60b7edf6f1bc5046638b4a6abaf5cfd24f5978294a0b8c74796d4cf1448"
+        },
+        {
+          "id": "official-00e2196890630254",
+          "url": "https://support.lucidtrading.com/en/articles/12945795-lucidflex-funded-account",
+          "final_url": "https://support.lucidtrading.com/en/articles/12945795-lucidflex-funded-account",
+          "retrieved_at_utc": "2026-10-18T15:14:52.689554+00:00",
+          "html_sha256": "475eea33d932fd0a5b34d635647de00c4d647783629d54f3304fc2891e3b1217"
+        },
+        {
+          "id": "official-fbd0757326496b77",
+          "url": "https://support.lucidtrading.com/en/articles/13424914-lucidflex-live-legacy",
+          "final_url": "https://support.lucidtrading.com/en/articles/13424914-lucidflex-live-legacy",
+          "retrieved_at_utc": "2026-10-18T15:14:53.715226+00:00",
+          "html_sha256": "26ce642a21de4fe4af456130fb75928817467620394ca9939c9929479117972d"
+        },
+        {
+          "id": "official-7da0944addc4c005",
+          "url": "https://support.lucidtrading.com/en/articles/12890148-luciddirect-funded-account",
+          "final_url": "https://support.lucidtrading.com/en/articles/12890148-luciddirect-funded-account",
+          "retrieved_at_utc": "2026-10-18T15:14:52.250618+00:00",
+          "html_sha256": "3fa69aecb8128b0f17209b24b12d477b1c4a323781c5ab97fded8eede4af5825"
+        },
+        {
+          "id": "official-330ac052b5f7f42f",
+          "url": "https://support.lucidtrading.com/en/articles/13425070-luciddirect-live-legacy",
+          "final_url": "https://support.lucidtrading.com/en/articles/13425070-luciddirect-live-legacy",
+          "retrieved_at_utc": "2026-10-18T15:14:53.784675+00:00",
+          "html_sha256": "39666ab9114ce4a99061021e179269a0faf6e0a6f68ac8b64ee67fa95fdfc963"
+        },
+        {
+          "id": "official-e054aee2f610e028",
+          "url": "https://support.lucidtrading.com/en/articles/15996664-luciddaily-evaluation",
+          "final_url": "https://support.lucidtrading.com/en/articles/15996664-luciddaily-evaluation",
+          "retrieved_at_utc": "2026-10-18T15:14:54.205719+00:00",
+          "html_sha256": "47b24e6a7da907539dc98a1774ff02c0bb15f6c243affa027e4e9950abc93968"
+        },
+        {
+          "id": "official-ac4a6efddfe43ac9",
+          "url": "https://support.lucidtrading.com/en/articles/15997244-luciddaily-funded-account",
+          "final_url": "https://support.lucidtrading.com/en/articles/15997244-luciddaily-funded-account",
+          "retrieved_at_utc": "2026-10-18T15:14:54.318880+00:00",
+          "html_sha256": "b2c1ea7013e1990dd62e5db414d2e46de26b6674826e45777eb97a06f9480f14"
+        },
+        {
+          "id": "official-fb706a53f67c71b6",
+          "url": "https://support.lucidtrading.com/en/articles/16010520-luciddaily-live",
+          "final_url": "https://support.lucidtrading.com/en/articles/16010520-luciddaily-live",
+          "retrieved_at_utc": "2026-10-18T15:14:54.577200+00:00",
+          "html_sha256": "6ecb0fbd6fa5e1538456f812a2a07baa124c9325bf1128e4311d26b54e9a9fd5"
+        },
+        {
+          "id": "official-c913f554fe099b81",
+          "url": "https://support.lucidtrading.com/en/articles/17327076-new-lucidmaxx-program",
+          "final_url": "https://support.lucidtrading.com/en/articles/17327076-new-lucidmaxx-program",
+          "retrieved_at_utc": "2026-10-18T15:14:54.896119+00:00",
+          "html_sha256": "51cbc52d603263da3f60d61e8da75ab4cb00a19b784db6c753c9a542b20b185f"
+        },
+        {
+          "id": "official-8b8d234d8d056e81",
+          "url": "https://support.lucidtrading.com/en/articles/13891785-legacy-lucidmaxx-overview",
+          "final_url": "https://support.lucidtrading.com/en/articles/13891785-legacy-lucidmaxx-overview",
+          "retrieved_at_utc": "2026-10-18T15:14:53.935340+00:00",
+          "html_sha256": "66d166b20921ef6d2b251ece4de190d1670ee79357cda1601cc035dc6de9536e"
+        },
+        {
+          "id": "official-ba848a6c098f685d",
+          "url": "https://support.lucidtrading.com/en/collections/17988163-lucidblack-legacy",
+          "final_url": "https://support.lucidtrading.com/en/collections/17988163-lucidblack-legacy",
+          "retrieved_at_utc": "2026-10-18T15:14:29.149314+00:00",
+          "html_sha256": "925107863b504d7e7d5ee1e2f49158ce798815089e94b1be70a659cea6d86c26"
+        },
+        {
+          "id": "official-9354b8978cf5f69f",
+          "url": "https://support.lucidtrading.com/en/articles/13424903-lucidblack-scaling-plan",
+          "final_url": "https://support.lucidtrading.com/en/articles/13424903-lucidblack-scaling-plan",
+          "retrieved_at_utc": "2026-10-18T15:14:53.440402+00:00",
+          "html_sha256": "99814aa2b64057e89d3fc4efbbddb9655875ebffb82e7b05644d50de280b8c05"
+        },
+        {
+          "id": "official-4505c51fab8ba6dc",
+          "url": "https://support.lucidtrading.com/en/articles/13424894-lucidblack-evaluation-account",
+          "final_url": "https://support.lucidtrading.com/en/articles/13424894-lucidblack-evaluation-account",
+          "retrieved_at_utc": "2026-10-18T15:14:53.237367+00:00",
+          "html_sha256": "34c44cb292f17e6ffbe2df997f396ca9c6fb633479206d75b541604f65aa996e"
+        },
+        {
+          "id": "official-7af239c20cd5d9e6",
+          "url": "https://support.lucidtrading.com/en/articles/13424896-lucidblack-funded-account",
+          "final_url": "https://support.lucidtrading.com/en/articles/13424896-lucidblack-funded-account",
+          "retrieved_at_utc": "2026-10-18T15:14:53.174325+00:00",
+          "html_sha256": "0bf3c10acc9fc0140834da41144e888021080e8c310c8a8d9b88a4b234d20a2c"
+        },
+        {
+          "id": "official-4f51caa9523eba69",
+          "url": "https://support.lucidtrading.com/en/articles/13424907-lucidblack-live",
+          "final_url": "https://support.lucidtrading.com/en/articles/13424907-lucidblack-live",
+          "retrieved_at_utc": "2026-10-18T15:14:53.606410+00:00",
+          "html_sha256": "91d1d5e4190b321ae6f21b5ff763c0af6ef3998522c1404ad64411470136438b"
+        },
+        {
+          "id": "official-80bcf5a0e9edb3a0",
+          "url": "https://support.lucidtrading.com/en/articles/13424900-lucidblack-consistency-percentage",
+          "final_url": "https://support.lucidtrading.com/en/articles/13424900-lucidblack-consistency-percentage",
+          "retrieved_at_utc": "2026-10-18T15:14:53.613564+00:00",
+          "html_sha256": "0ff50937464580d24a3c28ec4c6863dad7e35886ce2da8499e46bdb2eb182293"
+        },
+        {
+          "id": "official-d0761bfaac8c820b",
+          "url": "https://support.lucidtrading.com/en/articles/13424897-lucidblack-payout-objectives",
+          "final_url": "https://support.lucidtrading.com/en/articles/13424897-lucidblack-payout-objectives",
+          "retrieved_at_utc": "2026-10-18T15:14:53.322263+00:00",
+          "html_sha256": "bc420bd87a36a1bfd2ffae6dd776695a417e01d7e2fbef8a3ad92cd99f3d5c0c"
+        },
+        {
+          "id": "official-2cf51f6e7c007854",
+          "url": "https://support.lucidtrading.com/en/articles/13424906-lucidblack-drawdown",
+          "final_url": "https://support.lucidtrading.com/en/articles/13424906-lucidblack-drawdown",
+          "retrieved_at_utc": "2026-10-18T15:14:53.500302+00:00",
+          "html_sha256": "7b057581ee9f5c5d2c4c745281d33e5324393838d20474da0c596f43157295f8"
+        }
+      ],
+      "faq_coverage_complete": false,
+      "coverage_limitations": [
+        "Documented current and legacy types are configurable; enrollment eligibility and exact dated account agreement remain unverified.",
+        "No account credentials, verified balances, complete machine-readable FAQ policy or supported free remote account API are established.",
+        "Unknown clauses fail closed for new intents; local records do not connect a broker or establish trading permission."
+      ]
+    },
+    {
+      "id": "myfundedfutures",
+      "name": "My Funded Futures",
+      "local_integration_cost_usd": 0,
+      "integration_scope": "LOCAL_ACCOUNT_INVENTORY_ONLY",
+      "free_account_or_api_verified": false,
+      "external_account_fees": "Firm evaluation, activation, data and API fees may apply; no purchase or enrollment performed",
+      "connection_verified": false,
+      "execution_authorized": false,
+      "new_intents_blocked": true,
+      "account_types": [
+        {
+          "name": "Pro",
+          "stages": [
+            "Evaluation",
+            "Sim Funded",
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-2277c25895b113e6"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Pro 50K One Day",
+          "stages": [
+            "Evaluation",
+            "Sim Funded",
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            50000
+          ],
+          "source_refs": [
+            "official-2277c25895b113e6"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Builder",
+          "stages": [
+            "Evaluation",
+            "Sim Funded",
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-3594bd34d355a2f6",
+            "official-de7b7e68d167bc2c",
+            "official-4b558315fd20938f",
+            "official-7ead0cbcca82b99d"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "variants": [
+            "Default risk rules",
+            "50K add-on requires exact agreement"
+          ]
+        },
+        {
+          "name": "Rapid",
+          "stages": [
+            "Evaluation",
+            "Sim Funded",
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-a2671ca9967b0a09",
+            "official-0d3bd1e9ddd07228",
+            "official-c7452e11f8218d52",
+            "official-0962daad8ea6f8b1"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Rapid EOD",
+          "stages": [
+            "Evaluation",
+            "Sim Funded",
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000
+          ],
+          "source_refs": [
+            "official-accd7fe1431d6916",
+            "official-e9d1c737773289cd"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Studio #001",
+          "stages": [
+            "Evaluation",
+            "Sim Funded",
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            10000
+          ],
+          "source_refs": [
+            "official-53e8752f111362d7"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "platform_restrictions": [
+            "Hyperprop only",
+            "Micros only during Evaluation and Sim Funded",
+            "Static maximum loss limit"
+          ]
+        },
+        {
+          "name": "Studio #002",
+          "stages": [
+            "Evaluation",
+            "Sim Funded",
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            20000
+          ],
+          "source_refs": [
+            "official-53e8752f111362d7"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "platform_restrictions": [
+            "Hyperprop only",
+            "Micros only during Evaluation and Sim Funded",
+            "Static maximum loss limit"
+          ]
+        },
+        {
+          "name": "Studio #003",
+          "stages": [
+            "Evaluation",
+            "Sim Funded",
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            5000
+          ],
+          "source_refs": [
+            "official-53e8752f111362d7"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "platform_restrictions": [
+            "Hyperprop only",
+            "Micros only during Evaluation and Sim Funded",
+            "Static maximum loss limit"
+          ]
+        },
+        {
+          "name": "Flex (legacy)",
+          "stages": [
+            "Legacy Evaluation",
+            "Legacy Sim Funded",
+            "Legacy Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000
+          ],
+          "source_refs": [
+            "official-96d58049fcbafcfc",
+            "official-db8d18d7c504f710",
+            "official-7719b98bdb3497de"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "availability": "LEGACY"
+        },
+        {
+          "name": "Builder25K no DLL (legacy)",
+          "stages": [
+            "Legacy Evaluation",
+            "Legacy Sim Funded",
+            "Legacy Live"
+          ],
+          "documented_sizes_usd": [
+            25000
+          ],
+          "source_refs": [
+            "official-96d58049fcbafcfc"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "availability": "LEGACY"
+        }
+      ],
+      "automation_status": "NOT_VERIFIED",
+      "confirmed_restrictions": [
+        "Studio #003 effective October14,2026; allocation availability is limited.",
+        "Legacy Flex25K/50K and legacy Builder25K no-DLL must retain their own dated rules; they are separate configurable legacy records."
+      ],
+      "source_review": [
+        {
+          "id": "official-9a8344b1cdb38fe2",
+          "url": "https://help.myfundedfutures.com/en/articles/8444599-fair-play-and-prohibited-trading-practices",
+          "final_url": "https://help.myfundedfutures.com/en/articles/8444599-fair-play-and-prohibited-trading-practices",
+          "retrieved_at_utc": "2026-10-18T15:15:37.567872+00:00",
+          "html_sha256": "3e733db3d129c41222699f05e814b8d508d1a2a504a881b153e0d3a22d47392e"
+        },
+        {
+          "id": "official-96d58049fcbafcfc",
+          "url": "https://help.myfundedfutures.com/en/collections/16162798-legacy-plans",
+          "final_url": "https://help.myfundedfutures.com/en/collections/16162798-legacy-plans",
+          "retrieved_at_utc": "2026-10-18T15:14:38.903691+00:00",
+          "html_sha256": "63000e83879a60026b4ea429a01d14e5dfc80bce9e6ad308f393197942a24c20"
+        },
+        {
+          "id": "official-2277c25895b113e6",
+          "url": "https://help.myfundedfutures.com/en/articles/17573707-comprehensive-look-into-redesigned-pro-plan",
+          "final_url": "https://help.myfundedfutures.com/en/articles/17573707-comprehensive-look-into-redesigned-pro-plan",
+          "retrieved_at_utc": "2026-10-18T15:15:37.245877+00:00",
+          "html_sha256": "cf95ed35e58e2916ed8ed74967569cc887899513bd9d5ea2b5bc1c116535f9f8"
+        },
+        {
+          "id": "official-3594bd34d355a2f6",
+          "url": "https://help.myfundedfutures.com/en/articles/14290805-builder-plan-50k-a-comprehensive-guide",
+          "final_url": "https://help.myfundedfutures.com/en/articles/14290805-builder-plan-50k-a-comprehensive-guide",
+          "retrieved_at_utc": "2026-10-18T15:15:36.527996+00:00",
+          "html_sha256": "0bb15b48fe4e179119e0c45e45c1140b9cf3577df5881206a392981f1482baf3"
+        },
+        {
+          "id": "official-de7b7e68d167bc2c",
+          "url": "https://help.myfundedfutures.com/en/articles/17036130-builder-plan-25k-a-comprehensive-look",
+          "final_url": "https://help.myfundedfutures.com/en/articles/17036130-builder-plan-25k-a-comprehensive-look",
+          "retrieved_at_utc": "2026-10-18T15:15:37.224237+00:00",
+          "html_sha256": "843d65833a1dfe156518be38563ff8289502680a6065346dc5a16083ced3d8d8"
+        },
+        {
+          "id": "official-4b558315fd20938f",
+          "url": "https://help.myfundedfutures.com/en/articles/17005296-builder-plan-100k-comprehensive-guide",
+          "final_url": "https://help.myfundedfutures.com/en/articles/17005296-builder-plan-100k-comprehensive-guide",
+          "retrieved_at_utc": "2026-10-18T15:15:37.294935+00:00",
+          "html_sha256": "42c65b75d0ae8c4eb2e2bf05de9d43ec6be408efe6e8eaaf55a8e2e327eec6b1"
+        },
+        {
+          "id": "official-7ead0cbcca82b99d",
+          "url": "https://help.myfundedfutures.com/en/articles/17035331-builder-plan-150k-comprehensive-guide",
+          "final_url": "https://help.myfundedfutures.com/en/articles/17035331-builder-plan-150k-comprehensive-guide",
+          "retrieved_at_utc": "2026-10-18T15:15:37.148001+00:00",
+          "html_sha256": "bcb2294fa892f228282a13b6643bda7b532438cf92a44b116459b940868592ad"
+        },
+        {
+          "id": "official-a2671ca9967b0a09",
+          "url": "https://help.myfundedfutures.com/en/articles/13134709-rapid-plan-50k-a-comprehensive-look",
+          "final_url": "https://help.myfundedfutures.com/en/articles/13134709-rapid-plan-50k-a-comprehensive-look",
+          "retrieved_at_utc": "2026-10-18T15:15:35.823375+00:00",
+          "html_sha256": "453be4846a454ba1d2551189972628097926485c2237c188a9bf1e32ceaf830f"
+        },
+        {
+          "id": "official-0d3bd1e9ddd07228",
+          "url": "https://help.myfundedfutures.com/en/articles/14116402-rapid-plan-25k-a-comprehensive-look",
+          "final_url": "https://help.myfundedfutures.com/en/articles/14116402-rapid-plan-25k-a-comprehensive-look",
+          "retrieved_at_utc": "2026-10-18T15:15:36.176338+00:00",
+          "html_sha256": "45ca40d383c02ac668777ff77de98e7d7ffc0ef582da5b67498b83e455d5bf7e"
+        },
+        {
+          "id": "official-c7452e11f8218d52",
+          "url": "https://help.myfundedfutures.com/en/articles/13286542-rapid-plan-100k-a-comprehensive-look",
+          "final_url": "https://help.myfundedfutures.com/en/articles/13286542-rapid-plan-100k-a-comprehensive-look",
+          "retrieved_at_utc": "2026-10-18T15:15:35.817059+00:00",
+          "html_sha256": "a830ed79e942bed27ade9fd408f84eb2d5786c6a00d9761f2e28ad3df538b358"
+        },
+        {
+          "id": "official-0962daad8ea6f8b1",
+          "url": "https://help.myfundedfutures.com/en/articles/13286582-rapid-plan-150k-a-comprehensive-look",
+          "final_url": "https://help.myfundedfutures.com/en/articles/13286582-rapid-plan-150k-a-comprehensive-look",
+          "retrieved_at_utc": "2026-10-18T15:15:35.788614+00:00",
+          "html_sha256": "6aac819bc683e0ce2e151d4d2f70a01966d61f5b2c9408b51a5a998b296945bc"
+        },
+        {
+          "id": "official-accd7fe1431d6916",
+          "url": "https://help.myfundedfutures.com/en/articles/16727601-rapid-eod-25k-a-comprehensive-look",
+          "final_url": "https://help.myfundedfutures.com/en/articles/16727601-rapid-eod-25k-a-comprehensive-look",
+          "retrieved_at_utc": "2026-10-18T15:15:36.917405+00:00",
+          "html_sha256": "8abce49b09c2ed56277e68d9f37b6a42b8ab3e0cc27d37934da02240c328810d"
+        },
+        {
+          "id": "official-e9d1c737773289cd",
+          "url": "https://help.myfundedfutures.com/en/articles/16158363-rapid-eod-50k-a-comprehensive-look",
+          "final_url": "https://help.myfundedfutures.com/en/articles/16158363-rapid-eod-50k-a-comprehensive-look",
+          "retrieved_at_utc": "2026-10-18T15:15:36.907324+00:00",
+          "html_sha256": "991de4b309fe84c5ef5fe8f1f2835643db46568aaac45757a97da3c9468058d3"
+        },
+        {
+          "id": "official-53e8752f111362d7",
+          "url": "https://help.myfundedfutures.com/en/articles/17589665-studio-plans-a-comprehensive-guide",
+          "final_url": "https://help.myfundedfutures.com/en/articles/17589665-studio-plans-a-comprehensive-guide",
+          "retrieved_at_utc": "2026-10-18T15:15:37.567474+00:00",
+          "html_sha256": "0c7689de69d3bfc2af553bc44567442f442431ea0302633b6451afc05cd7dd84"
+        },
+        {
+          "id": "official-db8d18d7c504f710",
+          "url": "https://help.myfundedfutures.com/en/articles/15070844-flex-plan-25-000-a-comprehensive-guide",
+          "final_url": "https://help.myfundedfutures.com/en/articles/15070844-flex-plan-25-000-a-comprehensive-guide",
+          "retrieved_at_utc": "2026-10-18T15:15:36.610314+00:00",
+          "html_sha256": "d87e9f74fab06084b1f4cdd781424e9c2a4b0c898a195837e4aa69dfc7d716fd"
+        },
+        {
+          "id": "official-7719b98bdb3497de",
+          "url": "https://help.myfundedfutures.com/en/articles/15072271-flex-plan-50-000-a-comprehensive-guide",
+          "final_url": "https://help.myfundedfutures.com/en/articles/15072271-flex-plan-50-000-a-comprehensive-guide",
+          "retrieved_at_utc": "2026-10-18T15:15:36.734998+00:00",
+          "html_sha256": "9871a64368b41d4195bc27480abcb8a7bd1984a525cd40259e2dd3e9e6433d64"
+        }
+      ],
+      "faq_coverage_complete": false,
+      "coverage_limitations": [
+        "Documented current and legacy types are configurable; enrollment eligibility and exact dated account agreement remain unverified.",
+        "No account credentials, verified balances, complete machine-readable FAQ policy or supported free remote account API are established.",
+        "Unknown clauses fail closed for new intents; local records do not connect a broker or establish trading permission."
+      ]
+    },
+    {
+      "id": "goat",
+      "name": "Goat Funded Futures",
+      "local_integration_cost_usd": 0,
+      "integration_scope": "LOCAL_ACCOUNT_INVENTORY_ONLY",
+      "free_account_or_api_verified": false,
+      "external_account_fees": "Firm evaluation, activation, data and API fees may apply; no purchase or enrollment performed",
+      "connection_verified": false,
+      "execution_authorized": false,
+      "new_intents_blocked": true,
+      "account_types": [
+        {
+          "name": "EOD",
+          "stages": [
+            "Evaluation",
+            "Funded"
+          ],
+          "documented_sizes_usd": [
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-17a911ae977667de",
+            "official-3c0974f74a967243"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "1 Day Pass",
+          "stages": [
+            "Evaluation",
+            "Funded"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000
+          ],
+          "source_refs": [
+            "official-17a911ae977667de",
+            "official-3c0974f74a967243"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Instant Classic",
+          "stages": [
+            "Instant Funded"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-17a911ae977667de",
+            "official-3c0974f74a967243"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Flex",
+          "stages": [
+            "Evaluation",
+            "Funded"
+          ],
+          "documented_sizes_usd": [
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-17a911ae977667de",
+            "official-3c0974f74a967243"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Instant Lite",
+          "stages": [
+            "Instant Funded"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000
+          ],
+          "source_refs": [
+            "official-17a911ae977667de",
+            "official-3c0974f74a967243"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "automation_status": "PROHIBITED"
+        },
+        {
+          "name": "Daily Payouts",
+          "stages": [
+            "Instant Funded"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-17a911ae977667de",
+            "official-3c0974f74a967243"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "automation_status": "PROHIBITED"
+        }
+      ],
+      "automation_status": "PROGRAM_SPECIFIC",
+      "confirmed_restrictions": [
+        "Instant Lite and Daily Payouts prohibit bots.",
+        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+      ],
+      "source_review": [
+        {
+          "id": "official-17a911ae977667de",
+          "url": "https://help.goatfundedfutures.com/plans.html",
+          "final_url": "https://help.goatfundedfutures.com/plans.html",
+          "retrieved_at_utc": "2026-10-18T15:14:39.093263+00:00",
+          "html_sha256": "29014a06e822546122c6d95dcf3776d4b0c7a73439b0d1d075682b46128bdf0b"
+        },
+        {
+          "id": "official-3c0974f74a967243",
+          "url": "https://help.goatfundedfutures.com/trading-rules.html",
+          "final_url": "https://help.goatfundedfutures.com/trading-rules.html",
+          "retrieved_at_utc": "2026-10-18T15:14:39.144623+00:00",
+          "html_sha256": "ddaf5623c46201eacf75dcb11383e079a37d0bb4cf7d9bac7c7b96cb6af6102a"
+        }
+      ],
+      "faq_coverage_complete": false,
+      "coverage_limitations": [
+        "Documented current and legacy types are configurable; enrollment eligibility and exact dated account agreement remain unverified.",
+        "No account credentials, verified balances, complete machine-readable FAQ policy or supported free remote account API are established.",
+        "Unknown clauses fail closed for new intents; local records do not connect a broker or establish trading permission."
+      ]
+    },
+    {
+      "id": "tradeify",
+      "name": "Tradeify",
+      "local_integration_cost_usd": 0,
+      "integration_scope": "LOCAL_ACCOUNT_INVENTORY_ONLY",
+      "free_account_or_api_verified": false,
+      "external_account_fees": "Firm evaluation, activation, data and API fees may apply; no purchase or enrollment performed",
+      "connection_verified": false,
+      "execution_authorized": false,
+      "new_intents_blocked": true,
+      "account_types": [
+        {
+          "name": "Select",
+          "stages": [
+            "Evaluation",
+            "Select Flex Sim Funded",
+            "Select Daily Sim Funded"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000,
+            300000
+          ],
+          "source_refs": [
+            "official-9550cd1fb9c6"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "variants": [
+            "40% consistency default",
+            "50% consistency add-on",
+            "300K limited release has separate terms"
+          ]
+        },
+        {
+          "name": "Growth",
+          "stages": [
+            "Evaluation",
+            "Sim Funded"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-34e3f6764c5e",
+            "official-060c10a22817"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Lightning",
+          "stages": [
+            "Instant Sim Funded"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-773eab12afa0",
+            "official-477b443acbea"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Elite",
+          "stages": [
+            "Live"
+          ],
+          "documented_sizes_usd": [],
+          "source_refs": [
+            "official-a1dbbd92dd27"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Legacy Live",
+          "stages": [
+            "Legacy Live"
+          ],
+          "documented_sizes_usd": [],
+          "source_refs": [
+            "official-ff99446c4f25"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "availability": "LEGACY"
+        },
+        {
+          "name": "Level Up v1",
+          "stages": [
+            "Legacy Live"
+          ],
+          "documented_sizes_usd": [],
+          "source_refs": [
+            "official-ca3dcbd17c18"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "availability": "LEGACY"
+        },
+        {
+          "name": "Level Up v2",
+          "stages": [
+            "Live"
+          ],
+          "documented_sizes_usd": [],
+          "source_refs": [
+            "official-1e2ba4c564cb"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        }
+      ],
+      "automation_status": "CONDITIONAL_OWNED_ALGORITHM_ONLY",
+      "confirmed_restrictions": [
+        "Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership.",
+        "Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed."
+      ],
+      "source_review": [
+        {
+          "id": "official-5a37f8cc7ec0",
+          "url": "https://help.tradeify.co/en/articles/17069653-risk-compliance-guidelines-faq",
+          "final_url": "https://help.tradeify.co/en/articles/17069653-risk-compliance-guidelines-faq",
+          "retrieved_at_utc": "2026-10-18T15:15:10.530103+00:00",
+          "html_sha256": "6fb909231386de8b102482dd78ab4192b77aa66c69d9fb6a1ff713d3ef45ea42"
+        },
+        {
+          "id": "official-9550cd1fb9c6",
+          "url": "https://help.tradeify.co/en/articles/12853921-select-evaluation-accounts",
+          "final_url": "https://help.tradeify.co/en/articles/12853921-select-evaluation-accounts",
+          "retrieved_at_utc": "2026-10-18T15:15:10.498965+00:00",
+          "html_sha256": "ff0eb771974be77c153d7a0b9c3f5f24eb3cd07caa7b4857154f32133533778a"
+        },
+        {
+          "id": "official-34e3f6764c5e",
+          "url": "https://help.tradeify.co/en/articles/10495915-growth-evaluation-accounts",
+          "final_url": "https://help.tradeify.co/en/articles/10495915-growth-evaluation-accounts",
+          "retrieved_at_utc": "2026-10-18T15:15:10.324545+00:00",
+          "html_sha256": "1d553f536a6ef7e4be4b46ca4fc57e2d672fc12e97d37330023fb2fd70af1a8e"
+        },
+        {
+          "id": "official-060c10a22817",
+          "url": "https://help.tradeify.co/en/articles/11083796-growth-funded-account-payout-policy",
+          "final_url": "https://help.tradeify.co/en/articles/11083796-growth-funded-account-payout-policy",
+          "retrieved_at_utc": "2026-10-18T15:16:13.634639+00:00",
+          "html_sha256": "a253a828d60d54f6615529c29a8ed27cddc3f3b69a075d949d927fef20a2fe10"
+        },
+        {
+          "id": "official-773eab12afa0",
+          "url": "https://help.tradeify.co/en/articles/10495938-lightning-funded-accounts",
+          "final_url": "https://help.tradeify.co/en/articles/10495938-lightning-funded-accounts",
+          "retrieved_at_utc": "2026-10-18T15:15:10.319334+00:00",
+          "html_sha256": "a4fb5ea69b7242b921c53a6b569392469fff389bf6fcb532b3a6b51515604c7c"
+        },
+        {
+          "id": "official-477b443acbea",
+          "url": "https://help.tradeify.co/en/articles/10495932-lightning-funded-account-payout-policy",
+          "final_url": "https://help.tradeify.co/en/articles/10495932-lightning-funded-account-payout-policy",
+          "retrieved_at_utc": "2026-10-18T15:16:13.695034+00:00",
+          "html_sha256": "6b8426235f9e8d39d9219c1afff2d057ff08b714a43599bf61e2b49b9a7f80dd"
+        },
+        {
+          "id": "official-a1dbbd92dd27",
+          "url": "https://help.tradeify.co/en/articles/12969284-tradeify-elite-program",
+          "final_url": "https://help.tradeify.co/en/articles/12969284-tradeify-elite-program",
+          "retrieved_at_utc": "2026-10-18T15:15:10.486762+00:00",
+          "html_sha256": "00460472224843af5e55f015b8381d7f958e03ce9ca7c15d0a88c413fa130755"
+        },
+        {
+          "id": "official-ff99446c4f25",
+          "url": "https://help.tradeify.co/en/articles/12999764-legacy-live-program-complete-guide",
+          "final_url": "https://help.tradeify.co/en/articles/12999764-legacy-live-program-complete-guide",
+          "retrieved_at_utc": "2026-10-18T15:16:13.688391+00:00",
+          "html_sha256": "8c0b558b2ff2b7942d04f6619a3fd9b8fafa10a464b7057aea1672ca2472c14f"
+        },
+        {
+          "id": "official-ca3dcbd17c18",
+          "url": "https://help.tradeify.co/en/articles/17281277-level-up-v1-legacy-faq",
+          "final_url": "https://help.tradeify.co/en/articles/17281277-level-up-v1-legacy-faq",
+          "retrieved_at_utc": "2026-10-18T15:16:13.657353+00:00",
+          "html_sha256": "bff907c9c500ecf0515be5aa68cf76819851214464c7a94ab422467d0ec8b5d8"
+        },
+        {
+          "id": "official-1e2ba4c564cb",
+          "url": "https://help.tradeify.co/en/articles/17612402-level-up-v2-faq",
+          "final_url": "https://help.tradeify.co/en/articles/17612402-level-up-v2-faq",
+          "retrieved_at_utc": "2026-10-18T15:16:13.602592+00:00",
+          "html_sha256": "b4e52014afabfe98a4445831e013ad59cdcce07c2165d516271edd800a0c3f19"
+        }
+      ],
+      "faq_coverage_complete": false,
+      "coverage_limitations": [
+        "Documented current and legacy types are configurable; enrollment eligibility and exact dated account agreement remain unverified.",
+        "No account credentials, verified balances, complete machine-readable FAQ policy or supported free remote account API are established.",
+        "Unknown clauses fail closed for new intents; local records do not connect a broker or establish trading permission."
+      ]
+    },
+    {
+      "id": "takeprofittrader",
+      "name": "Take Profit Trader",
+      "local_integration_cost_usd": 0,
+      "integration_scope": "LOCAL_ACCOUNT_INVENTORY_ONLY",
+      "free_account_or_api_verified": false,
+      "external_account_fees": "Firm evaluation, activation, data and API fees may apply; no purchase or enrollment performed",
+      "connection_verified": false,
+      "execution_authorized": false,
+      "new_intents_blocked": true,
+      "account_types": [
+        {
+          "name": "Test",
+          "stages": [
+            "Evaluation"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            75000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-0970313aa965"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "PRO",
+          "stages": [
+            "Sim Funded"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            75000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-18e1b6ef36ac"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "PRO+",
+          "stages": [
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            75000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-053f6ab47c65"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "PRO+ Development",
+          "stages": [
+            "Live Development"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            75000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-053f6ab47c65"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        }
+      ],
+      "automation_status": "PRO_AUTOMATION_PROHIBITED",
+      "confirmed_restrictions": [
+        "PRO prohibits trading bots/algorithms; trades must be manually executed.",
+        "PRO/PRO+ prohibit open positions and orders from1minute before through1minute after FOMC announcements, NFP and CPI."
+      ],
+      "source_review": [
+        {
+          "id": "official-18e1b6ef36ac",
+          "url": "https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/15171769361053-PRO-Account-Rules",
+          "final_url": "https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/15171769361053-PRO-Account-Rules",
+          "retrieved_at_utc": "2026-10-18T15:15:10.940671+00:00",
+          "html_sha256": "55c57ad431395705cc8e5cd86d37524c950a6cf0de61e85552baa4447ff55a2d"
+        },
+        {
+          "id": "official-0970313aa965",
+          "url": "https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/15141145057053-Test-Subscriptions",
+          "final_url": "https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/15141145057053-Test-Subscriptions",
+          "retrieved_at_utc": "2026-10-18T15:15:10.921159+00:00",
+          "html_sha256": "2fb65e7039140c9f6bcb64c33688004a9f2d2d42a50cfdf180302c893464aa61"
+        },
+        {
+          "id": "official-053f6ab47c65",
+          "url": "https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/36429526878237-PRO-Development-Accounts",
+          "final_url": "https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/36429526878237-PRO-Development-Accounts",
+          "retrieved_at_utc": "2026-10-18T15:15:10.816321+00:00",
+          "html_sha256": "52a0cb0ef79759e105dc2fc20dcbb4fbcc706136f87b3f4c32a263cf0477a733"
+        }
+      ],
+      "faq_coverage_complete": false,
+      "coverage_limitations": [
+        "Documented current and legacy types are configurable; enrollment eligibility and exact dated account agreement remain unverified.",
+        "No account credentials, verified balances, complete machine-readable FAQ policy or supported free remote account API are established.",
+        "Unknown clauses fail closed for new intents; local records do not connect a broker or establish trading permission."
+      ]
+    },
+    {
+      "id": "earn2trade",
+      "name": "Earn2Trade",
+      "local_integration_cost_usd": 0,
+      "integration_scope": "LOCAL_ACCOUNT_INVENTORY_ONLY",
+      "free_account_or_api_verified": false,
+      "external_account_fees": "Firm evaluation, activation, data and API fees may apply; no purchase or enrollment performed",
+      "connection_verified": false,
+      "execution_authorized": false,
+      "new_intents_blocked": true,
+      "account_types": [
+        {
+          "name": "Trader Career Path",
+          "stages": [
+            "Evaluation",
+            "LiveSim",
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000
+          ],
+          "source_refs": [
+            "official-5dd3a6fb9902",
+            "official-1b05b7587f1c"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        },
+        {
+          "name": "Gauntlet Mini",
+          "stages": [
+            "Evaluation",
+            "LiveSim",
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            50000,
+            100000,
+            150000,
+            200000
+          ],
+          "source_refs": [
+            "official-59886a853f81"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true
+        }
+      ],
+      "automation_status": "NOT_VERIFIED",
+      "confirmed_restrictions": [
+        "Current official main pages state no minimum trading days; older10/15-day summaries are not authoritative.",
+        "Progression-ladder total exposure is enforced in real time; only specified micros get the documented10:1 treatment.",
+        "Funded partner, exchange-data and account costs require exact funding agreements."
+      ],
+      "source_review": [
+        {
+          "id": "official-b3b8a0ccfcbe",
+          "url": "https://help.earn2trade.com/en/articles/8320643-fee-schedule-in-e2t-evaluations-and-on-funded-accounts",
+          "final_url": "https://help.earn2trade.com/en/articles/8320643-fee-schedule-in-e2t-evaluations-and-on-funded-accounts",
+          "retrieved_at_utc": "2026-10-18T15:15:11.233613+00:00",
+          "html_sha256": "8ff4de9d48b4d9ecb03932f924900345c0986b019b106f5fb877731e7c5c3eea"
+        },
+        {
+          "id": "official-5dd3a6fb9902",
+          "url": "https://www.earn2trade.com/trader-career-path",
+          "final_url": "https://www.earn2trade.com/trader-career-path",
+          "retrieved_at_utc": "2026-10-18T15:14:31.948078+00:00",
+          "html_sha256": "a3ca86e29a8d6ce915d0afc8f569910c39f8eff788b8fc9d70ff967a45a29827"
+        },
+        {
+          "id": "official-1b05b7587f1c",
+          "url": "https://help.earn2trade.com/en/articles/5922873-what-is-the-progression-ladder-on-the-trader-career-path",
+          "final_url": "https://help.earn2trade.com/en/articles/5922873-what-is-the-progression-ladder-on-the-trader-career-path",
+          "retrieved_at_utc": "2026-10-18T15:15:11.344211+00:00",
+          "html_sha256": "3f210d8739c713eef55eb61070ed13ab62b7fc85ce27ae41e22c127b146f053f"
+        },
+        {
+          "id": "official-59886a853f81",
+          "url": "https://www.earn2trade.com/gauntlet-mini",
+          "final_url": "https://www.earn2trade.com/gauntlet-mini",
+          "retrieved_at_utc": "2026-10-18T15:14:31.964351+00:00",
+          "html_sha256": "618aa713406ff30acefa54ace319be15f65e59e6783ad18131bda4b6e896a1bc"
+        }
+      ],
+      "faq_coverage_complete": false,
+      "coverage_limitations": [
+        "Documented current and legacy types are configurable; enrollment eligibility and exact dated account agreement remain unverified.",
+        "No account credentials, verified balances, complete machine-readable FAQ policy or supported free remote account API are established.",
+        "Unknown clauses fail closed for new intents; local records do not connect a broker or establish trading permission."
+      ]
+    },
+    {
+      "id": "bulenox",
+      "name": "Bulenox",
+      "local_integration_cost_usd": 0,
+      "integration_scope": "LOCAL_ACCOUNT_INVENTORY_ONLY",
+      "free_account_or_api_verified": false,
+      "external_account_fees": "Firm evaluation, activation, data and API fees may apply; no purchase or enrollment performed",
+      "connection_verified": false,
+      "execution_authorized": false,
+      "new_intents_blocked": true,
+      "account_types": [
+        {
+          "name": "Qualification",
+          "stages": [
+            "Qualification",
+            "Master",
+            "Funded"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-68ac39afb1bc",
+            "official-47fc3f9bb7b3"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "variants": [
+            "Option1 intraday trailing",
+            "Option2 EOD + scaling + DLL"
+          ]
+        },
+        {
+          "name": "Fast Track",
+          "stages": [
+            "Instant simulated live",
+            "Funded review"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-f109cf55ec3c"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "variants": [
+            "Option1 trailing",
+            "Option2 EOD + no scaling;25K no DLL exception"
+          ]
+        },
+        {
+          "name": "Momentum",
+          "stages": [
+            "Qualification",
+            "Momentum Master"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-cefefe91754c"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "variants": [
+            "Option1 trailing",
+            "Option2 EOD + no scaling"
+          ]
+        }
+      ],
+      "automation_status": "PERSONAL_TOOL_RESTRICTIONS_AND_API_FEE",
+      "confirmed_restrictions": [
+        "Rithmic third-party API or composite software costs an additionalUSD100/month according to official FAQ.",
+        "Only personally built tools solely for personal use are permitted; commercial/shared/rented/public automation is prohibited.",
+        "No API subscription is enabled; local inventory is free."
+      ],
+      "source_review": [
+        {
+          "id": "official-e5755dea6b94",
+          "url": "https://bulenox.com/faq",
+          "final_url": "https://bulenox.com/faq",
+          "retrieved_at_utc": "2026-10-18T15:14:31.869352+00:00",
+          "html_sha256": "de102bbed23d57082d0169ecb4109a92f66d382d9a899c46b87409fd786c11e1"
+        },
+        {
+          "id": "official-5de546cf54d4",
+          "url": "https://bulenox.com/accounts-pricing",
+          "final_url": "https://bulenox.com/accounts-pricing",
+          "retrieved_at_utc": "2026-10-18T15:14:31.904650+00:00",
+          "html_sha256": "fad216251c56b58aba760d46173a015f59aec2b1451d2105be321a33dfb79902"
+        },
+        {
+          "id": "official-68ac39afb1bc",
+          "url": "https://bulenox.com/help-center/qualification",
+          "final_url": "https://bulenox.com/help-center/qualification",
+          "retrieved_at_utc": "2026-10-18T15:16:13.428382+00:00",
+          "html_sha256": "68595bd47d3d77157d7fda1fae7c54799fc6f7c70cc713721a2b3ae6e9d7b69f"
+        },
+        {
+          "id": "official-47fc3f9bb7b3",
+          "url": "https://bulenox.com/help-center/master",
+          "final_url": "https://bulenox.com/help-center/master",
+          "retrieved_at_utc": "2026-10-18T15:16:13.660694+00:00",
+          "html_sha256": "26217ab3884cfb398fe85ee2d17efc333545cf3046b80f3d6cc3dcb69e71ff04"
+        },
+        {
+          "id": "official-f109cf55ec3c",
+          "url": "https://bulenox.com/help-center/fast-track",
+          "final_url": "https://bulenox.com/help-center/fast-track",
+          "retrieved_at_utc": "2026-10-18T15:16:13.427756+00:00",
+          "html_sha256": "053f5107f80a1ebab73fbcf0577c817505f0e979e381a6e54630d234b39984e9"
+        },
+        {
+          "id": "official-cefefe91754c",
+          "url": "https://bulenox.com/help-center/momentum",
+          "final_url": "https://bulenox.com/help-center/momentum",
+          "retrieved_at_utc": "2026-10-18T15:16:13.634132+00:00",
+          "html_sha256": "3c14881302cd6a09c2213c629065b3d2a8495fe2d1d0f921df341f8b94a0984b"
+        }
+      ],
+      "faq_coverage_complete": false,
+      "coverage_limitations": [
+        "Documented current and legacy types are configurable; enrollment eligibility and exact dated account agreement remain unverified.",
+        "No account credentials, verified balances, complete machine-readable FAQ policy or supported free remote account API are established.",
+        "Unknown clauses fail closed for new intents; local records do not connect a broker or establish trading permission."
+      ]
+    }
+  ],
+  "source_checked_at_utc": "2026-10-18T15:16:15Z",
+  "topstep_configuration_phase": "LATER",
+  "catalog_scope": "EIGHT_FREE_LOCAL_INVENTORY_INTEGRATIONS_NOT_FREE_ACCOUNTS_OR_API_ACCESS",
+  "all_account_type_claim": "Documented types from reviewed current and legacy official pages; complete FAQ and account-specific rules remain unverified."
 }

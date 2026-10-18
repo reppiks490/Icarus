@@ -31,8 +31,9 @@
   input('alias', 'Display alias', 'text', 'Paper account');
   const platformLabel = el('label', 'Platform');
   const platform = el('select', null, {name: 'platform'});
-  for (const [value, label] of [['alpaca_paper', 'Alpaca paper — account readback'], ['projectx_topstep', 'ProjectX / Topstep — read-only, existing API access required'], ['rithmic', 'Rithmic — unsupported'], ['tradovate', 'Tradovate — unsupported'], ['ibkr', 'IBKR — unsupported'], ['other', 'Other — unsupported']]) {
+  for (const [value, label] of [['manual_inventory', 'Prop firm — free local inventory (no remote API)'], ['alpaca_paper', 'Alpaca paper — account readback'], ['projectx_topstep', 'TopstepX — later configuration (paid API access required)'], ['rithmic', 'Rithmic — unsupported'], ['tradovate', 'Tradovate — unsupported'], ['ibkr', 'IBKR — unsupported'], ['other', 'Other — unsupported']]) {
     const option = el('option', label, {value});
+    if (value === 'projectx_topstep') option.disabled = true;
     platform.append(option);
   }
   platformLabel.append(platform);
@@ -50,7 +51,48 @@
   const refresh = el('button', 'Refresh account inventory', {type: 'button'});
   form.append(submit);
   root.append(heading, notice, status, refresh, list, form, rules);
-  let busy = false;
+  let busy = false, firms = [];
+  const catalogLabel=el('label','Researched firm (free local inventory)'),firmSelect=el('select',null,{id:'firm-catalog'});
+  catalogLabel.append(firmSelect);form.insertBefore(catalogLabel,fields.firm.parentElement);
+  const programLabel=el('label','Documented account type'),programSelect=el('select',null,{id:'firm-program'});
+  programLabel.append(programSelect);form.insertBefore(programLabel,fields.program.parentElement);
+  const stageLabel=el('label','Account stage'),stageSelect=el('select',null,{id:'firm-stage'});
+  stageLabel.append(stageSelect);form.insertBefore(stageLabel,fields.program.parentElement);
+  const sizeLabel=el('label','Documented size (USD simulation units)'),sizeSelect=el('select',null,{id:'firm-size'});
+  sizeLabel.append(sizeSelect);form.insertBefore(sizeLabel,fields.program.parentElement);
+  function selectedProgram(){return firms.find(f=>f.id===firmSelect.value)?.account_types?.[Number(programSelect.value)];}
+  function updateProgram(){
+    const program=selectedProgram();if(!program)return;
+    fields.program.value=[program.name,stageSelect.value,sizeSelect.value].filter(Boolean).join(' / ');
+    const stage=stageSelect.value.toLowerCase();fields.environment.value=stage.includes('eval')||stage==='qualification'?'evaluation':stage.includes('live')&&!stage.includes('sim')?'funded':'simulated';
+  }
+  function updateStages(){const program=selectedProgram();stageSelect.replaceChildren();sizeSelect.replaceChildren();if(!program)return;
+    for(const stage of program.stages||[])stageSelect.append(el('option',stage,{value:stage}));
+    sizeSelect.append(el('option','Size / agreement not assigned',{value:''}));
+    for(const size of program.documented_sizes_usd||[])sizeSelect.append(el('option',Number(size).toLocaleString('en-US'),{value:String(size)}));
+    updateProgram();
+  }
+  function updateFirm(){const firm=firms.find(f=>f.id===firmSelect.value);programSelect.replaceChildren();if(!firm)return;
+    platform.value='manual_inventory';fields.firm.value=firm.name;
+    fields.api_key.value=fields.secret_key.value=fields.account_id.value='';
+    for(const [index,program] of firm.account_types.entries())programSelect.append(el('option',program.name,{value:String(index)}));
+    updateStages();
+  }
+  firmSelect.addEventListener('change',updateFirm);programSelect.addEventListener('change',updateStages);
+  stageSelect.addEventListener('change',updateProgram);sizeSelect.addEventListener('change',updateProgram);
+  async function loadCatalog(){try{
+    const catalog=await IcarusPaperPnl.fetchJson('/api/prop-firm-catalog');firms=Array.isArray(catalog.firms)?catalog.firms:[];
+    firmSelect.replaceChildren(el('option','Choose a researched firm',{value:''}));
+    for(const firm of firms)firmSelect.append(el('option',firm.name,{value:firm.id}));
+    const overview=el('section',null,{'aria-label':'Eight researched prop firms'});overview.append(el('h2','Eight prop firm integrations · no local software charge'),el('p','Local account records are free. Evaluations, funded access, exchange data and APIs can cost money. No external account is connected and no purchases are made. TopstepX is deferred.'));
+    for(const firm of firms){const card=el('details');card.append(el('summary',firm.name+' · '+firm.account_types.length+' documented account types'),el('p',(firm.confirmed_restrictions||[]).join(' ')));
+      const types=el('ul');for(const type of firm.account_types)types.append(el('li',type.name+' — '+type.stages.join(' → ')+(type.documented_sizes_usd?.length?' · USD '+type.documented_sizes_usd.join(', '):' · sizes require exact agreement')));card.append(types);
+      card.append(el('p','Complete FAQ coverage and account-specific compliance remain unverified. All new intents are blocked.'));
+      for(const source of firm.source_review||[]){try{const url=new URL(source.url);if(url.protocol==='https:')card.append(el('a','Official source ↗ ',{href:url.href,target:'_blank',rel:'noopener noreferrer'}));}catch{}}
+      overview.append(card);
+    }root.insertBefore(overview,list);
+  }catch{status.textContent='Official firm catalog unavailable.';}}
+  loadCatalog();
   async function request(path, options = {}) {
     const response = await fetch(path, {credentials: 'same-origin', cache: 'no-store', ...options});
     if (!response.ok) throw new Error(`Account request unavailable (${response.status}).`);
@@ -73,7 +115,7 @@
           const text = row.platform === 'projectx_topstep' ? `Reported balance ${row.readback.balance}; currency is not supplied by this API contract.` : `Equity ${row.readback.equity} ${row.readback.currency}; cash ${row.readback.cash} ${row.readback.currency}.`;
           card.append(el('p', `Last account read: ${text} This is an account balance, not reconciled Icarus P&L.`));
         }
-        const connect = el('button', 'Read account / check connection', {type: 'button'});
+        const connect = el('button', row.platform==='manual_inventory'?'Verify local record (no remote connection)':'Read account / check connection', {type: 'button'});
         connect.addEventListener('click', async () => {
           if (busy) return;
           busy = true;
@@ -105,7 +147,7 @@
       }
       const secure = snapshot.credential_entry?.encrypted_local_store_available === true;
       fields.api_key.disabled = fields.secret_key.disabled = !secure;
-      secretNotice.textContent = (secure ? 'Approved environment references or encrypted owner entry are available.' : 'Encrypted owner entry is unavailable: the runtime has no provisioned secure master key. Approved environment references remain supported.') + ' Topstep requires existing API subscription access; this interface never enrolls or purchases access, and sends no orders. For Topstep, the second credential field is your platform username.';
+      secretNotice.textContent = (secure ? 'Approved environment references or encrypted owner entry are available.' : 'Encrypted owner entry is unavailable: the runtime has no provisioned secure master key. Approved environment references remain supported.') + ' TopstepX is deferred to a later configuration and requires existing paid API subscription access; this interface never enrolls or purchases access, and sends no orders. For Topstep, the second credential field is your platform username.';
       status.textContent = 'Account inventory loaded. Readback never authorizes execution.';
     } catch (error) { status.textContent = error.message; }
   }
@@ -132,6 +174,7 @@
   });
   platform.addEventListener('change', () => {
     const topstep = platform.value === 'projectx_topstep';
+    if(platform.value==='manual_inventory'){updateFirm();return;}
     fields.environment.value = topstep ? 'evaluation' : 'paper';
     fields.firm.value = topstep ? 'Topstep' : 'independent';
     fields.program.value = topstep ? 'UNASSIGNED' : 'paper';

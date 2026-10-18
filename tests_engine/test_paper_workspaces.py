@@ -883,3 +883,52 @@ def test_requested_ten_families_have_only_canonical_micro_counterparts(tmp_path,
         assert all(p["assets"] == ["NQ"] for p in snapshot["profiles"])
     finally:
         manager.stop()
+
+
+def test_strict_pnl_preserves_realized_with_stale_open_marks(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        journal = manager.portfolios['cc1'].journal
+        journal.con.execute("INSERT INTO trades (symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,profit,live) VALUES (?,?,?,?,?,?,?,?,?,?,?)", ('NQ','verified-close',1,1,100,1000,101,1060,'test',125,1))
+        journal.con.commit()
+        manager.portfolios['cc1'].status_data = {'assets':[{'symbol':'NQ','position':1,'price':100.0,'price_age':600.0}], 'positions':1,'open_profit':5.0}
+        strict = manager.snapshot()['paper_pnl']
+        assert strict['aggregate']['realized_pnl'] == 125.0
+        assert strict['aggregate']['open_pnl'] is None
+        assert strict['aggregate']['total_pnl'] is None
+        assert strict['aggregate']['accounting_complete'] is False
+        assert strict['aggregate']['currency'] == 'USD'
+    finally:
+        manager.stop()
+
+
+def test_strict_pnl_flat_ledgers_need_no_market_marks_and_missing_runtime_is_unknown(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        strict = manager.snapshot()['paper_pnl']
+        assert strict['aggregate']['total_pnl'] == 0.0
+        assert strict['aggregate']['accounting_complete'] is True
+        missing = manager.portfolios.pop('cc4')
+        try:
+            strict = manager.snapshot()['paper_pnl']
+            assert strict['aggregate']['realized_pnl'] is None
+            assert strict['aggregate']['total_pnl'] is None
+        finally:
+            manager.portfolios['cc4'] = missing
+    finally:
+        manager.stop()
+
+
+def test_strict_pnl_cached_flat_view_cannot_prove_current_flat_valuation(tmp_path, monkeypatch):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    try:
+        manager.portfolios['cc1'].status_data = {'assets': [], 'positions': 0, 'open_profit': 0.0, 'view_stale': True}
+        strict = manager.snapshot()['paper_pnl']
+        assert strict['aggregate']['realized_pnl'] == 0.0
+        assert strict['aggregate']['open_pnl'] is None
+        assert strict['aggregate']['total_pnl'] is None
+    finally:
+        manager.stop()

@@ -1,5 +1,6 @@
 """Dedicated views use the selected real workspace and never the main ledger."""
 import json
+import time
 import sys
 import threading
 import types
@@ -104,6 +105,12 @@ def test_complete_paper_accounting_reuses_manager_totals(engine, monkeypatch):
         profile["pnl"].update(realized_pnl=10 * i, open_pnl=i)
         profile.update(runtime_available=True, valuation_complete=True)
     snapshot["aggregate"].update(realized_pnl=100, open_pnl=10, accounting_complete=True)
+    from icarus_engine.paper_pnl import validate_paper_pnl
+    now = int(time.time())
+    snapshot["paper_pnl"] = validate_paper_pnl([
+        {"id": row["id"], "currency": "USD", "runtime_available": True, "snapshot_ts": now,
+         "realized_pnl": row["pnl"]["realized_pnl"], "open_pnl": row["pnl"]["open_pnl"],
+         "open_positions": 1, "oldest_open_mark_ts": now} for row in snapshot["profiles"]], as_of_ts=now)
     monkeypatch.setattr(srv.command_centers, "snapshot", lambda: snapshot)
     srv.command_centers.portfolios = {key: object() for key in ("cc1", "cc2", "cc3", "cc4")}
     status, result = request("/api/command-centers/cc3")
@@ -319,3 +326,78 @@ def test_a200_context_history_http_is_one_authenticated_yahoo_read_without_runti
     assert response['pulse_enabled'] is False and response['execution_authorized'] is False
     assert srv.command_centers.portfolios == {}
     assert snapshot()['counts']['pulse_enabled_count'] == 0
+
+
+def test_public_firm_catalog_exposes_only_source_metadata_and_no_private_connection_reads(engine, monkeypatch):
+    srv, request = engine
+    assert request('/api/account-connections')[0] == 401
+    code, result = request('/api/prop-firm-catalog')
+    assert code == 200 and len(result['firms']) == 8
+    assert sum(len(firm['account_types']) for firm in result['firms']) >= 42
+    assert result['topstep_configuration_phase'] == 'LATER'
+    assert not any(key in result for key in ('connections','readback','credential_refs'))
+    assert all(firm['execution_authorized'] is False for firm in result['firms'])
+
+
+def test_browser_all_four_pnl_expiry_and_eight_firm_configuration(engine):
+    import shutil
+    import subprocess
+    from icarus_engine.paper_pnl import validate_paper_pnl
+    node, chromium = shutil.which('node'), shutil.which('chromium') or shutil.which('chromium-browser')
+    if not node or not chromium or subprocess.run([node,'-e',"require.resolve('playwright')"],capture_output=True).returncode:
+        pytest.skip('optional browser presentation environment unavailable')
+    srv, _ = engine
+    base = srv.command_centers.snapshot()
+    now = int(time.time())
+    pnl = validate_paper_pnl([dict(id=f'cc{i}',currency='USD',runtime_available=True,
+        snapshot_ts=now,realized_pnl=10*i,open_pnl=i,open_positions=1,oldest_open_mark_ts=now)
+        for i in range(1,5)],as_of_ts=now)
+    payloads = {row['id']:dict(mode='concurrent_paper',profile=dict(row,runtime_available=True),paper_pnl=pnl,
+        aggregate=pnl['aggregate'],accounting={'complete':True},available_assets=[],input_meta=[]) for row in base['profiles']}
+    script = r'''
+const assert=require('node:assert/strict'),{chromium}=require('playwright');
+const payloads=JSON.parse(process.argv[3]);let browser;
+(async()=>{
+ browser=await chromium.launch({executablePath:process.argv[2],headless:true,args:['--no-sandbox']});
+ const page=await browser.newPage({viewport:{width:1280,height:900}});page.setDefaultTimeout(8000);
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/api/command-centers/cc*',async route=>{
+  const key=new URL(route.request().url()).pathname.split('/').at(-1);
+  if(payloads[key])await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(payloads[key])});else await route.continue();
+ });
+ for(const id of ['cc1','cc2','cc3','cc4']){
+  await page.goto(process.argv[1]+'/dashboards/'+id);
+  await page.waitForFunction(()=>document.querySelector('#all-total').textContent.includes('110.00'));
+  assert.match(await page.locator('#all-realized').textContent(),/100.00/);
+  assert.match(await page.locator('#all-open').textContent(),/10.00/);
+ }
+ // Browser time moves, the provider remains untouched, and cached totals expire.
+ await page.clock.install({time:new Date(payloads.cc4.paper_pnl.as_of_ts*1000)});
+ await page.clock.runFor(92000);
+ await page.waitForFunction(()=>document.querySelector('#all-total').textContent==='Unavailable');
+ assert.equal(await page.locator('#own-open').textContent(),'Unavailable');
+ await page.clock.pauseAt(new Date((payloads.cc4.paper_pnl.as_of_ts+93)*1000));
+ await page.goto(process.argv[1]+'/connections');
+ await page.waitForFunction(()=>document.querySelectorAll('#firm-catalog option').length===9);
+ assert.equal(await page.locator('section[aria-label="Eight researched prop firms"] details').count(),8);
+ assert.equal(await page.locator('option[value="projectx_topstep"]').evaluate(e=>e.disabled && e.hasAttribute('disabled')),true);
+ for(const [index,id] of ['apex','lucid','myfundedfutures','goat','tradeify','takeprofittrader','earn2trade','bulenox'].entries()){
+  await page.locator('#firm-catalog').selectOption(id);
+  assert.equal(await page.locator('select[name="platform"]').inputValue(),'manual_inventory');
+  assert.ok(await page.locator('#firm-program option').count()>0);
+  assert.ok(await page.locator('#firm-stage option').count()>0);
+  await page.locator('input[name="id"]').fill('local_'+index);
+  await page.locator('input[name="owner_token"]').fill('owner-test');
+  await page.getByRole('button',{name:'Save account configuration'}).click();
+  await page.waitForFunction(()=>document.querySelector('main#connections [role="status"]').textContent.includes('INVENTORY_ONLY'));
+ }
+ await page.setViewportSize({width:390,height:844});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ assert.deepEqual(errors,[]);
+ await page.screenshot({path:'/workspace/scratch/four-workspace-connections-mobile.png',fullPage:true});
+ await browser.close();
+})().catch(async e=>{console.error(e);await browser?.close();process.exitCode=1;});
+'''
+    result = subprocess.run([node,'-e',script,f'http://127.0.0.1:{srv.server_port}',chromium,json.dumps(payloads)],
+        capture_output=True,text=True,timeout=65)
+    assert result.returncode == 0, result.stdout + result.stderr

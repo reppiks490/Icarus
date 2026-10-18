@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from .assets import REGISTRY, apply_chart_config, validate_chart_config
 from .futures_catalog import FUTURES_PRODUCTS
+from .paper_pnl import validate_paper_pnl
 from .runtime import (
     AssetRunner,
     FlattenUnavailableError,
@@ -616,7 +617,9 @@ class PaperWorkspaceManager:
         return {"feeds": feeds, "adapters": adapters, "execution_authorized": False}
 
     def snapshot(self):
+        now = int(time.time())
         rows = []
+        ledgers = []
         for profile_id, profile in self.profiles.items():
             portfolio = self.portfolios.get(profile_id)
             status = portfolio.status(nonblocking=True) if portfolio else {"assets": [], "all_warm": False}
@@ -633,6 +636,24 @@ class PaperWorkspaceManager:
             if status.get("positions") and not any(asset.get("position") for asset in status.get("assets", [])):
                 valuation_complete = False
             open_pnl = float(status.get("open_profit") or 0.0)
+            # Journals and catalog point values use explicit USD simulation units.
+            # This currency never describes any broker account or FX conversion.
+            open_assets = [asset for asset in status.get("assets", []) if asset.get("position")]
+            position_count = status.get("positions", len(open_assets))
+            marks = []
+            for asset in open_assets:
+                age, price = asset.get("price_age"), asset.get("price")
+                if (type(age) not in (int, float) or not 0 <= age <= 1e9
+                        or type(price) not in (int, float) or not 0 < price < 1e18):
+                    break
+                marks.append(now - int(math.ceil(age)))
+            marks_complete = (len(marks) == len(open_assets) == position_count
+                              and not status.get("view_stale", False))
+            ledgers.append({"id": profile_id, "currency": "USD", "runtime_available": portfolio is not None,
+                            "snapshot_ts": now, "realized_pnl": closed["realized_pnl"] if portfolio else None,
+                            "open_pnl": status.get("open_profit", 0.0) if portfolio and not status.get("view_stale", False) else None,
+                            "open_positions": position_count,
+                            "oldest_open_mark_ts": min(marks) if marks and marks_complete else None})
             pnl = {**closed, "open_pnl": open_pnl, "paper_pnl": closed["realized_pnl"],
                    "replay_inclusive_net": float(status.get("net") or 0.0),
                    "basis": "persisted closures after paper cutover; open mark and replay-inclusive net shown separately"}
@@ -659,6 +680,7 @@ class PaperWorkspaceManager:
                                          else "PAPER_VALUATION_INCOMPLETE")
         aggregate["reconciliation_status"] = "NO_BROKER_RECONCILIATION"
         return {"mode": "concurrent_paper", "paper_only": True, "profiles": rows, "aggregate": aggregate,
+                "paper_pnl": validate_paper_pnl(ledgers, as_of_ts=now),
                 "connections": self._connections(rows), "available_assets": _available_assets(),
                 "runtime_feed_mode": getattr(self.parent, "feed_mode", "unknown"),
                 "requested_futures": requested_futures_metadata(),

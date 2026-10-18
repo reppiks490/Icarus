@@ -53,7 +53,7 @@ def _validate_stored(row):
         raise ValueError("invalid immutable credential reference")
     if type(row["revision"]) is not int or row["revision"] < 1:
         raise ValueError("invalid account state")
-    if row["status"] not in {"CONFIGURED", "UNSUPPORTED", "MISSING_CREDENTIALS", "ACCOUNT_IDENTITY_MISMATCH", "DUPLICATE_ACCOUNT", "CONNECTED_READ_ONLY", "READBACK_FAILED", "SUBSCRIPTION_REQUIRED", "AGREEMENTS_REQUIRED", "AUTHENTICATION_FAILED", "API_ACCESS_DISABLED"}:
+    if row["status"] not in {"CONFIGURED", "INVENTORY_ONLY", "UNSUPPORTED", "MISSING_CREDENTIALS", "ACCOUNT_IDENTITY_MISMATCH", "DUPLICATE_ACCOUNT", "CONNECTED_READ_ONLY", "READBACK_FAILED", "SUBSCRIPTION_REQUIRED", "AGREEMENTS_REQUIRED", "AUTHENTICATION_FAILED", "API_ACCESS_DISABLED"}:
         raise ValueError("invalid connection status")
     fingerprint = row["account_fingerprint"]
     if fingerprint is not None and (not isinstance(fingerprint, str) or re.fullmatch(r"[0-9a-f]{64}", fingerprint) is None):
@@ -253,10 +253,13 @@ class ConnectionManager:
             return {"schema_version": "icarus.account-connections/1", "read_only": True,
                     "execution_authorized": False,
                     "connections": [self._public(self._records[key]) for key in sorted(self._records)],
-                    "platforms": [{"id": "alpaca_paper", "environments": ["paper"],
+                    "firms": rules.get("firms", []),
+                    "topstep_configuration_phase": "LATER",
+                    "platforms": [{"id": "manual_inventory", "implementation_status": "LOCAL_RECORDS_ONLY", "capabilities": ["LOCAL_ACCOUNT_INVENTORY"], "remote_connection": False, "local_cost_usd": 0},
+                        {"id": "alpaca_paper", "environments": ["paper"],
                         "capabilities": ["ACCOUNT_READ"], "markets": ["equities"],
                         "implementation_status": "CODED_MOCK_TESTED", "credential_refs": _REFS["alpaca_paper"]},
-                        {"id": "projectx_topstep", "environments": ["evaluation", "simulated"],
+                        {"id": "projectx_topstep", "configuration_phase": "LATER", "environments": ["evaluation", "simulated"],
                          "implementation_status": "CODED_MOCK_TESTED", "capabilities": ["AUTHENTICATE", "ACCOUNT_READ"],
                          "credential_refs": _REFS["projectx_topstep"], "explicit_account_selector_required": True,
                          "access_cost": "EXISTING_SUBSCRIPTION_REQUIRED_NO_ENROLLMENT",
@@ -312,7 +315,7 @@ class ConnectionManager:
             if not old and len(self._records) >= 100:
                 raise ValueError("account record limit reached")
             row = dict(config, revision=(old or {}).get("revision", 0) + 1,
-                       status="CONFIGURED" if platform in _REFS else "UNSUPPORTED", readback=None,
+                       status="INVENTORY_ONLY" if platform == "manual_inventory" else "CONFIGURED" if platform in _REFS else "UNSUPPORTED", readback=None,
                        account_fingerprint=(old or {}).get("account_fingerprint"), last_read_at=None,
                        secret_ref=(old or {}).get("secret_ref") if not refs and (old or {}).get("platform") == platform else None)
             secret_path = None
@@ -408,7 +411,7 @@ class ConnectionManager:
             row["readback"] = None
             row["last_read_at"] = None
             if row["platform"] not in _REFS:
-                row["status"] = "UNSUPPORTED"
+                row["status"] = "INVENTORY_ONLY" if row["platform"] == "manual_inventory" else "UNSUPPORTED"
             else:
                 try:
                     credentials = self._credentials(row)

@@ -260,27 +260,30 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         profile = next((row for row in rows if row.get("id") == profile_id), None)
         if profile is None:
             return None
-        complete = (len(rows) == 4 and {row.get("id") for row in rows} == workspace_ids
-                    and all(key in command_centers.portfolios for key in workspace_ids))
-        def finite(value):
-            return type(value) in (float, int) and -1e18 < value < 1e18 and math.isfinite(value)
-        complete = complete and all(finite(row.get("pnl", {}).get(field))
-                                    for row in rows for field in ("realized_pnl", "open_pnl"))
+        accounting = state.get("paper_pnl", {})
+        valid = (accounting.get("schema_version") == "icarus.paper-pnl.v1"
+                 and accounting.get("paper_only") is True and accounting.get("execution_authorized") is False
+                 and len(rows) == 4 and {row.get("id") for row in rows} == workspace_ids
+                 and all(key in command_centers.portfolios for key in workspace_ids))
+        amounts = accounting.get("aggregate", {}) if valid else {}
+        complete = valid and amounts.get("accounting_complete") is True
         aggregate = state.get("aggregate", {})
-        complete = (complete and aggregate.get("accounting_complete") is not False
-                    and all(row.get("valuation_complete") is not False for row in rows))
-        complete = complete and all(finite(aggregate.get(field)) for field in ("realized_pnl", "open_pnl"))
+        for field in ("realized_pnl", "open_pnl", "total_pnl"):
+            aggregate[field] = amounts.get(field)
+        aggregate["paper_pnl"] = aggregate.get("realized_pnl")
+        aggregate["accounting_complete"] = complete
+        aggregate["currency"] = amounts.get("currency")
         if not complete:
-            for field in ("realized_pnl", "paper_pnl", "open_pnl", "net", "capital", "equity"):
+            for field in ("net", "capital", "equity"):
                 aggregate[field] = None
-        if profile_id not in command_centers.portfolios:
-            for field in ("realized_pnl", "paper_pnl", "open_pnl", "replay_inclusive_net"):
-                profile.setdefault("pnl", {})[field] = None
-        if profile.get("valuation_complete") is False:
-            profile.setdefault("pnl", {})["open_pnl"] = None
+        own = next((row for row in accounting.get("profiles", []) if row.get("id") == profile_id), {}) if valid else {}
+        for field in ("realized_pnl", "open_pnl", "total_pnl"):
+            profile.setdefault("pnl", {})[field] = own.get(field)
+        profile["pnl"]["paper_pnl"] = own.get("realized_pnl")
         profile["runtime_available"] = profile_id in command_centers.portfolios
         return {"mode": "concurrent_paper", "paper_only": True, "profile": profile,
-                "aggregate": aggregate, "connections": state.get("connections", {}), "input_meta": meta,
+                "aggregate": aggregate, "paper_pnl": accounting if valid else None,
+                "connections": state.get("connections", {}), "input_meta": meta,
                 "available_assets": state.get("available_assets", []),
                 "accounting": {"complete": bool(complete), "basis": "isolated persisted paper journals and current open marks",
                                "fees_verified": False, "broker_reconciled": False, "reconciled_broker_pnl": None,
@@ -1447,6 +1450,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"error": str(ex)})
                 except (KeyError, OSError):
                     return self._json(503, {"error": "catalog history unavailable"})
+            if p.path == "/api/prop-firm-catalog":
+                try:
+                    catalog = json.loads((html_path.parent / "propfirm-rules.json").read_text())
+                    return self._json(200, {"firms": catalog.get("firms", []),
+                        "topstep_configuration_phase": "LATER", "execution_authorized": False,
+                        "scope": "Public official-source metadata only; no private account state"})
+                except (OSError, ValueError, TypeError):
+                    return self._json(503, {"detail": "firm catalog unavailable", "execution_authorized": False})
             if p.path == "/api/account-connections":
                 if not self._auth():
                     return self._json(401, {"detail": "authentication required"})
@@ -1492,6 +1503,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if target not in workspace_ids and target != "connections":
                     return self._json(404, {"detail": "unknown dashboard"})
                 return self._send(200, (html_path.parent / "workspace-dashboard.html").read_bytes(), "text/html")
+            if p.path == "/paper-pnl-ui.js":
+                return self._send(200, (html_path.parent / "paper-pnl-ui.js").read_bytes(), "text/javascript")
             if p.path == "/workspace-dashboard.js":
                 return self._send(200, (html_path.parent / "workspace-dashboard.js").read_bytes(), "text/javascript")
             if p.path == "/api/command-centers":

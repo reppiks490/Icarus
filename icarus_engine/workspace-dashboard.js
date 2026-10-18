@@ -6,20 +6,25 @@
     document.querySelector('#workspace-panel').hidden = true;
     document.querySelector('#connections').hidden = false;
     const script = document.createElement('script'); script.src = '/connections-ui.js'; document.head.append(script);
+    let sharedState=null, sharedSequence=0;
     async function sharedAccounting() {
+      const sequence=++sharedSequence;
       const selectors=['#all-realized','#all-open','#all-total'];
       try {
-        const reply=await fetch('/api/command-centers/cc1',{cache:'no-store'});
-        if(!reply.ok)throw new Error('Accounting unavailable');
-        const data=await reply.json(),a=data.aggregate||{};
-        const complete=data.accounting?.complete===true&&typeof a.realized_pnl==='number'&&Number.isFinite(a.realized_pnl)&&typeof a.open_pnl==='number'&&Number.isFinite(a.open_pnl);
-        const amounts=complete?[a.realized_pnl,a.open_pnl,a.realized_pnl+a.open_pnl]:[null,null,null];
+        const data=await IcarusPaperPnl.fetchJson('/api/command-centers/cc1'),pnl=IcarusPaperPnl.read(data),a=pnl?.aggregate||{};
+        if(sequence!==sharedSequence)return;
+        sharedState=data;
+        const complete=a.accounting_complete===true;
+        const amounts=[a.realized_pnl??null,a.open_pnl??null,a.total_pnl??null];
         selectors.forEach((selector,i)=>document.querySelector(selector).textContent=amounts[i]==null?'Unavailable':amounts[i].toLocaleString(undefined,{style:'currency',currency:'USD'}));
         document.querySelector('#accounting-basis').textContent=(complete?'All four paper ledgers observed. ':'Aggregate unavailable. ')+'Open marks may include warmup-origin positions. Fees and brokerage reconciliation are unverified; no true broker P&L is available.';
       } catch {
+        if(sequence!==sharedSequence)return;
+        sharedState=null;
         selectors.forEach(selector=>document.querySelector(selector).textContent='Unavailable');
       }
     }
+    setInterval(()=>{if(sharedState&&!IcarusPaperPnl.read(sharedState)){sharedState=null;['#all-realized','#all-open','#all-total'].forEach(selector=>document.querySelector(selector).textContent='Unavailable');document.querySelector('#accounting-basis').textContent='Accounting snapshot expired. No current total is available.';}},1000);
     sharedAccounting();setInterval(()=>{if(!document.hidden)sharedAccounting();},15000);
     return;
   }
@@ -32,7 +37,7 @@
   const fail = error => { text('#snapshot-notice', error.message || String(error)); $('#snapshot-notice').classList.add('error'); };
   let state=null, baseline='', dirty=false, pending=false, sequence=0, chartSequence=0;
   document.querySelector(`nav a[href="/dashboards/${id}"]`).setAttribute('aria-current','page');
-  async function get(path) { const reply=await fetch(path,{cache:'no-store'}); const data=await reply.json(); if(!reply.ok)throw new Error(data.detail||data.reason||`HTTP ${reply.status}`); return data; }
+  async function get(path) { return IcarusPaperPnl.fetchJson(path); }
   async function admin(suffix, body) {
     const token=$('#owner-token').value;
     if(!token)throw new Error('Owner access token is required to change this paper workspace.');
@@ -62,16 +67,16 @@
     text('#config-notice','No pending edits.');
   }
   function render(data) {
-    state=data; const p=data.profile, aggregate=data.aggregate||{}, complete=data.accounting?.complete===true;
+    state=data; const p=data.profile,pnl=IcarusPaperPnl.read(data),aggregate=pnl?.aggregate||{},own=pnl?.profiles.find(row=>row.id===id)||{},complete=aggregate.accounting_complete===true;
     document.title=`Icarus · ${id.toUpperCase()} · ${p.name}`;
     text('#workspace-id',`${id.toUpperCase()} / isolated paper ledger`);text('#workspace-name',p.name);text('#workspace-description',p.description||'');
-    text('#all-realized',money(complete?aggregate.realized_pnl:null));text('#all-open',money(complete?aggregate.open_pnl:null));
-    const closed=number(aggregate.realized_pnl),open=number(aggregate.open_pnl);text('#all-total',money(complete&&closed!=null&&open!=null?closed+open:null));
+    text('#all-realized',money(aggregate.realized_pnl));text('#all-open',money(aggregate.open_pnl));
+    const closed=number(aggregate.realized_pnl),open=number(aggregate.open_pnl);text('#all-total',money(aggregate.total_pnl));
     text('#accounting-basis',`${complete?'All four paper ledgers observed.':'Aggregate unavailable: at least one ledger or mark is missing.'} Persisted closures after paper cutover; open marks may include warmup-origin positions. Fees and brokerage reconciliation are unverified. No true broker P&L is available.`);
-    text('#own-realized',money(p.runtime_available?p.pnl?.realized_pnl:null));text('#own-open',money(p.runtime_available?p.pnl?.open_pnl:null));text('#own-feed',p.feed?.status||'Unobserved');
+    text('#own-realized',money(own.realized_pnl));text('#own-open',money(own.open_pnl));text('#own-feed',p.feed?.status||'Unobserved');
     text('#snapshot-notice',p.runtime_available?'Current engine snapshot · isolated simulated ledger':'Runtime unavailable · saved configuration only');$('#snapshot-notice').classList.remove('error');
     const assets=Array.isArray(p.status?.assets)?p.status.assets:[],table=$('#asset-rows');table.replaceChildren();
-    for(const asset of assets){const row=node('tr');for(const value of [asset.symbol,asset.feed_provider||asset.feed||'Unobserved',asset.paused?'Paused':asset.warm?'Warm':'Warming',asset.position??'Unknown',money(asset.open_profit),money(asset.live_profit),asset.last_error||'No error reported'])row.append(node('td',value));table.append(row);}
+    for(const asset of assets){const row=node('tr');for(const value of [asset.symbol,asset.feed_provider||asset.feed||'Unobserved',asset.paused?'Paused':asset.warm?'Warm':'Warming',asset.position??'Unknown',money(pnl&&own.open_pnl!=null&&number(asset.price_age)!=null&&asset.price_age>=0&&asset.price_age<=90?asset.open_profit:null),money(pnl&&own.realized_pnl!=null?asset.live_profit:null),asset.last_error||'No error reported'])row.append(node('td',value));table.append(row);}
     if(!assets.length){const row=node('tr'),cell=node('td','No runtime asset observations are available.');cell.colSpan=7;row.append(cell);table.append(row);}
     const previous=$('#chart-asset').value;$('#chart-asset').replaceChildren(...assets.map(asset=>{const option=node('option',asset.symbol);option.value=asset.symbol;return option;}));if(assets.some(asset=>asset.symbol===previous))$('#chart-asset').value=previous;
     text('#chart-config',`Chart: ${p.chart?.timeframe||'Unknown'} · ${p.chart?.chart_type||'Unknown'} · Fill prices: ${p.chart?.fill_on||'Unknown'}`);
@@ -91,7 +96,14 @@
     }catch(error){if(current===chartSequence)text('#chart-note',`Chart unavailable: ${error.message}`);}
   }
   async function loadCorpus(){const target=$('#corpus-sources');try{const evidence=await get('/api/corpus-consumption');target.replaceChildren(node('p',evidence.status,'note'));for(const corpus of evidence.corpora||[]){const item=node('article',null,'source');item.append(node('h3',corpus.cache_name));item.append(node('p',`${corpus.dataset_count} datasets · ${corpus.retained_rows} retained rows · Historical: ${corpus.historical===true?'yes':'unknown'}`));item.append(node('p',`Latest closed source bar: ${Number.isFinite(corpus.latest_bar_closed_ts)?new Date(corpus.latest_bar_closed_ts*1000).toISOString():'unknown'} · source age ${Number.isFinite(corpus.age_seconds)?Math.floor(corpus.age_seconds/86400)+' days':'unknown'}`));item.append(node('p',`Native run ${corpus.run_id} · artifact ${corpus.artifact_id}`));const details=node('details');details.append(node('summary','Receipt and workspace consumption'));details.append(node('pre',JSON.stringify({receipt_sha256:corpus.receipt_sha256,paper_warmup_used:corpus.paper_warmup_used,workspace:corpus.workspaces?.find?.(row=>row.id===id)||corpus.workspaces?.[id]},null,2)));item.append(details);target.append(item);}}catch(error){target.replaceChildren(node('p',`Corpus evidence unavailable: ${error.message}`,'error'));}}
-  async function refresh(){const request=++sequence;try{const data=await get(`/api/command-centers/${id}`);if(request===sequence)render(data);}catch(error){if(request!==sequence)return;state=null;chartSequence++;$('#price-chart').getContext('2d').clearRect(0,0,960,360);text('#chart-note','Workspace snapshot unavailable; chart cleared.');for(const selector of ['#all-realized','#all-open','#all-total','#own-realized','#own-open'])text(selector,'Unavailable');$('#pause').disabled=true;$('#flatten').disabled=true;fail(error);}loadCorpus();}
+  function clearAccounting(){
+    for(const selector of ['#all-realized','#all-open','#all-total','#own-realized','#own-open'])text(selector,'Unavailable');
+    $('#asset-rows').replaceChildren();
+    text('#accounting-basis','Current accounting unavailable. Fees and broker reconciliation remain unverified.');
+    $('#pause').disabled=true;$('#flatten').disabled=true;
+  }
+  setInterval(()=>{if(state&&!IcarusPaperPnl.read(state)){clearAccounting();}},1000);
+  async function refresh(){const request=++sequence;try{const data=await get(`/api/command-centers/${id}`);if(request===sequence)render(data);}catch(error){if(request!==sequence)return;state=null;chartSequence++;$('#price-chart').getContext('2d').clearRect(0,0,960,360);text('#chart-note','Workspace snapshot unavailable; chart cleared.');clearAccounting();$('#pause').disabled=true;$('#flatten').disabled=true;fail(error);}loadCorpus();}
   $('#refresh').addEventListener('click',refresh);$('#chart-asset').addEventListener('change',loadChart);
   async function action(suffix,body){if(pending)return;pending=true;try{await admin(suffix,body);await refresh();}catch(error){fail(error);}finally{pending=false;if(state)render(state);}}
   $('#pause').addEventListener('click',()=>action('/pause',{paused:!state?.profile?.status?.paused}));

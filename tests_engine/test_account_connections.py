@@ -493,3 +493,47 @@ def test_projectx_credential_digest_is_ephemeral_and_each_key_change_reauthentic
     persisted = b''.join(path.read_bytes() for path in manager.root.rglob('*') if path.is_file())
     for value in (digest, current_digest, 'PRIVATE_FIXTURE_KEY', 'private-fixture-user', 'PRIVATE_FIXTURE_SESSION'):
         assert value not in public and value.encode() not in persisted
+
+
+def test_eight_prop_firms_have_free_local_inventory_all_documented_types_and_no_execution(tmp_path):
+    manager = ConnectionManager(tmp_path, env={}, transport=lambda *args: pytest.fail('No remote calls for local records'))
+    snapshot = manager.snapshot()
+    assert len(snapshot['firms']) == 8
+    assert {firm['id'] for firm in snapshot['firms']} == {'apex','lucid','myfundedfutures','goat','tradeify','takeprofittrader','earn2trade','bulenox'}
+    for firm in snapshot['firms']:
+        assert firm['local_integration_cost_usd'] == 0
+        assert firm['free_account_or_api_verified'] is False
+        assert firm['execution_authorized'] is False
+        assert firm['account_types'] and firm['source_review']
+        for program in firm['account_types']:
+            assert program['stages'] and program['source_refs']
+    for i, firm in enumerate(snapshot['firms']):
+        program = firm['account_types'][0]
+        record = manager.upsert(dict(id=f'firm_{i}', alias=firm['name'], platform='manual_inventory',
+            environment='evaluation', firm=firm['name'], program=program['name'], credential_refs={}))
+        assert record['status'] == 'INVENTORY_ONLY'
+        assert manager.connect(record['id'])['status'] == 'INVENTORY_ONLY'
+        assert record['readback'] is None and record['new_intents_blocked'] is True
+    assert all(row['readback'] is None for row in ConnectionManager(tmp_path, env={}).snapshot()['connections'])
+    assert next(p for p in snapshot['platforms'] if p['id'] == 'projectx_topstep')['configuration_phase'] == 'LATER'
+
+
+def test_projectx_rejected_cached_session_is_evicted_before_retry(tmp_path):
+    calls = []
+    reject = [False]
+    def transport(method, url, headers, payload):
+        calls.append(url)
+        if url.endswith('loginKey'):
+            return dict(success=True,errorCode=0,token='FIXTURE_TOKEN')
+        if reject[0]:
+            return dict(success=False,errorCode=3)
+        return dict(success=True,errorCode=0,accounts=[dict(id=123,balance=100,isVisible=True,canTrade=False)])
+    manager = ConnectionManager(tmp_path,env={'PROJECTX_API_KEY':'key','PROJECTX_USERNAME':'user'},transport=transport)
+    manager.upsert(projectx_record())
+    manager.connect('topstep_one')
+    reject[0] = True
+    assert manager.connect('topstep_one')['status'] == 'AUTHENTICATION_FAILED'
+    assert manager._tokens == {}
+    reject[0] = False
+    assert manager.connect('topstep_one')['status'] == 'CONNECTED_READ_ONLY'
+    assert sum(url.endswith('loginKey') for url in calls) == 2
