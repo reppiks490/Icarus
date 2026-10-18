@@ -333,6 +333,7 @@ class ConnectionManager:
                     row["secret_ref"] = secret_ref
                 self._records[identity] = row
                 self._save()
+                self._tokens.pop(identity, None)
             except Exception:
                 self._records = prior_records
                 if secret_path is not None:
@@ -343,6 +344,9 @@ class ConnectionManager:
     def _projectx_read(self, row, credentials):
         now = _number(self.clock())
         cached = self._tokens.get(row["id"])
+        # Bind sessions to the exact resolved credential pair, including changes
+        # behind stable environment references. The digest stays in memory only.
+        credential_digest = hashlib.sha256(_json(credentials)).hexdigest()
         def successful(response):
             if not isinstance(response, dict):
                 raise ValueError("invalid account response")
@@ -352,12 +356,14 @@ class ConnectionManager:
                 status = {3: "AUTHENTICATION_FAILED", 7: "AGREEMENTS_REQUIRED", 9: "SUBSCRIPTION_REQUIRED", 10: "API_ACCESS_DISABLED"}.get(code, "READBACK_FAILED")
                 raise _AccountFailure(status)
             return response
-        if cached is None or cached[0] != row["revision"] or not 0 <= cached[2] - now - 60 <= 86400:
+        if (cached is None or cached[0] != row["revision"] or cached[3] != credential_digest
+                or not 0 <= cached[2] - now - 60 <= 86400):
+            self._tokens.pop(row["id"], None)
             response = successful(self.transport("POST", _PROJECTX_AUTH,
                 {"Accept": "application/json", "Content-Type": "application/json"},
                 {"userName": credentials["username"], "apiKey": credentials["api_key"]}))
             token = _label(response.get("token"), 16384)
-            cached = (row["revision"], token, now + 86400)
+            cached = (row["revision"], token, now + 86400, credential_digest)
             self._tokens[row["id"]] = cached
         response = successful(self.transport("POST", _PROJECTX_ACCOUNTS,
             {"Accept": "application/json", "Content-Type": "application/json", "Authorization": "Bearer " + cached[1]},
@@ -407,6 +413,7 @@ class ConnectionManager:
                 try:
                     credentials = self._credentials(row)
                 except Exception:
+                    self._tokens.pop(row["id"], None)
                     row["status"] = "MISSING_CREDENTIALS"
                 else:
                     try:

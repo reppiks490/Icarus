@@ -415,3 +415,81 @@ def test_policy_boundaries_fail_closed(update, reason):
     {"drawdown_basis": "guessed"}, {"max_contracts": True}, {"sources": []}])
 def test_missing_stale_or_unsupported_policy_never_grants_a_pass(update):
     assert evaluate_rules(dict(policy(), **update), state(), {"connection_id": "paper_one", "symbol": "MNQ", "quantity": 1}, now=1000)["new_intent_allowed"] is False
+
+
+def test_projectx_rotating_resolved_credentials_cannot_reuse_previous_users_session(tmp_path):
+    env = {'PROJECTX_API_KEY': 'OLD_FIXTURE_KEY', 'PROJECTX_USERNAME': 'old-user'}
+    calls = []
+    def transport(method, url, headers, payload):
+        calls.append((url, headers, payload))
+        if url.endswith('loginKey'):
+            if payload['userName'] != 'old-user':
+                return dict(success=False, errorCode=3)
+            return dict(success=True, errorCode=0, token='OLD_FIXTURE_SESSION')
+        return dict(success=True, errorCode=0, accounts=[dict(id=123, balance=100, isVisible=True, canTrade=False)])
+    manager = ConnectionManager(tmp_path, env=env, transport=transport, clock=lambda: 1000)
+    manager.upsert(projectx_record())
+    assert manager.connect('topstep_one')['status'] == 'CONNECTED_READ_ONLY'
+    env.update(PROJECTX_API_KEY='NEW_FIXTURE_KEY', PROJECTX_USERNAME='new-user')
+    result = manager.connect('topstep_one')
+    assert result['status'] == 'AUTHENTICATION_FAILED'
+    assert result['readback'] is None
+    assert sum(url.endswith('loginKey') for url, _, _ in calls) == 2
+    assert len(calls) == 3  # Failed replacement authentication must not search accounts.
+    assert manager._tokens == {}
+
+
+def test_projectx_missing_credentials_clear_session_before_restoring_same_pair(tmp_path):
+    env = {'PROJECTX_API_KEY': 'FIXTURE_KEY', 'PROJECTX_USERNAME': 'fixture-user'}
+    calls = []
+    def transport(method, url, headers, payload):
+        calls.append(url)
+        if url.endswith('loginKey'):
+            return dict(success=True, errorCode=0, token='FIXTURE_SESSION')
+        return dict(success=True, errorCode=0, accounts=[dict(id=123, balance=100, isVisible=True, canTrade=False)])
+    manager = ConnectionManager(tmp_path, env=env, transport=transport, clock=lambda: 1000)
+    manager.upsert(projectx_record())
+    manager.connect('topstep_one')
+    env.pop('PROJECTX_API_KEY')
+    assert manager.connect('topstep_one')['status'] == 'MISSING_CREDENTIALS'
+    assert manager._tokens == {}
+    env['PROJECTX_API_KEY'] = 'FIXTURE_KEY'
+    assert manager.connect('topstep_one')['status'] == 'CONNECTED_READ_ONLY'
+    assert sum(url.endswith('loginKey') for url in calls) == 2
+
+
+def test_projectx_successful_configuration_revision_invalidates_session_immediately(tmp_path):
+    def transport(method, url, headers, payload):
+        if url.endswith('loginKey'):
+            return dict(success=True, errorCode=0, token='FIXTURE_SESSION')
+        return dict(success=True, errorCode=0, accounts=[dict(id=123, balance=100, isVisible=True, canTrade=False)])
+    manager = ConnectionManager(tmp_path, env={'PROJECTX_API_KEY': 'key', 'PROJECTX_USERNAME': 'user'}, transport=transport)
+    manager.upsert(projectx_record())
+    manager.connect('topstep_one')
+    assert manager._tokens
+    manager.upsert(dict(projectx_record(), alias='Updated display label'))
+    assert manager._tokens == {}
+
+
+def test_projectx_credential_digest_is_ephemeral_and_each_key_change_reauthenticates(tmp_path):
+    import hashlib
+    from icarus_engine.account_connections import _json
+    env = {'PROJECTX_API_KEY': 'PRIVATE_FIXTURE_KEY', 'PROJECTX_USERNAME': 'private-fixture-user'}
+    calls = []
+    def transport(method, url, headers, payload):
+        calls.append((url, payload))
+        if url.endswith('loginKey'):
+            return dict(success=True, errorCode=0, token='PRIVATE_FIXTURE_SESSION')
+        return dict(success=True, errorCode=0, accounts=[dict(id=123, balance=100, isVisible=True, canTrade=False)])
+    manager = ConnectionManager(tmp_path, env=env, transport=transport)
+    manager.upsert(projectx_record())
+    manager.connect('topstep_one')
+    digest = hashlib.sha256(_json({'api_key': env['PROJECTX_API_KEY'], 'username': env['PROJECTX_USERNAME']})).hexdigest()
+    env['PROJECTX_API_KEY'] = 'ROTATED_PRIVATE_FIXTURE_KEY'
+    assert manager.connect('topstep_one')['status'] == 'CONNECTED_READ_ONLY'
+    assert sum(url.endswith('loginKey') for url, _ in calls) == 2
+    current_digest = hashlib.sha256(_json({'api_key': env['PROJECTX_API_KEY'], 'username': env['PROJECTX_USERNAME']})).hexdigest()
+    public = json.dumps(manager.snapshot())
+    persisted = b''.join(path.read_bytes() for path in manager.root.rglob('*') if path.is_file())
+    for value in (digest, current_digest, 'PRIVATE_FIXTURE_KEY', 'private-fixture-user', 'PRIVATE_FIXTURE_SESSION'):
+        assert value not in public and value.encode() not in persisted
