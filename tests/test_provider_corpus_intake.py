@@ -213,3 +213,82 @@ def test_autodiscovery_prefers_canonical_snapshot_without_stitching_history(tmp_
     result = json.loads(report.read_text())
     assert len(result["datasets"]) == 1
     assert result["datasets"][0]["filename"] == "databento_mnq_5m.csv.gz"
+
+
+def _requested_bundle(tmp_path):
+    from icarus_engine.futures_catalog import FUTURES_PRODUCTS
+    roots = ("CL", "NG", "HG", "6E", "6J", "6B", "6A", "ZN", "ZB", "BTCF", "MCL")
+    args, report, private, _ = _bundle(tmp_path, filename="databento_cl_5m.csv.gz")
+    restored = Path(args[args.index("--restored-dir") + 1])
+    manifest_path = Path(args[args.index("--vault-manifest") + 1])
+    entries = {}
+    start = datetime(2026, 10, 12, tzinfo=timezone.utc)
+    for identity, root in enumerate(roots, 100):
+        name = f"databento_{FUTURES_PRODUCTS[root].execution_root.lower()}_5m.csv.gz"
+        lines = ["ts_open,open,high,low,close,volume,instrument_id"]
+        for i in range(512):
+            stamp = (start + timedelta(minutes=5 * i)).isoformat()
+            lines.append(f"{stamp},100.25,101.5,99.75,100.75,10,{identity}")
+        raw = gzip.compress(("\n".join(lines) + "\n").encode(), mtime=0)
+        (restored / name).write_bytes(raw)
+        entries[name] = {"bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+    manifest_path.write_text(json.dumps({"caches": {"bars_primary": entries}}))
+    return args, report, private, roots
+
+
+def test_opt_in_requested_families_warm_exact_full_and_micro_corpora_on_all_four(tmp_path, monkeypatch):
+    import copy
+    import urllib.request
+    from icarus_engine.paper_workspaces import _PROFILE_DEFAULTS
+    from tools.provider_corpus_intake import main
+    original = copy.deepcopy(_PROFILE_DEFAULTS)
+    args, report_path, private, available_roots = _requested_bundle(tmp_path)
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: pytest.fail("no acquisition authorized"))
+    assert main(args + ["--include-requested-futures"]) == 0
+    report = json.loads(report_path.read_text())
+    assert _PROFILE_DEFAULTS == original
+    metadata = report["requested_futures_expansion"]
+    assert metadata["enabled"] and metadata["family_count"] == 10
+    assert metadata["all_full_families_warmed"] is True
+    assert set(metadata["warmed_symbols_by_workspace"]) == {"cc1", "cc2", "cc3", "cc4"}
+    assert all(set(symbols) == set(available_roots) for symbols in metadata["warmed_symbols_by_workspace"].values())
+    assert set(metadata["available_symbols"]) == set(available_roots)
+    assert "MCL" in metadata["available_symbols"] and "MNG" in metadata["unavailable_symbols"]
+    assert metadata["profitability_verified"] is metadata["fresh_feed_access_verified"] is False
+    assert metadata["execution_authorized"] is False and metadata["no_new_acquisition"] is True
+    defaults = {p["id"]: p for p in original}
+    sources = {d["symbol"]: d for d in report["datasets"]}
+    assert len({d["source_sha256"] for d in sources.values()}) == len(available_roots)
+    for workspace in report["workspaces"]:
+        assert workspace["chart"] == defaults[workspace["id"]]["chart"]
+        assert workspace["inputs"] == defaults[workspace["id"]]["inputs"]
+        assert {a["symbol"] for a in workspace["assets"]} == set(available_roots)
+        assert "MNG" in workspace["unavailable_assets"]
+        for asset in workspace["assets"]:
+            assert asset["warm"] is True and asset["chart_bars"] > 0
+            assert asset["dataset_id"] == sources[asset["symbol"]]["dataset_id"]
+            assert (private / "history" / f"{asset['symbol']}_5m.csv").is_file()
+            reads = [r for r in report["read_receipts"] if r["consumer_id"] == "paper:" + workspace["id"]
+                     and r["symbol"] == asset["symbol"] and r["method"] == "candles"]
+            assert reads and all(r["source_sha256"] == sources[asset["symbol"]]["source_sha256"]
+                                 and r["row_count"] == 512 for r in reads)
+    public = report_path.read_text()
+    assert str(private) not in public and "100.25" not in public
+    assert '"pnl"' not in public and '"profit"' not in public
+    assert report["market_validation"] is report["execution_authorized"] is False
+
+
+def test_default_corpus_receipt_preserves_original_schema_and_unexpanded_profiles(tmp_path):
+    from icarus_engine.paper_workspaces import _PROFILE_DEFAULTS
+    from tools.provider_corpus_intake import main
+    args, report, _, _ = _bundle(tmp_path, filename="databento_cl_5m.csv.gz")
+    assert main(args) == 0
+    result = json.loads(report.read_text())
+    assert set(result) == {"schema_version", "source_repo", "source_commit", "asof_ns", "datasets",
+        "blocked_datasets", "workspaces", "read_receipts", "corpus_used", "paper_warmup_used",
+        "consumption_purposes", "execution_authorized", "production_decision_authorized", "market_validation",
+        "raw_payloads_included"}
+    assert not result["paper_warmup_used"]
+    for workspace, default in zip(result["workspaces"], _PROFILE_DEFAULTS):
+        assert workspace["assets"] == []
+        assert set(workspace["unavailable_assets"]) == set(default["assets"])

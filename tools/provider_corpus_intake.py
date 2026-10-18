@@ -23,7 +23,9 @@ from icarus_engine.corpus_intake import (
     CorpusFeed, MAX_MANIFEST_BYTES, _snapshot, _unique_object, load_vault_bars,
 )
 from icarus_engine.futures_catalog import FUTURES_PRODUCTS
-from icarus_engine.paper_workspaces import WorkspacePortfolio, _PROFILE_DEFAULTS
+from icarus_engine.paper_workspaces import (
+    WorkspacePortfolio, _PROFILE_DEFAULTS, REQUESTED_FUTURES_SYMBOLS, requested_futures_metadata,
+)
 from icarus_engine.runtime import Journal
 
 
@@ -126,7 +128,7 @@ class _CorpusReaders:
         return None
 
 
-def consume(datasets, private_dir: Path, asof_ns: int):
+def consume(datasets, private_dir: Path, asof_ns: int, *, include_requested_futures=False):
     """Actually warm each existing strategy; return no raw bars or simulated P&L."""
     private_dir.mkdir(mode=0o700, parents=True, exist_ok=False)
     os.chmod(private_dir, 0o700)
@@ -153,6 +155,8 @@ def consume(datasets, private_dir: Path, asof_ns: int):
     defaults = {row["id"]: row for row in _PROFILE_DEFAULTS}
     for workspace_id in _WORKSPACES:
         profile = copy.deepcopy(defaults[workspace_id])
+        if include_requested_futures:
+            profile["assets"] = list(dict.fromkeys([*profile["assets"], *REQUESTED_FUTURES_SYMBOLS]))
         readers = {symbol: feed.for_consumer("paper:" + workspace_id) for symbol, feed in feeds.items()
                    if symbol in profile["assets"]}
         routed = _CorpusReaders(readers)
@@ -200,6 +204,8 @@ def main(argv=None):
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument("--max-bars", type=int, default=6000)
     parser.add_argument("--filename", action="append")
+    parser.add_argument("--include-requested-futures", action="store_true",
+                        help="Warm the ten requested full futures families and exact available micros without acquisition")
     args = parser.parse_args(argv)
     asof = time.time_ns() if args.asof_ns is None else args.asof_ns
     report = {"schema_version": "icarus-corpus-consumption-v1", "source_repo": args.source_repo,
@@ -208,6 +214,11 @@ def main(argv=None):
               "paper_warmup_used": False, "consumption_purposes": [],
               "execution_authorized": False, "production_decision_authorized": False,
               "market_validation": False, "raw_payloads_included": False}
+    if args.include_requested_futures:
+        report["requested_futures_expansion"] = {**requested_futures_metadata(), "enabled": True,
+            "available_symbols": [], "unavailable_symbols": list(REQUESTED_FUTURES_SYMBOLS),
+            "warmed_symbols_by_workspace": {}, "all_full_families_warmed": False,
+            "no_new_acquisition": True}
     try:
         if args.receipt.exists() or args.private_dir.exists() or args.private_dir.is_symlink():
             return 2
@@ -242,7 +253,8 @@ def main(argv=None):
                                                    "reason": "DATASET_VALIDATION_FAILED"})
         if datasets:
             with _offline_private_process():
-                workspaces, reads = consume(datasets, args.private_dir, asof)
+                workspaces, reads = consume(datasets, args.private_dir, asof,
+                                             include_requested_futures=args.include_requested_futures)
             report["workspaces"], report["read_receipts"] = workspaces, reads
             report["corpus_used"] = any(row["row_count"] > 0 for row in reads)
             report["paper_warmup_used"] = any(asset["warm"] and asset["chart_bars"] > 0
@@ -251,6 +263,19 @@ def main(argv=None):
                 report["consumption_purposes"] = ["QUALITY_AND_COVERAGE", "PRIVATE_HISTORY_INPUT"]
             if report["paper_warmup_used"]:
                 report["consumption_purposes"].append("PAPER_CONFIGURATION_WARMUP")
+        if args.include_requested_futures:
+            expansion = report["requested_futures_expansion"]
+            available = {dataset.symbol for dataset in datasets} & set(REQUESTED_FUTURES_SYMBOLS)
+            expansion["available_symbols"] = [root for root in REQUESTED_FUTURES_SYMBOLS if root in available]
+            expansion["unavailable_symbols"] = [root for root in REQUESTED_FUTURES_SYMBOLS if root not in available]
+            expansion["warmed_symbols_by_workspace"] = {
+                row["id"]: [asset["symbol"] for asset in row["assets"]
+                            if asset["symbol"] in REQUESTED_FUTURES_SYMBOLS and asset["warm"] and asset["chart_bars"] > 0]
+                for row in report["workspaces"]
+            }
+            warmed = expansion["warmed_symbols_by_workspace"]
+            expansion["all_full_families_warmed"] = (set(warmed) == set(_WORKSPACES)
+                and all(set(expansion["full_roots"]) <= set(symbols) for symbols in warmed.values()))
         args.receipt.parent.mkdir(parents=True, exist_ok=True)
         _exclusive(args.receipt, _json_bytes(report))
         return (1 if report["blocked_datasets"] else 0) if report["corpus_used"] else 2
