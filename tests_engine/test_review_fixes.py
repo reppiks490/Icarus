@@ -13,6 +13,18 @@ from icarus_engine.events.calendar import seed_events
 T0 = 1_700_000_040            # a whole minute
 
 
+def test_empty_label_history_stays_empty_and_audit_rejects_cleanly(tmp_path):
+    from icarus_engine.trainers.dataset import attach_labels
+
+    assert attach_labels([], "clock_minutes", events=[]) == []
+    artifact = tmp_path / "xgb.json"
+    artifact.write_text("{}", encoding="utf-8")
+    result = score_pair([], [], [], "AAPL", "NQ", xgb_path=artifact)
+    assert result["status"] == "reject"
+    assert result["swap_recommend"] is False
+    assert result["execution_authorized"] is False
+
+
 def _bars(closes, stamps=None, step=60):
     out = []
     for i, c in enumerate(closes):
@@ -138,6 +150,14 @@ def test_newey_west_widens_the_error_of_a_correlated_series():
         sticky.append(x * 0.3 - 0.02)
     assert paired_test(sticky)["se"] > paired_test(sticky, lag=0)["se"] * 1.5
     assert 0.0 <= paired_test(white)["p"] <= 1.0
+
+
+def test_newey_west_honors_known_overlap_minimum_lag():
+    from icarus_engine.trainers.metrics import paired_test
+    differences = [(-0.02 if i % 2 else 0.01) for i in range(100)]
+
+    assert paired_test(differences)["lag"] == 4
+    assert paired_test(differences, minimum_lag=15)["lag"] == 15
 
 
 def test_valid_requires_significance_against_both_baselines(tmp_path):
