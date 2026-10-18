@@ -318,3 +318,55 @@ def test_analogues_reject_other_model_revisions(tmp_path):
     store.add(changed)
     assert not store.eligible(situation("query", BASE + timedelta(days=1)))
     store.close()
+
+
+def test_read_only_learning_bridge_prospective_vs_hindsight(tmp_path):
+    import json
+    import sqlite3
+    from icarus_engine.intuition_omega.learning_bridge import import_verified_learning_pairs
+    source = tmp_path / "learning.sqlite3"
+    con = sqlite3.connect(source)
+    con.execute(
+        "CREATE TABLE predictions (prediction_id TEXT, producer TEXT, asset TEXT,"
+        " target TEXT,prediction_json TEXT, probability REAL, emitted_at TEXT,"
+        " resolves_at TEXT,horizon_seconds INTEGER,regime TEXT, source_commit TEXT,"
+        " evidence_json TEXT,metadata_json TEXT,recorded_at TEXT)"
+    )
+    con.execute(
+        "CREATE TABLE outcomes (prediction_id TEXT,observed_at TEXT,"
+        " recorded_at TEXT,success INTEGER,evidence_json TEXT)"
+    )
+    import_meta = {
+        "venue": "CME", "timeframe_seconds": 600, "chart": "heikin_ashi",
+        "execution_basis": "real_price", "feature_schema": "features-v1",
+        "session_id": "session:1",
+        "intuition_target_contract": "tp1_before_stop_real_friction",
+    }
+    def insert_case(identity, receipt_minutes):
+        con.execute("INSERT INTO predictions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+            identity, "omega", "NQ1!", "event", "true", 0.8,
+            iso(BASE), iso(BASE + timedelta(minutes=10)), 600,
+            "liquidity_reclaim", SHA, json.dumps(["source-e1"]),
+            json.dumps(import_meta), iso(BASE + timedelta(minutes=receipt_minutes)),
+        ))
+        con.execute("INSERT INTO outcomes VALUES (?,?,?,?,?)", (
+            identity, iso(BASE + timedelta(minutes=10)),
+            iso(BASE + timedelta(minutes=11)), 1, json.dumps(["outcome-e1"]),
+        ))
+    insert_case("prospective", 1)
+    insert_case("hindsight", 11)
+    con.commit()
+    con.close()
+    ledger = ForecastLedger(tmp_path / "intuition.sqlite3")
+    outcome = import_verified_learning_pairs(
+        source, ledger, as_of=iso(BASE + timedelta(minutes=12)))
+    assert outcome["imported"] == 1
+    assert outcome["rejected_by_reason"]["retrospectively_recorded_or_invalid_forecast"] == 1
+    assert ledger.rows(producer="omega", scope=SCOPE,
+                       as_of=iso(BASE + timedelta(minutes=12)))[0][0].forecast_id == "prospective"
+    repeat = import_verified_learning_pairs(
+        source, ledger, as_of=iso(BASE + timedelta(minutes=12)))
+    assert repeat["already_present"] == 1
+    assert repeat["imported"] == 0
+    assert outcome["source_mutated"] is False
+    ledger.close()
