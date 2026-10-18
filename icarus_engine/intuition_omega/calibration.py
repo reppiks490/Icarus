@@ -42,7 +42,7 @@ class Forecast:
         issued = timestamp(self.issued_at, "issued_at")
         received = timestamp(self.received_at, "received_at")
         mature = timestamp(self.maturity_at, "maturity_at")
-        if received < issued or mature <= issued:
+        if received < issued or mature <= received:
             raise ValueError("forecast receipt/maturity violates event time")
         if not self.evidence_ids:
             raise ValueError("forecast requires source evidence")
