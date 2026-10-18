@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import deque
 import csv
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import gzip
@@ -68,6 +68,7 @@ class CorpusReceipt:
     last_ts: int
     available_at_ns: int
     asof_ns: int
+    max_bars: int
     native_interval_seconds: int = NATIVE_INTERVAL_SECONDS
     schema: str = field(default="icarus.corpus-intake/1", init=False)
     quality_status: str = field(default="VALIDATED_NATIVE_BARS", init=False)
@@ -82,6 +83,22 @@ class CorpusReceipt:
         return asdict(self)
 
 
+def _receipt_identity(receipt: CorpusReceipt) -> str:
+    """Bind loaded metadata while allowing a later consumer clock.
+
+    This detects accidental mutation/replacement; it is not an authentication
+    mechanism against an in-process caller able to construct fresh identities.
+    """
+    identity = receipt.to_dict()
+    del identity["dataset_id"]
+    del identity["asof_ns"]
+    try:
+        encoded = json.dumps(identity, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    except (TypeError, ValueError, RecursionError):
+        raise ValueError("invalid corpus receipt identity metadata") from None
+    return hashlib.sha256(encoded).hexdigest()
+
+
 @dataclass(frozen=True)
 class CorpusDataset:
     symbol: str
@@ -91,8 +108,10 @@ class CorpusDataset:
     receipt: CorpusReceipt
 
     def __post_init__(self):
-        if not isinstance(self.receipt, CorpusReceipt):
+        if type(self.receipt) is not CorpusReceipt:
             raise ValueError("dataset requires a CorpusReceipt")
+        if self.receipt.dataset_id != _receipt_identity(self.receipt):
+            raise ValueError("dataset identity does not match receipt metadata")
         if self.symbol != self.receipt.symbol or self.provider_root != self.receipt.provider_root:
             raise ValueError("dataset identity does not match receipt")
         if _bar_checksum(self.bars, self.contract_ids) != self.receipt.bars_sha256:
@@ -329,19 +348,15 @@ def load_vault_bars(restored_dir, manifest_path, cache_name, filename, *, source
     known_contracts = sum(contract is not None for contract in contracts)
     contract_status = "COMPLETE" if known_contracts == len(contracts) else "PARTIAL" if known_contracts else "UNKNOWN"
     manifest_digest = hashlib.sha256(manifest_bytes).hexdigest()
-    identity = dict(source_sha256=digest, manifest_sha256=manifest_digest, source_repo=source_repo,
-                    source_commit=source_commit, cache_name=cache_name, filename=filename,
-                    available_at_ns=available_at_ns, max_bars=max_bars, bars_sha256=bars_digest,
-                    schema="icarus.corpus-intake/1")
-    dataset_id = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-    receipt = CorpusReceipt(dataset_id=dataset_id, provider="databento", symbol=product.root,
+    receipt = CorpusReceipt(dataset_id="", provider="databento", symbol=product.root,
                             provider_root=provider_root, source_repo=source_repo, source_commit=source_commit,
                             source_sha256=digest, bars_sha256=bars_digest, manifest_sha256=manifest_digest, cache_name=cache_name,
                             filename=filename, compressed_bytes=len(snapshot), uncompressed_bytes=len(raw),
                             source_rows=count, retained_rows=len(bars), excluded_unclosed_rows=unclosed,
                             gap_count=gaps, contract_id_rows=known_contracts, contract_identity_status=contract_status,
                             first_ts=bars[0].ts, last_ts=bars[-1].ts,
-                            available_at_ns=available_at_ns, asof_ns=asof_ns)
+                            available_at_ns=available_at_ns, asof_ns=asof_ns, max_bars=max_bars)
+    receipt = replace(receipt, dataset_id=_receipt_identity(receipt))
     return CorpusDataset(product.root, provider_root, tuple(bars), tuple(contracts), receipt)
 
 
