@@ -31,7 +31,7 @@
   input('alias', 'Display alias', 'text', 'Paper account');
   const platformLabel = el('label', 'Platform');
   const platform = el('select', null, {name: 'platform'});
-  for (const [value, label] of [['alpaca_paper', 'Alpaca paper — account readback'], ['projectx_topstep', 'ProjectX / Topstep — unsupported'], ['rithmic', 'Rithmic — unsupported'], ['tradovate', 'Tradovate — unsupported'], ['ibkr', 'IBKR — unsupported'], ['other', 'Other — unsupported']]) {
+  for (const [value, label] of [['alpaca_paper', 'Alpaca paper — account readback'], ['projectx_topstep', 'ProjectX / Topstep — read-only, existing API access required'], ['rithmic', 'Rithmic — unsupported'], ['tradovate', 'Tradovate — unsupported'], ['ibkr', 'IBKR — unsupported'], ['other', 'Other — unsupported']]) {
     const option = el('option', label, {value});
     platform.append(option);
   }
@@ -40,6 +40,7 @@
   input('environment', 'Environment (paper, demo, simulated, evaluation or funded)', 'text', 'paper');
   input('firm', 'Firm', 'text', 'independent');
   input('program', 'Exact program and account stage', 'text', 'paper');
+  input('account_id', 'Topstep account ID (required for selection; hashed in browser, never persisted here)', 'password');
   const secretNotice = el('p', 'Alpaca uses approved runtime references ALPACA_API_KEY and ALPACA_SECRET_KEY. Optional owner entry below requires an already provisioned encrypted local store; credentials are never stored in this browser.');
   form.append(secretNotice);
   input('api_key', 'Optional API key (encrypted local store only)', 'password');
@@ -68,7 +69,10 @@
         const card = el('article');
         card.append(el('h3', row.alias || row.id), el('p', `${row.platform} · ${row.environment} · ${row.firm} / ${row.program}`));
         card.append(el('p', `${row.status} · Policy ${row.policy_status || 'UNVERIFIED'} · New intents blocked`));
-        if (row.readback) card.append(el('p', `Last account read: equity ${row.readback.equity} ${row.readback.currency}; cash ${row.readback.cash} ${row.readback.currency}. This is an account balance, not reconciled Icarus P&L.`));
+        if (row.readback) {
+          const text = row.platform === 'projectx_topstep' ? `Reported balance ${row.readback.balance}; currency is not supplied by this API contract.` : `Equity ${row.readback.equity} ${row.readback.currency}; cash ${row.readback.cash} ${row.readback.currency}.`;
+          card.append(el('p', `Last account read: ${text} This is an account balance, not reconciled Icarus P&L.`));
+        }
         const connect = el('button', 'Read account / check connection', {type: 'button'});
         connect.addEventListener('click', async () => {
           if (busy) return;
@@ -101,7 +105,7 @@
       }
       const secure = snapshot.credential_entry?.encrypted_local_store_available === true;
       fields.api_key.disabled = fields.secret_key.disabled = !secure;
-      secretNotice.textContent = secure ? 'Approved environment references or encrypted owner entry are available. Secret values are never returned by the account API.' : 'Encrypted owner entry is unavailable: the runtime has no provisioned secure master key. Approved environment references remain supported; missing credentials will remain explicit.';
+      secretNotice.textContent = (secure ? 'Approved environment references or encrypted owner entry are available.' : 'Encrypted owner entry is unavailable: the runtime has no provisioned secure master key. Approved environment references remain supported.') + ' Topstep requires existing API subscription access; this interface never enrolls or purchases access, and sends no orders. For Topstep, the second credential field is your platform username.';
       status.textContent = 'Account inventory loaded. Readback never authorizes execution.';
     } catch (error) { status.textContent = error.message; }
   }
@@ -112,13 +116,26 @@
     submit.disabled = true;
     try {
       const body = {id: fields.id.value, alias: fields.alias.value, platform: platform.value, environment: fields.environment.value, firm: fields.firm.value, program: fields.program.value, credential_refs: {}};
-      if (fields.api_key.value || fields.secret_key.value) body.credentials = {api_key: fields.api_key.value, secret_key: fields.secret_key.value};
+      if (platform.value === 'projectx_topstep') {
+        if (!/^[1-9][0-9]*$/.test(fields.account_id.value) || !globalThis.crypto?.subtle) throw new Error('An explicit Topstep account ID and a secure browser context are required.');
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`projectx_topstep:${fields.account_id.value}`));
+        body.account_selector = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+      }
+      if (fields.api_key.value || fields.secret_key.value) body.credentials = platform.value === 'projectx_topstep' ? {api_key: fields.api_key.value, username: fields.secret_key.value} : {api_key: fields.api_key.value, secret_key: fields.secret_key.value};
       else if (platform.value === 'alpaca_paper') body.credential_refs = {api_key: 'ALPACA_API_KEY', secret_key: 'ALPACA_SECRET_KEY'};
+      else if (platform.value === 'projectx_topstep') body.credential_refs = {api_key: 'PROJECTX_API_KEY', username: 'PROJECTX_USERNAME'};
       const result = await request('/admin/account-connections', {method: 'POST', headers: auth(), body: JSON.stringify(body)});
       await load();
       status.textContent = `Saved ${result.id}: ${result.status}. Select read account to verify connectivity.`;
     } catch (error) { status.textContent = error.message; }
-    finally { fields.api_key.value = fields.secret_key.value = fields.owner_token.value = ''; busy = false; submit.disabled = false; }
+    finally { fields.api_key.value = fields.secret_key.value = fields.owner_token.value = fields.account_id.value = ''; busy = false; submit.disabled = false; }
+  });
+  platform.addEventListener('change', () => {
+    const topstep = platform.value === 'projectx_topstep';
+    fields.environment.value = topstep ? 'evaluation' : 'paper';
+    fields.firm.value = topstep ? 'Topstep' : 'independent';
+    fields.program.value = topstep ? 'UNASSIGNED' : 'paper';
+    fields.api_key.value = fields.secret_key.value = fields.account_id.value = '';
   });
   refresh.addEventListener('click', load);
   load();

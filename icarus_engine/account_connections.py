@@ -22,11 +22,14 @@ import uuid
 from zoneinfo import ZoneInfo
 
 _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}\Z")
-_FIELDS = {"id", "alias", "platform", "environment", "firm", "program", "credential_refs", "credentials"}
+_FIELDS = {"id", "alias", "platform", "environment", "firm", "program", "credential_refs", "credentials", "account_selector"}
 _REFS = {
     "alpaca_paper": {"api_key": "ALPACA_API_KEY", "secret_key": "ALPACA_SECRET_KEY"},
+    "projectx_topstep": {"api_key": "PROJECTX_API_KEY", "username": "PROJECTX_USERNAME"},
 }
 _URL = "https://paper-api.alpaca.markets/v2/account"
+_PROJECTX_AUTH = "https://api.topstepx.com/api/Auth/loginKey"
+_PROJECTX_ACCOUNTS = "https://api.topstepx.com/api/Account/search"
 _LOCKS = {}
 _LOCK_GUARD = threading.Lock()
 _LIMIT = 1_048_576
@@ -40,6 +43,7 @@ def _validate_stored(row):
         raise ValueError("invalid account environment")
     if row["platform"] == "alpaca_paper" and row["environment"] != "paper":
         raise ValueError("invalid Alpaca environment")
+    _validate_selector(row["platform"], row["environment"], row["firm"], row["account_selector"])
     refs = row["credential_refs"]
     approved = _REFS.get(row["platform"], {})
     if not isinstance(refs, dict) or any(approved.get(k) != v for k, v in refs.items()):
@@ -49,7 +53,7 @@ def _validate_stored(row):
         raise ValueError("invalid immutable credential reference")
     if type(row["revision"]) is not int or row["revision"] < 1:
         raise ValueError("invalid account state")
-    if row["status"] not in {"CONFIGURED", "UNSUPPORTED", "MISSING_CREDENTIALS", "ACCOUNT_IDENTITY_MISMATCH", "DUPLICATE_ACCOUNT", "CONNECTED_READ_ONLY", "READBACK_FAILED"}:
+    if row["status"] not in {"CONFIGURED", "UNSUPPORTED", "MISSING_CREDENTIALS", "ACCOUNT_IDENTITY_MISMATCH", "DUPLICATE_ACCOUNT", "CONNECTED_READ_ONLY", "READBACK_FAILED", "SUBSCRIPTION_REQUIRED", "AGREEMENTS_REQUIRED", "AUTHENTICATION_FAILED", "API_ACCESS_DISABLED"}:
         raise ValueError("invalid connection status")
     fingerprint = row["account_fingerprint"]
     if fingerprint is not None and (not isinstance(fingerprint, str) or re.fullmatch(r"[0-9a-f]{64}", fingerprint) is None):
@@ -60,9 +64,18 @@ def _validate_stored(row):
     connected = row["status"] == "CONNECTED_READ_ONLY"
     if connected and (readback is None or fingerprint is None or row["last_read_at"] is None or not approved):
         raise ValueError("connected account requires complete readback")
+    if connected and row["platform"] == "projectx_topstep" and fingerprint != row["account_selector"]:
+        raise ValueError("connected account selector mismatch")
     if not connected and (readback is not None or row["last_read_at"] is not None):
         raise ValueError("inactive account has inconsistent readback")
     if readback is not None:
+        if row["platform"] == "projectx_topstep":
+            if not isinstance(readback, dict) or set(readback) != {"balance", "currency", "account_status", "trading_blocked"}:
+                raise ValueError("invalid account readback")
+            _number(readback["balance"])
+            if readback["currency"] is not None or readback["account_status"] != "VISIBLE" or type(readback["trading_blocked"]) is not bool:
+                raise ValueError("invalid account readback")
+            return
         if not isinstance(readback, dict) or set(readback) != {"equity", "cash", "currency", "account_status", "trading_blocked"}:
             raise ValueError("invalid account readback")
         _number(readback["equity"])
@@ -70,6 +83,21 @@ def _validate_stored(row):
         if (not isinstance(readback["currency"], str) or re.fullmatch(r"[A-Z]{3}", readback["currency"]) is None
                 or readback["account_status"] != "ACTIVE" or type(readback["trading_blocked"]) is not bool):
             raise ValueError("invalid account readback")
+
+
+def _validate_selector(platform, environment, firm, selector):
+    if platform == "projectx_topstep":
+        if environment not in {"evaluation", "simulated"} or not isinstance(firm, str) or firm.casefold() != "topstep":
+            raise ValueError("Topstep readback supports only explicit simulated or evaluation accounts")
+        if not isinstance(selector, str) or re.fullmatch(r"[0-9a-f]{64}", selector) is None:
+            raise ValueError("an explicit account fingerprint is required")
+    elif selector is not None:
+        raise ValueError("account selector unsupported for this platform")
+
+
+class _AccountFailure(Exception):
+    def __init__(self, status):
+        self.status = status
 
 
 def _number(value):
@@ -130,12 +158,15 @@ def _json(value):
 
 
 def _transport(method, url, headers, payload):
-    if method != "GET" or url != _URL or payload is not None:
+    allowed = method == "GET" and url == _URL and payload is None
+    if method == "POST" and isinstance(payload, dict):
+        allowed = (url == _PROJECTX_AUTH and set(payload) == {"userName", "apiKey"}) or (url == _PROJECTX_ACCOUNTS and set(payload) == {"onlyActiveAccounts"} and payload["onlyActiveAccounts"] is True)
+    if not allowed:
         raise ValueError("unsupported account operation")
     class NoRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, *args, **kwargs):
             raise ValueError("account redirect blocked")
-    request = urllib.request.Request(url, headers=headers, method=method)
+    request = urllib.request.Request(url, headers=headers, method=method, data=None if payload is None else _json(payload))
     with urllib.request.build_opener(NoRedirect).open(request, timeout=8) as response:
         raw = response.read(_LIMIT + 1)
     if len(raw) > _LIMIT:
@@ -158,6 +189,7 @@ class ConnectionManager:
         with _LOCK_GUARD:
             self.lock = _LOCKS.setdefault(str(self.root), threading.RLock())
         self._records = {}
+        self._tokens = {}  # Ephemeral sessions only; never persisted or projected.
         with self.lock:
             if self.root.is_symlink():
                 raise ValueError("unsafe account store")
@@ -224,8 +256,11 @@ class ConnectionManager:
                     "platforms": [{"id": "alpaca_paper", "environments": ["paper"],
                         "capabilities": ["ACCOUNT_READ"], "markets": ["equities"],
                         "implementation_status": "CODED_MOCK_TESTED", "credential_refs": _REFS["alpaca_paper"]},
-                        {"id": "projectx_topstep", "environments": ["evaluation", "funded", "simulated"],
-                         "implementation_status": "UNSUPPORTED", "reason": "Official account contract not yet verified"},
+                        {"id": "projectx_topstep", "environments": ["evaluation", "simulated"],
+                         "implementation_status": "CODED_MOCK_TESTED", "capabilities": ["AUTHENTICATE", "ACCOUNT_READ"],
+                         "credential_refs": _REFS["projectx_topstep"], "explicit_account_selector_required": True,
+                         "access_cost": "EXISTING_SUBSCRIPTION_REQUIRED_NO_ENROLLMENT",
+                         "restrictions": ["Read-only monitoring", "No remote order operations", "No live funded API", "No purchase or subscription enrollment"]},
                         {"id": "rithmic", "implementation_status": "UNSUPPORTED"},
                         {"id": "tradovate", "implementation_status": "UNSUPPORTED"},
                         {"id": "ibkr", "implementation_status": "UNSUPPORTED"}],
@@ -265,7 +300,9 @@ class ConnectionManager:
             cipher = self._cipher()
         config = {"id": identity, "alias": _label(body.get("alias", identity)), "platform": platform,
                   "environment": environment, "firm": _label(body.get("firm", "unassigned"), 100),
-                  "program": _label(body.get("program", "unassigned"), 100), "credential_refs": refs}
+                  "program": _label(body.get("program", "unassigned"), 100), "credential_refs": refs,
+                  "account_selector": body.get("account_selector")}
+        _validate_selector(platform, environment, config["firm"], config["account_selector"])
         with self.lock:
             self._load()
             prior_records = copy.deepcopy(self._records)
@@ -303,6 +340,44 @@ class ConnectionManager:
                 raise
             return self._public(row)
 
+    def _projectx_read(self, row, credentials):
+        now = _number(self.clock())
+        cached = self._tokens.get(row["id"])
+        def successful(response):
+            if not isinstance(response, dict):
+                raise ValueError("invalid account response")
+            code = response.get("errorCode")
+            if response.get("success") is not True or type(code) is not int or code != 0:
+                self._tokens.pop(row["id"], None)
+                status = {3: "AUTHENTICATION_FAILED", 7: "AGREEMENTS_REQUIRED", 9: "SUBSCRIPTION_REQUIRED", 10: "API_ACCESS_DISABLED"}.get(code, "READBACK_FAILED")
+                raise _AccountFailure(status)
+            return response
+        if cached is None or cached[0] != row["revision"] or not 0 <= cached[2] - now - 60 <= 86400:
+            response = successful(self.transport("POST", _PROJECTX_AUTH,
+                {"Accept": "application/json", "Content-Type": "application/json"},
+                {"userName": credentials["username"], "apiKey": credentials["api_key"]}))
+            token = _label(response.get("token"), 16384)
+            cached = (row["revision"], token, now + 86400)
+            self._tokens[row["id"]] = cached
+        response = successful(self.transport("POST", _PROJECTX_ACCOUNTS,
+            {"Accept": "application/json", "Content-Type": "application/json", "Authorization": "Bearer " + cached[1]},
+            {"onlyActiveAccounts": True}))
+        accounts = response.get("accounts")
+        if not isinstance(accounts, list) or len(accounts) > 1000:
+            raise ValueError("invalid account list")
+        matches = []
+        for account in accounts:
+            if not isinstance(account, dict) or type(account.get("id")) is not int or account["id"] <= 0:
+                raise ValueError("invalid account identity")
+            fingerprint = hashlib.sha256(("projectx_topstep:" + str(account["id"])).encode()).hexdigest()
+            if fingerprint == row["account_selector"]:
+                matches.append(account)
+        if len(matches) != 1 or matches[0].get("isVisible") is not True or type(matches[0].get("canTrade")) is not bool:
+            raise ValueError("explicit account unavailable or ambiguous")
+        account = matches[0]
+        return row["account_selector"], {"balance": _number(account.get("balance")), "currency": None,
+            "account_status": "VISIBLE", "trading_blocked": not account["canTrade"]}
+
     def _credentials(self, row):
         approved = _REFS[row["platform"]]
         if row.get("secret_ref"):
@@ -335,28 +410,34 @@ class ConnectionManager:
                     row["status"] = "MISSING_CREDENTIALS"
                 else:
                     try:
-                        response = self.transport("GET", _URL, {"Accept": "application/json",
-                            "APCA-API-KEY-ID": credentials["api_key"],
-                            "APCA-API-SECRET-KEY": credentials["secret_key"]}, None)
-                        if not isinstance(response, dict) or response.get("status") != "ACTIVE":
-                            raise ValueError("account not active")
-                        identity = _label(response.get("id"), 200)
-                        currency = response.get("currency")
-                        if not isinstance(currency, str) or not re.fullmatch(r"[A-Z]{3}", currency):
-                            raise ValueError("invalid currency")
-                        fingerprint = hashlib.sha256((row["platform"] + ":" + identity).encode()).hexdigest()
+                        if row["platform"] == "projectx_topstep":
+                            fingerprint, readback = self._projectx_read(row, credentials)
+                        else:
+                            response = self.transport("GET", _URL, {"Accept": "application/json",
+                                "APCA-API-KEY-ID": credentials["api_key"],
+                                "APCA-API-SECRET-KEY": credentials["secret_key"]}, None)
+                            if not isinstance(response, dict) or response.get("status") != "ACTIVE":
+                                raise ValueError("account not active")
+                            identity = _label(response.get("id"), 200)
+                            currency = response.get("currency")
+                            if not isinstance(currency, str) or not re.fullmatch(r"[A-Z]{3}", currency):
+                                raise ValueError("invalid currency")
+                            fingerprint = hashlib.sha256((row["platform"] + ":" + identity).encode()).hexdigest()
+                            readback = {"equity": _number(response.get("equity")), "cash": _number(response.get("cash")),
+                                        "currency": currency, "account_status": "ACTIVE",
+                                        "trading_blocked": response.get("trading_blocked") is True}
                         if row.get("account_fingerprint") not in (None, fingerprint):
                             row["status"] = "ACCOUNT_IDENTITY_MISMATCH"
                         elif any(other["id"] != row["id"] and other.get("account_fingerprint") == fingerprint
                                  for other in self._records.values()):
                             row["status"] = "DUPLICATE_ACCOUNT"
                         else:
-                            readback = {"equity": _number(response.get("equity")), "cash": _number(response.get("cash")),
-                                        "currency": currency, "account_status": "ACTIVE",
-                                        "trading_blocked": response.get("trading_blocked") is True}
                             row.update(account_fingerprint=fingerprint, readback=readback,
                                        last_read_at=_number(self.clock()), status="CONNECTED_READ_ONLY")
+                    except _AccountFailure as failure:
+                        row["status"] = failure.status
                     except Exception:
+                        self._tokens.pop(row["id"], None)
                         row["status"] = "READBACK_FAILED"
             self._save()
             return self._public(row)

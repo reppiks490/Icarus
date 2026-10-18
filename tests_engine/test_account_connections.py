@@ -110,6 +110,108 @@ def record(**changes):
                 credential_refs={"api_key": "ALPACA_API_KEY", "secret_key": "ALPACA_SECRET_KEY"}, **changes)
 
 
+def projectx_record():
+    import hashlib
+    return dict(id="topstep_one", alias="Topstep evaluation", platform="projectx_topstep",
+        environment="evaluation", firm="Topstep", program="unverified-program",
+        account_selector=hashlib.sha256(b"projectx_topstep:123").hexdigest(),
+        credential_refs={"api_key": "PROJECTX_API_KEY", "username": "PROJECTX_USERNAME"})
+
+
+def test_projectx_login_and_explicit_account_readback_never_submit_orders(tmp_path):
+    calls = []
+    def transport(method, url, headers, payload):
+        calls.append((method, url, headers, payload))
+        if url.endswith("/Auth/loginKey"):
+            return {"success": True, "errorCode": 0, "token": "PRIVATE_SESSION"}
+        return {"success": True, "errorCode": 0, "accounts": [
+            {"id": 999, "name": "DO_NOT_PICK_FIRST", "balance": 9999, "canTrade": True, "isVisible": True},
+            {"id": 123, "name": "PRIVATE_ACCOUNT_NAME", "balance": 123.45, "canTrade": False, "isVisible": True}]}
+    manager = ConnectionManager(tmp_path, env={"PROJECTX_API_KEY": "API_PRIVATE", "PROJECTX_USERNAME": "USER_PRIVATE"}, transport=transport, clock=lambda: 1000)
+    manager.upsert(projectx_record())
+    result = manager.connect("topstep_one")
+    assert result["status"] == "CONNECTED_READ_ONLY"
+    assert result["readback"]["balance"] == 123.45
+    assert result["readback"]["currency"] is None
+    assert result["readback"]["trading_blocked"] is True
+    assert result["execution_authorized"] is False and result["new_intents_blocked"] is True
+    assert [row[0:2] for row in calls] == [("POST", "https://api.topstepx.com/api/Auth/loginKey"), ("POST", "https://api.topstepx.com/api/Account/search")]
+    assert calls[0][3] == {"userName": "USER_PRIVATE", "apiKey": "API_PRIVATE"}
+    assert calls[1][3] == {"onlyActiveAccounts": True}
+    assert calls[1][2]["Authorization"] == "Bearer PRIVATE_SESSION"
+    manager.connect("topstep_one")
+    assert len(calls) == 3  # Session token reused; only account search repeated.
+    public = json.dumps(manager.snapshot())
+    assert all(value not in public for value in ("API_PRIVATE", "USER_PRIVATE", "PRIVATE_SESSION", "PRIVATE_ACCOUNT_NAME", "DO_NOT_PICK_FIRST"))
+    assert all(b"PRIVATE_SESSION" not in p.read_bytes() for p in manager.root.rglob("*") if p.is_file())
+
+
+@pytest.mark.parametrize("code,status", [(9, "SUBSCRIPTION_REQUIRED"), (7, "AGREEMENTS_REQUIRED"), (3, "AUTHENTICATION_FAILED"), (10, "API_ACCESS_DISABLED")])
+def test_projectx_http_success_does_not_override_denial_or_buy_access(tmp_path, code, status):
+    calls = []
+    def transport(*args):
+        calls.append(args)
+        return {"success": False, "errorCode": code, "errorMessage": "PRIVATE_DETAIL"}
+    manager = ConnectionManager(tmp_path, env={"PROJECTX_API_KEY": "key", "PROJECTX_USERNAME": "user"}, transport=transport)
+    manager.upsert(projectx_record())
+    result = manager.connect("topstep_one")
+    assert result["status"] == status and result["readback"] is None
+    assert len(calls) == 1 and "PRIVATE_DETAIL" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("change", [{"account_selector": None}, {"account_selector": "123"}, {"environment": "funded"}, {"firm": "another-firm"}])
+def test_projectx_requires_exact_account_and_supported_firm_environment(tmp_path, change):
+    manager = ConnectionManager(tmp_path, env={}, transport=lambda *a: pytest.fail("no transport"))
+    with pytest.raises(ValueError): manager.upsert(dict(projectx_record(), **change))
+
+
+def test_projectx_never_selects_an_unmatched_or_invisible_account(tmp_path):
+    def transport(method, url, headers, payload):
+        if url.endswith("loginKey"): return {"success": True, "errorCode": 0, "token": "token"}
+        return {"success": True, "errorCode": 0, "accounts": [{"id": 456, "balance": 1, "isVisible": True, "canTrade": True}]}
+    manager = ConnectionManager(tmp_path, env={"PROJECTX_API_KEY": "key", "PROJECTX_USERNAME": "user"}, transport=transport)
+    manager.upsert(projectx_record())
+    assert manager.connect("topstep_one")["status"] == "READBACK_FAILED"
+
+
+@pytest.mark.parametrize("change", [{"isVisible": False}, {"canTrade": "true"}, {"balance": "nan"}, {"id": True}])
+def test_projectx_invalid_selected_account_cannot_establish_readback(tmp_path, change):
+    account = dict(id=123, balance=100, isVisible=True, canTrade=True)
+    account.update(change)
+    def transport(method, url, headers, payload):
+        if url.endswith("loginKey"): return {"success": True, "errorCode": 0, "token": "token"}
+        return {"success": True, "errorCode": 0, "accounts": [account]}
+    manager = ConnectionManager(tmp_path, env={"PROJECTX_API_KEY": "key", "PROJECTX_USERNAME": "user"}, transport=transport)
+    manager.upsert(projectx_record())
+    assert manager.connect("topstep_one")["status"] == "READBACK_FAILED"
+
+
+def test_projectx_session_expiry_reauthenticates_without_persisting_token(tmp_path):
+    now, methods = [1000], []
+    def transport(method, url, headers, payload):
+        methods.append(url)
+        if url.endswith("loginKey"): return {"success": True, "errorCode": 0, "token": "token"}
+        return {"success": True, "errorCode": 0, "accounts": [dict(id=123, balance=100, isVisible=True, canTrade=True)]}
+    manager = ConnectionManager(tmp_path, env={"PROJECTX_API_KEY": "key", "PROJECTX_USERNAME": "user"}, transport=transport, clock=lambda: now[0])
+    manager.upsert(projectx_record())
+    manager.connect("topstep_one")
+    now[0] += 86400
+    assert manager.connect("topstep_one")["status"] == "CONNECTED_READ_ONLY"
+    assert sum(url.endswith("loginKey") for url in methods) == 2
+
+
+def test_projectx_order_and_enrollment_operations_are_not_transport_capabilities():
+    from icarus_engine.account_connections import _transport
+    for path in ("/api/Order/place", "/api/Order/cancel", "/api/Position/closeContract", "/api/Subscription/create"):
+        with pytest.raises(ValueError): _transport("POST", "https://api.topstepx.com" + path, {}, {})
+
+
+def test_projectx_missing_keys_do_not_trigger_login_or_subscription(tmp_path):
+    manager = ConnectionManager(tmp_path, env={}, transport=lambda *a: pytest.fail("no account keys"))
+    manager.upsert(projectx_record())
+    assert manager.connect("topstep_one")["status"] == "MISSING_CREDENTIALS"
+
+
 def test_configuration_is_not_connection_and_secrets_never_enter_metadata(tmp_path):
     env = {"ALPACA_API_KEY": "PRIVATE_KEY", "ALPACA_SECRET_KEY": "PRIVATE_SECRET"}
     m = ConnectionManager(tmp_path, env=env, transport=lambda *a: pytest.fail("no implicit request"))
