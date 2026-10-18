@@ -335,7 +335,9 @@ def test_unknown_contracts_remain_native_only_and_explicitly_unverified(tmp_path
 
 def test_deeply_nested_manifest_fails_with_safe_admission_error(tmp_path):
     args = _source(tmp_path)
-    args["manifest_path"].write_text("[" * 2000 + "0" + "]" * 2000)
+    # Python 3.12's C decoder accepts 2000 levels before rejecting the root
+    # shape. Ten thousand levels exercise the decoder recursion guard itself.
+    args["manifest_path"].write_text("[" * 10_000 + "0" + "]" * 10_000)
     with pytest.raises(ValueError, match="manifest"):
         _load(args)
 
