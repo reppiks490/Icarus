@@ -99,5 +99,94 @@
   $('#workspace-config').addEventListener('input',()=>{dirty=true;text('#config-notice','Unsaved edits.');});$('#workspace-config').addEventListener('change',()=>{dirty=true;});
   $('#discard-config').addEventListener('click',()=>{if(state)renderConfig(state,true);});
   $('#workspace-config').addEventListener('submit',async event=>{event.preventDefault();if(pending||!state)return;pending=true;try{const latest=await get(`/api/command-centers/${id}`);if(signature(latest.profile)!==baseline)throw new Error('Settings changed elsewhere. Discard edits before applying.');const inputs={};for(const field of document.querySelectorAll('[data-input]')){let value=field.type==='checkbox'?field.checked:field.value;if(['int','float'].includes(field.dataset.kind)){value=Number(value);if(!field.value||!Number.isFinite(value))throw new Error(`Invalid numeric input: ${field.dataset.input}`);}inputs[field.dataset.input]=value;}const assets=Array.from(document.querySelectorAll('[data-asset]:checked')).map(field=>field.dataset.asset);const assetUpdate=(state.available_assets||[]).length?{assets}:{};await admin('',{...assetUpdate,chart:{...state.profile.chart,timeframe:$('#config-timeframe').value,chart_type:$('#config-chart-type').value,fill_on:$('#config-fill').value},inputs});dirty=false;await refresh();text('#config-notice','Applied to this workspace.');}catch(error){text('#config-notice',error.message);}finally{pending=false;}});
+  // A200 remains a separate, read-only research surface. Selection never mutates
+  // workspace assets, accounting, qualification records or the Pulse runner.
+  let equityCatalog=null, equityLoad=0, equityRead=0, equityBusy=false;
+  const equityContext=$('#a200-chart').getContext('2d');
+  function clearEquityHistory() {
+    equityRead++;
+    equityContext.clearRect(0,0,960,300);
+    text('#a200-history-note','No history requested for this selection. No sample prices are drawn.');
+    text('#a200-receipt','Entitlement and corporate-action policy are unknown until independently verified. No research chart admits an asset to Pulse.');
+  }
+  function equityRows() {
+    const target=$('#a200-rows'), search=$('#a200-search').value.trim().toLowerCase();
+    target.replaceChildren();
+    if(!equityCatalog)return;
+    const probe=equityCatalog.source_probe||{};
+    const saved=new Map((probe.results||[]).map(row=>[row.instrument_id,row]));
+    for(const row of equityCatalog.instruments) {
+      if(![row.display_symbol,row.name,row.venue,row.instrument_id].join(' ').toLowerCase().includes(search))continue;
+      const evidence=saved.get(row.instrument_id), tr=node('tr'),symbol=node('td');
+      const choose=node('button',row.display_symbol);choose.type='button';
+      choose.setAttribute('aria-label',`Research ${row.display_symbol}`);
+      choose.addEventListener('click',()=>{$('#a200-instrument').value=row.instrument_id;clearEquityHistory();});
+      symbol.append(choose,node('small',row.name));
+      tr.append(symbol,node('td',row.venue),node('td',row.instrument_id));
+      const last=number(evidence?.received_end_ts);
+      const source=evidence?`${evidence.probe_status} · ${probe.status||'freshness unknown'} · ${evidence.row_count??'unknown'} saved rows · last source bar ${last==null?'unknown':new Date(last*1000).toISOString()}`:'No saved source probe for this identity';
+      const blockers=`Identity ${row.identity_status||'UNKNOWN'}; entitlement ${row.entitlement||'UNKNOWN'}; corporate actions ${row.corporate_action_policy||'UNKNOWN'}; historical bars ${row.historical_bars||'UNVERIFIED'}; Pulse ${row.pulse_enabled===true?'enabled':'not admitted'}`;
+      tr.append(node('td',source),node('td',blockers));target.append(tr);
+    }
+    if(!target.children.length){const tr=node('tr'),td=node('td','No matching catalog identity.');td.colSpan=5;tr.append(td);target.append(tr);}
+  }
+  async function loadEquityCatalog() {
+    const current=++equityLoad;
+    try {
+      const catalog=await get('/api/market-universe');
+      if(current!==equityLoad)return;
+      if(!Array.isArray(catalog.instruments)||catalog.instruments.length!==200||new Set(catalog.instruments.map(row=>row.instrument_id)).size!==200)throw new Error('The expected 200 distinct catalog identities are unavailable.');
+      equityCatalog=catalog;const counts=catalog.counts||{},probe=catalog.source_probe||{};
+      text('#a200-summary',`${counts.catalogued_count} catalogued · ${counts.source_connected_count} source-qualified · ${counts.historical_bars_qualified_count} historical-bar qualified · ${counts.live_bars_qualified_count} live-bar qualified · ${counts.pulse_enabled_count} Pulse enabled · ${counts.strategy_qualified_count} strategy-qualified`);
+      text('#a200-probe',`Saved Yahoo probe: ${probe.status||'UNAVAILABLE'} · recorded ${probe.probe_updated_at||'unknown'} · age ${number(probe.age_seconds)==null?'unknown':Math.floor(probe.age_seconds/3600)+' hours'} · ${probe.counts?.response_received_count??'unknown'}/${probe.requested_count??200} responses. These saved observations are not a current live feed. Listing crosswalk: ${catalog.listing_crosswalk?.status||'UNAVAILABLE'}.`);
+      const previous=$('#a200-instrument').value;
+      $('#a200-instrument').replaceChildren(...catalog.instruments.map(row=>{const option=node('option',`${row.display_symbol} · ${row.name} · ${row.venue}`);option.value=row.instrument_id;return option;}));
+      if(catalog.instruments.some(row=>row.instrument_id===previous))$('#a200-instrument').value=previous;
+      $('#a200-history').disabled=equityBusy;clearEquityHistory();equityRows();
+    } catch(error) {
+      if(current!==equityLoad)return;
+      equityCatalog=null;$('#a200-instrument').replaceChildren();$('#a200-rows').replaceChildren();$('#a200-history').disabled=true;clearEquityHistory();
+      text('#a200-summary',`Equity catalog unavailable: ${error.message}`);
+      text('#a200-probe','Source access, freshness and qualification are unavailable.');
+    }
+  }
+  async function readEquityHistory() {
+    if(equityBusy||!equityCatalog)return;
+    const instrument=equityCatalog.instruments.find(row=>row.instrument_id===$('#a200-instrument').value);
+    const token=$('#owner-token').value;
+    if(!token){text('#a200-history-note','Enter the access token above before requesting selected research history.');return;}
+    if(!instrument)return;
+    clearEquityHistory();const current=equityRead;
+    equityBusy=true;$('#a200-history').disabled=true;
+    try {
+      const end=Math.floor(Date.now()/3600000)*3600,start=end-5*86400;
+      const query=new URLSearchParams({start_ts:String(start),end_ts:String(end),interval_seconds:'3600',limit:'240',provider:'yahoo'});
+      const reply=await fetch(`/api/market-history/${encodeURIComponent(instrument.instrument_id)}?${query}`,{cache:'no-store',headers:{Authorization:'Bearer '+token}});
+      const data=await reply.json();
+      if(current!==equityRead)return;
+      if(!reply.ok)throw new Error(data.error||data.detail||`HTTP ${reply.status}`);
+      if(data.instrument?.instrument_id!==instrument.instrument_id||data.provider!=='yahoo'||data.receipt?.instrument_id!==instrument.instrument_id||data.receipt?.provider!=='yahoo'||data.execution_authorized!==false||data.pulse_enabled!==false)throw new Error('Research response identity or authority does not match this request.');
+      if(!Array.isArray(data.bars)||data.bars.length>240)throw new Error('Research response exceeds the requested bar bound.');
+      const bars=data.bars;
+      if(bars.some((row,index)=>!['ts','o','h','l','c','v'].every(key=>number(row[key])!=null)||!Number.isInteger(row.ts)||row.ts<start||row.ts>=end||(index>0&&row.ts<=bars[index-1].ts)))throw new Error('Research response has invalid bar timestamps or values.');
+      const receipt=data.receipt;
+      text('#a200-receipt',JSON.stringify({instrument_id:instrument.instrument_id,provider:'yahoo',qualification:data.qualification,pulse_enabled:false,scope:'RESEARCH_CONTEXT_ONLY',execution_authorized:false,receipt_id:receipt.receipt_id,checksum_sha256:receipt.checksum_sha256,entitlement_status:receipt.entitlement_status||'UNKNOWN',corporate_action_policy:receipt.corporate_action_policy||'UNKNOWN',identity_status:receipt.identity_status||'UNKNOWN',provider_mapping_status:receipt.provider_mapping_status||'UNKNOWN',session_validation_status:receipt.session_validation_status||'UNKNOWN',historical_bars_qualified:receipt.historical_bars_qualified===true},null,2));
+      if(bars.length>=2) {
+        const values=bars.map(row=>row.c),lo=Math.min(...values),hi=Math.max(...values),range=hi-lo||1,pad=30;
+        equityContext.strokeStyle='#f5cf81';equityContext.lineWidth=2;equityContext.beginPath();
+        values.forEach((value,index)=>{const x=pad+index*(960-2*pad)/(values.length-1),y=300-pad-(value-lo)*(300-2*pad)/range;index?equityContext.lineTo(x,y):equityContext.moveTo(x,y);});equityContext.stroke();
+      }
+      text('#a200-history-note',`${instrument.display_symbol} · ${bars.length} observed bars · Yahoo research context only · ${data.qualification||'UNQUALIFIED'} · entitlement ${receipt.entitlement_status||'UNKNOWN'} · corporate actions ${receipt.corporate_action_policy||'UNKNOWN'}. This chart does not feed Pulse or P&L.${bars.length<2?' Fewer than two bars; no line drawn.':''}`);
+    } catch(error) {
+      if(current===equityRead){equityContext.clearRect(0,0,960,300);text('#a200-history-note',`Research history unavailable: ${error.message}`);}
+    } finally {
+      equityBusy=false;$('#a200-history').disabled=!equityCatalog;
+    }
+  }
+  $('#a200-search').addEventListener('input',equityRows);
+  $('#a200-instrument').addEventListener('change',clearEquityHistory);
+  $('#a200-history').addEventListener('click',readEquityHistory);
+  $('#a200-refresh').addEventListener('click',loadEquityCatalog);
+  loadEquityCatalog();
   refresh();setInterval(()=>{if(!document.hidden&&!pending)refresh();},15000);
 })();

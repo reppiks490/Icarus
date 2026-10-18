@@ -193,3 +193,129 @@ def test_missing_marks_with_numeric_fallback_never_appear_as_verified_pnl(engine
     assert result["accounting"]["complete"] is False
     assert result["aggregate"]["open_pnl"] is None
     assert result["profile"]["pnl"]["open_pnl"] is None
+
+
+def test_a200_research_browser_is_shared_and_history_is_explicit_and_isolated(engine):
+    """Optional real Chromium flow; provider responses are synthetic interceptions."""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    chromium = shutil.which("chromium") or shutil.which("chromium-browser")
+    if not node or not chromium:
+        pytest.skip("optional Node/Chromium presentation environment unavailable")
+    available = subprocess.run([node, "-e", "require.resolve('playwright')"], capture_output=True)
+    if available.returncode:
+        pytest.skip("optional Playwright presentation dependency unavailable")
+    script = r"""
+const assert=require('node:assert/strict');
+const {chromium}=require('playwright');
+let browser;
+(async()=>{
+ browser=await chromium.launch({executablePath:process.argv[2],headless:true,args:['--no-sandbox']});
+ const page=await browser.newPage({viewport:{width:1280,height:900}});page.setDefaultTimeout(8000);
+ let mismatch=false;const historyCalls=[];const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.route('**/api/market-history/**',async route=>{
+  const request=route.request(),url=new URL(request.url()),instrumentId=decodeURIComponent(url.pathname.split('/').pop());
+  historyCalls.push({url:url.href,headers:request.headers()});
+  const start=Number(url.searchParams.get('start_ts'));
+  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+   instrument:{instrument_id:instrumentId,display_symbol:'NVDA'},provider:'yahoo',qualification:'UNQUALIFIED',pulse_enabled:false,execution_authorized:false,
+   receipt:{instrument_id:mismatch?'wrong-identity':instrumentId,provider:'yahoo',receipt_id:'synthetic-browser-fixture',historical_bars_qualified:false,entitlement_status:'UNKNOWN',corporate_action_policy:'UNKNOWN'},
+   bars:[{ts:start+3600,o:101,h:103,l:100,c:102,v:10},{ts:start+7200,o:102,h:105,l:101,c:104,v:15}]
+  })});
+ });
+ for(const id of ['cc1','cc2','cc3','cc4']){
+  await page.goto(process.argv[1]+'/dashboards/'+id);
+  await page.waitForFunction(()=>document.querySelectorAll('#a200-instrument option').length===200);
+  assert.equal(await page.locator('#a200-rows tr').count(),200);
+  assert.match(await page.locator('#a200-summary').textContent(),/200 catalogued/);
+  assert.match(await page.locator('#a200-summary').textContent(),/0 Pulse/);
+ }
+ assert.equal(historyCalls.length,0,'browsing all four dashboards must not acquire history');
+ await page.locator('#a200-search').fill('TSLA');
+ assert.equal(await page.locator('#a200-rows tr').count(),1);
+ assert.match(await page.locator('#a200-rows').textContent(),/Tesla/);
+ await page.locator('#a200-search').fill('');
+ const before=await page.locator('#all-total').textContent();
+ await page.locator('#a200-history').click();
+ assert.equal(historyCalls.length,0,'no owner token means no request');
+ await page.locator('#owner-token').fill('owner-test');
+ await page.locator('#a200-history').click();
+ await page.waitForFunction(()=>document.querySelector('#a200-history-note').textContent.includes('2 observed bars'));
+ assert.equal(historyCalls.length,1);
+ const call=historyCalls[0],url=new URL(call.url);
+ assert.equal(call.headers.authorization,'Bearer owner-test');
+ assert.equal(url.searchParams.get('provider'),'yahoo');
+ assert.equal(url.searchParams.get('interval_seconds'),'3600');
+ assert.equal(url.searchParams.get('limit'),'240');
+ assert.equal(Number(url.searchParams.get('end_ts'))-Number(url.searchParams.get('start_ts')),5*86400);
+ assert.match(await page.locator('#a200-receipt').textContent(),/UNKNOWN/);
+ assert.equal(await page.locator('#all-total').textContent(),before,'research cannot change P&L');
+ assert.match(await page.locator('#chart-note').textContent(),/No selected workspace/);
+ await page.locator('#a200-instrument').selectOption({index:1});
+ assert.match(await page.locator('#a200-history-note').textContent(),/No history requested/);
+ assert.equal(historyCalls.length,1,'selection cannot acquire another dataset');
+ mismatch=true;await page.locator('#a200-history').click();
+ await page.waitForFunction(()=>document.querySelector('#a200-history-note').textContent.includes('does not match'));
+ assert.equal(historyCalls.length,2);
+ assert.equal(await page.locator('#all-total').textContent(),before);
+ await page.setViewportSize({width:390,height:844});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ assert.deepEqual(errors,[]);
+ await browser.close();
+})().catch(async error=>{console.error(error);await browser?.close();process.exitCode=1;});
+"""
+    srv, _ = engine
+    result = subprocess.run(
+        [node, "-e", script, f"http://127.0.0.1:{srv.server_port}", chromium],
+        capture_output=True, text=True, timeout=60,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_a200_context_history_http_is_one_authenticated_yahoo_read_without_runtime_admission(engine, monkeypatch):
+    from datetime import datetime, timezone
+    from urllib.parse import urlencode
+    from icarus_engine import market_universe_adapter
+    from icarus_engine.bar_receipts import make_bar_batch_receipt
+    from icarus_engine.market_universe import snapshot
+    from icarus_engine.pine.timeframe import Bar
+
+    srv, request = engine
+    code, catalog = request('/api/market-universe')
+    assert code == 200 and len(catalog['instruments']) == 200
+    assert catalog['counts']['pulse_enabled_count'] == 0
+    row = catalog['instruments'][0]
+    source_symbol = next(m['symbol'] for m in row['provider_symbol_candidates'] if m['provider'] == 'yahoo')
+    start = int(datetime(2026, 10, 12, 13, 30, tzinfo=timezone.utc).timestamp())
+    end = start + 5 * 86400
+    bars = [Bar(start, 100, 103, 99, 102, 10), Bar(start + 3600, 102, 104, 101, 103, 20)]
+    _, receipt = make_bar_batch_receipt(
+        instrument_id=row['instrument_id'], provider='yahoo', expected_provider_symbol=source_symbol,
+        observed_provider_symbol=source_symbol, interval_seconds=3600, requested_start_ts=start,
+        requested_end_ts=end, bars=bars, fetched_at_ns=1, received_at_ns=2,
+        entitlement_status='UNKNOWN', provider_mapping_status='UNVERIFIED',
+    )
+    calls = []
+    class FakeAdapter:
+        def __init__(self, *, providers):
+            assert providers == ('yahoo',)
+        def fetch_history(self, identity, interval, start_ts, end_ts, *, provider):
+            calls.append((identity, interval, start_ts, end_ts, provider))
+            return bars, receipt
+    monkeypatch.setattr(market_universe_adapter, 'MarketUniverseAdapter', FakeAdapter)
+    path = '/api/market-history/' + row['instrument_id'] + '?' + urlencode(dict(
+        start_ts=start, end_ts=end, interval_seconds=3600, limit=240, provider='yahoo'))
+    assert request(path)[0] == 401
+    assert calls == []
+    code, response = request(path, token='owner-test')
+    assert code == 200
+    assert calls == [(row['instrument_id'], 3600, start, end, 'yahoo')]
+    assert response['bars'][1]['c'] == 103
+    assert response['receipt']['entitlement_status'] == 'UNKNOWN'
+    assert response['receipt']['corporate_action_policy'] == 'UNKNOWN'
+    assert response['qualification'] == 'UNQUALIFIED'
+    assert response['pulse_enabled'] is False and response['execution_authorized'] is False
+    assert srv.command_centers.portfolios == {}
+    assert snapshot()['counts']['pulse_enabled_count'] == 0
