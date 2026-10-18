@@ -138,7 +138,7 @@ class Episode:
         start = timestamp(self.situation.observed_at, "observed_at")
         mature = timestamp(self.maturity_at, "maturity_at")
         received = timestamp(self.outcome_received_at, "outcome_received_at")
-        if mature < start or received < mature or received < timestamp(self.situation.received_at, "received_at"):
+        if mature < start or timestamp(self.situation.received_at, "received_at") > mature or received < mature or received < timestamp(self.situation.received_at, "received_at"):
             raise ValueError("outcome must mature and arrive after its event and input")
 
 
