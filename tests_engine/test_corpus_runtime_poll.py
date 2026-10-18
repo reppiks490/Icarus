@@ -110,3 +110,16 @@ def test_retired_runner_rejects_direct_sub_bar_and_poll_mutations(tmp_path):
         assert runner.last_poll_ok == 0
     finally:
         journal.close()
+
+
+def test_workspace_shared_transport_retains_native_five_minute_interval(tmp_path):
+    from icarus_engine.paper_workspaces import SharedFeed
+    feed = NativeFeed()
+    runner, journal = _runner(tmp_path, SharedFeed(feed))
+    try:
+        runner.poll()
+        assert feed.requests == [300]
+        assert len(runner.subbars) == 2
+        assert all(minutes == 5 for _, minutes in runner.subbars)
+    finally:
+        journal.close()
