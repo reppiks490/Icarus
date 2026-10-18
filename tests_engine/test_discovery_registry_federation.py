@@ -317,6 +317,18 @@ def test_singleton_id_qualified_variant_still_requires_its_query_binding(tmp_pat
             "https://api.bybit.com/v5/market/kline?" + query)]))) == expected_count
 
 
+@pytest.mark.parametrize("example", [None, ""])
+def test_missing_variant_value_in_catalog_cannot_qualify_empty_query(tmp_path, example):
+    catalog, latest = bybit_files(tmp_path)
+    payload = json.loads(catalog.read_text())
+    payload["operations"][0]["parameters"][0]["example"] = example
+    catalog.write_text(json.dumps(payload))
+    f = federator((catalog, latest))
+    links = f.links_for([candidate("https://api.bybit.com/v5/market/kline?category=")])
+    assert links
+    assert f.evidence_events(links) == ()
+
+
 @pytest.mark.parametrize("suffix", [":443", ":8443", "", ".evil.example"])
 def test_api_origin_binding_preserves_effective_https_origin(tmp_path, suffix):
     f = federator(files(tmp_path, verified_operations=["twelve:get:/time_series"]))

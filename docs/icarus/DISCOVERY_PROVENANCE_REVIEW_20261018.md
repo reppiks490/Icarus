@@ -46,8 +46,9 @@ to audited main. Subsequent main corrections include #390 at
 
 All new cases use synthetic local receipts and catalog fixtures. The initial
 federation regression run produced ten expected failures before implementation;
-an additional ambiguity regression failed before its conservative guard was
-added. The registry and catalog CLI suite subsequently passed 131 tests:
+additional ambiguity and blank-descriptor regressions failed before their
+conservative guards were added. The registry and catalog CLI suite subsequently
+passed 133 tests:
 
 ```bash
 python -m pytest -p no:cacheprovider tests_engine/test_discovery_registry_*.py tests/test_catalog_registry_ingest.py -o addopts='' -q
@@ -58,3 +59,24 @@ indistinguishable descriptors, an ID-qualified singleton, API versus marketing
 host, effective HTTPS port, legacy v3 links, and CLI persistence. No provider
 request, discovered-service probe, entitlement change or live broker arming is
 part of this work.
+
+The default project suite at initial repair head
+`760e6539e5993312c46ac04b264c976ee0b628de` reported **2897 passed, 3 skipped,
+111 subtests passed and 7 failed**. The same seven failures reproduce on untouched
+base `c993130534126a352c766fb7abc0de3145fc110f` in a separate detached worktree
+(7 failed, 16 passed when running those two modules). Verification used an
+external temporary socket guard allowing localhost and blocking external
+connections. The failures belong to the separately coordinated A200 lane:
+
+- `test_a200_listing_crosswalk.py::test_crosswalk_reports_all_200_listing_identities_without_feed_qualification`
+- `test_a200_listing_crosswalk.py::test_crosswalk_detects_listing_mismatch_without_promoting_it`
+- `test_a200_runtime_feed.py::test_qualified_historical_batch_runs_pulse_in_signal_only_research_mode`
+- `test_a200_runtime_feed.py::test_admission_and_session_creation_use_one_catalog_snapshot`
+- `test_a200_runtime_feed.py::test_portfolio_entrypoint_keeps_a200_research_outside_live_asset_registry`
+- `test_a200_runtime_feed.py::test_research_runtime_rejects_missing_bars_between_admitted_batches`
+- `test_a200_runtime_feed.py::test_research_runtime_rejects_catalog_economics_change_mid_session`
+
+The listing cases observe `STALE` rather than expected `CURRENT`; runtime cases
+fail their admission assertion. The final small blank-descriptor guard and its
+two regression cases are covered by the 133-test focused run above. A200 fixtures
+and runtime code are unchanged by this PR.
