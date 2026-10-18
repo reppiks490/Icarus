@@ -23,12 +23,14 @@ The vault retains account-labelled paid bar baselines. Its manifest authenticate
 ## Useful consumers
 
 - Data quality and recovery: validate actual rows, coverage, continuity and source hashes; show unusable sources and recovery failures precisely.
-- Paper/replay warm-up: feed actual retained bars into the existing independent cc1, cc2 and cc4 paper profiles. Record which dataset each consumer actually read. Preserve existing distinct 20-minute, short-target 5-minute plus ETH, and standard 5-minute configurations and separate journals.
+- Paper/replay warm-up: feed actual retained bars into all four independent cc1–cc4 paper profiles, as required by the owner's expanded scope. Record which dataset each consumer actually read. Preserve the three distinct 20-minute, short-target 5-minute plus ETH, and standard 5-minute configurations, the editable cc3 profile, and separate journals.
 - Research context: preserve provider operation evidence and existing collection-only Brain context; use descriptive data quality/coverage and available macro context without converting collections into qualified predictions or evaluating protected holdouts.
 
 ## Dashboard boundary
 
 After corpus consumption is verified, add three dedicated addressable views using the existing workspace manager and owner-gated controls. Each view must show only its own portfolio/ledger and corpus receipt. Preserve the existing multi-workspace UI and authentication. A private deployed interface must distinguish replay, delayed data and fresh paper operation; unavailable data must not produce invented trades or P&L. Three links require a reachable deployed backend or a truthful hosted receipt view; a localhost link alone does not meet owner access.
+
+The latest owner instruction also requires all four workspaces to support the integrated assets and a portfolio P&L surface outside their individual dashboards. That accounting must preserve realized, unrealized, fees, currency, valuation time and account identity; missing marks or fees must remain explicit rather than silently producing a supposedly complete total. Broker/prop-firm connections and ten additional free-access futures follow this corpus phase. Free research observations alone do not establish exchange execution entitlement or profitability.
 
 ## Acceptance and delivery
 
