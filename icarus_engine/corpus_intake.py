@@ -36,6 +36,9 @@ MAX_ROWS = 2_000_000
 MAX_RETAINED_BARS = 200_000
 MAX_READ_RECEIPTS = 1000
 _CACHES = frozenset(("bars_primary", "bars_secondary", "bars_third"))
+# Retained vault roots lacking catalog specifications. This is an archive-read
+# allowlist, not a new instrument registry or execution qualification.
+_ARCHIVE_CONTEXT_ROOTS = frozenset(("DX", "VXM", "SR3", "ZT", "ZF", "ZC", "ZS", "ZW"))
 _HEADER = ("ts_open", "open", "high", "low", "close", "volume")
 _FILENAME = re.compile(r"databento_(?:hist_)?([a-z0-9]+)_5m\.csv\.gz\Z")
 _SHA = re.compile(r"[0-9a-f]{64}\Z")
@@ -49,6 +52,7 @@ class CorpusReceipt:
     provider: str
     symbol: str
     provider_root: str
+    identity_status: str
     source_repo: str
     source_commit: str
     source_sha256: str
@@ -134,6 +138,7 @@ class CorpusReadReceipt:
     source_repo: str
     source_commit: str
     symbol: str
+    identity_status: str
     requested_interval_seconds: int
     requested_start_ts: int
     requested_end_ts: int
@@ -272,9 +277,11 @@ def load_vault_bars(restored_dir, manifest_path, cache_name, filename, *, source
         raise ValueError("invalid native vault filename")
     provider_root = match[1].upper()
     products = [p for p in FUTURES_PRODUCTS.values() if p.execution_root == provider_root]
-    if len(products) != 1:
+    if len(products) > 1 or (not products and provider_root not in _ARCHIVE_CONTEXT_ROOTS):
         raise ValueError("unknown or ambiguous provider root")
-    product = products[0]
+    product = products[0] if products else None
+    symbol = product.root if product else provider_root
+    identity_status = "CATALOG_MAPPED" if product else "ARCHIVE_CONTEXT_ONLY"
     if source_repo != "reppiks490/Icarus-engine" or not isinstance(source_commit, str) or not _COMMIT.fullmatch(source_commit):
         raise ValueError("source repository and exact commit are required")
     _integer(available_at_ns, "available_at_ns")
@@ -348,8 +355,9 @@ def load_vault_bars(restored_dir, manifest_path, cache_name, filename, *, source
     known_contracts = sum(contract is not None for contract in contracts)
     contract_status = "COMPLETE" if known_contracts == len(contracts) else "PARTIAL" if known_contracts else "UNKNOWN"
     manifest_digest = hashlib.sha256(manifest_bytes).hexdigest()
-    receipt = CorpusReceipt(dataset_id="", provider="databento", symbol=product.root,
-                            provider_root=provider_root, source_repo=source_repo, source_commit=source_commit,
+    receipt = CorpusReceipt(dataset_id="", provider="databento", symbol=symbol,
+                            provider_root=provider_root, identity_status=identity_status,
+                            source_repo=source_repo, source_commit=source_commit,
                             source_sha256=digest, bars_sha256=bars_digest, manifest_sha256=manifest_digest, cache_name=cache_name,
                             filename=filename, compressed_bytes=len(snapshot), uncompressed_bytes=len(raw),
                             source_rows=count, retained_rows=len(bars), excluded_unclosed_rows=unclosed,
@@ -357,7 +365,7 @@ def load_vault_bars(restored_dir, manifest_path, cache_name, filename, *, source
                             first_ts=bars[0].ts, last_ts=bars[-1].ts,
                             available_at_ns=available_at_ns, asof_ns=asof_ns, max_bars=max_bars)
     receipt = replace(receipt, dataset_id=_receipt_identity(receipt))
-    return CorpusDataset(product.root, provider_root, tuple(bars), tuple(contracts), receipt)
+    return CorpusDataset(symbol, provider_root, tuple(bars), tuple(contracts), receipt)
 
 
 class CorpusFeed:
@@ -378,11 +386,17 @@ class CorpusFeed:
             raise ValueError("invalid consumer identity")
         self._dataset = dataset
         self._consumer_id = consumer_id
-        product = FUTURES_PRODUCTS[dataset.symbol]
-        self._symbols = {dataset.symbol, dataset.provider_root, product.provider_symbol, product.tv_symbol}
-        self._feed = FileFeed(list(dataset.bars), mintick=product.tick_size)
-        # A singleton or session gaps must not be guessed into a different interval.
-        self._feed._granularity = NATIVE_INTERVAL_SECONDS
+        self._context_only = dataset.receipt.identity_status == "ARCHIVE_CONTEXT_ONLY"
+        if self._context_only:
+            self._symbols = {dataset.provider_root}
+            self.GRANULARITIES = (NATIVE_INTERVAL_SECONDS,)
+            self._feed = None  # No invented tick size for an uncatalogued root.
+        else:
+            product = FUTURES_PRODUCTS[dataset.symbol]
+            self._symbols = {dataset.symbol, dataset.provider_root, product.provider_symbol, product.tv_symbol}
+            self._feed = FileFeed(list(dataset.bars), mintick=product.tick_size)
+            # Singleton/session gaps must not imply a different native interval.
+            self._feed._granularity = NATIVE_INTERVAL_SECONDS
         self._reads = deque(maxlen=MAX_READ_RECEIPTS)
         self._read_count = 0
 
@@ -418,6 +432,10 @@ class CorpusFeed:
         _integer(end, "end_ts")
         if end < start:
             raise ValueError("requested interval window is reversed")
+        if self._context_only:
+            if interval != NATIVE_INTERVAL_SECONDS:
+                raise ValueError("archive context supports only native 300-second reads")
+            return [bar for bar in self.dataset.bars if start <= bar.ts < end]
         if interval == NATIVE_INTERVAL_SECONDS:
             return self._feed.candles(symbol, interval, start, end)
         grouped = {}
@@ -439,7 +457,7 @@ class CorpusFeed:
         self._reads.append(CorpusReadReceipt(
             consumer_id=self.consumer_id, method=method, dataset_id=receipt.dataset_id,
             source_sha256=receipt.source_sha256, source_repo=receipt.source_repo,
-            source_commit=receipt.source_commit, symbol=receipt.symbol,
+            source_commit=receipt.source_commit, symbol=receipt.symbol, identity_status=receipt.identity_status,
             requested_interval_seconds=interval, requested_start_ts=start, requested_end_ts=end,
             row_count=len(bars), first_ts=bars[0].ts if bars else None, last_ts=bars[-1].ts if bars else None,
             available_at_ns=receipt.available_at_ns, asof_ns=receipt.asof_ns))
@@ -452,6 +470,8 @@ class CorpusFeed:
 
     def mintick(self, symbol: str) -> float:
         self._symbol(symbol)
+        if self._context_only:
+            raise ValueError("archive context has no verified instrument specification")
         return self._feed.mintick(symbol)
 
     def ticker(self, symbol: str) -> float | None:
