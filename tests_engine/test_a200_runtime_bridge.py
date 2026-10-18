@@ -88,3 +88,46 @@ def test_empty_or_incomplete_history_batch_is_rejected():
     batch = _batch()
     with pytest.raises(ValueError, match="non-empty"):
         A200RuntimeBatch.from_history(batch.instrument_id, batch.provider, (), replace(batch.receipt, row_count=0))
+
+
+@pytest.mark.parametrize("timestamp", [1_799_999_700.5, 1_799_999_700.0, "1799999700", True])
+def test_timestamp_coercion_cannot_reuse_a_validated_receipt(timestamp):
+    batch = _batch()
+    altered = replace(batch.bars[0], ts=timestamp)
+    with pytest.raises(ValueError, match="timestamp must be an integer"):
+        A200RuntimeBatch.from_history(batch.instrument_id, batch.provider, [altered], batch.receipt)
+
+
+def test_non_bar_row_cannot_impersonate_validated_history():
+    from types import SimpleNamespace
+
+    batch = _batch()
+    altered = SimpleNamespace(**vars(batch.bars[0]))
+    with pytest.raises(ValueError, match="non-Bar"):
+        A200RuntimeBatch.from_history(batch.instrument_id, batch.provider, [altered], batch.receipt)
+
+
+@pytest.mark.parametrize("field", ["o", "h", "l", "c", "v"])
+def test_numeric_strings_cannot_reuse_a_validated_receipt(field):
+    batch = _batch()
+    altered = replace(batch.bars[0], **{field: str(getattr(batch.bars[0], field))})
+    with pytest.raises(ValueError, match="OHLCV must be numeric"):
+        A200RuntimeBatch.from_history(batch.instrument_id, batch.provider, [altered], batch.receipt)
+
+
+def test_unchanged_history_preserves_exact_receipt_and_bar_identity():
+    batch = _batch()
+    copied = A200RuntimeBatch.from_history(batch.instrument_id, batch.provider, batch.bars, batch.receipt)
+    assert copied.receipt is batch.receipt
+    assert copied.bars[0] is batch.bars[0]
+
+
+def test_numeric_decimal_values_preserve_receipt_checksum_semantics():
+    from decimal import Decimal
+
+    batch = _batch()
+    altered = replace(batch.bars[0], **{field: Decimal(str(getattr(batch.bars[0], field)))
+                                      for field in ("o", "h", "l", "c", "v")})
+    copied = A200RuntimeBatch.from_history(batch.instrument_id, batch.provider, [altered], batch.receipt)
+    assert copied.bars[0] is altered
+    assert copied.receipt is batch.receipt

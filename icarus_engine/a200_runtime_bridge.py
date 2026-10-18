@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+from numbers import Number
 from typing import Sequence
 
 from .bar_receipts import BarBatchReceipt
@@ -38,6 +39,16 @@ class A200RuntimeBatch:
         object.__setattr__(self, "bars", tuple(self.bars))
         if not self.bars or self.receipt.row_count != len(self.bars):
             raise ValueError("A200 batch bars must be non-empty and match receipt row count")
+        # Check the validator's row/timestamp contract before canonical hashing.
+        # int() and float() alone let altered timestamps or numeric strings reuse
+        # the digest of validated bars while retaining unsafe runtime values.
+        for row in self.bars:
+            if not isinstance(row, Bar):
+                raise ValueError("A200 batch contains a non-Bar row")
+            if type(row.ts) is not int:
+                raise ValueError("A200 bar timestamp must be an integer")
+            if not all(isinstance(value, Number) for value in (row.o, row.h, row.l, row.c, row.v)):
+                raise ValueError("A200 bar OHLCV must be numeric")
         encoded = json.dumps(
             [[int(row.ts), float(row.o), float(row.h), float(row.l), float(row.c), float(row.v)]
              for row in self.bars],
