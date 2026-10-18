@@ -232,8 +232,7 @@ class WorkspacePortfolio(Portfolio):
             for runner in removed:
                 if runner.em.open or runner.em._pending_entries or runner.em._pending_closes:
                     raise ValueError(f"{runner.symbol}: flatten open positions and cancel pending orders before removing the asset")
-                if runner.rewarming or not runner.warm:
-                    raise ValueError(f"{runner.symbol}: wait for warm-up/replay before removing the asset")
+                runner.ensure_configurable()
             # Stage construction and provider preparation without publishing maps.
             additions = []
             gate = threading.Event()
@@ -591,6 +590,15 @@ class PaperWorkspaceManager:
             runners = portfolio.runner_list() if portfolio else []
             effective = runners[0].inputs_base.to_dict() if runners else {}
             closed = portfolio.journal.closed_paper_profit() if portfolio else {"realized_pnl": 0.0, "closed_pieces": 0, "last_close_ts": None}
+            missing_marks = []
+            for asset in status.get("assets", []):
+                if asset.get("position"):
+                    mark = asset.get("price")
+                    if type(mark) not in (int, float) or not math.isfinite(mark) or mark <= 0:
+                        missing_marks.append(str(asset.get("symbol") or "unknown"))
+            valuation_complete = portfolio is not None and not status.get("view_stale", False) and not missing_marks
+            if status.get("positions") and not any(asset.get("position") for asset in status.get("assets", [])):
+                valuation_complete = False
             open_pnl = float(status.get("open_profit") or 0.0)
             pnl = {**closed, "open_pnl": open_pnl, "paper_pnl": closed["realized_pnl"],
                    "replay_inclusive_net": float(status.get("net") or 0.0),
@@ -598,6 +606,7 @@ class PaperWorkspaceManager:
             status["paper_pnl"] = pnl["paper_pnl"]
             rows.append({**copy.deepcopy(profile), "status": status, "effective_inputs": effective, "paper_only": True,
                          "execution_authorized": False, "runtime_available": portfolio is not None,
+                         "valuation_complete": valuation_complete, "missing_mark_symbols": missing_marks,
                          "pnl": pnl, "feed": self._feed_summary(status, portfolio)})
         aggregate = {"workspace_count": len(rows), "capital": sum(float(row["status"].get("capital") or 0.0) for row in rows),
                      "equity": sum(float(row["status"].get("equity") or 0.0) for row in rows),
@@ -610,9 +619,11 @@ class PaperWorkspaceManager:
         aggregate["paper_pnl"] = aggregate["realized_pnl"]
         aggregate["runtime_count"] = sum(row["runtime_available"] for row in rows)
         aggregate["missing_runtime_ids"] = [row["id"] for row in rows if not row["runtime_available"]]
-        aggregate["accounting_complete"] = len(rows) == 4 and not aggregate["missing_runtime_ids"]
+        aggregate["accounting_complete"] = (len(rows) == 4 and not aggregate["missing_runtime_ids"]
+                                            and all(row["valuation_complete"] for row in rows))
         aggregate["fees_status"] = "SIMULATOR_CONFIGURED_NOT_BROKER_RECONCILED"
-        aggregate["valuation_status"] = "PAPER_MARKS_NOT_BROKER_RECONCILED"
+        aggregate["valuation_status"] = ("PAPER_MARKS_UNVERIFIED_FRESHNESS" if aggregate["accounting_complete"]
+                                         else "PAPER_VALUATION_INCOMPLETE")
         aggregate["reconciliation_status"] = "NO_BROKER_RECONCILIATION"
         return {"mode": "concurrent_paper", "paper_only": True, "profiles": rows, "aggregate": aggregate,
                 "connections": self._connections(rows), "available_assets": _available_assets(),

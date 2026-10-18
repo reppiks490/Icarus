@@ -826,3 +826,40 @@ def test_asset_start_failure_restores_successfully_replayed_existing_configurati
         assert portfolio.workspace["inputs"] == {}
     finally:
         manager.stop()
+
+
+def test_removal_does_not_orphan_active_strategy_overlay(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        portfolio = manager.portfolios["cc1"]
+        runner = portfolio.runners["NQ"]
+        runner.warm = True
+        runner._activation_version_id = "active-overlay"
+        with pytest.raises(ValueError, match="overlay"):
+            manager.update("cc1", {"assets": ["CL"]})
+        assert portfolio.runners == {"NQ": runner} and not runner._removed
+    finally:
+        manager.stop()
+
+
+def test_open_position_without_mark_or_stale_view_makes_aggregate_incomplete(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        portfolio = manager.portfolios["cc1"]
+        runner = portfolio.runners["NQ"]
+        runner.em.entry("missing-mark", 1, 1)
+        runner.em.process_bar(Bar(1, 100, 100, 100, 100, 0), 0)
+        assert runner.last_price is None
+        snapshot = manager.snapshot()
+        profile = next(p for p in snapshot["profiles"] if p["id"] == "cc1")
+        assert profile["runtime_available"] is True
+        assert profile["valuation_complete"] is False and profile["missing_mark_symbols"] == ["NQ"]
+        assert snapshot["aggregate"]["accounting_complete"] is False
+        assert snapshot["aggregate"]["valuation_status"] == "PAPER_VALUATION_INCOMPLETE"
+        runner.last_price = 101.0
+        assert manager.snapshot()["aggregate"]["accounting_complete"] is True
+        original_status = portfolio.status
+        monkeypatch.setattr(portfolio, "status", lambda **kwargs: {**original_status(**kwargs), "view_stale": True})
+        assert manager.snapshot()["aggregate"]["accounting_complete"] is False
+    finally:
+        manager.stop()
