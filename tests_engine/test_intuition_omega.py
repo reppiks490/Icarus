@@ -97,7 +97,7 @@ def test_overlap_purge_and_abstain_on_small_samples(tmp_path):
 def test_analogues_can_support_a_diagnostic_but_never_execution(tmp_path):
     store = EpisodicStore(tmp_path / "episodes.sqlite")
     for i in range(60):
-        store.add(episode(i, outcome=i % 3 != 0))
+        store.add(episode(i, outcome=int(i % 3 != 0)))
     report = AnalogueReasoner(store, policy()).infer(
         situation("future", BASE + timedelta(days=75)))
     assert report["status"] == "RESEARCH_HYPOTHESIS"
