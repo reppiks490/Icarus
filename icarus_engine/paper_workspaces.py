@@ -88,6 +88,10 @@ class SharedFeed:
         self._short_cache: Dict[Tuple[Any, ...], Tuple[float, Any]] = {}
 
     @property
+    def native_interval_seconds(self) -> int:
+        return getattr(self._feed, "native_interval_seconds", 60)
+
+    @property
     def provider_name(self) -> str:
         return type(self._feed).__name__.lower()
 
@@ -227,12 +231,6 @@ class WorkspacePortfolio(Portfolio):
             previous = dict(self.runners)
             previous_order = list(self.order)
             removed = [runner for symbol, runner in previous.items() if symbol not in requested]
-            for runner in sorted(previous.values(), key=lambda r: r.symbol):
-                locks.enter_context(runner.lock)
-            for runner in removed:
-                if runner.em.open or runner.em._pending_entries or runner.em._pending_closes:
-                    raise ValueError(f"{runner.symbol}: flatten open positions and cancel pending orders before removing the asset")
-                runner.ensure_configurable()
             # Stage construction and provider preparation without publishing maps.
             additions = []
             gate = threading.Event()
@@ -254,6 +252,14 @@ class WorkspacePortfolio(Portfolio):
                         if runner.spec.kind == "futures" and callable(prepare):
                             prepare([runner.spec.ticker])
                             self._prepare_depth_context(runner.feed, [runner.spec.ticker])
+                # Source preparation can block; keep existing runners free to
+                # process their own bars, then validate removal under locks.
+                for runner in sorted(previous.values(), key=lambda r: r.symbol):
+                    locks.enter_context(runner.lock)
+                for runner in removed:
+                    if runner.em.open or runner.em._pending_entries or runner.em._pending_closes:
+                        raise ValueError(f"{runner.symbol}: flatten open positions and cancel pending orders before removing the asset")
+                    runner.ensure_configurable()
                 if configuration_changed:
                     snapshots = [(r, r.configuration_snapshot(), copy.deepcopy(r.cfg.base_spec))
                                  for r in previous.values()]
