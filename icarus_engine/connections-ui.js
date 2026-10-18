@@ -60,16 +60,24 @@
   stageLabel.append(stageSelect);form.insertBefore(stageLabel,fields.program.parentElement);
   const sizeLabel=el('label','Documented size (USD simulation units)'),sizeSelect=el('select',null,{id:'firm-size'});
   sizeLabel.append(sizeSelect);form.insertBefore(sizeLabel,fields.program.parentElement);
+  const variantLabel=el('label','Documented risk variant'),variantSelect=el('select',null,{id:'firm-variant'});
+  variantLabel.append(variantSelect);form.insertBefore(variantLabel,fields.program.parentElement);
   function selectedProgram(){return firms.find(f=>f.id===firmSelect.value)?.account_types?.[Number(programSelect.value)];}
   function updateProgram(){
     const program=selectedProgram();if(!program)return;
-    fields.program.value=[program.name,stageSelect.value,sizeSelect.value].filter(Boolean).join(' / ');
+    fields.program.value=[program.name,stageSelect.value,sizeSelect.value,variantSelect.value].filter(Boolean).join(' / ');
     const stage=stageSelect.value.toLowerCase();fields.environment.value=stage.includes('eval')||stage==='qualification'?'evaluation':stage.includes('live')&&!stage.includes('sim')?'funded':'simulated';
   }
-  function updateStages(){const program=selectedProgram();stageSelect.replaceChildren();sizeSelect.replaceChildren();if(!program)return;
-    for(const stage of program.stages||[])stageSelect.append(el('option',stage,{value:stage}));
+  function updateStages(){const program=selectedProgram();stageSelect.replaceChildren();sizeSelect.replaceChildren();variantSelect.replaceChildren();if(!program)return;
+    variantSelect.append(el('option','Variant / exact agreement not assigned',{value:''}));
+    for(const [index,variant] of (program.variants||[]).entries())variantSelect.append(el('option',variant,{value:'variant #'+(index+1)}));
+    const choices=program.funded_choices||program.funding_choices||[];
+    for(const stage of program.stages||[]){
+      const options=choices.length&&['Funded','Sim Funded'].includes(stage)?choices:[stage];
+      for(const option of options)stageSelect.append(el('option',option,{value:option}));
+    }
     sizeSelect.append(el('option','Size / agreement not assigned',{value:''}));
-    for(const size of program.documented_sizes_usd||[])sizeSelect.append(el('option',Number(size).toLocaleString('en-US'),{value:String(size)}));
+    for(const size of [...new Set([...(program.documented_sizes_usd||[]),...(program.funded_progression_sizes_usd||[])])])sizeSelect.append(el('option',Number(size).toLocaleString('en-US'),{value:String(size)}));
     updateProgram();
   }
   function updateFirm(){const firm=firms.find(f=>f.id===firmSelect.value);programSelect.replaceChildren();if(!firm)return;
@@ -79,14 +87,14 @@
     updateStages();
   }
   firmSelect.addEventListener('change',updateFirm);programSelect.addEventListener('change',updateStages);
-  stageSelect.addEventListener('change',updateProgram);sizeSelect.addEventListener('change',updateProgram);
+  stageSelect.addEventListener('change',updateProgram);sizeSelect.addEventListener('change',updateProgram);variantSelect.addEventListener('change',updateProgram);
   async function loadCatalog(){try{
     const catalog=await IcarusPaperPnl.fetchJson('/api/prop-firm-catalog');firms=Array.isArray(catalog.firms)?catalog.firms:[];
     firmSelect.replaceChildren(el('option','Choose a researched firm',{value:''}));
     for(const firm of firms)firmSelect.append(el('option',firm.name,{value:firm.id}));
     const overview=el('section',null,{'aria-label':'Eight researched prop firms'});overview.append(el('h2','Eight prop firm integrations · no local software charge'),el('p','Local account records are free. Evaluations, funded access, exchange data and APIs can cost money. No external account is connected and no purchases are made. TopstepX is deferred.'));
     for(const firm of firms){const card=el('details');card.append(el('summary',firm.name+' · '+firm.account_types.length+' documented account types'),el('p',(firm.confirmed_restrictions||[]).join(' ')));
-      const types=el('ul');for(const type of firm.account_types)types.append(el('li',type.name+' — '+type.stages.join(' → ')+(type.documented_sizes_usd?.length?' · USD '+type.documented_sizes_usd.join(', '):' · sizes require exact agreement')));card.append(types);
+      const types=el('ul');for(const type of firm.account_types)types.append(el('li',type.name+' — '+type.stages.join(' → ')+((type.funded_choices||type.funding_choices)?.length?' · alternative funding choices: '+(type.funded_choices||type.funding_choices).join(' OR '):'')+(type.documented_sizes_usd?.length?' · '+(type.size_scope==='EVALUATION_ENTRY'?'Evaluation entry ':'')+'USD '+type.documented_sizes_usd.join(', '):' · sizes require exact agreement')+(type.funded_progression_sizes_usd?.length?' · Funded progression sizes USD '+type.funded_progression_sizes_usd.join(', '):'')+(type.variants?.length?' · Risk variants: '+type.variants.join(' OR '):'')));card.append(types);
       card.append(el('p','Complete FAQ coverage and account-specific compliance remain unverified. All new intents are blocked.'));
       for(const source of firm.source_review||[]){try{const url=new URL(source.url);if(url.protocol==='https:')card.append(el('a','Official source ↗ ',{href:url.href,target:'_blank',rel:'noopener noreferrer'}));}catch{}}
       overview.append(card);
@@ -132,8 +140,8 @@
       }
       rules.replaceChildren(el('h2', 'Official rule coverage and blockers'));
       for (const policy of snapshot.rules || []) {
-        const card = el('article');
-        card.append(el('h3', `${policy.firm} / ${policy.program}: ${policy.status}`), el('p', policy.explanation));
+        const card = el('details');
+        card.append(el('summary', `${policy.firm} / ${policy.program}: ${policy.status}`), el('p', policy.explanation));
         const blockers = el('ul');
         for (const clause of [...(policy.unknown_clauses || []), ...(policy.unsupported_clauses || [])]) blockers.append(el('li', clause));
         card.append(blockers);

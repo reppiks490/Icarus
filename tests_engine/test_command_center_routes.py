@@ -370,6 +370,8 @@ const payloads=JSON.parse(process.argv[3]);let browser;
   await page.waitForFunction(()=>document.querySelector('#all-total').textContent.includes('110.00'));
   assert.match(await page.locator('#all-realized').textContent(),/100.00/);
   assert.match(await page.locator('#all-open').textContent(),/10.00/);
+  await page.waitForFunction(()=>document.querySelector('#corpus-sources').textContent.includes('all ten warmed in all four workspaces'));
+  assert.match(await page.locator('#corpus-sources').textContent(),/Missing archived micros: MNG, MHG, M6E, MJY, M6B, M6A/);
  }
  // Browser time moves, the provider remains untouched, and cached totals expire.
  await page.clock.install({time:new Date(payloads.cc4.paper_pnl.as_of_ts*1000)});
@@ -386,18 +388,29 @@ const payloads=JSON.parse(process.argv[3]);let browser;
   assert.equal(await page.locator('select[name="platform"]').inputValue(),'manual_inventory');
   assert.ok(await page.locator('#firm-program option').count()>0);
   assert.ok(await page.locator('#firm-stage option').count()>0);
+  if(id==='bulenox'){assert.ok(await page.locator('#firm-variant option').count()>1);await page.locator('#firm-variant').selectOption('variant #1');assert.match(await page.locator('input[name="program"]').inputValue(),/variant #1/);}
   await page.locator('input[name="id"]').fill('local_'+index);
   await page.locator('input[name="owner_token"]').fill('owner-test');
   await page.getByRole('button',{name:'Save account configuration'}).click();
-  await page.waitForFunction(()=>document.querySelector('main#connections [role="status"]').textContent.includes('INVENTORY_ONLY'));
+  await page.waitForFunction(id=>document.querySelector('main#connections [role="status"]').textContent.includes('Saved '+id+': INVENTORY_ONLY'),'local_'+index);
  }
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.deepEqual(errors,[]);
- await page.screenshot({path:'/workspace/scratch/four-workspace-connections-mobile.png',fullPage:true});
+ await page.evaluate(()=>scrollTo(0,0));
+ await page.screenshot({path:'/workspace/scratch/four-workspace-connections-mobile.png'});
  await browser.close();
 })().catch(async e=>{console.error(e);await browser?.close();process.exitCode=1;});
 '''
     result = subprocess.run([node,'-e',script,f'http://127.0.0.1:{srv.server_port}',chromium,json.dumps(payloads)],
         capture_output=True,text=True,timeout=65)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_expansion_receipt_api_is_pinned_metadata_and_ignores_user_path(engine, monkeypatch):
+    called = Mock(return_value={"status":"HISTORICAL_EXPANSION_CONSUMPTION_VERIFIED","execution_authorized":False})
+    monkeypatch.setitem(sys.modules,"icarus_engine.corpus_expansion",types.SimpleNamespace(snapshot=called))
+    code, result = engine[1]("/api/corpus-expansion?path=/etc/passwd&now_ns=1")
+    assert code == 200
+    assert result["status"] == "HISTORICAL_EXPANSION_CONSUMPTION_VERIFIED"
+    called.assert_called_once_with()

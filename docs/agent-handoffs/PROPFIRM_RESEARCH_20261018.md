@@ -1,27 +1,27 @@
 # Eight-firm integration research — 2026-10-18
 
-Implementation: free local account inventory for eight firms;42 documented program families and their stages, including legacy records. TopstepX remains a later configuration. This is not proof of free evaluation accounts, exchange data or remote API access. No external account connection, purchases or order routing were performed.
+Implementation: free local account inventory for eight firms;46 documented current/legacy program families with account stages, risk variants and alternative funding paths. TopstepX remains a later configuration. This is not proof of free evaluations, exchange data or remote API access. No external account connection, purchase or order routing was performed.
 
-Source qualification: official current and legacy pages were retrieved using ordinary HTTPS without paid research tools. Every catalog source retains its URL, retrieval time and exact HTML SHA256. Marketing availability, account purchase date, customization and signed agreements can change rules. Full FAQ coverage remains false; every catalog policy blocks new intents. Unknown clauses never grant permission.
+Source qualification: 74 official source witnesses were retrieved with ordinary HTTPS without paid research tools. Each retains its URL, exact retrieval time and HTML SHA256. Marketing availability, purchase date, customization, jurisdiction and signed agreements can change the rules. Full FAQ coverage remains false; all catalog new intents remain blocked. Unknown clauses never grant permission.
 
 ## Material restrictions
 
-- Apex: official no-automation/no-algorithm rule. Monitoring/inventory only. Current and legacy rule sets cannot be converted. Conflicting legacy purchase eligibility remains unresolved.
-- Take Profit Trader: PRO bots/algorithms prohibited. PRO/PRO+ news windows are program-specific.
-- Bulenox: official FAQ states an additionalUSD100/month for Rithmic third-party API/composite software; no subscription enabled. Personal-tool restrictions apply.
-- Goat: Instant Lite and Daily Payouts prohibit bots; other plans have conditional permissions. No generic permission across plans.
-- Tradeify: ownership/exclusivity and non-HFT requirements apply to algorithms; no verified free API transport.
-- TopstepX: deferred; official API subscription is paid and remote-server order transmission is prohibited. Only fixed read-only authentication/account methods have been coded/mock-tested.
+- Apex prohibits automation/algorithm usage. Current and legacy programs cannot be silently converted; conflicting legacy purchase eligibility remains unresolved.
+- Take Profit Trader PRO prohibits bots/algorithms. PRO/PRO+ have specific news windows.
+- Bulenox official FAQ states an additionalUSD100/month for Rithmic third-party API/composite software. No subscription enabled; personal-tool restrictions apply.
+- Goat Instant Lite and Daily Payouts prohibit bots. Permissions for the four other named plans cannot be generalized to Live accounts.
+- Tradeify requires algorithm ownership/exclusivity and prohibits HFT; this establishes no free API transport. Select Flex/Daily are alternative permanent choices. Level Up is a simulated reward ladder, not a verified live brokerage account.
+- TopstepX is deferred. The official API subscription is paid and remote-server order transmission is prohibited. Fixed read-only authentication/account methods are coded/mock-tested only.
 
 ## Documented configurable account types
 
 ### Apex Trader Funding
 
-| Program | Stages | Documented sizes (USD) |
+| Program | Stages / alternative paths | Documented sizes (USD) |
 |---|---|---|
 | EOD Trailing Drawdown | Evaluation → Performance Account (PA) | 25000, 50000, 100000, 150000 |
 | Intraday Trailing Drawdown | Evaluation → Performance Account (PA) | 25000, 50000, 100000, 150000 |
-| Legacy Evaluation / Performance | Legacy Evaluation → Legacy Performance Account | Exact agreement required |
+| Legacy Evaluation / Performance | Legacy Evaluation → Legacy Performance Account | 25000, 50000, 100000, 150000, 250000, 300000 |
 
 Restrictions: No automation or algorithm usage allowed. Legacy and current programs have distinct rules and cannot be silently converted. Official legacy FAQ says purchases retired March1,2026; conflicting marketing eligibility is unresolved.
 
@@ -31,18 +31,22 @@ Restrictions: No automation or algorithm usage allowed. Legacy and current progr
 - https://apextraderfunding.com/help-center/evaluation-accounts-ea/intraday-trailing-drawdown-evaluations/ — retrieved`2026-10-18T15:14:50.384011+00:00`, HTML SHA256`0f9aaee415292064ba44b3143e7244994774f1d6521185a0b9c9fef98d8e2831`.
 - https://apextraderfunding.com/help-center/intraday-trailing-drawdown-accounts/intraday-trailing-drawdown-performance-accounts-pa/ — retrieved`2026-10-18T15:14:50.421950+00:00`, HTML SHA256`d812aba364d04a66023ad9d64d84d4aba51e8a9e6d600a57e278d061dcd25eb3`.
 - https://apextraderfunding.com/help-center/legacy-products/legacy-products-overview/ — retrieved`2026-10-18T15:14:50.717059+00:00`, HTML SHA256`56fdfd68b2f123b41ee47b7941ccc62a9247d96b38795041114e43e15ab363ee`.
+- https://apextraderfunding.com/legacy-products — retrieved`2026-10-18T15:15:18.127997+00:00`, HTML SHA256`fa6f3c87dea551c22ac3803a2a537859395c53cdda197aed9021416135cf7d7d`.
 
 ### Lucid Trading
 
-| Program | Stages | Documented sizes (USD) |
+| Program | Stages / alternative paths | Documented sizes (USD) |
 |---|---|---|
-| LucidPro | Evaluation → Sim Funded → Legacy Live | 25000, 50000, 100000, 150000 |
-| LucidFlex | Evaluation → Sim Funded → Legacy Live | 25000, 50000, 100000, 150000 |
-| LucidDirect | Sim Funded → Legacy Live | 25000, 50000, 100000, 150000 |
+| LucidPro | Evaluation → Sim Funded → Live | 25000, 50000, 100000, 150000 |
+| LucidFlex | Evaluation → Sim Funded → Live | 25000, 50000, 100000, 150000 |
+| LucidDirect | Sim Funded → Live | 25000, 50000, 100000, 150000 |
 | LucidDaily | Evaluation → Sim Funded → Live | 25000, 50000, 100000, 150000 |
-| LucidMaxx (new) | Evaluation → Pre-Live → Live | Exact agreement required |
-| LucidMaxx (legacy) | Legacy Evaluation → Legacy Live | Exact agreement required |
+| LucidMaxx (new) | Evaluation → Pre-Live → Live | 25000, 50000, 100000, 150000 |
+| LucidMaxx (legacy) | Legacy Evaluation → Legacy Live | 25000, 50000, 100000, 150000 |
 | LucidBlack (legacy) | Legacy Evaluation → Legacy Sim Funded → Legacy Live | 25000, 50000, 100000 |
+| LucidPro Legacy Live | Legacy Live | 25000, 50000, 100000, 150000 |
+| LucidFlex Legacy Live | Legacy Live | 25000, 50000, 100000, 150000 |
+| LucidDirect Legacy Live | Legacy Live | 25000, 50000, 150000 |
 
 Restrictions: High frequency trading, microscalping and prohibited hedging restrictions apply. New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules.
 
@@ -68,14 +72,16 @@ Restrictions: High frequency trading, microscalping and prohibited hedging restr
 - https://support.lucidtrading.com/en/articles/13424900-lucidblack-consistency-percentage — retrieved`2026-10-18T15:14:53.613564+00:00`, HTML SHA256`0ff50937464580d24a3c28ec4c6863dad7e35886ce2da8499e46bdb2eb182293`.
 - https://support.lucidtrading.com/en/articles/13424897-lucidblack-payout-objectives — retrieved`2026-10-18T15:14:53.322263+00:00`, HTML SHA256`bc420bd87a36a1bfd2ffae6dd776695a417e01d7e2fbef8a3ad92cd99f3d5c0c`.
 - https://support.lucidtrading.com/en/articles/13424906-lucidblack-drawdown — retrieved`2026-10-18T15:14:53.500302+00:00`, HTML SHA256`7b057581ee9f5c5d2c4c745281d33e5324393838d20474da0c596f43157295f8`.
+- https://support.lucidtrading.com/en/articles/16558826-new-live-structure — retrieved`2026-10-18T15:16:08.451304+00:00`, HTML SHA256`5861459782de96e903a93b95e906665198abddc7b44f674ffc48534e584242ea`.
+- https://support.lucidtrading.com/en/articles/14315460-legacy-lucidmaxx-eval-rules — retrieved`2026-10-18T15:14:54.009938+00:00`, HTML SHA256`aaa56e4b956f29a1dd26ef8c2fd48eb2f514d0ff22c5b8349c381c78b08aa30f`.
 
 ### My Funded Futures
 
-| Program | Stages | Documented sizes (USD) |
+| Program | Stages / alternative paths | Documented sizes (USD) |
 |---|---|---|
 | Pro | Evaluation → Sim Funded → Live | 50000, 100000, 150000 |
 | Pro 50K One Day | Evaluation → Sim Funded → Live | 50000 |
-| Builder | Evaluation → Sim Funded → Live | 25000, 50000, 100000, 150000 |
+| Builder | Evaluation → Sim Funded → Live; risk variants: Default risk rules OR 50K add-on requires exact agreement | 25000, 50000, 100000, 150000 |
 | Rapid | Evaluation → Sim Funded → Live | 25000, 50000, 100000, 150000 |
 | Rapid EOD | Evaluation → Sim Funded → Live | 25000, 50000 |
 | Studio #001 | Evaluation → Sim Funded → Live | 10000 |
@@ -105,31 +111,34 @@ Restrictions: Studio #003 effective October14,2026; allocation availability is l
 
 ### Goat Funded Futures
 
-| Program | Stages | Documented sizes (USD) |
+| Program | Stages / alternative paths | Documented sizes (USD) |
 |---|---|---|
 | EOD | Evaluation → Funded | 50000, 100000, 150000 |
 | 1 Day Pass | Evaluation → Funded | 25000, 50000, 100000 |
 | Instant Classic | Instant Funded | 25000, 50000, 100000, 150000 |
 | Flex | Evaluation → Funded | 50000, 100000, 150000 |
 | Instant Lite | Instant Funded | 25000, 50000, 100000 |
-| Daily Payouts | Instant Funded | 25000, 50000, 100000, 150000 |
+| Daily Payouts | Evaluation → Sim Funded | 25000, 50000, 100000, 150000 |
+| Path to Live | Live | 50000, 100000, 150000 |
 
-Restrictions: Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.
+Restrictions: Instant Lite and Daily Payouts prohibit bots. EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport.
 
 - https://help.goatfundedfutures.com/plans.html — retrieved`2026-10-18T15:14:39.093263+00:00`, HTML SHA256`29014a06e822546122c6d95dcf3776d4b0c7a73439b0d1d075682b46128bdf0b`.
 - https://help.goatfundedfutures.com/trading-rules.html — retrieved`2026-10-18T15:14:39.144623+00:00`, HTML SHA256`ddaf5623c46201eacf75dcb11383e079a37d0bb4cf7d9bac7c7b96cb6af6102a`.
+- https://help.goatfundedfutures.com/daily-payouts.html — retrieved`2026-10-18T15:15:18.333019+00:00`, HTML SHA256`7ad62d397b0f32bafffb6b27a0b79ae9df6c59bc1b94d5a7a9231a5d052c4282`.
+- https://help.goatfundedfutures.com/path-to-live.html — retrieved`2026-10-18T15:15:18.309319+00:00`, HTML SHA256`d56e0c74e96d030cd32ea3982c3c5a68577ad3ba333d180e860d2645a57a2fdc`.
 
 ### Tradeify
 
-| Program | Stages | Documented sizes (USD) |
+| Program | Stages / alternative paths | Documented sizes (USD) |
 |---|---|---|
-| Select | Evaluation → Select Flex Sim Funded → Select Daily Sim Funded | 25000, 50000, 100000, 150000, 300000 |
+| Select | Evaluation → Sim Funded; funding choice: Select Flex OR Select Daily; risk variants: 40% consistency default OR 50% consistency add-on OR 300K limited release has separate terms | 25000, 50000, 100000, 150000, 300000 |
 | Growth | Evaluation → Sim Funded | 25000, 50000, 100000, 150000 |
 | Lightning | Instant Sim Funded | 25000, 50000, 100000, 150000 |
 | Elite | Live | Exact agreement required |
 | Legacy Live | Legacy Live | Exact agreement required |
-| Level Up v1 | Legacy Live | Exact agreement required |
-| Level Up v2 | Live | Exact agreement required |
+| Level Up v1 | Simulated Ladder Levels 1–10 | 50000 |
+| Level Up v2 | Simulated Ladder Levels 1–10 | Exact agreement required |
 
 Restrictions: Only owned-exclusive, unshared non-HFT algorithms may be permitted, with proof of ownership. Evaluation drawdown, DLL, funded payout choice, purchase date and limited-release terms must not be mixed.
 
@@ -146,7 +155,7 @@ Restrictions: Only owned-exclusive, unshared non-HFT algorithms may be permitted
 
 ### Take Profit Trader
 
-| Program | Stages | Documented sizes (USD) |
+| Program | Stages / alternative paths | Documented sizes (USD) |
 |---|---|---|
 | Test | Evaluation | 25000, 50000, 75000, 100000, 150000 |
 | PRO | Sim Funded | 25000, 50000, 75000, 100000, 150000 |
@@ -161,10 +170,10 @@ Restrictions: PRO prohibits trading bots/algorithms; trades must be manually exe
 
 ### Earn2Trade
 
-| Program | Stages | Documented sizes (USD) |
+| Program | Stages / alternative paths | Documented sizes (USD) |
 |---|---|---|
-| Trader Career Path | Evaluation → LiveSim → Live | 25000, 50000, 100000 |
-| Gauntlet Mini | Evaluation → LiveSim → Live | 50000, 100000, 150000, 200000 |
+| Trader Career Path | Evaluation → Funded; funding choice: LiveSim OR Live | Evaluation entry: 25000, 50000, 100000; funded progression: 25000, 50000, 100000, 200000 |
+| Gauntlet Mini | Evaluation → Funded; funding choice: LiveSim OR Live | Evaluation entry: 50000, 100000, 150000, 200000 |
 
 Restrictions: Current official main pages state no minimum trading days; older10/15-day summaries are not authoritative. Progression-ladder total exposure is enforced in real time; only specified micros get the documented10:1 treatment. Funded partner, exchange-data and account costs require exact funding agreements.
 
@@ -175,11 +184,11 @@ Restrictions: Current official main pages state no minimum trading days; older10
 
 ### Bulenox
 
-| Program | Stages | Documented sizes (USD) |
+| Program | Stages / alternative paths | Documented sizes (USD) |
 |---|---|---|
-| Qualification | Qualification → Master → Funded | 25000, 50000, 100000, 150000 |
-| Fast Track | Instant simulated live → Funded review | 25000, 50000, 100000, 150000 |
-| Momentum | Qualification → Momentum Master | 25000, 50000, 100000, 150000 |
+| Qualification | Qualification → Master → Funded; risk variants: Option1 intraday trailing OR Option2 EOD + scaling + DLL | 25000, 50000, 100000, 150000 |
+| Fast Track | Instant simulated live → Funded review; risk variants: Option1 trailing OR Option2 EOD + no scaling;25K no DLL exception | 25000, 50000, 100000, 150000 |
+| Momentum | Qualification → Momentum Master; risk variants: Option1 trailing OR Option2 EOD + no scaling | 25000, 50000, 100000, 150000 |
 
 Restrictions: Rithmic third-party API or composite software costs an additionalUSD100/month according to official FAQ. Only personally built tools solely for personal use are permitted; commercial/shared/rented/public automation is prohibited. No API subscription is enabled; local inventory is free.
 
@@ -192,10 +201,12 @@ Restrictions: Rithmic third-party API or composite software costs an additionalU
 
 ## Enforcement and limits
 
-The connection manager supports encrypted owner-entry or approved environment references only for coded adapters. Free firm records use `manual_inventory`, cannot take credentials, make no remote request, retain no balance/P&L readback, and return `INVENTORY_ONLY`, never `CONNECTED_READ_ONLY`. The public firm-catalog endpoint contains official-source metadata only; private account inventory and mutations retain authentication gates. All documented programs/stages are selectable alongside custom exact-agreement records.
+Free firm records use `manual_inventory`: no credentials, no remote request, no balance or P&L readback, and status`INVENTORY_ONLY`, never`CONNECTED_READ_ONLY`. The public catalog exposes source metadata only; private inventory/mutations retain authentication. Documented program/stage/size/risk variants and alternative funding choices are selectable; custom exact-agreement records remain available. Nominal firm sizes are program tiers, not cash balances.
 
-Policy preflight supports generic explicitly verified loss/drawdown, weighted contract, session/news and consistency constraints, but none of these firm profiles has complete account-specific FAQ coverage. All firm new intents therefore remain blocked. No code in this manager sends an order. Broker statement P&L remains unavailable until independently verified account/fill/fee evidence exists.
+The generic policy preflight supports explicit verified loss/drawdown, weighted-contract, session/news and consistency constraints. None of these firm profiles has complete account-specific FAQ coverage, so all firm new intents remain blocked. This manager sends no order. Brokerage P&L remains unavailable without independently verified account/fill/fee evidence.
 
-TEST_ORACLE_ORIGIN: official fixed API contracts, independently reproduced credential-rotation defect, four persisted simulation journals and adversarial source/clock/identity cases. ORACLE_INDEPENDENCE_STATUS: PARTIALLY_INDEPENDENT. Negative controls include missing credentials, account identity mismatch, interrupted credential rotation, stale/mixed-currency/duplicate ledgers, absent mark evidence and zero-network inventory records. Real account integration is unverified because approved broker credentials are absent.
+TEST_ORACLE_ORIGIN: official fixed API contracts, independently reproduced credential-rotation defect, four persisted simulation journals and adversarial source/clock/identity cases. ORACLE_INDEPENDENCE_STATUS: PARTIALLY_INDEPENDENT. Negative controls cover missing/rotated credentials, identity mismatch, interrupted credential writes, stale/mixed-currency/duplicate ledgers, missing marks, false-connected fields and zero-network inventory records. Actual account connection is unverified; the canonical credential-health run39096842728 reported no broker credentials.
 
-Rollback: revert the isolated review branch. No main deployment, schedule, provider budget or live authority changed.
+Independent source review corrected instant/evaluation stages, current/legacy live paths, simulated reward ladders, entry/funded sizes and mutually exclusive funding paths. All source witnesses were compared with cached exact bytes. No full-FAQ or enrollment certification follows from these bounded source checks.
+
+Rollback: revert the isolated review branch. No production deployment, schedule, provider budget, subscription or live authority changed.

@@ -143,11 +143,12 @@ def _reads(values, datasets, report):
         _require(value["consumer_id"] in ("history_intake", *("paper:" + wid for wid in _IDS)))
         _require(value["requested_interval_seconds"] in (300, 86400))
         start = _int(value["requested_start_ts"])
-        _int(value["requested_end_ts"], start, report["asof_ns"] // 10**9)
+        end = _int(value["requested_end_ts"], start, report["asof_ns"] // 10**9)
         count = _int(value["row_count"], 0, dataset["retained_rows"])
         if count:
             _int(value["first_ts"], dataset["first_ts"], dataset["last_ts"])
             _int(value["last_ts"], value["first_ts"], dataset["last_ts"])
+            _require(start <= value["first_ts"] <= value["last_ts"] < end)
             if value["method"] == "candles" and value["requested_interval_seconds"] == 300:
                 _require(count == dataset["retained_rows"] and value["first_ts"] == dataset["first_ts"]
                          and value["last_ts"] == dataset["last_ts"])

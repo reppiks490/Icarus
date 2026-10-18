@@ -29,6 +29,7 @@ vm.runInContext(fs.readFileSync(path+'/paper-pnl-ui.js','utf8'),context);
 vm.runInContext(fs.readFileSync(path+'/command-centers-ui.js','utf8'),context);
 context.payload=data;
 assert.equal(vm.runInContext('IcarusPaperPnl.read(payload).aggregate.total_pnl',context),110);
+for(const badClock of [NaN,Infinity,-Infinity,-1]){context.badClock=badClock;assert.equal(vm.runInContext('IcarusPaperPnl.read(payload,badClock)',context),null);}
 vm.runInContext('paperWorkspaces=payload;paperSetHeader(payload);',context);
 assert.match(elements.get('#combinedPaperPnl').textContent,/110.00/);
 const copy=()=>JSON.parse(JSON.stringify(data));
@@ -52,3 +53,18 @@ for(const mutate of [p=>p.profiles[0].id='cc2',p=>p.profiles[0].currency='EUR',p
         str(Path(__file__).resolve().parents[1] / 'icarus_engine'), json.dumps(data)],
         capture_output=True, text=True, timeout=15)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.skipif(shutil.which('node') is None, reason='optional Node unavailable')
+def test_browser_matches_python_cancellation_of_large_safe_ledger_values():
+    now = int(time.time())
+    values = [2**53 - 1, 2, -(2**53 - 1), 1]
+    contract = validate_paper_pnl([dict(id=f'cc{i}',currency='USD',runtime_available=True,snapshot_ts=now,
+        realized_pnl=value,open_pnl=0,open_positions=0,oldest_open_mark_ts=None)
+        for i,value in enumerate(values,1)],as_of_ts=now)
+    assert contract['aggregate']['total_pnl'] == 3
+    script = "const fs=require('node:fs');eval(fs.readFileSync(process.argv[1],'utf8'));const p=IcarusPaperPnl.read(JSON.parse(process.argv[2]));require('node:assert/strict').equal(p?.aggregate.total_pnl,3);"
+    result = subprocess.run([shutil.which('node'),'-e',script,
+        str(Path(__file__).resolve().parents[1]/'icarus_engine/paper-pnl-ui.js'),
+        json.dumps(dict(mode='concurrent_paper',paper_pnl=contract))],capture_output=True,text=True)
+    assert result.returncode == 0, result.stderr

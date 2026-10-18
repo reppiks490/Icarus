@@ -55,7 +55,7 @@
     $('#config-chart-type').value=chart.chart_type||'heikin_ashi'; $('#config-fill').value=chart.fill_on||'real';
     $('#config-fields').replaceChildren();
     const selection=$('#workspace-assets');selection.replaceChildren();
-    for(const asset of data.available_assets||[]){const label=node('label'),check=document.createElement('input');check.type='checkbox';check.dataset.asset=asset.symbol;check.checked=(profile.assets||[]).includes(asset.symbol);check.disabled=asset.selectable!==true;label.append(check,node('span',`${asset.symbol} · ${asset.name||''} · ${asset.selectable?'Selectable paper runtime':'Not admitted'} · ${asset.data_access_note||'Data access unverified'}`));selection.append(label);}
+    for(const asset of data.available_assets||[]){const label=node('label'),check=document.createElement('input');check.type='checkbox';check.dataset.asset=asset.symbol;check.checked=(profile.assets||[]).includes(asset.symbol);check.disabled=asset.selectable!==true;label.append(check,node('span',`${asset.symbol} · ${asset.name||''} · ${asset.requested_expansion?'Added futures family / micro · ':''}${asset.selectable?'Selectable paper runtime':'Not admitted'} · ${asset.data_access_note||'Data access unverified'}`));selection.append(label);}
     const values={...(profile.effective_inputs||{}),...(profile.inputs||{})};
     for(const meta of data.input_meta||[]) {
       const label=node('label',meta.label||meta.name,'field'); const field=document.createElement(Array.isArray(meta.options)?'select':'input'); field.dataset.input=meta.name;field.dataset.kind=meta.kind;
@@ -95,7 +95,20 @@
       text('#chart-note',`${symbol} · ${bars.length} observed bars · ${new Date(bars[0][0]*1000).toISOString()} — ${new Date(bars.at(-1)[0]*1000).toISOString()} · selected workspace chart closes`);
     }catch(error){if(current===chartSequence)text('#chart-note',`Chart unavailable: ${error.message}`);}
   }
-  async function loadCorpus(){const target=$('#corpus-sources');try{const evidence=await get('/api/corpus-consumption');target.replaceChildren(node('p',evidence.status,'note'));for(const corpus of evidence.corpora||[]){const item=node('article',null,'source');item.append(node('h3',corpus.cache_name));item.append(node('p',`${corpus.dataset_count} datasets · ${corpus.retained_rows} retained rows · Historical: ${corpus.historical===true?'yes':'unknown'}`));item.append(node('p',`Latest closed source bar: ${Number.isFinite(corpus.latest_bar_closed_ts)?new Date(corpus.latest_bar_closed_ts*1000).toISOString():'unknown'} · source age ${Number.isFinite(corpus.age_seconds)?Math.floor(corpus.age_seconds/86400)+' days':'unknown'}`));item.append(node('p',`Native run ${corpus.run_id} · artifact ${corpus.artifact_id}`));const details=node('details');details.append(node('summary','Receipt and workspace consumption'));details.append(node('pre',JSON.stringify({receipt_sha256:corpus.receipt_sha256,paper_warmup_used:corpus.paper_warmup_used,workspace:corpus.workspaces?.find?.(row=>row.id===id)||corpus.workspaces?.[id]},null,2)));item.append(details);target.append(item);}}catch(error){target.replaceChildren(node('p',`Corpus evidence unavailable: ${error.message}`,'error'));}}
+  async function loadCorpus(){const target=$('#corpus-sources');try{const evidence=await get('/api/corpus-consumption');target.replaceChildren(node('p',evidence.status,'note'));for(const corpus of evidence.corpora||[]){const item=node('article',null,'source');item.append(node('h3',corpus.cache_name));item.append(node('p',`${corpus.dataset_count} datasets · ${corpus.retained_rows} retained rows · Historical: ${corpus.historical===true?'yes':'unknown'}`));item.append(node('p',`Latest closed source bar: ${Number.isFinite(corpus.latest_bar_closed_ts)?new Date(corpus.latest_bar_closed_ts*1000).toISOString():'unknown'} · source age ${Number.isFinite(corpus.age_seconds)?Math.floor(corpus.age_seconds/86400)+' days':'unknown'}`));item.append(node('p',`Native run ${corpus.run_id} · artifact ${corpus.artifact_id}`));const details=node('details');details.append(node('summary','Receipt and workspace consumption'));details.append(node('pre',JSON.stringify({receipt_sha256:corpus.receipt_sha256,paper_warmup_used:corpus.paper_warmup_used,workspace:corpus.workspaces?.find?.(row=>row.id===id)||corpus.workspaces?.[id]},null,2)));item.append(details);target.append(item);}}catch(error){target.replaceChildren(node('p',`Corpus evidence unavailable: ${error.message}`,'error'));} await loadExpansion(target);}
+  async function loadExpansion(target){
+    try{
+      const proof=await get('/api/corpus-expansion'),item=node('article',null,'source');
+      item.append(node('h3','Ten added futures families · archived consumption'));
+      if(proof.status!=='HISTORICAL_EXPANSION_CONSUMPTION_VERIFIED'){item.append(node('p','Verified expansion evidence unavailable.'));target.append(item);return;}
+      const expansion=proof.requested_futures_expansion;
+      item.append(node('p',`${expansion.full_roots.join(', ')} · ${expansion.all_full_families_warmed?'all ten warmed in all four workspaces':'coverage incomplete'}`));
+      item.append(node('p',`Exact available micros: ${expansion.available_symbols.filter(root=>expansion.micro_roots.includes(root)).join(', ')||'None'}. Missing archived micros: ${expansion.unavailable_symbols.join(', ')||'None'}. No full-size series was substituted.`));
+      item.append(node('p',`${id.toUpperCase()}: ${(expansion.warmed_symbols_by_workspace[id]||[]).join(', ')}. Historical warmup only; fresh feed rights and profitability are unverified.`));
+      item.append(node('p',`Native run ${proof.run_id} · artifact ${proof.artifact_id} · receipt SHA256 ${proof.receipt_sha256}`));
+      target.append(item);
+    }catch{target.append(node('p','Expansion consumption proof unavailable.','error'));}
+  }
   function clearAccounting(){
     for(const selector of ['#all-realized','#all-open','#all-total','#own-realized','#own-open'])text(selector,'Unavailable');
     $('#asset-rows').replaceChildren();

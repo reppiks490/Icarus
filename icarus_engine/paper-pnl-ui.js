@@ -3,11 +3,21 @@
 globalThis.IcarusPaperPnl = (() => {
   const ids = ['cc1', 'cc2', 'cc3', 'cc4'];
   const amount = x => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= Number.MAX_SAFE_INTEGER;
-  const sum = values => values.every(amount) ? values.reduce((a, b) => a + b, 0) : null;
+  const sum = values => {
+    if (!values.every(amount)) return null;
+    let total=0, correction=0;
+    for (const value of values) {
+      const next=total+value;
+      correction += Math.abs(total)>=Math.abs(value) ? (total-next)+value : (value-next)+total;
+      total=next;
+    }
+    const result=total+correction;
+    return amount(result) ? result : null;
+  };
   const same = (a, b) => a === b || (amount(a) && amount(b) && Math.abs(a - b) <= 1e-6);
   function read(data, now = Date.now() / 1000) {
     const p = data?.paper_pnl;
-    if (data?.mode !== 'concurrent_paper' || p?.schema_version !== 'icarus.paper-pnl.v1' || p.paper_only !== true || p.execution_authorized !== false ||
+    if (!Number.isFinite(now) || now < 0 || data?.mode !== 'concurrent_paper' || p?.schema_version !== 'icarus.paper-pnl.v1' || p.paper_only !== true || p.execution_authorized !== false ||
         !Number.isSafeInteger(p.as_of_ts) || p.as_of_ts < 0 || p.as_of_ts > now || now - p.as_of_ts > 90 ||
         !Array.isArray(p.profiles) || p.profiles.length !== 4 ||
         new Set(p.profiles.map(row => row?.id)).size !== 4 ||

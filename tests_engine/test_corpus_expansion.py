@@ -187,3 +187,17 @@ def test_missing_micro_must_be_explicit_in_every_workspace(tmp_path, monkeypatch
 def test_unavailable_old_three_corpus_envelope_cannot_be_used_as_expansion(tmp_path):
     old=Path(__file__).parents[1]/'icarus_engine'/'corpus-consumption.json'
     unavailable(api().snapshot(now_ns=NOW,path=old))
+
+
+@pytest.mark.parametrize('kind',['empty_candles','start_after_first','ticker_end_at_last'])
+def test_positive_reads_must_fit_their_actual_request_window(tmp_path, monkeypatch, kind):
+    def mutate(report):
+        method = 'ticker' if kind == 'ticker_end_at_last' else 'candles'
+        read = next(row for row in report['read_receipts'] if row['method']==method and row['row_count']>0)
+        if kind == 'empty_candles':
+            read['requested_start_ts'] = read['requested_end_ts'] = 0
+        elif kind == 'start_after_first':
+            read['requested_start_ts'] = read['first_ts'] + 1
+        else:
+            read['requested_end_ts'] = read['last_ts']
+    unavailable(fault(tmp_path,monkeypatch,mutate))

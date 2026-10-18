@@ -285,6 +285,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 "aggregate": aggregate, "paper_pnl": accounting if valid else None,
                 "connections": state.get("connections", {}), "input_meta": meta,
                 "available_assets": state.get("available_assets", []),
+                "requested_futures": state.get("requested_futures", {}),
                 "accounting": {"complete": bool(complete), "basis": "isolated persisted paper journals and current open marks",
                                "fees_verified": False, "broker_reconciled": False, "reconciled_broker_pnl": None,
                                "limitations": ["Paper simulation; open marks may include warmup-origin positions",
@@ -1474,6 +1475,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not script.is_file():
                     return self._json(503, {"detail": "connections interface unavailable"})
                 return self._send(200, script.read_bytes(), "text/javascript")
+            if p.path == "/api/corpus-expansion":
+                try:
+                    from .corpus_expansion import snapshot as expansion_snapshot
+                    return self._json(200, expansion_snapshot())
+                except ImportError:
+                    return self._json(503, {"status": "UNAVAILABLE", "execution_authorized": False})
             if p.path == "/api/corpus-consumption":
                 try:
                     from .corpus_evidence import snapshot as corpus_snapshot
