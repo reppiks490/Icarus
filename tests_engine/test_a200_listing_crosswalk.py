@@ -1,4 +1,5 @@
 from copy import deepcopy
+from datetime import datetime, timezone
 import json
 
 import pytest
@@ -6,6 +7,18 @@ import pytest
 import icarus_engine.market_universe as market_universe
 from icarus_engine.market_universe import catalog_evidence_digest
 from tools.a200_listing_crosswalk import _identity_digest
+
+
+@pytest.fixture(autouse=True)
+def fixture_clock(monkeypatch):
+    """Keep listing evidence ages stable as the real calendar advances."""
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            current = cls(2026, 10, 16, 13, tzinfo=timezone.utc)
+            return current.astimezone(tz) if tz else current.replace(tzinfo=None)
+
+    monkeypatch.setattr(market_universe, "datetime", FixedDateTime)
 
 
 def _report():
