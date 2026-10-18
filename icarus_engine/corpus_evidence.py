@@ -89,14 +89,14 @@ def _bounded_file(path):
             os.close(fd)
 
 
-def _dataset(value, cache, report):
+def _dataset(value, cache, report, *, source_commit=_SOURCE_COMMIT):
     _keys(value, _DATASET_KEYS)
     _false(value, _AUTHORITY)
     _require(value["schema"] == "icarus.corpus-intake/1" and value["provider"] == "databento")
     _require(value["entitlement_status"] == "UNVERIFIED" and value["quality_status"] == "VALIDATED_NATIVE_BARS")
     _require(value["provenance_status"] == "MANIFEST_MATCH_CALLER_ATTESTED_REVISION")
     _require(value["availability_basis"] == "CALLER_ATTESTED_SOURCE_COMMIT_TIME")
-    _require(value["source_repo"] == _SOURCE and value["source_commit"] == _SOURCE_COMMIT)
+    _require(value["source_repo"] == _SOURCE and value["source_commit"] == source_commit)
     _require(value["cache_name"] == cache and value["native_interval_seconds"] == 300)
     for name in ("dataset_id", "source_sha256", "bars_sha256", "manifest_sha256"):
         _sha(value[name])
@@ -206,12 +206,14 @@ def _workspaces(values, datasets, positive):
     return sorted(projected, key=lambda row: row["id"])
 
 
-def _project(raw, cache, now_ns):
+def _project(raw, cache, now_ns, *, source_commit=_SOURCE_COMMIT,
+             consumer_commit=_CONSUMER_COMMIT, additional_top=()):
+    """Project one receipt; alternate pins are explicit trusted caller arguments."""
     report = _load_json(raw)
-    _keys(report, _TOP)
+    _keys(report, _TOP | set(additional_top))
     _false(report, ("execution_authorized", "market_validation", "production_decision_authorized", "raw_payloads_included"))
     _require(report["schema_version"] == "icarus-corpus-consumption-v1" and report["source_repo"] == _SOURCE
-             and report["source_commit"] == _SOURCE_COMMIT and report["blocked_datasets"] == [])
+             and report["source_commit"] == source_commit and report["blocked_datasets"] == [])
     _int(report["asof_ns"], 1, now_ns)
     workflow = report["workflow_provenance"]
     _keys(workflow, {"acquisition_performed", "available_at_ns", "cache_name", "consumer_commit", "consumer_exit_code",
@@ -219,13 +221,13 @@ def _project(raw, cache, now_ns):
     _false(workflow, ("acquisition_performed", "execution_authorized", "raw_data_artifacted"))
     _require(workflow["network_disabled"] is True and type(workflow["consumer_exit_code"]) is int
              and workflow["consumer_exit_code"] == 0 and workflow["cache_name"] == cache
-             and workflow["source_repo"] == _SOURCE and workflow["source_commit"] == _SOURCE_COMMIT
-             and workflow["consumer_repo"] == "reppiks490/Icarus" and workflow["consumer_commit"] == _CONSUMER_COMMIT)
+             and workflow["source_repo"] == _SOURCE and workflow["source_commit"] == source_commit
+             and workflow["consumer_repo"] == "reppiks490/Icarus" and workflow["consumer_commit"] == consumer_commit)
     _require(type(report["datasets"]) is list and 1 <= len(report["datasets"]) <= 64)
     datasets = {}
     symbols = set()
     for value in report["datasets"]:
-        ds = _dataset(value, cache, report)
+        ds = _dataset(value, cache, report, source_commit=source_commit)
         _require(ds["dataset_id"] not in datasets and ds["symbol"] not in symbols)
         _require(ds["available_at_ns"] == workflow["available_at_ns"])
         datasets[ds["dataset_id"]] = ds
