@@ -252,6 +252,37 @@ def test_replaced_dataset_cannot_reuse_receipt_for_other_rows(tmp_path, change):
         _api().CorpusFeed(altered).for_consumer("cc1")
 
 
+@pytest.mark.parametrize("field,value", [
+    ("dataset_id", "0" * 64), ("provider", "unverified"),
+    ("source_repo", "other/repo"), ("source_commit", "UNPINNED"),
+    ("source_sha256", "forged"), ("manifest_sha256", "1" * 64),
+    ("cache_name", "bars_third"), ("filename", "databento_es_5m.csv.gz"),
+    ("symbol", "ES"), ("provider_root", "ES"),
+    ("compressed_bytes", 1), ("uncompressed_bytes", 1),
+    ("source_rows", 999), ("retained_rows", 1), ("excluded_unclosed_rows", 999),
+    ("gap_count", 999), ("contract_id_rows", 0), ("contract_identity_status", "UNKNOWN"),
+    ("first_ts", BASE + 300), ("last_ts", BASE + 1200),
+    ("available_at_ns", NOW - 2 * NS), ("native_interval_seconds", 60), ("max_bars", 1),
+    ("provenance_status", "VERIFIED"), ("availability_basis", "BAR_TIME"),
+])
+def test_receipt_metadata_cannot_change_under_existing_dataset_identity(tmp_path, field, value):
+    dataset = _load(_source(tmp_path))
+    with pytest.raises(ValueError, match="identity|checksum|coverage"):
+        changed = replace(dataset, receipt=replace(dataset.receipt, **{field: value}))
+        _api().CorpusFeed(changed).candles("MNQ", 300, BASE, BASE + 1200)
+
+
+def test_valid_later_receipt_clock_preserves_identity_and_reads(tmp_path):
+    dataset = _load(_source(tmp_path))
+    later = replace(dataset, receipt=replace(dataset.receipt, asof_ns=NOW + 3600 * NS))
+    reader = _api().CorpusFeed(later).for_consumer("later")
+    assert reader.candles("MNQ", 300, BASE, BASE + 1200) == list(dataset.bars)
+    assert reader.consumption_receipts[-1].dataset_id == dataset.receipt.dataset_id
+    assert reader.consumption_receipts[-1].asof_ns == NOW + 3600 * NS
+    with pytest.raises(ValueError, match="asof_ns"):
+        replace(dataset, receipt=replace(dataset.receipt, asof_ns=dataset.receipt.available_at_ns - 1))
+
+
 def test_feed_public_dataset_reference_cannot_change_provenance_after_construction(tmp_path):
     args = _source(tmp_path)
     dataset = _load(args)
