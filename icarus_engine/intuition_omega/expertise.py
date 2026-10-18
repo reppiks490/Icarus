@@ -67,7 +67,8 @@ def reconcile_experts(
             reason = "scope_mismatch"
         elif timestamp(c.received_at, "received_at") > as_of_dt:
             reason = "claim_not_yet_received"
-        elif report.get("scope") != asdict(scope) or report.get("producer") != c.producer:
+        elif (report.get("scope") != asdict(scope) or report.get("producer") != c.producer
+              or report.get("source_commit") != c.source_commit):
             reason = "scorecard_identity_mismatch"
         elif report.get("status") != "MEASURED" or report.get("drift_state") != "NO_LARGE_SHIFT_DETECTED":
             reason = "unqualified_or_drifted_model"
