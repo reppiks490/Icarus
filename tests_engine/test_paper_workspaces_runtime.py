@@ -140,3 +140,54 @@ def test_command_center_api_scopes_controls_and_closes_workspace_journals(
     for journal in journals:
         with pytest.raises(sqlite3.ProgrammingError):
             journal.con.execute("SELECT 1")
+
+
+def test_removing_flat_workspace_asset_rejects_inflight_poll_after_feed_returns(tmp_path, monkeypatch):
+    entered, release = threading.Event(), threading.Event()
+    class BlockingFeed(_OfflineFeed):
+        def recent_ex(self, *_args, **_kwargs):
+            entered.set()
+            assert release.wait(5), "test did not release feed"
+            return [Bar(ts, 100, 101, 99, 100, 1) for ts in (0, 60, 120)], 180, 101.0
+    feed = BlockingFeed()
+    monkeypatch.setenv("ICARUS_FEED", "file")
+    monkeypatch.setattr(paper_workspaces, "_PROFILE_DEFAULTS", tuple(
+        {**profile, "assets": ["NQ", "CL"], "chart": {**profile["chart"], "timeframe": "1"}}
+        for profile in paper_workspaces._PROFILE_DEFAULTS))
+    monkeypatch.setattr(paper_workspaces.WorkspacePortfolio, "start", lambda *_: None)
+    parent = Portfolio(Journal(":memory:"), str(tmp_path), profile="nq", pts_ref_symbol="NQ",
+                       feeds={"yahoo": feed, "coinbase": feed})
+    manager = paper_workspaces.PaperWorkspaceManager(parent)
+    manager.start()
+    portfolio = manager.portfolios["cc1"]
+    runner = portfolio.runners["NQ"]
+    runner.warm = True
+    runner._file_waiting = False
+    errors = []
+    def poll():
+        try:
+            runner.poll()
+        except Exception as error:
+            errors.append(error)
+    worker = threading.Thread(target=poll, daemon=True)
+    worker.start()
+    try:
+        assert entered.wait(5)
+        manager.update("cc1", {"assets": ["CL"]})
+        assert runner._removed and not runner.em.open
+        before = runner.configuration_snapshot()
+        fields = (runner.feed_time, runner.feed_delay, runner.last_poll_ok)
+        journal_changes = portfolio.journal.con.total_changes
+        release.set()
+        worker.join(5)
+        assert not worker.is_alive() and errors == []
+        assert runner.configuration_snapshot() == before
+        assert (runner.feed_time, runner.feed_delay, runner.last_poll_ok) == fields
+        assert portfolio.journal.con.total_changes == journal_changes
+        assert not runner.em.open and not runner.em._pending_entries
+    finally:
+        release.set()
+        worker.join(5)
+        manager.stop()
+        parent.stop()
+        parent.journal.close()
