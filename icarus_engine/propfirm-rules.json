@@ -152,7 +152,8 @@
       "program": "Legacy Evaluation / Performance",
       "status": "UNVERIFIED",
       "sources": [
-        "https://apextraderfunding.com/help-center/legacy-products/legacy-products-overview/"
+        "https://apextraderfunding.com/help-center/legacy-products/legacy-products-overview/",
+        "https://apextraderfunding.com/legacy-products"
       ],
       "faq_coverage_complete": false,
       "unknown_clauses": [
@@ -180,7 +181,7 @@
       "sources": [
         "https://support.lucidtrading.com/en/articles/12890029-lucidpro-evaluation-account",
         "https://support.lucidtrading.com/en/articles/12890069-lucidpro-funded-account",
-        "https://support.lucidtrading.com/en/articles/13432107-lucidpro-live-legacy"
+        "https://support.lucidtrading.com/en/articles/16558826-new-live-structure"
       ],
       "faq_coverage_complete": false,
       "unknown_clauses": [
@@ -207,7 +208,7 @@
       "sources": [
         "https://support.lucidtrading.com/en/articles/12945790-lucidflex-evaluation-account",
         "https://support.lucidtrading.com/en/articles/12945795-lucidflex-funded-account",
-        "https://support.lucidtrading.com/en/articles/13424914-lucidflex-live-legacy"
+        "https://support.lucidtrading.com/en/articles/16558826-new-live-structure"
       ],
       "faq_coverage_complete": false,
       "unknown_clauses": [
@@ -233,7 +234,7 @@
       "status": "UNVERIFIED",
       "sources": [
         "https://support.lucidtrading.com/en/articles/12890148-luciddirect-funded-account",
-        "https://support.lucidtrading.com/en/articles/13425070-luciddirect-live-legacy"
+        "https://support.lucidtrading.com/en/articles/16558826-new-live-structure"
       ],
       "faq_coverage_complete": false,
       "unknown_clauses": [
@@ -260,7 +261,8 @@
       "sources": [
         "https://support.lucidtrading.com/en/articles/15996664-luciddaily-evaluation",
         "https://support.lucidtrading.com/en/articles/15997244-luciddaily-funded-account",
-        "https://support.lucidtrading.com/en/articles/16010520-luciddaily-live"
+        "https://support.lucidtrading.com/en/articles/16010520-luciddaily-live",
+        "https://support.lucidtrading.com/en/articles/16558826-new-live-structure"
       ],
       "faq_coverage_complete": false,
       "unknown_clauses": [
@@ -310,7 +312,8 @@
       "program": "LucidMaxx (legacy)",
       "status": "UNVERIFIED",
       "sources": [
-        "https://support.lucidtrading.com/en/articles/13891785-legacy-lucidmaxx-overview"
+        "https://support.lucidtrading.com/en/articles/13891785-legacy-lucidmaxx-overview",
+        "https://support.lucidtrading.com/en/articles/14315460-legacy-lucidmaxx-eval-rules"
       ],
       "faq_coverage_complete": false,
       "unknown_clauses": [
@@ -343,6 +346,81 @@
         "https://support.lucidtrading.com/en/articles/13424900-lucidblack-consistency-percentage",
         "https://support.lucidtrading.com/en/articles/13424897-lucidblack-payout-objectives",
         "https://support.lucidtrading.com/en/articles/13424906-lucidblack-drawdown"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "High frequency trading, microscalping and prohibited hedging restrictions apply.",
+        "New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules."
+      ],
+      "explanation": "Free local account inventory only. High frequency trading, microscalping and prohibited hedging restrictions apply. New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "lucid-7",
+      "firm": "Lucid Trading",
+      "program": "LucidPro Legacy Live",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://support.lucidtrading.com/en/articles/13432107-lucidpro-live-legacy"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "High frequency trading, microscalping and prohibited hedging restrictions apply.",
+        "New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules."
+      ],
+      "explanation": "Free local account inventory only. High frequency trading, microscalping and prohibited hedging restrictions apply. New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "lucid-8",
+      "firm": "Lucid Trading",
+      "program": "LucidFlex Legacy Live",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://support.lucidtrading.com/en/articles/13424914-lucidflex-live-legacy"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "High frequency trading, microscalping and prohibited hedging restrictions apply.",
+        "New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules."
+      ],
+      "explanation": "Free local account inventory only. High frequency trading, microscalping and prohibited hedging restrictions apply. New LucidMaxx is invite-only; old Maxx and legacy live accounts retain their own rules.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "lucid-9",
+      "firm": "Lucid Trading",
+      "program": "LucidDirect Legacy Live",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://support.lucidtrading.com/en/articles/13425070-luciddirect-live-legacy"
       ],
       "faq_coverage_complete": false,
       "unknown_clauses": [
@@ -757,7 +835,8 @@
       "status": "UNVERIFIED",
       "sources": [
         "https://help.goatfundedfutures.com/plans.html",
-        "https://help.goatfundedfutures.com/trading-rules.html"
+        "https://help.goatfundedfutures.com/trading-rules.html",
+        "https://help.goatfundedfutures.com/daily-payouts.html"
       ],
       "faq_coverage_complete": false,
       "unknown_clauses": [
@@ -1244,14 +1323,23 @@
             "Legacy Evaluation",
             "Legacy Performance Account"
           ],
-          "documented_sizes_usd": [],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000,
+            250000,
+            300000
+          ],
           "source_refs": [
-            "official-afa4306f600e85bc"
+            "official-afa4306f600e85bc",
+            "official-7a5aa7bafddce1b6"
           ],
           "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
           "execution_authorized": false,
           "new_intents_blocked": true,
-          "availability": "LEGACY_RULES_NO_AUTOMATIC_CONVERSION_PURCHASE_ELIGIBILITY_CONFLICT"
+          "availability": "LEGACY_RULES_NO_AUTOMATIC_CONVERSION_PURCHASE_ELIGIBILITY_CONFLICT",
+          "size_scope": "LEGACY_FULL_TIERS_MARKETED_PURCHASE_ELIGIBILITY_CONFLICT"
         }
       ],
       "automation_status": "PROHIBITED",
@@ -1302,6 +1390,13 @@
           "final_url": "https://apextraderfunding.com/help-center/legacy-products/legacy-products-overview/",
           "retrieved_at_utc": "2026-10-18T15:14:50.717059+00:00",
           "html_sha256": "56fdfd68b2f123b41ee47b7941ccc62a9247d96b38795041114e43e15ab363ee"
+        },
+        {
+          "id": "official-7a5aa7bafddce1b6",
+          "url": "https://apextraderfunding.com/legacy-products",
+          "final_url": "https://apextraderfunding.com/legacy-products/",
+          "retrieved_at_utc": "2026-10-18T15:15:18.127997+00:00",
+          "html_sha256": "fa6f3c87dea551c22ac3803a2a537859395c53cdda197aed9021416135cf7d7d"
         }
       ],
       "faq_coverage_complete": false,
@@ -1327,7 +1422,7 @@
           "stages": [
             "Evaluation",
             "Sim Funded",
-            "Legacy Live"
+            "Live"
           ],
           "documented_sizes_usd": [
             25000,
@@ -1338,7 +1433,7 @@
           "source_refs": [
             "official-523483df50487006",
             "official-5725295a55d68076",
-            "official-9128550fb4dd7066"
+            "official-0120de557fcb8adf"
           ],
           "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
           "execution_authorized": false,
@@ -1349,7 +1444,7 @@
           "stages": [
             "Evaluation",
             "Sim Funded",
-            "Legacy Live"
+            "Live"
           ],
           "documented_sizes_usd": [
             25000,
@@ -1360,7 +1455,7 @@
           "source_refs": [
             "official-ac2cf87ebb900d57",
             "official-00e2196890630254",
-            "official-fbd0757326496b77"
+            "official-0120de557fcb8adf"
           ],
           "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
           "execution_authorized": false,
@@ -1370,7 +1465,7 @@
           "name": "LucidDirect",
           "stages": [
             "Sim Funded",
-            "Legacy Live"
+            "Live"
           ],
           "documented_sizes_usd": [
             25000,
@@ -1380,7 +1475,7 @@
           ],
           "source_refs": [
             "official-7da0944addc4c005",
-            "official-330ac052b5f7f42f"
+            "official-0120de557fcb8adf"
           ],
           "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
           "execution_authorized": false,
@@ -1402,7 +1497,8 @@
           "source_refs": [
             "official-e054aee2f610e028",
             "official-ac4a6efddfe43ac9",
-            "official-fb706a53f67c71b6"
+            "official-fb706a53f67c71b6",
+            "official-0120de557fcb8adf"
           ],
           "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
           "execution_authorized": false,
@@ -1415,7 +1511,12 @@
             "Pre-Live",
             "Live"
           ],
-          "documented_sizes_usd": [],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
           "source_refs": [
             "official-c913f554fe099b81"
           ],
@@ -1430,9 +1531,15 @@
             "Legacy Evaluation",
             "Legacy Live"
           ],
-          "documented_sizes_usd": [],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
           "source_refs": [
-            "official-8b8d234d8d056e81"
+            "official-8b8d234d8d056e81",
+            "official-207347015aa13197"
           ],
           "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
           "execution_authorized": false,
@@ -1465,6 +1572,62 @@
           "execution_authorized": false,
           "new_intents_blocked": true,
           "availability": "LEGACY"
+        },
+        {
+          "name": "LucidPro Legacy Live",
+          "stages": [
+            "Legacy Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-9128550fb4dd7066"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "availability": "LEGACY_AGREEMENT_ONLY"
+        },
+        {
+          "name": "LucidFlex Legacy Live",
+          "stages": [
+            "Legacy Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-fbd0757326496b77"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "availability": "LEGACY_AGREEMENT_ONLY"
+        },
+        {
+          "name": "LucidDirect Legacy Live",
+          "stages": [
+            "Legacy Live"
+          ],
+          "documented_sizes_usd": [
+            25000,
+            50000,
+            150000
+          ],
+          "source_refs": [
+            "official-330ac052b5f7f42f"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "availability": "LEGACY_AGREEMENT_ONLY"
         }
       ],
       "automation_status": "NOT_VERIFIED",
@@ -1626,6 +1789,20 @@
           "final_url": "https://support.lucidtrading.com/en/articles/13424906-lucidblack-drawdown",
           "retrieved_at_utc": "2026-10-18T15:14:53.500302+00:00",
           "html_sha256": "7b057581ee9f5c5d2c4c745281d33e5324393838d20474da0c596f43157295f8"
+        },
+        {
+          "id": "official-0120de557fcb8adf",
+          "url": "https://support.lucidtrading.com/en/articles/16558826-new-live-structure",
+          "final_url": "https://support.lucidtrading.com/en/articles/16558826-new-live-structure",
+          "retrieved_at_utc": "2026-10-18T15:16:08.451304+00:00",
+          "html_sha256": "5861459782de96e903a93b95e906665198abddc7b44f674ffc48534e584242ea"
+        },
+        {
+          "id": "official-207347015aa13197",
+          "url": "https://support.lucidtrading.com/en/articles/14315460-legacy-lucidmaxx-eval-rules",
+          "final_url": "https://support.lucidtrading.com/en/articles/14315460-legacy-lucidmaxx-eval-rules",
+          "retrieved_at_utc": "2026-10-18T15:14:54.009938+00:00",
+          "html_sha256": "aaa56e4b956f29a1dd26ef8c2fd48eb2f514d0ff22c5b8349c381c78b08aa30f"
         }
       ],
       "faq_coverage_complete": false,
@@ -2092,7 +2269,8 @@
         {
           "name": "Daily Payouts",
           "stages": [
-            "Instant Funded"
+            "Evaluation",
+            "Sim Funded"
           ],
           "documented_sizes_usd": [
             25000,
@@ -2102,7 +2280,8 @@
           ],
           "source_refs": [
             "official-17a911ae977667de",
-            "official-3c0974f74a967243"
+            "official-3c0974f74a967243",
+            "official-0771583a5d1796ee"
           ],
           "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
           "execution_authorized": false,
@@ -2129,6 +2308,13 @@
           "final_url": "https://help.goatfundedfutures.com/trading-rules.html",
           "retrieved_at_utc": "2026-10-18T15:14:39.144623+00:00",
           "html_sha256": "ddaf5623c46201eacf75dcb11383e079a37d0bb4cf7d9bac7c7b96cb6af6102a"
+        },
+        {
+          "id": "official-0771583a5d1796ee",
+          "url": "https://help.goatfundedfutures.com/daily-payouts.html",
+          "final_url": "https://help.goatfundedfutures.com/daily-payouts.html",
+          "retrieved_at_utc": "2026-10-18T15:15:18.333019+00:00",
+          "html_sha256": "7ad62d397b0f32bafffb6b27a0b79ae9df6c59bc1b94d5a7a9231a5d052c4282"
         }
       ],
       "faq_coverage_complete": false,
@@ -2153,8 +2339,7 @@
           "name": "Select",
           "stages": [
             "Evaluation",
-            "Select Flex Sim Funded",
-            "Select Daily Sim Funded"
+            "Sim Funded"
           ],
           "documented_sizes_usd": [
             25000,
@@ -2173,6 +2358,10 @@
             "40% consistency default",
             "50% consistency add-on",
             "300K limited release has separate terms"
+          ],
+          "funded_choices": [
+            "Select Flex",
+            "Select Daily"
           ]
         },
         {
@@ -2244,21 +2433,27 @@
         {
           "name": "Level Up v1",
           "stages": [
-            "Legacy Live"
+            "Simulated Ladder Levels 1\u201310"
           ],
-          "documented_sizes_usd": [],
+          "documented_sizes_usd": [
+            50000
+          ],
           "source_refs": [
             "official-ca3dcbd17c18"
           ],
           "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
           "execution_authorized": false,
           "new_intents_blocked": true,
-          "availability": "LEGACY"
+          "availability": "LEGACY",
+          "size_scope": "SIMULATED_BALANCE_PER_LEVEL",
+          "platforms": [
+            "Tradovate"
+          ]
         },
         {
           "name": "Level Up v2",
           "stages": [
-            "Live"
+            "Simulated Ladder Levels 1\u201310"
           ],
           "documented_sizes_usd": [],
           "source_refs": [
@@ -2266,7 +2461,12 @@
           ],
           "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
           "execution_authorized": false,
-          "new_intents_blocked": true
+          "new_intents_blocked": true,
+          "size_scope": "NOT_PUBLISHED_IN_REVIEWED_V2_FAQ",
+          "platforms": [
+            "Tradovate"
+          ],
+          "effective_date": "2026-10-15"
         }
       ],
       "automation_status": "CONDITIONAL_OWNED_ALGORITHM_ONLY",
@@ -2491,8 +2691,7 @@
           "name": "Trader Career Path",
           "stages": [
             "Evaluation",
-            "LiveSim",
-            "Live"
+            "Funded"
           ],
           "documented_sizes_usd": [
             25000,
@@ -2505,14 +2704,24 @@
           ],
           "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
           "execution_authorized": false,
-          "new_intents_blocked": true
+          "new_intents_blocked": true,
+          "funding_choices": [
+            "LiveSim",
+            "Live"
+          ],
+          "size_scope": "EVALUATION_ENTRY",
+          "funded_progression_sizes_usd": [
+            25000,
+            50000,
+            100000,
+            200000
+          ]
         },
         {
           "name": "Gauntlet Mini",
           "stages": [
             "Evaluation",
-            "LiveSim",
-            "Live"
+            "Funded"
           ],
           "documented_sizes_usd": [
             50000,
@@ -2525,7 +2734,12 @@
           ],
           "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
           "execution_authorized": false,
-          "new_intents_blocked": true
+          "new_intents_blocked": true,
+          "funding_choices": [
+            "LiveSim",
+            "Live"
+          ],
+          "size_scope": "EVALUATION_ENTRY"
         }
       ],
       "automation_status": "NOT_VERIFIED",
