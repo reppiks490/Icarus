@@ -63,6 +63,47 @@ def test_failed_initial_configuration_save_leaves_no_orphan_secret(tmp_path, mon
     assert manager.snapshot()["connections"] == []
 
 
+def test_interrupted_secret_rotation_preserves_committed_credentials_after_restart(tmp_path, monkeypatch):
+    import base64
+    env = {"ICARUS_CONNECTION_STORE_KEY": base64.b64encode(b"x" * 32).decode()}
+    seen = []
+    def fetch(method, url, headers, payload):
+        seen.append(headers["APCA-API-KEY-ID"])
+        return dict(id="one", status="ACTIVE", equity="10", cash="10", currency="USD")
+    manager = ConnectionManager(tmp_path, env=env)
+    body = dict(record(), credential_refs={}, credentials={"api_key": "COMMITTED", "secret_key": "ORIGINAL"})
+    manager.upsert(body)
+    with monkeypatch.context() as patch:
+        patch.setattr(manager, "_save", lambda: (_ for _ in ()).throw(KeyboardInterrupt()))
+        with pytest.raises(KeyboardInterrupt):
+            manager.upsert(dict(body, credentials={"api_key": "UNCOMMITTED", "secret_key": "NEW"}))
+    restarted = ConnectionManager(tmp_path, env=env, transport=fetch)
+    assert restarted.connect("paper_one")["status"] == "CONNECTED_READ_ONLY"
+    assert seen == ["COMMITTED"]
+    assert "secret_ref" not in restarted.snapshot()["connections"][0]
+
+
+@pytest.mark.parametrize("changes", [
+    {"status": "CONNECTED_READ_ONLY", "last_read_at": 1000},
+    {"environment": "funded"},
+])
+def test_inconsistent_stored_connection_state_is_rejected(tmp_path, changes):
+    manager = ConnectionManager(tmp_path)
+    manager.upsert(record())
+    path = manager.root / "connections.json"
+    rows = json.loads(path.read_text())
+    rows["paper_one"].update(changes)
+    path.write_text(json.dumps(rows))
+    with pytest.raises(ValueError): manager.snapshot()
+
+
+@pytest.mark.parametrize("quantity,positions", [(0.25, {}), (1, {"MNQ": 0.5})])
+def test_fractional_contract_quantities_never_pass_preflight(quantity, positions):
+    result = evaluate_rules(policy(), dict(state(), positions=positions),
+        {"connection_id": "paper_one", "symbol": "MNQ", "quantity": quantity}, now=1000)
+    assert result["new_intent_allowed"] is False
+
+
 def record(**changes):
     return dict(id="paper_one", alias="Paper one", platform="alpaca_paper",
                 environment="paper", firm="independent", program="paper",

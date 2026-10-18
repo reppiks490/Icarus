@@ -30,7 +30,7 @@ _URL = "https://paper-api.alpaca.markets/v2/account"
 _LOCKS = {}
 _LOCK_GUARD = threading.Lock()
 _LIMIT = 1_048_576
-_STORED_FIELDS = (_FIELDS - {"credentials"}) | {"revision", "status", "readback", "account_fingerprint", "last_read_at", "local_secret"}
+_STORED_FIELDS = (_FIELDS - {"credentials"}) | {"revision", "status", "readback", "account_fingerprint", "last_read_at", "secret_ref"}
 
 
 def _validate_stored(row):
@@ -38,11 +38,16 @@ def _validate_stored(row):
         _label(row[name], limit)
     if row["environment"] not in {"paper", "simulated", "evaluation", "funded", "demo"}:
         raise ValueError("invalid account environment")
+    if row["platform"] == "alpaca_paper" and row["environment"] != "paper":
+        raise ValueError("invalid Alpaca environment")
     refs = row["credential_refs"]
     approved = _REFS.get(row["platform"], {})
     if not isinstance(refs, dict) or any(approved.get(k) != v for k, v in refs.items()):
         raise ValueError("invalid stored credential references")
-    if type(row["local_secret"]) is not bool or type(row["revision"]) is not int or row["revision"] < 1:
+    secret_ref = row["secret_ref"]
+    if secret_ref is not None and (not isinstance(secret_ref, str) or re.fullmatch(re.escape(row["id"]) + r"\.[0-9a-f]{32}\.enc", secret_ref) is None or refs or not approved):
+        raise ValueError("invalid immutable credential reference")
+    if type(row["revision"]) is not int or row["revision"] < 1:
         raise ValueError("invalid account state")
     if row["status"] not in {"CONFIGURED", "UNSUPPORTED", "MISSING_CREDENTIALS", "ACCOUNT_IDENTITY_MISMATCH", "DUPLICATE_ACCOUNT", "CONNECTED_READ_ONLY", "READBACK_FAILED"}:
         raise ValueError("invalid connection status")
@@ -52,6 +57,11 @@ def _validate_stored(row):
     if row["last_read_at"] is not None:
         _number(row["last_read_at"])
     readback = row["readback"]
+    connected = row["status"] == "CONNECTED_READ_ONLY"
+    if connected and (readback is None or fingerprint is None or row["last_read_at"] is None or not approved):
+        raise ValueError("connected account requires complete readback")
+    if not connected and (readback is not None or row["last_read_at"] is not None):
+        raise ValueError("inactive account has inconsistent readback")
     if readback is not None:
         if not isinstance(readback, dict) or set(readback) != {"equity", "cash", "currency", "account_status", "trading_blocked"}:
             raise ValueError("invalid account readback")
@@ -194,7 +204,7 @@ class ConnectionManager:
 
     def _public(self, row):
         result = copy.deepcopy(row)
-        result.pop("local_secret", None)
+        result.pop("secret_ref", None)
         now = _number(self.clock())
         if result["status"] == "CONNECTED_READ_ONLY":
             age = now - result.get("last_read_at", 0)
@@ -267,33 +277,36 @@ class ConnectionManager:
             row = dict(config, revision=(old or {}).get("revision", 0) + 1,
                        status="CONFIGURED" if platform in _REFS else "UNSUPPORTED", readback=None,
                        account_fingerprint=(old or {}).get("account_fingerprint"), last_read_at=None,
-                       local_secret=bool((old or {}).get("local_secret")) and not bool(refs))
-            secret_path = self.root / (identity + ".enc")
-            previous_secret = _read(secret_path) if credentials is not None and secret_path.exists() else None
-            secret_changed = False
+                       secret_ref=(old or {}).get("secret_ref") if not refs and (old or {}).get("platform") == platform else None)
+            secret_path = None
             try:
                 if credentials is not None:
                     nonce = os.urandom(12)
                     encrypted = nonce + cipher.encrypt(nonce, _json(credentials), identity.encode())
-                    _write(secret_path, encrypted)
-                    secret_changed = True
-                    row["local_secret"] = True
+                    # A new immutable blob precedes the atomic metadata commit.
+                    # An interrupted rotation can leave an orphan, but never
+                    # changes bytes referenced by the previous committed record.
+                    secret_ref = identity + "." + uuid.uuid4().hex + ".enc"
+                    secret_path = self.root / secret_ref
+                    fd = os.open(secret_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                    with os.fdopen(fd, "wb") as stream:
+                        stream.write(encrypted)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                    row["secret_ref"] = secret_ref
                 self._records[identity] = row
                 self._save()
             except Exception:
                 self._records = prior_records
-                if secret_changed:
-                    if previous_secret is None:
-                        secret_path.unlink(missing_ok=True)
-                    else:
-                        _write(secret_path, previous_secret)
+                if secret_path is not None:
+                    secret_path.unlink(missing_ok=True)
                 raise
             return self._public(row)
 
     def _credentials(self, row):
         approved = _REFS[row["platform"]]
-        if row.get("local_secret"):
-            raw = _read(self.root / (row["id"] + ".enc"))
+        if row.get("secret_ref"):
+            raw = _read(self.root / row["secret_ref"])
             values = json.loads(self._cipher().decrypt(raw[:12], raw[12:], row["id"].encode()))
         else:
             values = {key: self.env.get(row["credential_refs"].get(key, ""), "") for key in approved}
@@ -395,8 +408,10 @@ def evaluate_rules(policy, state, intent, *, now=None):
             raise ValueError("invalid contract weights")
         symbol, quantity = intent["symbol"], _number(intent["quantity"])
         positions = state["positions"]
-        if not isinstance(positions, dict) or any(key not in weights for key in positions) or quantity == 0:
+        if not isinstance(positions, dict) or any(key not in weights for key in positions) or quantity == 0 or not quantity.is_integer():
             raise ValueError("unknown position or quantity")
+        if any(not _number(value).is_integer() for value in positions.values()):
+            raise ValueError("fractional contract position")
         if symbol not in assets:
             blockers.append("ASSET_NOT_ALLOWED")
         else:
