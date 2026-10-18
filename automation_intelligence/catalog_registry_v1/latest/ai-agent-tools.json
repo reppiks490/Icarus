@@ -1,6 +1,6 @@
 {
   "catalog_id": "ai-agent-tools",
-  "content_sha256": "fabab1774c9ad2ac002afdba7285571670fc850a44b1508391f2ba089f9c656a",
+  "content_sha256": "92db0b8dc72bfcfbd7e6ffa4aaa4d3d6f15ddb0fd69a7d18266babd00d33b81d",
   "execution_authorized": false,
   "import_summary": {
     "catalog_id": "ai-agent-tools",
@@ -12,15 +12,15 @@
     "raw_count": 218,
     "rejected": 0,
     "review_required": 153,
-    "snapshot_id": "9c1e06a1535436cb812be034cc0267e4b80acc0004fcc8fa94498b2d9545601a",
+    "snapshot_id": "04e9f9512faf50ef6061ec22e781aaf8340190cf3b76b2214d9bc912c0a8f505",
     "unique_candidates": 149
   },
   "parser_revision": "catalog-registry-v3",
   "production_decision_authorized": false,
-  "retrieved_at": "2026-10-16T09:15:08.897942Z",
-  "snapshot_id": "9c1e06a1535436cb812be034cc0267e4b80acc0004fcc8fa94498b2d9545601a",
+  "retrieved_at": "2026-10-18T09:01:52.634358Z",
+  "snapshot_id": "04e9f9512faf50ef6061ec22e781aaf8340190cf3b76b2214d9bc912c0a8f505",
   "status": "SUCCESS",
-  "upstream_commit": "017b11024524bdb97a2c636c53b1069ce4ebb3e3",
+  "upstream_commit": "fccf5be234183bbf75e0e2eb18169e17f98a0c2b",
   "upstream_path": "README.md",
   "upstream_repo": "cporter202/ai-agent-tools"
 }
