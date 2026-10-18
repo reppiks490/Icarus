@@ -224,3 +224,65 @@ def test_provider_knows_when_a_release_was_not_yet_available():
     )
     assert accepted["status"] == "RESEARCH_INPUT"
     assert accepted["situation"].features["fred:inflation"] == 3.0
+
+
+def test_backdated_model_receipt_is_rejected():
+    event = BASE
+    with pytest.raises(ValueError, match="receipt/maturity"):
+        Forecast("retro", "omega", SCOPE, iso(event),
+                 iso(event + timedelta(minutes=10)),
+                 iso(event + timedelta(minutes=20)),
+                 0.9, SHA, ("e1",), "session:1")
+    with pytest.raises(ValueError, match="outcome must mature"):
+        Episode(situation("late-input", event, receipt=event + timedelta(minutes=20)),
+                iso(event + timedelta(minutes=10)),
+                iso(event + timedelta(minutes=21)), 1,
+                "dataset", "sess", "family")
+
+
+def test_independent_experts_reconcile_without_claiming_calibration():
+    from dataclasses import asdict
+    from icarus_engine.intuition_omega.expertise import ExpertClaim, reconcile_experts
+    report = {
+        "scope": asdict(SCOPE), "status": "MEASURED",
+        "sample_count": 100, "independent_sessions": 50,
+        "drift_state": "NO_LARGE_SHIFT_DETECTED",
+        "brier": 0.08, "as_of": iso(BASE + timedelta(days=60)),
+    }
+    a = ExpertClaim("omega", SCOPE, iso(BASE + timedelta(days=70)),
+                    iso(BASE + timedelta(days=70)), SHA, 0.65,
+                    ("source-A",), {**report, "producer": "omega"}, ("a1",))
+    b = ExpertClaim("sibyl", SCOPE, iso(BASE + timedelta(days=70)),
+                    iso(BASE + timedelta(days=70)), SHA, 0.70,
+                    ("source-B",), {**report, "producer": "sibyl"}, ("b1",))
+    result = reconcile_experts([a, b], scope=SCOPE,
+                               as_of=iso(BASE + timedelta(days=70)))
+    assert result["status"] == "RESEARCH_CONSENSUS_UNCALIBRATED"
+    assert result["consensus"] == pytest.approx(0.675)
+    assert result["execution_authorized"] is False
+    shared = ExpertClaim("sibyl", SCOPE, iso(BASE + timedelta(days=70)),
+                         iso(BASE + timedelta(days=70)), SHA, 0.70,
+                         ("source-A",), {**report, "producer": "sibyl"}, ("b1",))
+    rejected = reconcile_experts([a, shared], scope=SCOPE,
+                                 as_of=iso(BASE + timedelta(days=70)))
+    assert rejected["status"] == "ABSTAIN"
+    future_scorecard = ExpertClaim("sibyl", SCOPE, iso(BASE + timedelta(days=70)),
+                        iso(BASE + timedelta(days=70)), SHA, 0.7, ("source-B",),
+                        {**report, "producer": "sibyl", "as_of": iso(BASE + timedelta(days=90))},
+                        ("b1",))
+    assert reconcile_experts([a, future_scorecard], scope=SCOPE,
+                              as_of=iso(BASE + timedelta(days=70)))["status"] == "ABSTAIN"
+
+
+def test_walkforward_retains_a_frozen_final_fold():
+    from icarus_engine.intuition_omega.evaluation import (
+        EvaluationPolicy, walkforward_analogue_evaluation
+    )
+    records = [episode(i, outcome=int(i % 3 != 0)) for i in range(360)]
+    result = walkforward_analogue_evaluation(
+        records, policy=policy(30), evaluation=EvaluationPolicy(folds=5))
+    assert len(result["folds"]) == 5
+    assert result["folds"][-1]["frozen"] is True
+    assert result["execution_authorized"] is False
+    assert result["folds"][0]["test_window_episodes"] == 60
+    assert all(0 <= fold["coverage"] <= 1 for fold in result["folds"])
