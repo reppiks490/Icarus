@@ -718,9 +718,9 @@
       ],
       "confirmed_source_clauses": [
         "Instant Lite and Daily Payouts prohibit bots.",
-        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+        "EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport."
       ],
-      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.",
+      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport.",
       "new_intents_blocked": true,
       "execution_authorized": false
     },
@@ -744,9 +744,9 @@
       ],
       "confirmed_source_clauses": [
         "Instant Lite and Daily Payouts prohibit bots.",
-        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+        "EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport."
       ],
-      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.",
+      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport.",
       "new_intents_blocked": true,
       "execution_authorized": false
     },
@@ -770,9 +770,9 @@
       ],
       "confirmed_source_clauses": [
         "Instant Lite and Daily Payouts prohibit bots.",
-        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+        "EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport."
       ],
-      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.",
+      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport.",
       "new_intents_blocked": true,
       "execution_authorized": false
     },
@@ -796,9 +796,9 @@
       ],
       "confirmed_source_clauses": [
         "Instant Lite and Daily Payouts prohibit bots.",
-        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+        "EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport."
       ],
-      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.",
+      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport.",
       "new_intents_blocked": true,
       "execution_authorized": false
     },
@@ -822,9 +822,9 @@
       ],
       "confirmed_source_clauses": [
         "Instant Lite and Daily Payouts prohibit bots.",
-        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+        "EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport."
       ],
-      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.",
+      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport.",
       "new_intents_blocked": true,
       "execution_authorized": false
     },
@@ -849,9 +849,38 @@
       ],
       "confirmed_source_clauses": [
         "Instant Lite and Daily Payouts prohibit bots.",
-        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+        "EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport."
       ],
-      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established.",
+      "explanation": "Free local account inventory only. Instant Lite and Daily Payouts prohibit bots. EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport.",
+      "new_intents_blocked": true,
+      "execution_authorized": false
+    },
+    {
+      "id": "goat-6",
+      "firm": "Goat Funded Futures",
+      "program": "Path to Live",
+      "status": "UNVERIFIED",
+      "sources": [
+        "https://help.goatfundedfutures.com/path-to-live.html"
+      ],
+      "faq_coverage_complete": false,
+      "unknown_clauses": [
+        "Exact account size, agreement date, stage, add-ons and funding partner",
+        "Complete drawdown/high-water/fees, daily loss, contract/micro weights, sessions/news, consistency, payout and conduct policy"
+      ],
+      "unsupported_clauses": [
+        "All order operations",
+        "Verified free remote account readback"
+      ],
+      "confirmed_source_clauses": [
+        "Live transition is discretionary risk-team review; no public payout count or numeric milestone guarantees eligibility.",
+        "Eligible sim accounts with an approved payout combine into one live account, capped at the 150K nominal tier; the live starting balance is zero.",
+        "Documented live tiers are 50K, 100K and 150K; their static drawdowns are USD2000, USD3000 and USD4500, respectively.",
+        "Live contract limits are 2/20, 3/30 and 5/50 minis/micros at the 50K, 100K and 150K tiers; no scaling.",
+        "No daily loss limit by default and no consistency rule; a personal daily loss tool can be requested from the risk team.",
+        "The two-minute high-impact-news buffer and no overnight/weekend holding restriction carry over; exact live agreement and platform onboarding remain required."
+      ],
+      "explanation": "Free local account inventory only. Live eligibility is discretionary, not a purchased or guaranteed funded account. Exact signed live agreement, supported platform, automated-trading permission and complete FAQ rules remain unverified.",
       "new_intents_blocked": true,
       "execution_authorized": false
     },
@@ -2287,12 +2316,40 @@
           "execution_authorized": false,
           "new_intents_blocked": true,
           "automation_status": "PROHIBITED"
+        },
+        {
+          "name": "Path to Live",
+          "stages": [
+            "Live"
+          ],
+          "documented_sizes_usd": [
+            50000,
+            100000,
+            150000
+          ],
+          "source_refs": [
+            "official-0090a5f313faf011"
+          ],
+          "rule_status": "UNVERIFIED_ACCOUNT_AGREEMENT_REQUIRED",
+          "execution_authorized": false,
+          "new_intents_blocked": true,
+          "availability": "DISCRETIONARY_RISK_TEAM_TRANSITION_NOT_DIRECT_PURCHASE",
+          "size_scope": "LIVE_NOMINAL_TIER_NOT_OPENING_CASH",
+          "automation_status": "NOT_VERIFIED_FOR_LIVE",
+          "confirmed_source_clauses": [
+            "Live transition is discretionary risk-team review; no public payout count or numeric milestone guarantees eligibility.",
+            "Eligible sim accounts with an approved payout combine into one live account, capped at the 150K nominal tier; the live starting balance is zero.",
+            "Documented live tiers are 50K, 100K and 150K; their static drawdowns are USD2000, USD3000 and USD4500, respectively.",
+            "Live contract limits are 2/20, 3/30 and 5/50 minis/micros at the 50K, 100K and 150K tiers; no scaling.",
+            "No daily loss limit by default and no consistency rule; a personal daily loss tool can be requested from the risk team.",
+            "The two-minute high-impact-news buffer and no overnight/weekend holding restriction carry over; exact live agreement and platform onboarding remain required."
+          ]
         }
       ],
       "automation_status": "PROGRAM_SPECIFIC",
       "confirmed_restrictions": [
         "Instant Lite and Daily Payouts prohibit bots.",
-        "Other listed plans allow own automation subject to the full rules; no free API transport or account-specific permission is established."
+        "EOD, 1 Day Pass, Flex and Instant Classic permit own automation subject to full rules; this does not establish automation permission for Path to Live or a free API transport."
       ],
       "source_review": [
         {
@@ -2315,6 +2372,13 @@
           "final_url": "https://help.goatfundedfutures.com/daily-payouts.html",
           "retrieved_at_utc": "2026-10-18T15:15:18.333019+00:00",
           "html_sha256": "7ad62d397b0f32bafffb6b27a0b79ae9df6c59bc1b94d5a7a9231a5d052c4282"
+        },
+        {
+          "id": "official-0090a5f313faf011",
+          "url": "https://help.goatfundedfutures.com/path-to-live.html",
+          "final_url": "https://help.goatfundedfutures.com/path-to-live.html",
+          "retrieved_at_utc": "2026-10-18T15:15:18.309319+00:00",
+          "html_sha256": "d56e0c74e96d030cd32ea3982c3c5a68577ad3ba333d180e860d2645a57a2fdc"
         }
       ],
       "faq_coverage_complete": false,
