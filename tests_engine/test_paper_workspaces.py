@@ -592,3 +592,274 @@ def test_flatten_requires_mark_for_primary_or_shadow_open_positions(tmp_path, mo
         assert runner.flatten_calls == []
     finally:
         manager.stop()
+
+
+def _selection_manager(tmp_path, monkeypatch):
+    monkeypatch.setenv("ICARUS_FEED", "file")
+    monkeypatch.setattr(paper_workspaces, "_PROFILE_DEFAULTS", tuple(
+        {**profile, "assets": ["NQ"]} for profile in paper_workspaces._PROFILE_DEFAULTS))
+    monkeypatch.setattr(paper_workspaces.WorkspacePortfolio, "start", lambda self: None)
+    parent = _Parent(tmp_path)
+    parent.feeds = {"yahoo": SimpleNamespace(ticker=lambda _s: 100.0), "coinbase": object()}
+    manager = paper_workspaces.PaperWorkspaceManager(parent)
+    manager.start()
+    return manager
+
+
+def test_explicit_asset_selection_survives_reload_for_every_workspace(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        for profile_id in ("cc1", "cc2", "cc3", "cc4"):
+            result = manager.update(profile_id, {"assets": ["NQ", "CL", "MCL", "ETH"]})
+            assert result["assets"] == ["NQ", "CL", "MCL", "ETH"]
+            assert list(manager.portfolios[profile_id].runners) == ["NQ", "CL", "MCL", "ETH"]
+        reloaded = paper_workspaces.PaperWorkspaceManager(manager.parent)
+        assert all(p["assets"] == ["NQ", "CL", "MCL", "ETH"] for p in reloaded.profiles.values())
+    finally:
+        manager.stop()
+
+
+@pytest.mark.parametrize("assets", [[], "NQ", None, ["NQ", "NQ"], ["nq"], ["UNKNOWN"], [True], ["NQ"] * 100])
+def test_asset_selection_rejects_invalid_payload_without_mutation(tmp_path, monkeypatch, assets):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        before = manager._path("cc1").read_bytes()
+        runner = manager.portfolios["cc1"].runners["NQ"]
+        with pytest.raises(ValueError):
+            manager.update("cc1", {"assets": assets})
+        assert manager._path("cc1").read_bytes() == before
+        assert manager.portfolios["cc1"].runners == {"NQ": runner}
+    finally:
+        manager.stop()
+
+
+def test_asset_only_change_preserves_retained_open_runner_and_journal(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        portfolio = manager.portfolios["cc1"]
+        runner = portfolio.runners["NQ"]
+        runner.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+        runner.em.entry("keep", 1, 1)
+        runner.em.process_bar(Bar(60, 100, 100, 100, 100, 1), 1)
+        original = runner.configuration_snapshot()
+        journal = portfolio.journal
+        manager.update("cc1", {"assets": ["NQ", "CL"]})
+        assert portfolio.runners["NQ"] is runner and runner.em.position_size == 1
+        assert portfolio.journal is journal and runner.configuration_snapshot() == original
+        assert manager.profiles["cc2"]["assets"] == ["NQ"]
+        with pytest.raises(ValueError, match="open|pending|flatten"):
+            manager.update("cc1", {"assets": ["CL"]})
+        assert portfolio.runners["NQ"] is runner and runner.em.position_size == 1
+        assert manager.profiles["cc1"]["assets"] == ["NQ", "CL"]
+    finally:
+        manager.stop()
+
+
+@pytest.mark.parametrize("pending", ["_pending_entries", "_pending_closes"])
+def test_asset_removal_preserves_pending_orders(tmp_path, monkeypatch, pending):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        runner = manager.portfolios["cc1"].runners["NQ"]
+        getattr(runner.em, pending).append(object())
+        with pytest.raises(ValueError, match="pending|flatten"):
+            manager.update("cc1", {"assets": ["CL"]})
+        assert manager.portfolios["cc1"].runners["NQ"] is runner
+        assert len(getattr(runner.em, pending)) == 1
+    finally:
+        manager.stop()
+
+
+def test_asset_selection_failure_rolls_back_maps_profile_and_gated_workers(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        portfolio = manager.portfolios["cc1"]
+        original_runner = portfolio.runners["NQ"]
+        before = manager._path("cc1").read_bytes()
+        spawned = []
+        original_spawn = portfolio._spawn
+        def fail_second(runner):
+            original_spawn(runner)
+            spawned.append(portfolio._threads[runner.symbol])
+            if len(spawned) == 2:
+                raise RuntimeError("injected thread start failure")
+        monkeypatch.setattr(portfolio, "_spawn", fail_second)
+        monkeypatch.setattr(paper_workspaces.Portfolio, "_run", lambda *_: pytest.fail("uncommitted runner started"))
+        # Mark this test portfolio as started without starting its baseline worker.
+        portfolio._sampler_thread = SimpleNamespace(is_alive=lambda: True, join=lambda *_: None)
+        with pytest.raises(RuntimeError, match="injected"):
+            manager.update("cc1", {"assets": ["NQ", "CL", "MCL"]})
+        assert portfolio.runners == {"NQ": original_runner}
+        assert portfolio.order == ["NQ"]
+        assert manager._path("cc1").read_bytes() == before
+        assert manager.profiles["cc1"]["assets"] == ["NQ"]
+        assert all(not t.is_alive() for t in spawned)
+    finally:
+        manager.stop()
+
+
+def test_snapshot_exposes_catalog_without_promoting_execution_or_access(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        available = {r["symbol"]: r for r in manager.snapshot()["available_assets"]}
+        assert set(available) == set(ASSET_REGISTRY)
+        assert len([r for r in available.values() if r["kind"] == "futures"]) == 32
+        assert available["CL"]["selectable"] is True
+        assert available["CL"]["execution_qualified"] is False
+        assert available["MCL"]["full_root"] == "CL"
+        assert available["CL"]["feed_mode"] == "public_delayed"
+        assert available["CL"]["data_access_verified"] is False
+        assert all(r["execution_authorized"] is False for r in available.values())
+    finally:
+        manager.stop()
+
+
+def test_saved_invalid_assets_fail_closed_on_reload(tmp_path, monkeypatch):
+    import json
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        profile = copy.deepcopy(manager.profiles["cc3"])
+        profile["assets"] = ["a200:equity:NVDA"]
+        manager._path("cc3").write_text(json.dumps(profile))
+        with pytest.raises(ValueError, match="assets"):
+            paper_workspaces.PaperWorkspaceManager(manager.parent)
+    finally:
+        manager.stop()
+
+
+def test_flat_asset_removal_and_construction_failure_preserve_other_runners(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        portfolio = manager.portfolios["cc4"]
+        old = portfolio.runners["NQ"]
+        old.warm = True
+        original_make = portfolio.make_runner
+        def fail_second(spec, **kwargs):
+            if spec.symbol == "MCL":
+                raise RuntimeError("injected construction failure")
+            return original_make(spec, **kwargs)
+        monkeypatch.setattr(portfolio, "make_runner", fail_second)
+        before = manager._path("cc4").read_bytes()
+        with pytest.raises(RuntimeError, match="injected"):
+            manager.update("cc4", {"assets": ["CL", "MCL"]})
+        assert portfolio.runners == {"NQ": old} and not old._removed
+        assert manager._path("cc4").read_bytes() == before
+        manager.update("cc4", {"assets": ["CL"]})
+        assert list(portfolio.runners) == ["CL"] and old._removed and old.paused
+        assert manager.portfolios["cc1"].runners["NQ"]._removed is False
+    finally:
+        manager.stop()
+
+
+def test_snapshot_marks_missing_runtime_accounting_unknown(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        snapshot = manager.snapshot()
+        assert snapshot["aggregate"]["accounting_complete"] is True
+        missing = manager.portfolios.pop("cc2")
+        snapshot = manager.snapshot()
+        assert snapshot["aggregate"]["accounting_complete"] is False
+        assert snapshot["aggregate"]["runtime_count"] == 3
+        assert snapshot["aggregate"]["missing_runtime_ids"] == ["cc2"]
+        assert next(p for p in snapshot["profiles"] if p["id"] == "cc2")["runtime_available"] is False
+        assert snapshot["aggregate"]["reconciliation_status"] == "NO_BROKER_RECONCILIATION"
+        assert snapshot["aggregate"]["fees_status"] == "SIMULATOR_CONFIGURED_NOT_BROKER_RECONCILED"
+        manager.portfolios["cc2"] = missing
+    finally:
+        manager.stop()
+
+
+def test_asset_selection_save_failure_never_changes_running_portfolio(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        original = manager.portfolios["cc1"].runners["NQ"]
+        before = manager._path("cc1").read_bytes()
+        monkeypatch.setattr(manager, "_save", lambda *_: (_ for _ in ()).throw(OSError("disk refused")))
+        with pytest.raises(OSError, match="disk refused"):
+            manager.update("cc1", {"assets": ["NQ", "CL"]})
+        assert manager.portfolios["cc1"].runners == {"NQ": original}
+        assert manager._path("cc1").read_bytes() == before
+        assert manager.profiles["cc1"]["assets"] == ["NQ"]
+    finally:
+        manager.stop()
+
+
+def test_removal_keeps_worker_handle_until_shutdown_and_new_asset_inherits_pause(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        portfolio = manager.portfolios["cc1"]
+        portfolio.runners["NQ"].warm = True
+        worker = SimpleNamespace(is_alive=lambda: False)
+        portfolio._threads["NQ"] = worker
+        portfolio.paused = True
+        manager.update("cc1", {"assets": ["CL"]})
+        assert portfolio.runners["CL"].paused is True
+        assert worker in portfolio._threads.values()
+        assert "NQ" not in portfolio._threads
+    finally:
+        manager.stop()
+
+
+def test_asset_start_failure_restores_successfully_replayed_existing_configuration(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        portfolio = manager.portfolios["cc1"]
+        runner = portfolio.runners["NQ"]
+        runner.warm = True
+        before = runner.configuration_snapshot()
+        before_profile = manager._path("cc1").read_bytes()
+        monkeypatch.setattr(runner, "ensure_cached_timeframes", lambda *_: None)
+        monkeypatch.setattr(runner, "ensure_cached_chart_timeframe", lambda tf: tf)
+        replayed = []
+        def replay(inputs, sources, **kwargs):
+            replayed.append(inputs.tp1_pts)
+            runner.inputs_base = inputs
+            runner.bar_index = 123
+        monkeypatch.setattr(runner, "rewarm", replay)
+        portfolio._sampler_thread = SimpleNamespace(is_alive=lambda: True, join=lambda *_: None)
+        monkeypatch.setattr(portfolio, "_spawn", lambda *_: (_ for _ in ()).throw(RuntimeError("spawn refused")))
+        with pytest.raises(RuntimeError, match="spawn refused"):
+            manager.update("cc1", {"assets": ["NQ", "CL"], "inputs": {"tp1_pts": 17.0}})
+        assert replayed == [17.0]
+        assert runner.configuration_snapshot() == before
+        assert portfolio.runners == {"NQ": runner}
+        assert manager._path("cc1").read_bytes() == before_profile
+        assert portfolio.workspace["inputs"] == {}
+    finally:
+        manager.stop()
+
+
+def test_removal_does_not_orphan_active_strategy_overlay(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        portfolio = manager.portfolios["cc1"]
+        runner = portfolio.runners["NQ"]
+        runner.warm = True
+        runner._activation_version_id = "active-overlay"
+        with pytest.raises(ValueError, match="overlay"):
+            manager.update("cc1", {"assets": ["CL"]})
+        assert portfolio.runners == {"NQ": runner} and not runner._removed
+    finally:
+        manager.stop()
+
+
+def test_open_position_without_mark_or_stale_view_makes_aggregate_incomplete(tmp_path, monkeypatch):
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        portfolio = manager.portfolios["cc1"]
+        runner = portfolio.runners["NQ"]
+        runner.em.entry("missing-mark", 1, 1)
+        runner.em.process_bar(Bar(1, 100, 100, 100, 100, 0), 0)
+        assert runner.last_price is None
+        snapshot = manager.snapshot()
+        profile = next(p for p in snapshot["profiles"] if p["id"] == "cc1")
+        assert profile["runtime_available"] is True
+        assert profile["valuation_complete"] is False and profile["missing_mark_symbols"] == ["NQ"]
+        assert snapshot["aggregate"]["accounting_complete"] is False
+        assert snapshot["aggregate"]["valuation_status"] == "PAPER_VALUATION_INCOMPLETE"
+        runner.last_price = 101.0
+        assert manager.snapshot()["aggregate"]["accounting_complete"] is True
+        original_status = portfolio.status
+        monkeypatch.setattr(portfolio, "status", lambda **kwargs: {**original_status(**kwargs), "view_stale": True})
+        assert manager.snapshot()["aggregate"]["accounting_complete"] is False
+    finally:
+        manager.stop()

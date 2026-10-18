@@ -39,7 +39,7 @@ def test_command_center_api_scopes_controls_and_closes_workspace_journals(
         "_PROFILE_DEFAULTS",
         tuple({**profile, "assets": ["NQ"]} for profile in paper_workspaces._PROFILE_DEFAULTS),
     )
-    monkeypatch.setattr(paper_workspaces, "REGISTRY", {"NQ": REGISTRY["NQ"]})
+    monkeypatch.setattr(paper_workspaces, "REGISTRY", {"NQ": REGISTRY["NQ"], "CL": REGISTRY["CL"]})
     feed = _OfflineFeed()
     parent = Portfolio(
         Journal(":memory:"), str(tmp_path), profile="nq", pts_ref_symbol="NQ",
@@ -93,6 +93,24 @@ def test_command_center_api_scopes_controls_and_closes_workspace_journals(
                     return reply.status, json.load(reply)
             except urllib.error.HTTPError as error:
                 return error.code, json.loads(error.read())
+
+        selection_path = "/admin/command-centers/cc3"
+        assert post(selection_path, {"assets": ["NQ", "CL"]}, "bad-token")[0] == 401
+        assert post(selection_path, {"assets": ["a200:equity:NVDA"]}, "test-token")[0] == 400
+        status, selected = post(selection_path, {"assets": ["NQ", "CL"]}, "test-token")
+        assert status == 200 and selected["assets"] == ["NQ", "CL"]
+        assert selected["execution_authorized"] is False
+        assert list(server.command_centers.portfolios["cc3"].runners) == ["NQ", "CL"]
+        assert list(server.command_centers.portfolios["cc1"].runners) == ["NQ"]
+        assert cc1.em.position_size == 1 and cc2.em.position_size == -1
+        with urllib.request.urlopen(base + "/api/command-centers", timeout=5) as reply:
+            selected_snapshot = json.load(reply)
+        assert selected_snapshot["aggregate"]["accounting_complete"] is True
+        assert selected_snapshot["aggregate"]["runtime_count"] == 4
+        assert selected_snapshot["aggregate"]["reconciliation_status"] == "NO_BROKER_RECONCILIATION"
+        assert all(p["runtime_available"] for p in selected_snapshot["profiles"])
+        assert any(a["symbol"] == "CL" and a["execution_qualified"] is False
+                   for a in selected_snapshot["available_assets"])
 
         pause_path = "/admin/command-centers/cc1/pause"
         assert post(pause_path, {"paused": "false"}, "test-token")[0] == 400
