@@ -863,3 +863,23 @@ def test_open_position_without_mark_or_stale_view_makes_aggregate_incomplete(tmp
         assert manager.snapshot()["aggregate"]["accounting_complete"] is False
     finally:
         manager.stop()
+
+
+def test_requested_ten_families_have_only_canonical_micro_counterparts(tmp_path, monkeypatch):
+    assert paper_workspaces.REQUESTED_FUTURES_FAMILIES == ("CL", "NG", "HG", "6E", "6J", "6B", "6A", "ZN", "ZB", "BTCF")
+    manager = _selection_manager(tmp_path, monkeypatch)
+    try:
+        snapshot = manager.snapshot()
+        metadata = snapshot["requested_futures"]
+        assert metadata["family_count"] == 10
+        assert set(metadata["micro_roots"]) == {"MCL", "MNG", "MHG", "M6E", "MJY", "M6B", "M6A", "MBT"}
+        families = {r["root"]: r for r in metadata["families"]}
+        assert families["ZN"]["micro_roots"] == families["ZB"]["micro_roots"] == []
+        assert metadata["execution_authorized"] is metadata["profitability_verified"] is False
+        assert metadata["fresh_feed_access_verified"] is False
+        available = {r["symbol"]: r for r in snapshot["available_assets"]}
+        assert all(available[s]["requested_expansion"] is True for s in metadata["symbols"])
+        assert available["NQ"]["requested_expansion"] is False
+        assert all(p["assets"] == ["NQ"] for p in snapshot["profiles"])
+    finally:
+        manager.stop()

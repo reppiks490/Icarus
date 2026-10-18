@@ -25,6 +25,32 @@ from .runtime import (
 )
 
 
+# Owner-requested expansion is a research selection, separate from the default
+# active portfolios and from dated-contract/broker execution qualification.
+REQUESTED_FUTURES_FAMILIES = ("CL", "NG", "HG", "6E", "6J", "6B", "6A", "ZN", "ZB", "BTCF")
+REQUESTED_FUTURES_MICROS = tuple(
+    product.root for root in REQUESTED_FUTURES_FAMILIES
+    for product in FUTURES_PRODUCTS.values() if product.full_root == root and product.root != root
+)
+REQUESTED_FUTURES_SYMBOLS = REQUESTED_FUTURES_FAMILIES + REQUESTED_FUTURES_MICROS
+
+
+def requested_futures_metadata():
+    return {
+        "family_count": len(REQUESTED_FUTURES_FAMILIES),
+        "full_roots": list(REQUESTED_FUTURES_FAMILIES),
+        "micro_roots": list(REQUESTED_FUTURES_MICROS),
+        "symbols": list(REQUESTED_FUTURES_SYMBOLS),
+        "families": [{"root": root, "micro_roots": [micro for micro in REQUESTED_FUTURES_MICROS
+                                                       if FUTURES_PRODUCTS[micro].full_root == root]}
+                     for root in REQUESTED_FUTURES_FAMILIES],
+        "purpose": "CORPUS_RESEARCH_AND_PAPER_CONFIGURATION",
+        "profitability_verified": False,
+        "fresh_feed_access_verified": False,
+        "execution_authorized": False,
+    }
+
+
 _MINI_MICRO_FUTURES = (
     "NQ", "MNQ", "ES", "MES", "YM", "MYM", "RTY", "M2K",
     "GC", "MGC", "SI", "SIL",
@@ -63,6 +89,7 @@ def _available_assets():
         product = FUTURES_PRODUCTS.get(symbol)
         rows.append({
             "symbol": symbol, "name": getattr(spec, "name", symbol),
+            "requested_expansion": symbol in REQUESTED_FUTURES_SYMBOLS,
             "kind": getattr(spec, "kind", "futures"),
             "full_root": product.full_root if product else symbol,
             "exchange": getattr(spec, "exchange", ""),
@@ -634,6 +661,7 @@ class PaperWorkspaceManager:
         return {"mode": "concurrent_paper", "paper_only": True, "profiles": rows, "aggregate": aggregate,
                 "connections": self._connections(rows), "available_assets": _available_assets(),
                 "runtime_feed_mode": getattr(self.parent, "feed_mode", "unknown"),
+                "requested_futures": requested_futures_metadata(),
                 "execution_authorized": False}
 
     def update(self, profile_id: str, body: Dict[str, Any]):
