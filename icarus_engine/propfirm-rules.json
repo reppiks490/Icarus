@@ -1,0 +1,32 @@
+{
+  "schema_version": "icarus.propfirm-policy-catalog/1",
+  "execution_authorized": false,
+  "policies": [
+    {
+      "id": "independent-paper", "firm": "independent", "program": "paper",
+      "status": "UNVERIFIED", "sources": ["https://docs.alpaca.markets/docs/paper-trading"],
+      "faq_coverage_complete": false,
+      "unknown_clauses": ["Account-specific restrictions, product eligibility and complete risk configuration"],
+      "unsupported_clauses": ["Order routing is not implemented by the connection manager"],
+      "explanation": "Paper account monitoring is supported. An account read does not establish a trading strategy, order permission or risk-policy approval.",
+      "new_intents_blocked": true, "execution_authorized": false
+    },
+    {
+      "id": "topstep-unassigned", "firm": "Topstep", "program": "UNASSIGNED",
+      "status": "UNVERIFIED", "sources": ["https://help.topstep.com/"],
+      "faq_coverage_complete": false,
+      "unknown_clauses": ["Exact program and account stage", "Maximum loss and trailing drawdown calculation", "Daily loss rules", "Product and contract limits including micros", "Sessions, holidays and news restrictions", "Consistency and payout requirements", "Automation, copying and prohibited conduct", "Effective rule version and full FAQ coverage"],
+      "unsupported_clauses": ["Official platform account adapter not yet verified", "All order operations"],
+      "explanation": "No Topstep program is marked compliant. Connectable platform, exact account stage and every applicable official FAQ clause must be verified independently.",
+      "new_intents_blocked": true, "execution_authorized": false
+    },
+    {
+      "id": "custom-unassigned", "firm": "Other / custom", "program": "UNASSIGNED",
+      "status": "UNVERIFIED", "sources": [], "faq_coverage_complete": false,
+      "unknown_clauses": ["Firm identity and program", "Official dated FAQ and account agreement", "All loss, drawdown, exposure, session, news, consistency, payout and conduct rules"],
+      "unsupported_clauses": ["Unverified platform adapter", "All order operations"],
+      "explanation": "Configuration is available for inventory and future adapters. Unknown firms and unsupported platforms cannot grant new-intent permission.",
+      "new_intents_blocked": true, "execution_authorized": false
+    }
+  ]
+}
