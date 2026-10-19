@@ -24,6 +24,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import threading
 from typing import Dict, List, Optional, Tuple
 
 from ..pine.timeframe import Bar
@@ -42,18 +43,29 @@ class Yahoo:
     def __init__(self, min_interval: float = 0.35):
         self._last = 0.0
         self.min_interval = min_interval
+        # All asset runners share one Yahoo client. Reserve request start slots
+        # atomically so parallel warm-ups cannot all observe the same `_last`
+        # value and burst past Yahoo's anonymous rate limits.
+        self._request_lock = threading.Lock()
         self._meta: Dict[str, dict] = {}
         self.requests = 0
+
+    def _reserve_request_slot(self) -> None:
+        with self._request_lock:
+            now = time.monotonic()
+            wait = self.min_interval - (now - self._last)
+            if wait > 0:
+                time.sleep(wait)
+            # Reserve before releasing the lock. Network I/O remains concurrent,
+            # but each request starts no closer than min_interval to the prior.
+            self._last = time.monotonic()
 
     def _get(self, url: str, timeout: float = 15.0, retries: int = 3):
         last = None
         for k in range(retries):
-            wait = self.min_interval - (time.time() - self._last)
-            if wait > 0:
-                time.sleep(wait)
+            self._reserve_request_slot()
             try:
                 with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
-                    self._last = time.time()
                     self.requests += 1
                     if not r.geturl().startswith("https://"):
                         raise RuntimeError(f"Yahoo redirected to a non-https URL: {r.geturl()}")
@@ -63,7 +75,6 @@ class Yahoo:
                     return json.loads(raw.decode("utf-8"))
             except urllib.error.HTTPError as ex:              # 429 / 5xx → honour Retry-After, then back off
                 last = ex
-                self._last = time.time()
                 ra = ex.headers.get("Retry-After") if ex.headers else None
                 try:
                     time.sleep(min(float(ra), 30.0) if ra else 1.5 * (k + 1))
@@ -71,7 +82,6 @@ class Yahoo:
                     time.sleep(1.5 * (k + 1))
             except Exception as ex:                           # transient network error → back off
                 last = ex
-                self._last = time.time()
                 time.sleep(1.5 * (k + 1))
         raise RuntimeError(f"Yahoo GET failed: {last}")
 
