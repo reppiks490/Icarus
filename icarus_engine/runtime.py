@@ -845,6 +845,34 @@ class AssetRunner:
         self._refresh_performance_guard()
         self.journal.log("INFO", f"[{self.symbol}] warm-up done: {self.bar_index + 1} chart bars, {len(self.em.closed)} historical trades, net {self.em.netprofit:+.2f}; market {self.cal.describe(now)}")
 
+    def reset_failed_startup_warmup(self) -> None:
+        """Discard partial startup replay state before retrying a failed feed fetch."""
+        with self.lock:
+            self._build_engine()
+            self.bar_index = -1
+            self.bars.clear()
+            self.overlays.clear()
+            self.deep.clear()
+            self.subbars.clear()
+            self.state = {}
+            self.live_from_ts = None
+            self.live_closed_start = 0
+            self.last_sub_ts = None
+            self.last_price = None
+            self.last_price_ts = 0.0
+            self.last_bar_wall = 0.0
+            self.last_poll_ok = 0.0
+            self.feed_time = 0.0
+            self.feed_delay = 0.0
+            self.feed_error = ""
+            self._fills_seen = 0
+            self._closed_seen = 0
+            self._file_waiting = False
+            self.T_w = None
+            self.warm = False
+            self.rewarming = False
+            self._public_views = None
+
     @staticmethod
     def _databento_history_days() -> int:
         raw = os.environ.get("ICARUS_DATABENTO_HISTORY_DAYS", "365").strip()
@@ -1950,17 +1978,16 @@ class Portfolio:
             )
 
     def _run(self, r: AssetRunner) -> None:
+        if not self._warmup_with_retry(r):
+            return
         try:
-            r.warmup()
             from .activation_runtime import load_startup_overlay
             load_startup_overlay(self, r)
         except Exception as ex:
             r.errors += 1
-            r.last_error = f"warm-up failed: {type(ex).__name__}: {ex}"
+            r.last_error = f"startup overlay failed: {type(ex).__name__}: {ex}"
             r.runtime_error = r.last_error
-            r.warm = True                                     # failed, but not "warming" - the portfolio's all-warm checks must not wait for it
             self.journal.log("ERROR", f"[{r.symbol}] {r.last_error}")
-            return
         interval = self.poll_sec if r.spec.feed == "coinbase" else max(self.poll_sec, 15.0)
         while not self._stop.is_set() and not r._removed:
             try:
@@ -1972,6 +1999,31 @@ class Portfolio:
                 r.runtime_error = r.last_error
                 self.journal.log("ERROR", f"[{r.symbol}] poll: {r.last_error}")
             self._stop.wait(interval)
+
+    def _warmup_with_retry(self, r: AssetRunner) -> bool:
+        """Keep transient startup feed failures in WARMING and retry with backoff."""
+        delay = 5.0
+        while not self._stop.is_set():
+            try:
+                r.warmup()
+                if r.spec.kind == "futures" and r.spec.feed == "yahoo" and r.bar_index < 0:
+                    raise RuntimeError("Yahoo warm-up returned no chart bars")
+                r.runtime_error = ""
+                r.last_error = ""
+                r.feed_error = ""
+                return True
+            except Exception as ex:
+                r.errors += 1
+                message = f"warm-up failed; retrying in {delay:g}s: {type(ex).__name__}: {ex}"
+                r.last_error = message
+                r.runtime_error = message
+                r.warm = False
+                self.journal.log("ERROR", f"[{r.symbol}] {message}")
+                r.reset_failed_startup_warmup()
+                if self._stop.wait(delay):
+                    return False
+                delay = min(delay * 2.0, 60.0)
+        return False
 
     def _refresh_continuous_feeds(self, now: Optional[float] = None) -> bool:
         """Re-resolve provider continuous symbols once per UTC date.
