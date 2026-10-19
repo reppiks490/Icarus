@@ -490,6 +490,7 @@ def _normalize_historical_document(
     payload: Mapping[str, Any],
     *,
     blob_sha: str,
+    observed_at_ns: int | None = None,
 ) -> dict[str, Any]:
     _validate_historical_source_semantics(source, payload)
     sha = str(blob_sha or "").lower()
@@ -516,7 +517,7 @@ def _normalize_historical_document(
             "collected_at": collected.isoformat().replace("+00:00", "Z"),
             "availability_clock": availability,
         }
-        return {
+        row = {
             "id": source["id"], "path": source["path"], "remote_blob_sha": sha,
             "run_id": None, "run_status": None, "evidence_status": source["evidence_status"],
             "collection_only": True, "research_context_eligible": True,
@@ -525,6 +526,17 @@ def _normalize_historical_document(
             "availability_clock": availability, "subject": source["subject"],
             "execution_authorized": False, "production_decision_authorized": False,
         }
+
+        if source.get("id") == "provider_collection" and observed_at_ns is not None:
+            try:
+                from .provider_corpus import consume_context
+                row["provider_corpus"] = consume_context(
+                    payload, source_blob_sha=sha, available_at_ns=observed_at_ns, asof_ns=observed_at_ns)
+            except (ImportError, ValueError, TypeError, KeyError, OverflowError):
+                row["provider_corpus"] = {"status": "UNAVAILABLE", "reason": "PROVIDER_CONTEXT_UNAVAILABLE",
+                    "candidate_evidence_eligible": False, "execution_authorized": False,
+                    "production_decision_authorized": False}
+        return row
 
     summary: dict[str, Any] = {}
     for field in source.get("summary_fields") or []:
@@ -1532,10 +1544,14 @@ class BrainRemoteSync:
                 payload = json.loads(raw.decode("utf-8"))
                 if not isinstance(payload, Mapping):
                     raise ValueError("historical context payload is not an object")
+                now = self._now_utc()
+                if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
+                    raise ValueError("INVALID_SOURCE_CLOCK: live sync clock")
+                utc_now = now.astimezone(timezone.utc)
+                observed_ns = int(utc_now.timestamp()) * 1_000_000_000 + utc_now.microsecond * 1000
                 row = _normalize_historical_document(
-                    source,
-                    payload,
-                    blob_sha=blob_sha,
+                    source, payload, blob_sha=blob_sha,
+                    observed_at_ns=observed_ns if source.get("id") == "provider_collection" else None,
                 )
                 if source.get("kind") == "RESEARCH_CONTEXT_DOCUMENT":
                     now = self._now_utc()
@@ -1576,6 +1592,7 @@ class BrainRemoteSync:
                                 "requires_foundry_and_evaluator": True,
                                 "foreign_evidence_only": True,
                                 "summary": row["summary"],
+                                **({"provider_corpus": row["provider_corpus"]} if "provider_corpus" in row else {}),
                                 "execution_authorized": False,
                                 "production_decision_authorized": False,
                             },

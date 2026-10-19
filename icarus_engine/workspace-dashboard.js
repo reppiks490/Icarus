@@ -95,7 +95,7 @@
       text('#chart-note',`${symbol} · ${bars.length} observed bars · ${new Date(bars[0][0]*1000).toISOString()} — ${new Date(bars.at(-1)[0]*1000).toISOString()} · selected workspace chart closes`);
     }catch(error){if(current===chartSequence)text('#chart-note',`Chart unavailable: ${error.message}`);}
   }
-  async function loadCorpus(){const target=$('#corpus-sources');try{const evidence=await get('/api/corpus-consumption');target.replaceChildren(node('p',evidence.status,'note'));for(const corpus of evidence.corpora||[]){const item=node('article',null,'source');item.append(node('h3',corpus.cache_name));item.append(node('p',`${corpus.dataset_count} datasets · ${corpus.retained_rows} retained rows · Historical: ${corpus.historical===true?'yes':'unknown'}`));item.append(node('p',`Latest closed source bar: ${Number.isFinite(corpus.latest_bar_closed_ts)?new Date(corpus.latest_bar_closed_ts*1000).toISOString():'unknown'} · source age ${Number.isFinite(corpus.age_seconds)?Math.floor(corpus.age_seconds/86400)+' days':'unknown'}`));item.append(node('p',`Native run ${corpus.run_id} · artifact ${corpus.artifact_id}`));const details=node('details');details.append(node('summary','Receipt and workspace consumption'));details.append(node('pre',JSON.stringify({receipt_sha256:corpus.receipt_sha256,paper_warmup_used:corpus.paper_warmup_used,workspace:corpus.workspaces?.find?.(row=>row.id===id)||corpus.workspaces?.[id]},null,2)));item.append(details);target.append(item);}}catch(error){target.replaceChildren(node('p',`Corpus evidence unavailable: ${error.message}`,'error'));} await loadExpansion(target);}
+  async function loadCorpus(){const target=$('#corpus-sources');try{const evidence=await get('/api/corpus-consumption');target.replaceChildren(node('p',evidence.status,'note'));for(const corpus of evidence.corpora||[]){const item=node('article',null,'source');item.append(node('h3',corpus.cache_name));item.append(node('p',`${corpus.dataset_count} datasets · ${corpus.retained_rows} retained rows · Historical: ${corpus.historical===true?'yes':'unknown'}`));item.append(node('p',`Latest closed source bar: ${Number.isFinite(corpus.latest_bar_closed_ts)?new Date(corpus.latest_bar_closed_ts*1000).toISOString():'unknown'} · source age ${Number.isFinite(corpus.age_seconds)?Math.floor(corpus.age_seconds/86400)+' days':'unknown'}`));item.append(node('p',`Native run ${corpus.run_id} · artifact ${corpus.artifact_id}`));const details=node('details');details.append(node('summary','Receipt and workspace consumption'));details.append(node('pre',JSON.stringify({receipt_sha256:corpus.receipt_sha256,paper_warmup_used:corpus.paper_warmup_used,workspace:corpus.workspaces?.find?.(row=>row.id===id)||corpus.workspaces?.[id]},null,2)));item.append(details);target.append(item);}}catch(error){target.replaceChildren(node('p',`Corpus evidence unavailable: ${error.message}`,'error'));} await loadExpansion(target); await loadProviderContext(target);}
   async function loadExpansion(target){
     try{
       const proof=await get('/api/corpus-expansion'),item=node('article',null,'source');
@@ -108,6 +108,23 @@
       item.append(node('p',`Native run ${proof.run_id} · artifact ${proof.artifact_id} · receipt SHA256 ${proof.receipt_sha256}`));
       target.append(item);
     }catch{target.append(node('p','Expansion consumption proof unavailable.','error'));}
+  }
+  async function loadProviderContext(target){
+    try{
+      const context=await get('/api/provider-corpus'),item=node('article',null,'source');
+      item.id='provider-context';item.append(node('h3','Provider corpus · descriptive research context'));
+      if(context.status!=='HISTORICAL_CONTEXT_CONSUMED'){item.append(node('p','Verified provider context unavailable.'));target.append(item);return;}
+      const summary=context.summary,workspace=context.workspaces?.[id],receipt=context.read_receipts?.find(row=>row.consumer_id===id);
+      item.append(node('p',`${summary.source_rows_reported.toLocaleString()} upstream rows reported; ${summary.feature_records_consumed} feature records and ${summary.unique_numeric_values_consumed} unique numeric statistics consumed. Raw source rows read by this context: ${summary.raw_rows_consumed}.`));
+      item.append(node('p',`${id.toUpperCase()}: ${receipt?.numeric_feature_reads??0} numeric reads and ${receipt?.coverage_reads??0} provider-status reads. Historical snapshot ${context.source.snapshot_at_utc}. Local isolated context; no additional provider requests.`));
+      const table=node('table'),head=node('tr');for(const label of ['Provider / field','Samples','Mean','Observed range','Standard deviation'])head.append(node('th',label));table.append(head);
+      for(const feature of workspace?.features||[]){const row=node('tr'),stats=feature.statistics;for(const value of [`${feature.provider} / ${feature.field} / record ${feature.record_ordinal+1}`,stats.samples,stats.mean,`${stats.minimum} — ${stats.maximum}`,stats.standard_deviation])row.append(node('td',value));table.append(row);}const scroll=node('div',null,'scroll');scroll.append(table);item.append(scroll);
+      const diagnostics=node('details');diagnostics.append(node('summary','Coverage, quality checks and source binding'));
+      for(const provider of context.provider_coverage||[])diagnostics.append(node('p',`${provider.provider}: ${provider.current_status} · ${provider.current_rows_reported} current reported rows · ${provider.historical_rows_reported} historical fallback rows (kept separate).`));
+      diagnostics.append(node('pre',JSON.stringify({quality:context.quality,research:context.research,source:context.source,read_receipt:receipt},null,2)));item.append(diagnostics);
+      item.append(node('p','Instrument identities, units, observation windows and point-in-time qualification are unverified. Statistics support coverage review, quality diagnostics and descriptive research; they do not change trading signals, asset admission or P&L.'));
+      target.append(item);
+    }catch{target.append(node('p','Provider context unavailable.','error'));}
   }
   function clearAccounting(){
     for(const selector of ['#all-realized','#all-open','#all-total','#own-realized','#own-open'])text(selector,'Unavailable');
