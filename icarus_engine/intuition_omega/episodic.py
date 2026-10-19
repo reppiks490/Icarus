@@ -107,15 +107,31 @@ class EpisodicStore:
         query_observed = _iso(query.observed_at)
         cases: list[Episode] = []
         rows = self._conn.execute(
-            "SELECT content,digest FROM episodes WHERE asset=? "
+            "SELECT content,digest,case_id,asset,observed_at,received_at,"
+            "maturity_at,outcome_received_at FROM episodes WHERE asset=? "
             "AND observed_at<? AND received_at<=? "
             "AND maturity_at<=? AND outcome_received_at<=?",
             (query.scope.asset, query_observed, boundary, boundary, boundary),
         )
-        for raw, digest in rows:
+        for raw, digest, *indexes in rows:
             if hashlib.sha256(raw.encode("utf-8")).hexdigest() != digest:
                 raise ValueError("episode integrity failure")
             item = _decode(raw)
+            expected = (
+                item.situation.case_id, item.situation.scope.asset,
+                _iso(item.situation.observed_at), _iso(item.situation.received_at),
+                _iso(item.maturity_at), _iso(item.outcome_received_at),
+            )
+            # SQL indexes are selection hints, not authenticated evidence.
+            # A valid content digest cannot authenticate a separately changed
+            # receipt/index value or a substituted instrument/case identity.
+            if tuple(indexes) != expected:
+                raise ValueError("episode index/body integrity failure")
+            if (timestamp(item.situation.observed_at, "observed_at") >= timestamp(query.observed_at, "query.observed_at")
+                    or timestamp(item.situation.received_at, "received_at") > timestamp(query.received_at, "query.received_at")
+                    or timestamp(item.maturity_at, "maturity_at") > timestamp(query.received_at, "query.received_at")
+                    or timestamp(item.outcome_received_at, "outcome_received_at") > timestamp(query.received_at, "query.received_at")):
+                raise ValueError("episode as-of integrity failure")
             # Full identity prevents confusing real vs synthetic fills, even
             # when the source market and chart look superficially identical.
             if item.situation.scope != query.scope or item.situation.source_commit != query.source_commit:

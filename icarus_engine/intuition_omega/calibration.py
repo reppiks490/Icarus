@@ -140,12 +140,13 @@ class ForecastLedger:
         boundary = _iso(as_of)
         records: list[tuple[Forecast, Resolution]] = []
         query = self._db.execute(
-            "SELECT f.body,f.digest,r.body,r.digest FROM forecasts f "
+            "SELECT f.body,f.digest,r.body,r.digest,"
+            "f.id,f.producer,f.issued,f.received,r.id,r.observed,r.received FROM forecasts f "
             "JOIN resolutions r ON r.id=f.id "
             "WHERE f.producer=? AND f.issued<=? AND f.received<=? "
             "AND r.observed<=? AND r.received<=? ORDER BY f.issued,f.id",
             (producer, boundary, boundary, boundary, boundary))
-        for f_raw, f_sha, r_raw, r_sha in query:
+        for f_raw, f_sha, r_raw, r_sha, *indexes in query:
             if hashlib.sha256(f_raw.encode()).hexdigest() != f_sha or hashlib.sha256(r_raw.encode()).hexdigest() != r_sha:
                 raise ValueError("calibration ledger digest mismatch")
             f_obj, r_obj = json.loads(f_raw), json.loads(r_raw)
@@ -153,6 +154,21 @@ class ForecastLedger:
             f_obj["evidence_ids"] = tuple(f_obj["evidence_ids"])
             r_obj["evidence_ids"] = tuple(r_obj["evidence_ids"])
             f, r = Forecast(**f_obj), Resolution(**r_obj)
+            expected = (
+                f.forecast_id, f.producer, _iso(f.issued_at), _iso(f.received_at),
+                r.forecast_id, _iso(r.observed_at), _iso(r.received_at),
+            )
+            if tuple(indexes) != expected or f.forecast_id != r.forecast_id:
+                raise ValueError("calibration ledger index/body integrity failure")
+            cutoff = timestamp(as_of, "as_of")
+            if (f.producer != producer
+                    or timestamp(f.issued_at, "issued_at") > cutoff
+                    or timestamp(f.received_at, "received_at") > cutoff
+                    or timestamp(r.observed_at, "observed_at") > cutoff
+                    or timestamp(r.received_at, "received_at") > cutoff
+                    or timestamp(r.observed_at, "observed_at") < timestamp(f.maturity_at, "maturity_at")
+                    or timestamp(r.received_at, "received_at") < timestamp(f.received_at, "received_at")):
+                raise ValueError("calibration ledger as-of integrity failure")
             if (f.scope == scope and (source_commit is None or f.source_commit == source_commit)
                     and timestamp(f.maturity_at, "maturity_at") <= timestamp(as_of, "as_of")):
                 records.append((f, r))
