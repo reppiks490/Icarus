@@ -31,3 +31,7 @@ This is not a claim that 200 assets are fully connected. Connection requires con
 ## Regeneration
 
 Run `python tools/build_equity_catalog.py --limit 200`. The builder performs read-only GET requests to the public Nasdaq screener endpoints and writes no secrets or raw price/market-cap values. Review the diff before replacing a published snapshot because constituents and source response digests can change.
+
+## Runtime bridge boundary
+
+A200 history adapters return `BarBatchReceipt` evidence for catalog instrument IDs. Runtime integration must preserve that receipt and `instrument_id` as data cross the adapter boundary; it must not create a generic legacy `icarus:equity:<symbol>` receipt or infer feed identity from display symbols. `icarus_engine/a200_runtime_bridge.py` carries an immutable history batch and evaluates identity, mapping, entitlement, historical-bar and live-feed gates without registering an `AssetSpec`, enabling Pulse, or authorizing execution. Catalog `AssetSpec` creation remains a separate step requiring qualified instrument metadata and a reviewed registry contract. A public listing crosswalk, matching response symbol, or successful HTTP request is not proof of provider mapping, product entitlement, licensed historical coverage, or live feed qualification.

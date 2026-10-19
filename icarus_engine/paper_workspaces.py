@@ -12,6 +12,9 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from .assets import REGISTRY, apply_chart_config, validate_chart_config
+from .workspace_universe import dashboard_assets
+from .futures_catalog import FUTURES_PRODUCTS
+from .paper_pnl import validate_paper_pnl
 from .runtime import (
     AssetRunner,
     FlattenUnavailableError,
@@ -24,22 +27,85 @@ from .runtime import (
 )
 
 
+# Owner-requested expansion is a research selection, separate from the default
+# active portfolios and from dated-contract/broker execution qualification.
+REQUESTED_FUTURES_FAMILIES = ("CL", "NG", "HG", "6E", "6J", "6B", "6A", "ZN", "ZB", "BTCF")
+REQUESTED_FUTURES_MICROS = tuple(
+    product.root for root in REQUESTED_FUTURES_FAMILIES
+    for product in FUTURES_PRODUCTS.values() if product.full_root == root and product.root != root
+)
+REQUESTED_FUTURES_SYMBOLS = REQUESTED_FUTURES_FAMILIES + REQUESTED_FUTURES_MICROS
+
+
+def requested_futures_metadata():
+    return {
+        "family_count": len(REQUESTED_FUTURES_FAMILIES),
+        "full_roots": list(REQUESTED_FUTURES_FAMILIES),
+        "micro_roots": list(REQUESTED_FUTURES_MICROS),
+        "symbols": list(REQUESTED_FUTURES_SYMBOLS),
+        "families": [{"root": root, "micro_roots": [micro for micro in REQUESTED_FUTURES_MICROS
+                                                       if FUTURES_PRODUCTS[micro].full_root == root]}
+                     for root in REQUESTED_FUTURES_FAMILIES],
+        "purpose": "CORPUS_RESEARCH_AND_PAPER_CONFIGURATION",
+        "profitability_verified": False,
+        "fresh_feed_access_verified": False,
+        "execution_authorized": False,
+    }
+
+
 _MINI_MICRO_FUTURES = (
     "NQ", "MNQ", "ES", "MES", "YM", "MYM", "RTY", "M2K",
     "GC", "MGC", "SI", "SIL",
 )
 _PROFILE_DEFAULTS = (
-    {"id": "cc1", "name": "20m Minis + Micros", "description": "Heikin Ashi · 20 minute · registered mini/micro futures",
-     "assets": list(_MINI_MICRO_FUTURES), "chart": {"timeframe": "20", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"}, "inputs": {}},
+    {"id": "cc1", "name": "20m Full Asset Universe", "description": "Heikin Ashi · 20 minute · original assets + ten futures families and micros",
+     "assets": dashboard_assets(), "chart": {"timeframe": "20", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"}, "inputs": {}},
     {"id": "cc2", "name": "Short Target + ETH", "description": "5 minute starting profile · lower targets · larger size · includes ETH",
-     "assets": [*_MINI_MICRO_FUTURES, "ETH"], "chart": {"timeframe": "5", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"},
+     "assets": dashboard_assets(), "chart": {"timeframe": "5", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"},
      "inputs": {"tp1_pts": 7.5, "tp2_pts": 15.0, "qty_contracts": 10}},
     {"id": "cc3", "name": "Workspace 3", "description": "Independent paper workspace · editable starting profile",
-     "assets": list(_MINI_MICRO_FUTURES), "chart": {"timeframe": "20", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"}, "inputs": {}},
-    {"id": "cc4", "name": "5m Minis + Micros", "description": "Heikin Ashi · 5 minute · registered mini/micro futures",
-     "assets": list(_MINI_MICRO_FUTURES), "chart": {"timeframe": "5", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"}, "inputs": {}},
+     "assets": dashboard_assets(), "chart": {"timeframe": "20", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"}, "inputs": {}},
+    {"id": "cc4", "name": "5m Full Asset Universe", "description": "Heikin Ashi · 5 minute · original assets + ten futures families and micros",
+     "assets": dashboard_assets(), "chart": {"timeframe": "5", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"}, "inputs": {}},
 )
 _IDS = {row["id"] for row in _PROFILE_DEFAULTS}
+
+
+def _validate_assets(value):
+    if not isinstance(value, list) or not 1 <= len(value) <= len(REGISTRY):
+        raise ValueError("assets must be a nonempty bounded list of canonical symbols")
+    if any(type(symbol) is not str or symbol not in REGISTRY for symbol in value):
+        raise ValueError("assets contain an unknown or noncanonical symbol")
+    if len(set(value)) != len(value):
+        raise ValueError("assets must not contain duplicate symbols")
+    for symbol in value:
+        product = FUTURES_PRODUCTS.get(symbol)
+        if product is not None and product.runtime_qualified is not True:
+            raise ValueError(f"assets: {symbol} is not runtime-qualified")
+    return list(value)
+
+
+def _available_assets():
+    rows = []
+    for symbol, spec in REGISTRY.items():
+        product = FUTURES_PRODUCTS.get(symbol)
+        rows.append({
+            "symbol": symbol, "name": getattr(spec, "name", symbol),
+            "requested_expansion": symbol in REQUESTED_FUTURES_SYMBOLS,
+            "kind": getattr(spec, "kind", "futures"),
+            "full_root": product.full_root if product else symbol,
+            "exchange": getattr(spec, "exchange", ""),
+            "provider_symbol": getattr(spec, "ticker", ""),
+            "feed_mode": getattr(spec, "feed_mode", "unknown"),
+            "selectable": product.runtime_qualified is True if product else True,
+            "runtime_qualified": product.runtime_qualified is True if product else True,
+            "execution_qualified": product.execution_qualified is True if product else False,
+            "execution_blocker": product.execution_blocker if product else "no broker execution qualification",
+            "data_access_verified": False,
+            "data_access_note": "Configured public research route; actual availability and freshness require feed observations",
+            "execution_authorized": False,
+        })
+    return rows
 
 
 class SharedFeed:
@@ -49,6 +115,10 @@ class SharedFeed:
         self._lock = threading.RLock()
         self._candles: Dict[Tuple[str, int], List[Tuple[int, int, Dict[int, Any]]]] = {}
         self._short_cache: Dict[Tuple[Any, ...], Tuple[float, Any]] = {}
+
+    @property
+    def native_interval_seconds(self) -> int:
+        return getattr(self._feed, "native_interval_seconds", 60)
 
     @property
     def provider_name(self) -> str:
@@ -138,19 +208,20 @@ class WorkspacePortfolio(Portfolio):
         self.workspace = workspace
         super().__init__(*args, **kwargs)
 
-    def _resolved(self, spec):
-        chart = validate_chart_config(self.workspace["chart"])
+    def _resolved(self, spec, workspace=None):
+        workspace = self.workspace if workspace is None else workspace
+        chart = validate_chart_config(workspace["chart"])
         spec = apply_chart_config(spec, chart, pin=True)
         inputs, meta, sources = resolve_inputs(
-            spec, self.base_dir, self.profile, self.preset, self.workspace["inputs"],
-            skip_asset_overrides=True, extra_label=f"command-center:{self.workspace['id']}"
+            spec, self.base_dir, self.profile, self.preset, workspace["inputs"],
+            skip_asset_overrides=True, extra_label=f"command-center:{workspace['id']}"
         )
         spec = apply_spec_meta(spec, meta)
         spec = apply_chart_config(spec, chart, pin=True)
         return spec, inputs, sources
 
-    def make_runner(self, spec):
-        spec, inputs, sources = self._resolved(spec)
+    def make_runner(self, spec, *, workspace=None):
+        spec, inputs, sources = self._resolved(spec, workspace)
         base_spec = copy.deepcopy(spec)
         scale = self._ref_price() if spec.symbol != self.pts_ref_symbol else 0.0
         cfg = RunnerConfig(spec=spec, inputs=inputs, warmup_bars=self.warmup_bars,
@@ -165,7 +236,101 @@ class WorkspacePortfolio(Portfolio):
             return False
         return super()._refresh_continuous_feeds(now)
 
+    def _run(self, runner):
+        # Transaction-created workers may exist before every sibling thread has
+        # started. They cannot warm up, poll or write the ledger until committed.
+        gate = getattr(runner, "_workspace_start_gate", None)
+        if gate is not None:
+            while not gate.wait(0.1):
+                if self._stop.is_set():
+                    return
+            if runner._removed or self._stop.is_set():
+                return
+        return super()._run(runner)
+
     def reconfigure(self, candidate: Dict[str, Any]) -> Dict[str, Any]:
+        requested = _validate_assets(candidate["assets"])
+        chart = validate_chart_config(candidate["chart"])
+        values = dict(candidate["inputs"])
+        validate_values(values)
+        configuration_changed = chart != self.workspace["chart"] or values != self.workspace["inputs"]
+        with self._lock, ExitStack() as locks:
+            if self._stop.is_set():
+                raise ValueError("command center paper runtime is stopped")
+            previous = dict(self.runners)
+            previous_order = list(self.order)
+            removed = [runner for symbol, runner in previous.items() if symbol not in requested]
+            # Stage construction and provider preparation without publishing maps.
+            additions = []
+            gate = threading.Event()
+            previous_threads = dict(self._threads)
+            snapshots = []
+            old_workspace = copy.deepcopy(self.workspace)
+            started = self._sampler_thread is not None and not self._stop.is_set()
+            try:
+                for symbol in requested:
+                    if symbol in previous:
+                        continue
+                    runner = self.make_runner(copy.deepcopy(REGISTRY[symbol]), workspace=candidate)
+                    if self.paused:
+                        runner.paused = True
+                    runner._workspace_start_gate = gate
+                    additions.append(runner)
+                    if started:
+                        prepare = getattr(runner.feed, "prepare_live", None)
+                        if runner.spec.kind == "futures" and callable(prepare):
+                            prepare([runner.spec.ticker])
+                            self._prepare_depth_context(runner.feed, [runner.spec.ticker])
+                # Source preparation can block; keep existing runners free to
+                # process their own bars, then validate removal under locks.
+                for runner in sorted(previous.values(), key=lambda r: r.symbol):
+                    locks.enter_context(runner.lock)
+                for runner in removed:
+                    if runner.em.open or runner.em._pending_entries or runner.em._pending_closes:
+                        raise ValueError(f"{runner.symbol}: flatten open positions and cancel pending orders before removing the asset")
+                    runner.ensure_configurable()
+                if configuration_changed:
+                    snapshots = [(r, r.configuration_snapshot(), copy.deepcopy(r.cfg.base_spec))
+                                 for r in previous.values()]
+                    # Existing transactional replay also validates all old runners.
+                    self._reconfigure_existing(candidate)
+                if started:
+                    for runner in additions:
+                        self._spawn(runner)
+                # Removing a flat runner is terminal for its worker. Keep its
+                # handle under a unique key so shutdown still joins it even if
+                # this symbol is subsequently re-added.
+                for runner in removed:
+                    runner.paused = True
+                    runner._removed = True
+                    worker = self._threads.pop(runner.symbol, None)
+                    if worker is not None:
+                        self._threads[f"retired:{runner.symbol}:{id(worker)}"] = worker
+                staged = {runner.symbol: runner for runner in additions}
+                self.runners = {symbol: previous.get(symbol, staged.get(symbol)) for symbol in requested}
+                self.order = requested
+                self.workspace.update({"assets": requested, "chart": chart, "inputs": values})
+            except Exception:
+                for runner in additions:
+                    runner._removed = True
+                gate.set()
+                # Gated workers have performed no feed reads or journal writes.
+                for key, worker in list(self._threads.items()):
+                    if previous_threads.get(key) is not worker:
+                        worker.join(5)
+                self._threads = previous_threads
+                self.runners, self.order = previous, previous_order
+                for runner, snapshot, base_spec in reversed(snapshots):
+                    runner.restore_configuration_snapshot(snapshot)
+                    runner.cfg.base_spec = base_spec
+                self.workspace.clear()
+                self.workspace.update(old_workspace)
+                raise
+            gate.set()
+        return {"ok": True, "id": self.workspace["id"], "assets": requested,
+                "chart": chart, "inputs": values, "paper_only": True, "execution_authorized": False}
+
+    def _reconfigure_existing(self, candidate: Dict[str, Any]) -> Dict[str, Any]:
         chart = validate_chart_config(candidate["chart"])
         values = dict(candidate["inputs"])
         validate_values(values)
@@ -235,7 +400,8 @@ class PaperWorkspaceManager:
                 if not isinstance(saved, dict) or saved.get("id") != default["id"]:
                     raise ValueError(f"invalid command center profile: {path.name}")
                 profile.update({k: saved[k] for k in ("name", "description", "assets", "chart", "inputs") if k in saved})
-            profile["assets"] = list(default["assets"])
+            if path.exists() and "assets" in saved:
+                profile["assets"] = _validate_assets(saved["assets"])
             profile["chart"] = validate_chart_config(profile["chart"])
             values = dict(profile["inputs"])
             validate_values(values)
@@ -452,20 +618,51 @@ class PaperWorkspaceManager:
         return {"feeds": feeds, "adapters": adapters, "execution_authorized": False}
 
     def snapshot(self):
+        now = int(time.time())
         rows = []
+        ledgers = []
         for profile_id, profile in self.profiles.items():
             portfolio = self.portfolios.get(profile_id)
             status = portfolio.status(nonblocking=True) if portfolio else {"assets": [], "all_warm": False}
             runners = portfolio.runner_list() if portfolio else []
             effective = runners[0].inputs_base.to_dict() if runners else {}
             closed = portfolio.journal.closed_paper_profit() if portfolio else {"realized_pnl": 0.0, "closed_pieces": 0, "last_close_ts": None}
+            missing_marks = []
+            for asset in status.get("assets", []):
+                if asset.get("position"):
+                    mark = asset.get("price")
+                    if type(mark) not in (int, float) or not math.isfinite(mark) or mark <= 0:
+                        missing_marks.append(str(asset.get("symbol") or "unknown"))
+            valuation_complete = portfolio is not None and not status.get("view_stale", False) and not missing_marks
+            if status.get("positions") and not any(asset.get("position") for asset in status.get("assets", [])):
+                valuation_complete = False
             open_pnl = float(status.get("open_profit") or 0.0)
+            # Journals and catalog point values use explicit USD simulation units.
+            # This currency never describes any broker account or FX conversion.
+            open_assets = [asset for asset in status.get("assets", []) if asset.get("position")]
+            position_count = status.get("positions", len(open_assets))
+            marks = []
+            for asset in open_assets:
+                age, price = asset.get("price_age"), asset.get("price")
+                if (type(age) not in (int, float) or not 0 <= age <= 1e9
+                        or type(price) not in (int, float) or not 0 < price < 1e18):
+                    break
+                marks.append(now - int(math.ceil(age)))
+            marks_complete = (len(marks) == len(open_assets) == position_count
+                              and not status.get("view_stale", False))
+            ledgers.append({"id": profile_id, "currency": "USD", "runtime_available": portfolio is not None,
+                            "snapshot_ts": now, "realized_pnl": closed["realized_pnl"] if portfolio else None,
+                            "open_pnl": status.get("open_profit", 0.0) if portfolio and not status.get("view_stale", False) else None,
+                            "open_positions": position_count,
+                            "oldest_open_mark_ts": min(marks) if marks and marks_complete else None})
             pnl = {**closed, "open_pnl": open_pnl, "paper_pnl": closed["realized_pnl"],
                    "replay_inclusive_net": float(status.get("net") or 0.0),
                    "basis": "persisted closures after paper cutover; open mark and replay-inclusive net shown separately"}
             status["paper_pnl"] = pnl["paper_pnl"]
             rows.append({**copy.deepcopy(profile), "status": status, "effective_inputs": effective, "paper_only": True,
-                         "execution_authorized": False, "pnl": pnl, "feed": self._feed_summary(status, portfolio)})
+                         "execution_authorized": False, "runtime_available": portfolio is not None,
+                         "valuation_complete": valuation_complete, "missing_mark_symbols": missing_marks,
+                         "pnl": pnl, "feed": self._feed_summary(status, portfolio)})
         aggregate = {"workspace_count": len(rows), "capital": sum(float(row["status"].get("capital") or 0.0) for row in rows),
                      "equity": sum(float(row["status"].get("equity") or 0.0) for row in rows),
                      "net": sum(float(row["status"].get("net") or 0.0) for row in rows),
@@ -475,8 +672,20 @@ class PaperWorkspaceManager:
                      "all_warm": all(bool(row["status"].get("all_warm")) for row in rows),
                      "pnl_basis": "persisted closures after paper cutover; open mark and replay-inclusive synthetic equity are separate"}
         aggregate["paper_pnl"] = aggregate["realized_pnl"]
+        aggregate["runtime_count"] = sum(row["runtime_available"] for row in rows)
+        aggregate["missing_runtime_ids"] = [row["id"] for row in rows if not row["runtime_available"]]
+        aggregate["accounting_complete"] = (len(rows) == 4 and not aggregate["missing_runtime_ids"]
+                                            and all(row["valuation_complete"] for row in rows))
+        aggregate["fees_status"] = "SIMULATOR_CONFIGURED_NOT_BROKER_RECONCILED"
+        aggregate["valuation_status"] = ("PAPER_MARKS_UNVERIFIED_FRESHNESS" if aggregate["accounting_complete"]
+                                         else "PAPER_VALUATION_INCOMPLETE")
+        aggregate["reconciliation_status"] = "NO_BROKER_RECONCILIATION"
         return {"mode": "concurrent_paper", "paper_only": True, "profiles": rows, "aggregate": aggregate,
-                "connections": self._connections(rows), "execution_authorized": False}
+                "paper_pnl": validate_paper_pnl(ledgers, as_of_ts=now),
+                "connections": self._connections(rows), "available_assets": _available_assets(),
+                "runtime_feed_mode": getattr(self.parent, "feed_mode", "unknown"),
+                "requested_futures": requested_futures_metadata(),
+                "execution_authorized": False}
 
     def update(self, profile_id: str, body: Dict[str, Any]):
         if profile_id not in self.profiles:
@@ -484,6 +693,10 @@ class PaperWorkspaceManager:
         with self._lock:
             old = self.profiles[profile_id]
             candidate = copy.deepcopy(old)
+            if not isinstance(body, dict):
+                raise ValueError("workspace update must be an object")
+            if "assets" in body:
+                candidate["assets"] = _validate_assets(body["assets"])
             if "chart" in body:
                 candidate["chart"] = validate_chart_config(body["chart"])
             if "inputs" in body:

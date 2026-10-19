@@ -709,6 +709,8 @@ class AssetRunner:
     def on_sub_bar(self, b: Bar, sub_minutes: int, live: bool, record: bool = True) -> None:
         """Feed one genuine minute-or-coarser sub-bar to HTF chains and minute charts."""
         with self.lock:
+            if self._removed:
+                return
             if self.last_sub_ts is not None and b.ts <= self.last_sub_ts:
                 return
             if not self.cal.is_open(b.ts):
@@ -1128,69 +1130,103 @@ class AssetRunner:
 
     def _feed_failed(self, message):
         with self.lock:
+            if self._removed:
+                return
             self.errors += 1
             self.feed_error = str(message)
             self.last_error = self.runtime_error or self.feed_error
 
     def poll(self) -> None:
         now = time.time()
+        with self.lock:
+            if self._removed:
+                return
         if file_feed_mode() and self._file_waiting:
             base = self.cfg.base_dir or os.getcwd()
             hist, minutes = find_history(base, self.symbol, self.chart_minutes)
             if hist:
-                self._warmup_from_csv(hist, int(now), source_minutes=minutes)
-                self._file_waiting = False
-                if self.last_price is None:
-                    self.last_price = self.feed.ticker(self.spec.ticker)
+                with self.lock:
+                    if self._removed:
+                        return
+                    self._warmup_from_csv(hist, int(now), source_minutes=minutes)
+                    self._file_waiting = False
+                    if self.last_price is None:
+                        self.last_price = self.feed.ticker(self.spec.ticker)
             return
         feed_now = now
         px = None
+        ft = 0
         try:
+            source_seconds = getattr(self.feed, "native_interval_seconds", 60)
+            if (type(source_seconds) is not int or not 60 <= source_seconds <= 86400
+                    or source_seconds % 60 or self.chart_minutes * 60 % source_seconds):
+                raise ValueError("feed native interval cannot supply the configured chart without inventing finer bars")
             if self.spec.feed == "yahoo":
-                bars, ft, px = self.feed.recent_ex(self.spec.ticker, 60, since_ts=self.last_sub_ts)
+                bars, ft, px = self.feed.recent_ex(self.spec.ticker, source_seconds, since_ts=self.last_sub_ts)
                 if not ft:                                          # no feed clock in the response: the last aligned minute is the only safe clock
-                    ft = (bars[-1].ts + 60) if bars else int(self.feed_time or 0)
-                if not ft:
-                    # A stopped feed clock is normal outside the configured CME session.
-                    # Do not turn weekends/closures into false transport failures.
-                    if not self.cal.is_open(int(now)):
-                        self.last_poll_ok = now
-                        with self.lock:
-                            if self.feed_error and self.last_error == self.feed_error:
-                                self.last_error = self.runtime_error
-                            self.feed_error = ""
-                        return
-                    self._feed_failed("feed returned no clock and no bars"); return
-                self.feed_time = ft
-                feed_now = ft                                       # Yahoo is ~10 min behind: close bars on ITS clock, never the wall clock
-                self.feed_delay = now - ft
+                    ft = (bars[-1].ts + source_seconds) if bars else int(self.feed_time or 0)
             else:
-                bars = self.feed.recent(self.spec.ticker, 60)
+                bars = self.feed.recent(self.spec.ticker, source_seconds)
         except Exception as ex:
             if self.spec.feed == "coinbase":
                 try:
                     bars = self.kraken.recent(self.spec.ticker, 1)
+                    source_seconds = 60
                 except Exception as ex2:
                     self._feed_failed(f"{ex} / {ex2}"); return
             else:
                 self._feed_failed(str(ex)); return
-        closed_before = feed_now if self.spec.feed == "yahoo" else now - 5      # Coinbase is realtime: a minute is closed 5 s after its end
-        new = [b for b in bars if (self.last_sub_ts is None or b.ts > self.last_sub_ts) and b.ts + 60 <= closed_before]
-        for b in new:
-            self.on_sub_bar(b, 1, live=True)
+        # Provider I/O runs without the runner lock. Removal may complete while
+        # that request is in flight; a retired runner must not mutate afterward.
         with self.lock:
+            if self._removed:
+                return
+            if self.spec.feed == "yahoo":
+                if not ft:
+                    if not self.cal.is_open(int(now)):
+                        self.last_poll_ok = now
+                        if self.feed_error and self.last_error == self.feed_error:
+                            self.last_error = self.runtime_error
+                        self.feed_error = ""
+                        return
+                    self._feed_failed("feed returned no clock and no bars")
+                    return
+                self.feed_time = ft
+                feed_now = ft  # Close on the source clock, never on wall time.
+                self.feed_delay = now - ft
+            closed_before = feed_now if self.spec.feed == "yahoo" else now - 5
+            closed_rows = [b for b in bars if b.ts + source_seconds <= closed_before]
+            new = [b for b in closed_rows if self.last_sub_ts is None or b.ts > self.last_sub_ts]
+            if new:
+                from .corpus_intake import CorpusDataset
+                dataset = getattr(self.feed, "dataset", None)
+                if isinstance(dataset, CorpusDataset):
+                    # Native reads cannot bypass the corpus feed's same-contract
+                    # gate merely because the chart aggregates those rows later.
+                    contracts = {bar.ts: identity for bar, identity in zip(dataset.bars, dataset.contract_ids)}
+                    identities = {contracts.get(bar.ts) for bar in new}
+                    if self.last_sub_ts is not None:
+                        identities.add(contracts.get(self.last_sub_ts))
+                    if None in identities or len(identities) != 1:
+                        self._feed_failed("corpus strategy polling requires one verified contract identity; context reads remain available")
+                        return
+            for b in new:
+                self.on_sub_bar(b, source_seconds // 60, live=True)
             for ch in self.chains.values():
                 ch.flush_if_stale(feed_now - 45)
             stale = self.chart_agg.flush_if_stale(feed_now - 45)
             if stale is not None:
                 self._on_chart_bar(stale, True)
-        if px is None and bars:
-            px = bars[-1].c
-        if px:
-            self.last_price = px
-            self.last_price_ts = feed_now
-        self.last_poll_ok = now
-        with self.lock:
+            if source_seconds > 60:
+                # Coarse-source quotes have no separate observation timestamp.
+                # Use only a demonstrably closed row for strategy valuation.
+                px = closed_rows[-1].c if closed_rows else None
+            elif px is None and bars:
+                px = bars[-1].c
+            if px:
+                self.last_price = px
+                self.last_price_ts = feed_now
+            self.last_poll_ok = now
             if self.feed_error and self.last_error == self.feed_error:
                 self.last_error = self.runtime_error
             self.feed_error = ""

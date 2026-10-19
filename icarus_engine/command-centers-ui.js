@@ -5,11 +5,12 @@ const paperWorkspaceDrafts = {};
 let paperRequestSequence = 0;
 const paperPendingActions = new Set();
 
-function paperValue(x) { return x == null || x === '' || !Number.isFinite(Number(x)) ? null : Number(x); }
+function paperValue(x) { return IcarusPaperPnl.amount(x) ? x : null; }
 function paperSigned(x) { const n=paperValue(x); return n==null?'—':(n>0?'+':'')+paperMoney(n); }
 function paperTone(x) { const n=paperValue(x); return n==null?'':n<0?'neg':'pos'; }
 function paperCurrentPnl(realized,open) { const closed=paperValue(realized),mark=paperValue(open);if(closed==null||mark==null)return null;const total=closed+mark;return Number.isFinite(total)?total:null; }
-function paperRealized(pnl,fallback) { return pnl?.realized_pnl??pnl?.paper_pnl??fallback; }
+function paperRealized(pnl) { return pnl?.realized_pnl; }
+function paperLedger(id) { return IcarusPaperPnl.read(paperWorkspaces)?.profiles.find(row=>row.id===id)||{}; }
 function paperConfigSignature(profile) { return JSON.stringify([profile.effective_inputs||{},profile.chart||{}]); }
 function paperStateTone(x) {
   const s=String(x||'').toLowerCase();
@@ -21,6 +22,7 @@ function paperWorkspacesHtml() {
     <header class="paper-deck-head"><div><p class="paper-kicker">ICARUS / SIMULATION DECK</p><h2>Four independent paper portfolios</h2><p>Separate strategy runners, positions, journals and paper P&amp;L. Shared market data, isolated controls.</p></div>
       <div class="paper-deck-actions"><span class="paper-mode">SIMULATED PAPER ONLY</span><button type="button" class="sm" data-paper-refresh>Refresh state</button></div></header>
     <p id="paperSnapshotNotice" class="small muted" role="status">Loading paper ledger state…</p>
+    <nav aria-label="Separate dashboards">${['cc1','cc2','cc3','cc4'].map(id=>`<a href="/dashboards/${id}">${id.toUpperCase()} dashboard ↗</a>`).join(' · ')} · <a href="/dashboards/connections">Connections ↗</a></nav>
     <div id="paperAggregate" class="paper-aggregate"></div>
     <div id="paperWorkspaceTabs" class="paper-workspace-grid" role="group" aria-label="Select a paper portfolio"></div>
     <div id="paperConnections" class="paper-connections"></div>
@@ -33,21 +35,26 @@ function paperMoney(x) { const n=paperValue(x); return n==null?'—':n.toLocaleS
 
 function paperSetHeader(data) {
   const el=document.querySelector('#combinedPaperPnl'); if(!el)return;
-  const profiles=data?.profiles;
-  const value=data?.mode==='concurrent_paper'&&Array.isArray(profiles)&&profiles.length===4?paperCurrentPnl(paperRealized(data.aggregate),data.aggregate?.open_pnl):null;
+  const accounting=IcarusPaperPnl.read(data),value=accounting?.aggregate.total_pnl??null;
   el.textContent=paperMoney(value);el.className='value '+paperTone(value);
-  el.title=value==null?'Four paper ledger results unavailable.':`Closed live paper results plus current open marks across ${profiles.length} separate simulated ledgers. Open marks may include warmup-origin positions; replay-inclusive synthetic net is shown below.`;
+  el.title='Four isolated USD paper ledgers; persisted closures plus fresh open marks. Fees unverified; no broker reconciliation. '+(value==null?'Current total unavailable.':'');
 }
+
+function paperExpireObservations() {
+  if(paperWorkspaces&&!IcarusPaperPnl.read(paperWorkspaces)) {
+    paperSetHeader(null);
+    renderPaperLiveSections();
+  }
+}
+setInterval(paperExpireObservations,1000);
 
 async function loadPaperWorkspaces(full=false) {
   const sequence=++paperRequestSequence;
   const notice=document.querySelector('#paperSnapshotNotice');
   try {
-    const response = await fetch('/api/command-centers', {cache:'no-store'});
-    const data = await response.json().catch(()=>({}));
-    if (!response.ok) throw new Error(data.detail||('HTTP '+response.status));
+    const data = await IcarusPaperPnl.fetchJson('/api/command-centers');
     if(sequence!==paperRequestSequence)return;
-    if(data.mode!=='concurrent_paper'||data.profiles?.length!==4) throw new Error('four paper portfolios are unavailable');
+    if(data.mode!=='concurrent_paper'||data.profiles?.length!==4||new Set(data.profiles.map(p=>p.id)).size!==4||!data.profiles.every(p=>['cc1','cc2','cc3','cc4'].includes(p.id))) throw new Error('four paper portfolios are unavailable');
     paperWorkspaces = data;
     if (!paperWorkspaces.profiles.some(p=>p.id===paperWorkspaceActive)) paperWorkspaceActive=paperWorkspaces.profiles[0].id;
     paperSetHeader(data);
@@ -61,21 +68,23 @@ async function loadPaperWorkspaces(full=false) {
   } catch (e) {
     if(sequence!==paperRequestSequence)return;
     paperSetHeader(null);
+    paperWorkspaces=null;
+    for(const selector of ['#paperAggregate','#paperWorkspaceTabs','#paperConnections','#paperWorkspaceRuntime']){const el=document.querySelector(selector);if(el)el.innerHTML='<p class="empty">Current observations unavailable.</p>';}
     if(notice)notice.textContent='Paper state unavailable: '+(e?.message||String(e));
     const target=document.querySelector('#paperWorkspaceBody');
-    if(target&&!paperWorkspaces)target.innerHTML=`<div class="empty neg">Paper workspaces unavailable: ${paperEsc(e?.message||String(e))}</div>`;
+    if(target&&!document.querySelector('#paperWorkspaceRuntime'))target.innerHTML=`<div class="empty neg">Paper workspaces unavailable: ${paperEsc(e?.message||String(e))}</div>`;
   }
 }
 
 function paperAggregateHtml(data) {
-  const a=data.aggregate||{},realized=paperRealized(a),current=paperCurrentPnl(realized,a.open_pnl);
+  const a=IcarusPaperPnl.read(data)?.aggregate||{},complete=a.accounting_complete===true,realized=a.realized_pnl,current=a.total_pnl;
   return `<div class="paper-aggregate-main"><span class="paper-metric-label">COMBINED PAPER P&amp;L · CLOSED + OPEN</span><strong class="tnum ${paperTone(current)}">${paperSigned(current)}</strong><span>Sum of all four current paper portfolios</span></div>
-    <div class="paper-aggregate-side"><div><span>Persistent closed P&amp;L</span><b class="tnum ${paperTone(realized)}">${paperSigned(realized)}</b></div><div><span>Current open mark</span><b class="tnum ${paperTone(a.open_pnl)}">${paperSigned(a.open_pnl)}</b></div><div><span>Replay inclusive net</span><b class="tnum ${paperTone(a.net)}">${paperSigned(a.net)}</b></div></div>
+    <div class="paper-aggregate-side"><div><span>Persistent closed P&amp;L</span><b class="tnum ${paperTone(realized)}">${paperSigned(realized)}</b></div><div><span>Current open mark</span><b class="tnum ${paperTone(a.open_pnl)}">${paperSigned(a.open_pnl)}</b></div><div><span>Broker reconciliation</span><b class="tnum ${paperTone(a.net)}">—</b></div></div>
     <p class="paper-basis">${current==null?'Aggregate ledger fields require the updated engine server.':`${paperEsc(a.open_positions??'—')} open positions. Closed P&L comes from persisted live paper trades; open marks may include warmup-origin positions. Replay-inclusive net and equity use synthetic per-asset capital.`}</p>`;
 }
 
 function paperProfileHtml(p) {
-  const s=p.status||{},realized=paperRealized(p.pnl,s.paper_pnl),feed=p.feed||{},current=paperCurrentPnl(realized,p.pnl?.open_pnl??s.open_profit);
+  const s=p.status||{},ledger=paperLedger(p.id),realized=ledger.realized_pnl,feed=p.feed||{},current=ledger.total_pnl;
   const state=s.paused?'Entries paused':s.all_warm?'Runners ready':'Warming';
   return `<button type="button" class="paper-portfolio ${p.id===paperWorkspaceActive?'is-selected':''}" data-paper-profile="${paperEsc(p.id)}" aria-pressed="${p.id===paperWorkspaceActive}"><span class="paper-profile-top"><b>${paperEsc(p.id).toUpperCase()}</b><span class="paper-ledger-status ${s.paused?'is-warn':s.all_warm?'is-good':'is-warn'}">${state}</span></span><strong>${paperEsc(p.name)}</strong><em class="tnum ${paperTone(current)}">${paperSigned(current)}</em><span class="paper-profile-foot"><span>Closed + open P&amp;L</span><span>${paperEsc(s.positions??'—')} positions</span></span><small class="paper-feed-state ${paperStateTone(feed.status)}">Persistent closed ${paperSigned(realized)} · Feed ${paperEsc(feed.status||'unknown')}${feed.total_assets!=null?` ${paperEsc(feed.healthy_assets??0)}/${paperEsc(feed.total_assets)}`:''}</small></button>`;
 }
@@ -92,11 +101,11 @@ function paperConnectionsHtml(data) {
 }
 
 function paperRuntimeHtml(p) {
-  const s=p.status||{},pnl=p.pnl||{},assets=Array.isArray(s.assets)?s.assets:[];
-  const realized=paperRealized(pnl,s.paper_pnl),current=paperCurrentPnl(realized,pnl.open_pnl??s.open_profit);
-  const rows=assets.map(a=>`<tr><td><b>${paperEsc(a.symbol)}</b></td><td>${paperEsc(a.feed_provider||a.feed||'—')}</td><td>${a.warm?'Ready':'Warming'}</td><td>${a.paused?'Paused':'Running'}</td><td class="tnum">${paperEsc(a.position??0)}</td><td class="tnum ${paperTone(a.open_profit)}">${paperMoney(a.open_profit)}</td><td class="tnum ${paperTone(a.live_profit)}">${paperMoney(a.live_profit)}</td><td>${paperEsc(a.last_error||'—')}</td></tr>`).join('');
+  const s=p.status||{},pnl=paperLedger(p.id),assets=Array.isArray(s.assets)?s.assets:[];
+  const realized=pnl.realized_pnl,current=pnl.total_pnl;
+  const rows=assets.map(a=>`<tr><td><b>${paperEsc(a.symbol)}</b></td><td>${paperEsc(a.feed_provider||a.feed||'—')}</td><td>${a.warm?'Ready':'Warming'}</td><td>${a.paused?'Paused':'Running'}</td><td class="tnum">${paperEsc(a.position??0)}</td><td class="tnum ${paperTone(a.open_profit)}">${paperMoney(pnl.open_pnl!=null&&paperValue(a.price_age)!=null&&a.price_age>=0&&a.price_age<=90?a.open_profit:null)}</td><td class="tnum ${paperTone(a.live_profit)}">${paperMoney(pnl.realized_pnl!=null?a.live_profit:null)}</td><td>${paperEsc(a.last_error||'—')}</td></tr>`).join('');
   return `<div class="paper-workspace-heading"><div><span class="paper-kicker">SELECTED LEDGER / ${paperEsc(p.id).toUpperCase()}</span><h3>${paperEsc(p.name)}</h3><p>${paperEsc(p.description||'')}</p></div><span class="paper-mode">PAPER ONLY</span></div>
-    <div class="paper-runtime-tiles"><div><span>Current paper P&amp;L</span><b class="tnum ${paperTone(current)}">${paperSigned(current)}</b></div><div><span>Persistent closed P&amp;L</span><b class="tnum ${paperTone(realized)}">${paperSigned(realized)}</b></div><div><span>Open mark</span><b class="tnum ${paperTone(pnl.open_pnl??s.open_profit)}">${paperSigned(pnl.open_pnl??s.open_profit)}</b></div><div><span>Replay inclusive net</span><b class="tnum ${paperTone(pnl.replay_inclusive_net??s.net)}">${paperSigned(pnl.replay_inclusive_net??s.net)}</b></div></div>
+    <div class="paper-runtime-tiles"><div><span>Current paper P&amp;L</span><b class="tnum ${paperTone(current)}">${paperSigned(current)}</b></div><div><span>Persistent closed P&amp;L</span><b class="tnum ${paperTone(realized)}">${paperSigned(realized)}</b></div><div><span>Open mark</span><b class="tnum ${paperTone(pnl.open_pnl)}">${paperSigned(pnl.open_pnl)}</b></div><div><span>Broker reconciliation</span><b class="tnum ${paperTone(null)}">${paperSigned(null)}</b></div></div>
     <div class="paper-workspace-controls"><span class="paper-ledger-status ${s.paused?'is-warn':s.all_warm?'is-good':'is-warn'}">${s.paused?'Entries paused':s.all_warm?'Runners ready':'Warming'}</span><span class="small muted">${assets.length} asset runners · ${paperEsc(s.positions??0)} open positions</span><div class="paper-workspace-actions"><button type="button" class="sm" data-paper-pause="${paperEsc(p.id)}" data-paused="${!!s.paused}">${s.paused?'Resume entries':'Pause entries'}</button><button type="button" class="sm danger" data-paper-flatten="${paperEsc(p.id)}">Flatten this ledger</button></div></div>
     <div class="paper-section-head"><h3>Independent paper runners</h3><span>Runner states from current engine snapshot</span></div><div class="scroll paper-runner-scroll"><table><thead><tr><th>Asset</th><th>Feed</th><th>Warmth</th><th>Entries</th><th>Position</th><th>Open mark</th><th>Live realized</th><th>Issue</th></tr></thead><tbody>${rows||'<tr><td colspan="8" class="empty">No paper runners configured.</td></tr>'}</tbody></table></div>`;
 }

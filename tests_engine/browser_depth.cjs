@@ -174,23 +174,42 @@ await page.waitForFunction(()=>document.querySelectorAll('.world-topology path')
 assert.equal(await page.locator('.world-topology').count(),1);
 assert.ok((await page.locator('.world-topology path').count())<=24);
 assert.ok((await page.locator('.world-topology circle').count())<=18);
-// Topology IDs are assigned during the first bounded graph rebuild. Re-drive the
-// real panel pointer after the graph exists, then verify the active linkage.
-await page.evaluate(()=>{
- const el=[...document.querySelectorAll('#view > .card')].find(node=>node.dataset.worldTopologyNode!=null)||document.querySelector('#view [data-world-topology-node]');
- if(!el)return;
- const r=el.getBoundingClientRect(),target=el.querySelector('h2')||el;
- target.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
- target.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse',clientX:r.left+r.width*.38,clientY:r.top+Math.min(36,r.height*.28)}));
+// Topology IDs are assigned during the first bounded graph rebuild. Move the
+// actual pointer onto a visible heading: a synthetic event on the first card
+// can name coordinates below the viewport and contradict elementFromPoint.
+const topologyPointer=await page.evaluate(()=>{
+ const heading=document.querySelector('#view > .card[data-world-topology-node] h2');
+ if(!heading)return null;
+ // Polling can replace the heading between locator operations. Scroll and read
+ // its coordinates atomically from the same connected DOM generation.
+ heading.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+ const r=heading.getBoundingClientRect();
+ return r.width>0&&r.height>0?{x:r.left+r.width*.38,y:r.top+r.height*.5}:null;
 });
+assert.ok(topologyPointer);
+await page.mouse.move(4,4);
+await page.mouse.move(topologyPointer.x,topologyPointer.y);
+await page.waitForFunction(point=>{
+ const panel=document.elementFromPoint(point.x,point.y)?.closest('[data-world-topology-node]');
+ return !!panel&&document.querySelectorAll('.world-topology path.active').length>0;
+},topologyPointer);
+// Removing decorative children can emit a null-relatedTarget pointerout while
+// the cursor remains inside the card. Wait past the reconciliation frame so a
+// delayed callback cannot make this assertion pass before it actually runs.
+const churnReconciliation=await page.evaluate(async point=>{
+ const panel=document.elementFromPoint(point.x,point.y)?.closest('[data-world-topology-node]');
+ if(!panel)return {physicalPanel:false,active:false};
+ panel.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse',relatedTarget:null}));
+ await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+ return {physicalPanel:!!document.elementFromPoint(point.x,point.y)?.closest('[data-world-topology-node]'),active:document.querySelectorAll('.world-topology path.active').length>0};
+},topologyPointer);
+assert.equal(churnReconciliation.physicalPanel,true,'DOM-churn fixture must keep the real pointer over a topology panel');
+assert.equal(churnReconciliation.active,true,'DOM-churn pointerout must reconcile to the physical pointer target');
+// Conversely, actually leaving every panel must clear the previous resonance.
+await page.mouse.move(4,4);
+await page.waitForFunction(()=>document.querySelectorAll('.world-topology path.active').length===0);
+await page.mouse.move(topologyPointer.x,topologyPointer.y);
 await page.waitForFunction(()=>document.querySelectorAll('.world-topology path.active').length>0);
-assert.ok((await page.locator('.world-topology path.active').count())>0);
-// Removing/rebuilding decorative children can produce a pointerout with no relatedTarget
-// even while the physical cursor is still over the same card. That must not erase
-// the user's structural resonance.
-await page.evaluate(()=>{const el=document.querySelector('#view .world-inspected[data-world-topology-node]')||document.querySelector('#view [data-world-topology-node]');el?.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse',relatedTarget:null}));});
-await page.waitForTimeout(40);
-assert.ok((await page.locator('.world-topology path.active').count())>0,'DOM-churn pointerout must reconcile to the physical pointer target');
 // A layout/DOM refresh may rebuild decorative SVG geometry, but must not erase
 // the pointer/focus resonance attached to the instrument the user is inspecting.
 const topologyResonance=await page.evaluate(()=>{

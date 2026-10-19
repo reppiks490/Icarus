@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import copy
+import time
 import re
 import shutil
 import subprocess
@@ -72,7 +74,8 @@ const implementation = source.slice(start, end);
 const scenarios = JSON.parse(process.argv[3]);
 function run(scenario) {
   const element = {textContent: '', className: '', title: ''};
-  const context = {document: {querySelector: (selector) => selector === '#combinedPaperPnl' ? element : null}};
+  const context = {setInterval:()=>0,document: {querySelector: (selector) => selector === '#combinedPaperPnl' ? element : null}};
+  vm.runInNewContext(fs.readFileSync(process.argv[4], 'utf8'), context);
   vm.runInNewContext(implementation + '\nthis.invoke = paperSetHeader;', context);
   context.invoke(scenario);
   return element;
@@ -81,17 +84,23 @@ process.stdout.write(JSON.stringify(scenarios.map(run)));
 """,
         encoding="utf-8",
     )
-    profiles = [{"name": name} for name in "ABCD"]
-    scenarios = [
-        {"mode": "concurrent_paper", "profiles": profiles, "aggregate": {"realized_pnl": 14.5, "open_pnl": 1}},
-        {"mode": "concurrent_paper", "profiles": profiles, "aggregate": {"realized_pnl": -10, "open_pnl": 0}},
-        {"mode": "concurrent_paper", "profiles": profiles, "aggregate": {"realized_pnl": 1e308, "open_pnl": 1e308}},
-        {"mode": "concurrent_paper", "profiles": profiles[:3], "aggregate": {"realized_pnl": 1, "open_pnl": 1}},
-        {"mode": "concurrent_paper", "profiles": profiles, "aggregate": {"realized_pnl": 1, "open_pnl": None}},
-        {"mode": "unavailable", "profiles": profiles, "aggregate": {"realized_pnl": 1, "open_pnl": 1}},
-    ]
+    from icarus_engine.paper_pnl import validate_paper_pnl
+    now = int(time.time())
+    def valid(realized, opened):
+        rows = [{"id": f"cc{i}", "currency": "USD", "runtime_available": True, "snapshot_ts": now,
+                 "realized_pnl": realized / 4, "open_pnl": opened / 4, "open_positions": 1,
+                 "oldest_open_mark_ts": now} for i in range(1, 5)]
+        return {"mode": "concurrent_paper", "paper_pnl": validate_paper_pnl(rows, as_of_ts=now)}
+    scenarios = [valid(14.5, 1), valid(-10, 0)]
+    for field, value in (("as_of_ts", now - 91), ("as_of_ts", now + 60), ("paper_only", False)):
+        row = copy.deepcopy(scenarios[0]); row["paper_pnl"][field] = value; scenarios.append(row)
+    for field, value in (("id", "cc2"), ("currency", "EUR"), ("realized_pnl", True),
+                         ("realized_pnl", "3.625"), ("open_pnl", None)):
+        row = copy.deepcopy(scenarios[0]); row["paper_pnl"]["profiles"][0][field] = value; scenarios.append(row)
+    row = copy.deepcopy(scenarios[0]); row["paper_pnl"]["aggregate"]["total_pnl"] = 999; scenarios.append(row)
+    scenarios.extend([{"mode": "unavailable"}, {"mode": "concurrent_paper", "profiles": [{"name": x} for x in "ABCD"], "aggregate": {"realized_pnl": 1e308, "open_pnl": 1e308}}])
     result = subprocess.run(
-        [NODE, str(runner), str(ui), json.dumps(scenarios)],
+        [NODE, str(runner), str(ui), json.dumps(scenarios), str(REPO / "icarus_engine/paper-pnl-ui.js")],
         text=True,
         encoding="utf-8",
         capture_output=True,
@@ -100,12 +109,12 @@ process.stdout.write(JSON.stringify(scenarios.map(run)));
     rendered = json.loads(result.stdout)
     assert "$15.50" in rendered[0]["textContent"]
     assert rendered[0]["className"] == "value pos"
-    assert "4 separate simulated ledgers" in rendered[0]["title"]
+    assert "Four isolated USD paper ledgers" in rendered[0]["title"]
     assert "$10.00" in rendered[1]["textContent"]
     assert rendered[1]["className"] == "value neg"
     for invalid in rendered[2:]:
         assert invalid["textContent"] == "—"
-        assert invalid["title"] == "Four paper ledger results unavailable."
+        assert "Current total unavailable." in invalid["title"]
 
 
 @pytest.mark.skipif(NODE is None, reason="node is not installed on this developer machine")

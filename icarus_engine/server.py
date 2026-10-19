@@ -47,6 +47,8 @@
 from __future__ import annotations
 
 import json
+import copy
+import math
 import os
 import re
 import sys
@@ -242,6 +244,54 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     command_centers = PaperWorkspaceManager(port)
     if start:
         command_centers.start()
+
+    try:
+        from .account_connections import ConnectionManager
+        account_connections = ConnectionManager(port.base_dir or os.getcwd())
+    except (ImportError, OSError, ValueError):
+        account_connections = None
+
+    workspace_ids = frozenset(("cc1", "cc2", "cc3", "cc4"))
+
+    def workspace_snapshot(profile_id):
+        """Filter runner state while retaining the existing all-ledger accounting."""
+        state = copy.deepcopy(command_centers.snapshot())
+        rows = state.get("profiles", [])
+        profile = next((row for row in rows if row.get("id") == profile_id), None)
+        if profile is None:
+            return None
+        accounting = state.get("paper_pnl", {})
+        valid = (accounting.get("schema_version") == "icarus.paper-pnl.v1"
+                 and accounting.get("paper_only") is True and accounting.get("execution_authorized") is False
+                 and len(rows) == 4 and {row.get("id") for row in rows} == workspace_ids
+                 and all(key in command_centers.portfolios for key in workspace_ids))
+        amounts = accounting.get("aggregate", {}) if valid else {}
+        complete = valid and amounts.get("accounting_complete") is True
+        aggregate = state.get("aggregate", {})
+        for field in ("realized_pnl", "open_pnl", "total_pnl"):
+            aggregate[field] = amounts.get(field)
+        aggregate["paper_pnl"] = aggregate.get("realized_pnl")
+        aggregate["accounting_complete"] = complete
+        aggregate["currency"] = amounts.get("currency")
+        if not complete:
+            for field in ("net", "capital", "equity"):
+                aggregate[field] = None
+        own = next((row for row in accounting.get("profiles", []) if row.get("id") == profile_id), {}) if valid else {}
+        for field in ("realized_pnl", "open_pnl", "total_pnl"):
+            profile.setdefault("pnl", {})[field] = own.get(field)
+        profile["pnl"]["paper_pnl"] = own.get("realized_pnl")
+        profile["runtime_available"] = profile_id in command_centers.portfolios
+        return {"mode": "concurrent_paper", "paper_only": True, "profile": profile,
+                "aggregate": aggregate, "paper_pnl": accounting if valid else None,
+                "connections": state.get("connections", {}), "input_meta": meta,
+                "available_assets": state.get("available_assets", []),
+                "requested_futures": state.get("requested_futures", {}),
+                "runtime_feed_mode": state.get("runtime_feed_mode", "unknown"),
+                "accounting": {"complete": bool(complete), "basis": "isolated persisted paper journals and current open marks",
+                               "fees_verified": False, "broker_reconciled": False, "reconciled_broker_pnl": None,
+                               "limitations": ["Paper simulation; open marks may include warmup-origin positions",
+                                               "Fees and slippage are not externally reconciled", "No verified broker balance"]},
+                "execution_authorized": False}
     autopilot = TacticalAutopilot(
         port,
         possibility_snapshot=possibility.snapshot,
@@ -1402,6 +1452,86 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"error": str(ex)})
                 except (KeyError, OSError):
                     return self._json(503, {"error": "catalog history unavailable"})
+            if p.path == "/api/prop-firm-catalog":
+                try:
+                    catalog = json.loads((html_path.parent / "propfirm-rules.json").read_text())
+                    return self._json(200, {"firms": catalog.get("firms", []),
+                        "topstep_configuration_phase": "LATER", "execution_authorized": False,
+                        "scope": "Public official-source metadata only; no private account state"})
+                except (OSError, ValueError, TypeError):
+                    return self._json(503, {"detail": "firm catalog unavailable", "execution_authorized": False})
+            if p.path == "/api/account-connections":
+                if not self._auth():
+                    return self._json(401, {"detail": "authentication required"})
+                if account_connections is None:
+                    return self._json(503, {"detail": "account connections module unavailable", "execution_authorized": False})
+                try:
+                    return self._json(200, account_connections.snapshot())
+                except (OSError, ValueError, TypeError):
+                    return self._json(503, {"detail": "account connection unavailable", "execution_authorized": False})
+            if p.path == "/connections":
+                return self._send(200, (html_path.parent / "workspace-dashboard.html").read_bytes(), "text/html")
+            if p.path == "/connections-ui.js":
+                script = html_path.parent / "connections-ui.js"
+                if not script.is_file():
+                    return self._json(503, {"detail": "connections interface unavailable"})
+                return self._send(200, script.read_bytes(), "text/javascript")
+            if p.path == "/api/corpus-expansion":
+                try:
+                    from .corpus_expansion import snapshot as expansion_snapshot
+                    return self._json(200, expansion_snapshot())
+                except ImportError:
+                    return self._json(503, {"status": "UNAVAILABLE", "execution_authorized": False})
+            if p.path == "/api/corpus-consumption":
+                try:
+                    from .corpus_evidence import snapshot as corpus_snapshot
+                    return self._json(200, corpus_snapshot())
+                except (ImportError, OSError, ValueError):
+                    return self._json(503, {"status": "UNAVAILABLE", "reason": "INVALID_CORPUS_EVIDENCE",
+                                            "execution_authorized": False})
+            if p.path.startswith("/api/command-centers/"):
+                parts = p.path.split("/")
+                if len(parts) not in (4, 5, 6) or parts[3] not in workspace_ids:
+                    return self._json(404, {"detail": "unknown command center resource"})
+                profile_id = parts[3]
+                if len(parts) == 4:
+                    result = workspace_snapshot(profile_id)
+                    return self._json(200 if result is not None else 404, result or {"detail": "unknown command center"})
+                if len(parts) == 5 and parts[4] == "performance":
+                    from .workspace_performance import snapshot as performance_snapshot
+                    portfolio = command_centers.portfolios.get(profile_id)
+                    if portfolio is None:
+                        return self._json(503, {"workspace_id": profile_id, "available": False,
+                                                "reason": "RUNTIME_UNAVAILABLE", "execution_authorized": False})
+                    # Explicit configured simulation capital, never a broker balance.
+                    capitals = [getattr(runner.spec, "capital", None) for runner in portfolio.runner_list()]
+                    capital = (sum(capitals) if capitals and all(type(value) in (int, float)
+                               and math.isfinite(value) and value > 0 for value in capitals) else None)
+                    if capital is not None and not math.isfinite(capital):
+                        capital = None
+                    result = performance_snapshot(portfolio.journal, capital=capital)
+                    result["workspace_id"] = profile_id
+                    return self._json(200, result)
+                if len(parts) != 6 or parts[4] != "chart":
+                    return self._json(404, {"detail": "unknown command center resource"})
+                portfolio = command_centers.portfolios.get(profile_id)
+                if portfolio is None:
+                    return self._json(503, {"detail": "selected paper runtime is unavailable"})
+                runner = portfolio.runners.get(parts[5])
+                if runner is None:
+                    return self._json(404, {"detail": "asset is not running in this workspace"})
+                return self._json(200, runner.chart(self._int(q, "n", 240, 20, 1000), nonblocking=True))
+            if p.path.startswith("/dashboards/"):
+                target = p.path[len("/dashboards/"):]
+                if target not in workspace_ids and target != "connections":
+                    return self._json(404, {"detail": "unknown dashboard"})
+                return self._send(200, (html_path.parent / "workspace-dashboard.html").read_bytes(), "text/html")
+            if p.path == "/paper-pnl-ui.js":
+                return self._send(200, (html_path.parent / "paper-pnl-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/workspace-performance-ui.js":
+                return self._send(200, (html_path.parent / "workspace-performance-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/workspace-dashboard.js":
+                return self._send(200, (html_path.parent / "workspace-dashboard.js").read_bytes(), "text/javascript")
             if p.path == "/api/command-centers":
                 snapshot = command_centers.snapshot()
                 snapshot["input_meta"] = meta
@@ -2070,6 +2200,22 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            if p.path == "/admin/account-connections" or p.path.startswith("/admin/account-connections/"):
+                if account_connections is None:
+                    return self._json(503, {"detail": "account connections module unavailable", "execution_authorized": False})
+                try:
+                    if p.path == "/admin/account-connections":
+                        return self._json(200, account_connections.upsert(body))
+                    parts = p.path.split("/")
+                    if len(parts) == 5 and parts[4] == "connect" and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", parts[3]):
+                        return self._json(200, account_connections.connect(parts[3]))
+                    return self._json(404, {"detail": "unknown account connection resource"})
+                except KeyError:
+                    return self._json(404, {"detail": "unknown account connection"})
+                except (ValueError, TypeError):
+                    return self._json(400, {"detail": "invalid account connection request"})
+                except (OSError, RuntimeError):
+                    return self._json(503, {"detail": "account connection unavailable"})
             if p.path.startswith("/admin/command-centers/"):
                 parts = [part for part in p.path.split("/") if part]
                 if len(parts) == 3 and parts[2] in {"cc1", "cc2", "cc3", "cc4"}:
@@ -3167,6 +3313,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
     srv = ResearchHTTPServer(("127.0.0.1", http_port), H)
     srv.command_centers = command_centers
+    srv.account_connections = account_connections
     srv.research = research
     srv.loop_intelligence_sync = loop_intelligence_sync
     srv.brain_remote_sync = brain_remote_sync

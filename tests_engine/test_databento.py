@@ -14,11 +14,13 @@ import pytest
 
 from icarus_engine.assets import CHART_TIMEFRAME_OPTIONS, REGISTRY, resolve
 from icarus_engine.feeds.databento import Databento
+from icarus_engine.futures_catalog import FUTURES_PRODUCTS
 from icarus_engine.pine.timeframe import tf_minutes
 from icarus_engine.runtime import AssetRunner, Journal, Portfolio, RunnerConfig
 from icarus_engine.server import serve
 from icarus_engine.strategy.inputs import Inputs
 from icarus_plant.supervisor import default_engine_service
+from icarus_futures.contracts import parse_continuous
 
 
 NS = 1_000_000_000
@@ -169,6 +171,13 @@ def make_feed(*, historical=None, lives=None):
     )
 
 
+def runtime_qualified_futures():
+    return [
+        spec for spec in REGISTRY.values()
+        if spec.kind == "futures" and FUTURES_PRODUCTS[spec.symbol].runtime_qualified
+    ]
+
+
 def test_continuous_volume_front_symbology_and_capabilities(monkeypatch):
     monkeypatch.delenv("DATABENTO_ROLL_RULE", raising=False)
     assert Databento.continuous_symbol("NQ=F") == "NQ.v.0"
@@ -192,8 +201,8 @@ def test_continuous_volume_front_symbology_and_capabilities(monkeypatch):
     assert caps["mbp_10"] is True and caps["mbo"] is True and caps["mbo_snapshot"] is True
 
 
-def test_every_registered_future_maps_to_databento_continuous_front():
-    futures = [spec for spec in REGISTRY.values() if spec.kind == "futures"]
+def test_every_runtime_qualified_future_maps_to_databento_continuous_front():
+    futures = runtime_qualified_futures()
     assert futures
     for spec in futures:
         root = spec.ticker[:-2]
@@ -202,6 +211,15 @@ def test_every_registered_future_maps_to_databento_continuous_front():
         assert Databento.continuous_symbol(spec.symbol, "v") == f"{root}.v.0"
         assert Databento.continuous_symbol(spec.ticker, "n") == f"{root}.n.0"
         assert Databento.continuous_symbol(spec.tv_symbol, "c") == f"{root}.c.0"
+
+
+def test_catalog_data_mapping_does_not_grant_execution_qualification():
+    product = FUTURES_PRODUCTS["HG"]
+    assert product.runtime_qualified is True
+    assert product.execution_qualified is False
+    assert Databento.continuous_symbol("HG=F") == "HG.v.0"
+    with pytest.raises(ValueError, match="not execution-qualified"):
+        parse_continuous("HG1!")
 
 
 def test_roll_rule_is_real_configuration_not_a_dead_setting(monkeypatch):
@@ -940,7 +958,7 @@ def test_all_registered_futures_share_one_core_live_session_and_depth_is_separat
     core = FakeLive()
     book = FakeLive()
     feed = make_feed(lives=[core, book])
-    futures = [spec for spec in REGISTRY.values() if spec.kind == "futures"]
+    futures = runtime_qualified_futures()
     assert len(futures) > 10  # guards the Databento Standard 10-session failure mode
     client = feed.prepare_live([spec.ticker for spec in futures], start_ts=1_000)
     assert client is core

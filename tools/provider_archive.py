@@ -4,6 +4,7 @@ Reads the same provider credentials from environment. Never accepts keys in argv
 """
 import argparse
 import base64
+from contextlib import suppress
 import json
 import os
 import zlib
@@ -33,8 +34,19 @@ def main():
     args=parser.parse_args()
     data=decrypt(args.archive.read_bytes(),args.provider,args.run_id,args.archive.stem,os.environ)
     args.output.parent.mkdir(parents=True,exist_ok=True)
-    with args.output.open('x') as f:json.dump(data,f,sort_keys=True)
-    os.chmod(args.output,0o600)
+    # POSIX permissions apply before plaintext is written; Windows still relies
+    # on the destination directory's ACL. Exclusive creation rejects existing
+    # files and symlinks without modifying them.
+    fd=os.open(args.output,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    try:
+        stream=os.fdopen(fd,'w',encoding='utf-8')
+        fd=None  # The stream now owns the descriptor, including on write errors.
+        with stream as f:json.dump(data,f,sort_keys=True)
+    except BaseException:
+        if fd is not None:
+            with suppress(OSError):os.close(fd)
+        args.output.unlink(missing_ok=True)
+        raise
     print('Private payload restored; do not commit licensed data.')
 
 if __name__=='__main__':main()
