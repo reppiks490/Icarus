@@ -147,3 +147,46 @@ def test_constant_distribution_cannot_have_positive_deviation():
     payload['providers']['eodhd']['research_features'][0]['features']['volume']['standard_deviation'] = 1e-13
     with pytest.raises(ValueError, match='Invalid provider context'):
         consume(payload)
+
+
+def test_clock_preserves_exact_microseconds_and_rejects_unsupported_precision():
+    from datetime import datetime, timezone
+    text = '2026-10-19T01:17:54.734286+00:00'
+    elapsed = datetime.fromisoformat(text) - datetime(1970,1,1,tzinfo=timezone.utc)
+    expected = (elapsed.days * 86400 + elapsed.seconds)*10**9 + elapsed.microseconds*1000
+    assert pc._clock(text) == expected
+    assert pc._clock('2026-10-19T03:17:54.734286+02:00') == expected
+    for invalid in ('2026-10-19T01:17:54.734286999Z','2026-10-19X01:17:54Z','2026-10-19T01:17:54'):
+        with pytest.raises(ValueError, match='Invalid provider context'):
+            pc._clock(invalid)
+
+
+def test_microsecond_snapshot_availability_boundary():
+    payload = source()
+    exact = 1792372748152328000
+    result = pc.consume_context(payload,source_blob_sha=pc.SOURCE_BLOB_SHA,available_at_ns=exact,asof_ns=exact)
+    assert result['status'] == 'HISTORICAL_CONTEXT_CONSUMED'
+    payload['snapshot_at_utc'] = '2026-10-19T01:19:08.152329+00:00'
+    with pytest.raises(ValueError):
+        pc.consume_context(payload,source_blob_sha=pc.SOURCE_BLOB_SHA,available_at_ns=exact,asof_ns=exact)
+
+
+def test_no_follow_unsupported_platform_fails_closed(monkeypatch):
+    import os
+    if os.name == 'nt':
+        pytest.skip('Windows uses its native reparse-safe handle opener')
+    monkeypatch.delattr(pc.os, 'O_NOFOLLOW', raising=False)
+    assert pc.snapshot(now_ns=pc.AVAILABLE_AT_NS)['status'] == 'UNAVAILABLE'
+
+
+@pytest.mark.skipif(__import__('os').name != 'nt', reason='Native Windows handle contract')
+def test_windows_regular_file_and_final_reparse_point(tmp_path):
+    regular = tmp_path / 'context.json'
+    regular.write_bytes(Path(pc.DEFAULT_PATH).read_bytes())
+    assert pc.snapshot(now_ns=pc.AVAILABLE_AT_NS,path=regular)['status'] == 'HISTORICAL_CONTEXT_CONSUMED'
+    link = tmp_path / 'context-link.json'
+    try:
+        link.symlink_to(regular)
+    except OSError:
+        pytest.skip('Runner cannot create an unprivileged Windows file symlink')
+    assert pc.snapshot(now_ns=pc.AVAILABLE_AT_NS,path=link)['status'] == 'UNAVAILABLE'

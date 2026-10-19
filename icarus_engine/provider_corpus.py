@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import copy
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import json
 import math
@@ -58,13 +58,16 @@ def _label(value, pattern, limit=160):
 
 
 def _clock(value):
-    if not isinstance(value, str) or len(value) > 40:
+    if not isinstance(value, str) or not re.fullmatch(
+            r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'
+            r'(?:\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})', value):
         _fail()
     try:
         parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
         if parsed.tzinfo is None or parsed.utcoffset() is None:
             _fail()
-        ns = int(parsed.timestamp() * 1_000_000_000)
+        elapsed = parsed.astimezone(timezone.utc) - datetime(1970, 1, 1, tzinfo=timezone.utc)
+        ns = (elapsed.days * 86400 + elapsed.seconds) * 1_000_000_000 + elapsed.microseconds * 1000
         _integer(ns, 2**63 - 1)
         return ns
     except (ValueError, OverflowError, TypeError):
@@ -243,10 +246,61 @@ def consume_context(payload, *, source_blob_sha, available_at_ns, asof_ns, consu
     return output
 
 
+def _windows_open_no_follow(path):
+    """Open the final Windows component itself, rejecting all reparse points.
+
+    The handle is checked before conversion to a Python descriptor or reading.
+    Its open share mode prevents replacement while it is being inspected.
+    Parent-directory reparse points are outside this final-component guarantee.
+    """
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    class AttributeTagInfo(ctypes.Structure):
+        _fields_ = [('attributes', wintypes.DWORD), ('reparse_tag', wintypes.DWORD)]
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    information = kernel.GetFileInformationByHandleEx
+    information.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
+    information.restype = wintypes.BOOL
+    close = kernel.CloseHandle
+    close.argtypes = (wintypes.HANDLE,)
+    close.restype = wintypes.BOOL
+    handle = create(os.fsdecode(path), 0x80000000, 0x00000001, None, 3,
+                    0x00200000, None)  # READ, SHARE_READ, EXISTING, OPEN_REPARSE_POINT
+    if handle == wintypes.HANDLE(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        attributes = AttributeTagInfo()
+        if not information(handle, 9, ctypes.byref(attributes), ctypes.sizeof(attributes)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        if attributes.attributes & 0x00000400:  # FILE_ATTRIBUTE_REPARSE_POINT
+            _fail()
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+        handle = None  # Descriptor now owns the native handle.
+        return descriptor
+    finally:
+        if handle is not None:
+            close(handle)
+
+
+def _open_no_follow(path):
+    if os.name == 'nt':
+        return _windows_open_no_follow(path)
+    if not hasattr(os, 'O_NOFOLLOW'):
+        _fail()
+    return os.open(path, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, 'O_NONBLOCK', 0))
+
+
 def snapshot(now_ns=None, path=None):
     """Read a pinned metadata-only bundle without following a final symlink."""
     try:
-        fd = os.open(DEFAULT_PATH if path is None else path, os.O_RDONLY | getattr(os,'O_NOFOLLOW',0) | getattr(os,'O_NONBLOCK',0))
+        fd = _open_no_follow(DEFAULT_PATH if path is None else path)
         with os.fdopen(fd,'rb') as handle:
             info = os.fstat(handle.fileno())
             if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_BYTES:
