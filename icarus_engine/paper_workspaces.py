@@ -12,6 +12,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from .assets import REGISTRY, apply_chart_config, validate_chart_config
+from .workspace_universe import dashboard_assets
 from .futures_catalog import FUTURES_PRODUCTS
 from .paper_pnl import validate_paper_pnl
 from .runtime import (
@@ -57,15 +58,15 @@ _MINI_MICRO_FUTURES = (
     "GC", "MGC", "SI", "SIL",
 )
 _PROFILE_DEFAULTS = (
-    {"id": "cc1", "name": "20m Minis + Micros", "description": "Heikin Ashi · 20 minute · registered mini/micro futures",
-     "assets": list(_MINI_MICRO_FUTURES), "chart": {"timeframe": "20", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"}, "inputs": {}},
+    {"id": "cc1", "name": "20m Full Asset Universe", "description": "Heikin Ashi · 20 minute · original assets + ten futures families and micros",
+     "assets": dashboard_assets(), "chart": {"timeframe": "20", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"}, "inputs": {}},
     {"id": "cc2", "name": "Short Target + ETH", "description": "5 minute starting profile · lower targets · larger size · includes ETH",
-     "assets": [*_MINI_MICRO_FUTURES, "ETH"], "chart": {"timeframe": "5", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"},
+     "assets": dashboard_assets(), "chart": {"timeframe": "5", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"},
      "inputs": {"tp1_pts": 7.5, "tp2_pts": 15.0, "qty_contracts": 10}},
     {"id": "cc3", "name": "Workspace 3", "description": "Independent paper workspace · editable starting profile",
-     "assets": list(_MINI_MICRO_FUTURES), "chart": {"timeframe": "20", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"}, "inputs": {}},
-    {"id": "cc4", "name": "5m Minis + Micros", "description": "Heikin Ashi · 5 minute · registered mini/micro futures",
-     "assets": list(_MINI_MICRO_FUTURES), "chart": {"timeframe": "5", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"}, "inputs": {}},
+     "assets": dashboard_assets(), "chart": {"timeframe": "20", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"}, "inputs": {}},
+    {"id": "cc4", "name": "5m Full Asset Universe", "description": "Heikin Ashi · 5 minute · original assets + ten futures families and micros",
+     "assets": dashboard_assets(), "chart": {"timeframe": "5", "chart_type": "heikin_ashi", "fill_on": "real", "security_source": "chart"}, "inputs": {}},
 )
 _IDS = {row["id"] for row in _PROFILE_DEFAULTS}
 

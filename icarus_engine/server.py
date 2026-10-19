@@ -286,6 +286,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 "connections": state.get("connections", {}), "input_meta": meta,
                 "available_assets": state.get("available_assets", []),
                 "requested_futures": state.get("requested_futures", {}),
+                "runtime_feed_mode": state.get("runtime_feed_mode", "unknown"),
                 "accounting": {"complete": bool(complete), "basis": "isolated persisted paper journals and current open marks",
                                "fees_verified": False, "broker_reconciled": False, "reconciled_broker_pnl": None,
                                "limitations": ["Paper simulation; open marks may include warmup-origin positions",
@@ -1490,13 +1491,28 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                             "execution_authorized": False})
             if p.path.startswith("/api/command-centers/"):
                 parts = p.path.split("/")
-                if len(parts) not in (4, 6) or parts[3] not in workspace_ids:
+                if len(parts) not in (4, 5, 6) or parts[3] not in workspace_ids:
                     return self._json(404, {"detail": "unknown command center resource"})
                 profile_id = parts[3]
                 if len(parts) == 4:
                     result = workspace_snapshot(profile_id)
                     return self._json(200 if result is not None else 404, result or {"detail": "unknown command center"})
-                if parts[4] != "chart":
+                if len(parts) == 5 and parts[4] == "performance":
+                    from .workspace_performance import snapshot as performance_snapshot
+                    portfolio = command_centers.portfolios.get(profile_id)
+                    if portfolio is None:
+                        return self._json(503, {"workspace_id": profile_id, "available": False,
+                                                "reason": "RUNTIME_UNAVAILABLE", "execution_authorized": False})
+                    # Explicit configured simulation capital, never a broker balance.
+                    capitals = [getattr(runner.spec, "capital", None) for runner in portfolio.runner_list()]
+                    capital = (sum(capitals) if capitals and all(type(value) in (int, float)
+                               and math.isfinite(value) and value > 0 for value in capitals) else None)
+                    if capital is not None and not math.isfinite(capital):
+                        capital = None
+                    result = performance_snapshot(portfolio.journal, capital=capital)
+                    result["workspace_id"] = profile_id
+                    return self._json(200, result)
+                if len(parts) != 6 or parts[4] != "chart":
                     return self._json(404, {"detail": "unknown command center resource"})
                 portfolio = command_centers.portfolios.get(profile_id)
                 if portfolio is None:
@@ -1512,6 +1528,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "workspace-dashboard.html").read_bytes(), "text/html")
             if p.path == "/paper-pnl-ui.js":
                 return self._send(200, (html_path.parent / "paper-pnl-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/workspace-performance-ui.js":
+                return self._send(200, (html_path.parent / "workspace-performance-ui.js").read_bytes(), "text/javascript")
             if p.path == "/workspace-dashboard.js":
                 return self._send(200, (html_path.parent / "workspace-dashboard.js").read_bytes(), "text/javascript")
             if p.path == "/api/command-centers":

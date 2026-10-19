@@ -1,0 +1,61 @@
+name: Four portfolio performance
+on:
+  pull_request:
+    paths:
+      - 'icarus_engine/workspace*'
+      - 'icarus_engine/paper_workspaces.py'
+      - 'icarus_engine/server.py'
+      - 'tests_engine/test_workspace*'
+      - 'scripts/restart-command-centers.*'
+      - '.github/workflows/workspace-performance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e ".[dev]"
+      - name: Parse Windows restart script
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'scripts/restart-command-centers.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+      - run: >-
+          python -m pytest tests_engine/test_workspace_performance.py
+          tests_engine/test_workspace_performance_routes.py
+          tests_engine/test_workspace_universe.py
+          tests_engine/test_workspace_tools.py
+          tests_engine/test_paper_workspaces.py
+          tests_engine/test_paper_workspaces_runtime.py
+          tests_engine/test_command_center_routes.py -q
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: python -m pip install -e ".[dev]"
+      - run: npm install --no-save playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Require browser runtime and exercise all four viewports
+        run: |
+          node -e "const fs=require('fs'),{chromium}=require('playwright');if(!fs.existsSync(chromium.executablePath()))process.exit(1)"
+          python -m pytest tests_engine/test_workspace_performance_browser.py -q
