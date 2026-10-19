@@ -140,3 +140,10 @@ def test_snapshot_bounds_and_missing_path(tmp_path):
     path.write_bytes(b' ' * (pc.MAX_BYTES + 1))
     assert pc.snapshot(now_ns=pc.AVAILABLE_AT_NS, path=path)['status'] == 'UNAVAILABLE'
     assert pc.snapshot(now_ns=pc.AVAILABLE_AT_NS, path=tmp_path / 'absent')['status'] == 'UNAVAILABLE'
+
+
+def test_constant_distribution_cannot_have_positive_deviation():
+    payload = source()
+    payload['providers']['eodhd']['research_features'][0]['features']['volume']['standard_deviation'] = 1e-13
+    with pytest.raises(ValueError, match='Invalid provider context'):
+        consume(payload)

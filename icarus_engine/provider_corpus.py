@@ -96,8 +96,8 @@ def _features(records, rows, provider):
             if not lo <= mean <= hi or sd < 0:
                 _fail()
             # Population and sample standard deviations both fit this bound.
-            max_sd = (hi-lo) * math.sqrt(n / (n-1)) / 2 if n > 1 else 0
-            if sd > max_sd + max(1e-12, abs(max_sd)*1e-9) or (n == 1 and lo != hi):
+            max_sd = math.sqrt((hi-mean)*(mean-lo)) * math.sqrt(n/(n-1)) if n > 1 else 0
+            if sd > max_sd * (1 + 1e-9) or (n == 1 and lo != hi):
                 _fail()
             result.append(dict(provider=provider, record_ordinal=ordinal, operation=operation,
                 field=name, statistics=copy.deepcopy(statistics), instrument_identity=None,
