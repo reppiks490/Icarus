@@ -137,29 +137,61 @@ class ForecastLedger:
     def rows(self, *, producer: str, scope: Scope, as_of: str, source_commit: str | None = None) -> list[tuple[Forecast, Resolution]]:
         if source_commit is not None:
             check_sha(source_commit)
-        boundary = _iso(as_of)
+        cutoff = timestamp(as_of, "as_of")
         records: list[tuple[Forecast, Resolution]] = []
+        # Validate all stored evidence before selection. Filtering unsigned
+        # indexes first could hide unfavorable outcomes and inflate scores.
+        # Stream one indexed LEFT JOIN (linear in ledger size); keep only
+        # qualified pairs rather than materializing the entire ledger.
+        if self._db.execute(
+            "SELECT 1 FROM resolutions r LEFT JOIN forecasts f ON f.id=r.id "
+            "WHERE f.id IS NULL LIMIT 1"
+        ).fetchone() is not None:
+            raise ValueError("calibration ledger orphan resolution integrity failure")
         query = self._db.execute(
-            "SELECT f.body,f.digest,r.body,r.digest FROM forecasts f "
-            "JOIN resolutions r ON r.id=f.id "
-            "WHERE f.producer=? AND f.issued<=? AND f.received<=? "
-            "AND r.observed<=? AND r.received<=? ORDER BY f.issued,f.id",
-            (producer, boundary, boundary, boundary, boundary))
-        for f_raw, f_sha, r_raw, r_sha in query:
-            if hashlib.sha256(f_raw.encode()).hexdigest() != f_sha or hashlib.sha256(r_raw.encode()).hexdigest() != r_sha:
+            "SELECT f.body,f.digest,r.body,r.digest,"
+            "f.id,f.producer,f.issued,f.received,r.id,r.observed,r.received FROM forecasts f "
+            "LEFT JOIN resolutions r ON r.id=f.id")
+        for f_raw, f_sha, r_raw, r_sha, *indexes in query:
+            if hashlib.sha256(f_raw.encode()).hexdigest() != f_sha:
                 raise ValueError("calibration ledger digest mismatch")
-            f_obj, r_obj = json.loads(f_raw), json.loads(r_raw)
+            f_obj = json.loads(f_raw)
             f_obj["scope"] = Scope(**f_obj["scope"])
             f_obj["evidence_ids"] = tuple(f_obj["evidence_ids"])
+            f = Forecast(**f_obj)
+            if tuple(indexes[:4]) != (
+                f.forecast_id, f.producer, _iso(f.issued_at), _iso(f.received_at)
+            ):
+                raise ValueError("calibration ledger index/body integrity failure")
+            if r_raw is None:
+                # A valid forecast need not have a settlement yet.
+                continue
+            if hashlib.sha256(r_raw.encode()).hexdigest() != r_sha:
+                raise ValueError("calibration ledger digest mismatch")
+            r_obj = json.loads(r_raw)
             r_obj["evidence_ids"] = tuple(r_obj["evidence_ids"])
-            f, r = Forecast(**f_obj), Resolution(**r_obj)
+            r = Resolution(**r_obj)
+            if tuple(indexes[4:]) != (
+                r.forecast_id, _iso(r.observed_at), _iso(r.received_at)
+            ) or f.forecast_id != r.forecast_id:
+                raise ValueError("calibration ledger index/body integrity failure")
+            if (timestamp(r.observed_at, "observed_at") < timestamp(f.maturity_at, "maturity_at")
+                    or timestamp(r.received_at, "received_at") < timestamp(f.received_at, "received_at")):
+                raise ValueError("calibration ledger settlement integrity failure")
+            if (f.producer != producer
+                    or timestamp(f.issued_at, "issued_at") > cutoff
+                    or timestamp(f.received_at, "received_at") > cutoff
+                    or timestamp(r.observed_at, "observed_at") > cutoff
+                    or timestamp(r.received_at, "received_at") > cutoff):
+                continue
             if (f.scope == scope and (source_commit is None or f.source_commit == source_commit)
-                    and timestamp(f.maturity_at, "maturity_at") <= timestamp(as_of, "as_of")):
+                    and timestamp(f.maturity_at, "maturity_at") <= cutoff):
                 records.append((f, r))
         if source_commit is None and len({f.source_commit for f, _ in records}) > 1:
             raise ValueError("mixed model revisions require an explicit source_commit")
         # Overlapping label horizons share outcomes and cannot count as
         # independent proof. A deterministic earliest-first purge is applied.
+        records.sort(key=lambda pair: (timestamp(pair[0].issued_at, "issued_at"), pair[0].forecast_id))
         chosen: list[tuple[Forecast, Resolution]] = []
         last_maturity: datetime | None = None
         for f, r in records:
