@@ -438,3 +438,90 @@ def test_forecast_index_cannot_backdate_authenticated_outcome_receipt(tmp_path):
     with pytest.raises(ValueError, match="integrity"):
         ledger.rows(producer="omega", scope=SCOPE, as_of=cutoff)
     ledger.close()
+
+
+@pytest.mark.parametrize("column,value", [
+    ("asset", "ES1!"),
+    ("observed_at", "2099-01-01T00:00:00+00:00"),
+    ("received_at", "2099-01-01T00:00:00+00:00"),
+    ("maturity_at", "2099-01-01T00:00:00+00:00"),
+    ("outcome_received_at", "2099-01-01T00:00:00+00:00"),
+])
+def test_episode_excluded_index_corruption_cannot_hide_evidence(tmp_path, column, value):
+    store = EpisodicStore(tmp_path / "hidden-episode.sqlite")
+    store.add(episode(0))
+    store._conn.execute(f"UPDATE episodes SET {column}=?", (value,))
+    store._conn.commit()
+    with pytest.raises(ValueError, match="integrity"):
+        store.eligible(situation("query", BASE + timedelta(days=2)))
+    store.close()
+
+
+@pytest.mark.parametrize("table,column,value", [
+    ("forecasts", "producer", "hidden-producer"),
+    ("forecasts", "issued", "2099-01-01T00:00:00+00:00"),
+    ("forecasts", "received", "2099-01-01T00:00:00+00:00"),
+    ("resolutions", "observed", "2099-01-01T00:00:00+00:00"),
+    ("resolutions", "received", "2099-01-01T00:00:00+00:00"),
+    ("forecasts", "id", "orphaned-forecast"),
+    ("resolutions", "id", "orphaned-resolution"),
+])
+def test_forecast_excluded_index_corruption_cannot_hide_evidence(tmp_path, table, column, value):
+    ledger = ForecastLedger(tmp_path / "hidden-forecast.sqlite")
+    ledger.commit(forecast(0))
+    ledger.settle(resolution(0))
+    ledger._db.execute(f"UPDATE {table} SET {column}=?", (value,))
+    ledger._db.commit()
+    with pytest.raises(ValueError, match="integrity"):
+        ledger.rows(producer="omega", scope=SCOPE, as_of=iso(BASE + timedelta(days=2)))
+    ledger.close()
+
+
+def test_selective_index_corruption_cannot_improve_calibration(tmp_path):
+    ledger = ForecastLedger(tmp_path / "biased-calibration.sqlite")
+    for i in range(60):
+        ledger.commit(forecast(i))
+        ledger.settle(resolution(i, label=i % 2))
+    cutoff = iso(BASE + timedelta(days=65))
+    report = calibration_report(ledger, producer="omega", scope=SCOPE, as_of=cutoff,
+                                minimum_episodes=30, minimum_sessions=10)
+    assert report["sample_count"] == 60
+    assert report["brier"] == pytest.approx(0.34)
+    for i in range(0, 60, 2):
+        ledger._db.execute("UPDATE resolutions SET received=? WHERE id=?",
+                           ("2099-01-01T00:00:00+00:00", f"fc-{i}"))
+    ledger._db.commit()
+    with pytest.raises(ValueError, match="integrity"):
+        calibration_report(ledger, producer="omega", scope=SCOPE, as_of=cutoff,
+                           minimum_episodes=30, minimum_sessions=10)
+    ledger.close()
+
+
+def test_full_integrity_pass_preserves_valid_unsettled_and_future_records(tmp_path):
+    from dataclasses import replace
+    ledger = ForecastLedger(tmp_path / "valid-excluded.sqlite")
+    ledger.commit(forecast(0))
+    ledger.settle(resolution(0))
+    ledger.commit(forecast(1))  # Valid but not settled.
+    ledger.commit(forecast(2, producer="other"))
+    ledger.settle(resolution(2, receive_delay=86400 * 120))
+    pairs = ledger.rows(producer="omega", scope=SCOPE, as_of=iso(BASE + timedelta(days=4)))
+    assert [f.forecast_id for f, _ in pairs] == ["fc-0"]
+    ledger.close()
+    store = EpisodicStore(tmp_path / "valid-excluded-episodes.sqlite")
+    store.add(episode(0))
+    store.add(episode(1, receipt_delay=86400 * 120))
+    store.add(episode(2, scope=replace(SCOPE, asset="ES1!")))
+    eligible = store.eligible(situation("query", BASE + timedelta(days=4)))
+    assert [ep.situation.case_id for ep in eligible] == ["ep-0"]
+    store.close()
+
+
+def test_unsettled_forecast_indexes_are_validated_before_exclusion(tmp_path):
+    ledger = ForecastLedger(tmp_path / "unsettled-corrupt.sqlite")
+    ledger.commit(forecast(0))
+    ledger._db.execute("UPDATE forecasts SET received=?", ("2099-01-01T00:00:00+00:00",))
+    ledger._db.commit()
+    with pytest.raises(ValueError, match="integrity"):
+        ledger.rows(producer="omega", scope=SCOPE, as_of=iso(BASE + timedelta(days=2)))
+    ledger.close()

@@ -103,15 +103,15 @@ class EpisodicStore:
         Network intake must stamp received_at itself; callers of this trusted
         research API are responsible for authoritative input timestamps.
         """
-        boundary = _iso(query.received_at)
-        query_observed = _iso(query.observed_at)
+        boundary = timestamp(query.received_at, "query.received_at")
+        query_observed = timestamp(query.observed_at, "query.observed_at")
         cases: list[Episode] = []
+        # A full streaming integrity pass is intentional: filtering unsigned
+        # indexes first lets corruption selectively hide unfavorable episodes.
+        # Work is linear in stored rows; only eligible evidence is retained.
         rows = self._conn.execute(
             "SELECT content,digest,case_id,asset,observed_at,received_at,"
-            "maturity_at,outcome_received_at FROM episodes WHERE asset=? "
-            "AND observed_at<? AND received_at<=? "
-            "AND maturity_at<=? AND outcome_received_at<=?",
-            (query.scope.asset, query_observed, boundary, boundary, boundary),
+            "maturity_at,outcome_received_at FROM episodes",
         )
         for raw, digest, *indexes in rows:
             if hashlib.sha256(raw.encode("utf-8")).hexdigest() != digest:
@@ -127,11 +127,11 @@ class EpisodicStore:
             # receipt/index value or a substituted instrument/case identity.
             if tuple(indexes) != expected:
                 raise ValueError("episode index/body integrity failure")
-            if (timestamp(item.situation.observed_at, "observed_at") >= timestamp(query.observed_at, "query.observed_at")
-                    or timestamp(item.situation.received_at, "received_at") > timestamp(query.received_at, "query.received_at")
-                    or timestamp(item.maturity_at, "maturity_at") > timestamp(query.received_at, "query.received_at")
-                    or timestamp(item.outcome_received_at, "outcome_received_at") > timestamp(query.received_at, "query.received_at")):
-                raise ValueError("episode as-of integrity failure")
+            if (timestamp(item.situation.observed_at, "observed_at") >= query_observed
+                    or timestamp(item.situation.received_at, "received_at") > boundary
+                    or timestamp(item.maturity_at, "maturity_at") > boundary
+                    or timestamp(item.outcome_received_at, "outcome_received_at") > boundary):
+                continue
             # Full identity prevents confusing real vs synthetic fills, even
             # when the source market and chart look superficially identical.
             if item.situation.scope != query.scope or item.situation.source_commit != query.source_commit:
