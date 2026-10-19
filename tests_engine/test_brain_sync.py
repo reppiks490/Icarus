@@ -1900,3 +1900,57 @@ def test_remote_sync_requires_canonical_acceptance_contract_semantics(tmp_path):
     assert status["status"] == "degraded"
     assert status["ingested_total"] == 0
     assert "canonical acceptance attempts authority escalation" in status["last_error"]
+
+
+
+def test_live_provider_context_retains_actual_typed_values_without_changing_packet_summary():
+    from pathlib import Path
+    from icarus_engine.brain_sync import _HISTORICAL_CONTEXT_EXPECTED, _normalize_historical_document
+    raw = (Path(__file__).resolve().parents[1] / 'icarus_engine' / 'provider-corpus.json').read_bytes()
+    payload = json.loads(raw)
+    source = dict(_HISTORICAL_CONTEXT_EXPECTED['provider_collection'], id='provider_collection')
+    before = _normalize_historical_document(source, payload, blob_sha='6451722b09c73f357f4a6e27c8185eb9a6d3a52b')
+    row = _normalize_historical_document(source, payload, blob_sha='6451722b09c73f357f4a6e27c8185eb9a6d3a52b',
+        observed_at_ns=1792372790000000000)
+    assert row['summary'] == before['summary']
+    assert row['clocks'] == before['clocks']
+    assert row['provider_corpus']['features']
+    assert row['provider_corpus']['read_receipts']
+    assert row['provider_corpus']['execution_authorized'] is False
+    assert row['candidate_evidence_eligible'] is False
+
+
+def test_provider_values_survive_verified_git_transport_into_brain_journal(tmp_path):
+    from pathlib import Path
+    from tests_engine.test_brain_historical_context_v2 import _case
+    from icarus_engine.brain_sync import _normalize_historical_context_contract
+    root, block, _ = _case('accept_modern6')
+    contract = _consumer_contract(historical_context=block)
+    sources = _normalize_historical_context_contract(contract)
+    bodies, metadata = {}, {}
+    for source in sources:
+        raw = ((Path(__file__).resolve().parents[1] / 'icarus_engine' / 'provider-corpus.json').read_bytes()
+            if source['id'] == 'provider_collection' else (root / 'sources' / source['path']).read_bytes())
+        url = 'https://api.github.test/typed-context/' + source['id']
+        bodies[url] = raw
+        metadata[_remote_contents_api(source['path'])] = {'type':'file','sha':_git_blob_sha(raw),'url':url}
+    sync = BrainRemoteSync(tmp_path, fetch_json=lambda url:metadata[url], fetch_bytes=lambda url:bodies[url],
+        now_utc=lambda:datetime(2026,10,19,1,20,tzinfo=timezone.utc))
+    state = {}
+    assert sync._sync_historical_context(state, contract) == []
+    row = next(row for row in state['historical_context_sources'] if row['id']=='provider_collection')
+    projection = row['provider_corpus']
+    assert projection['summary']['numeric_feature_reads'] == 150
+    assert projection['summary']['raw_rows_consumed'] == 0
+    snapshot = brain_snapshot(tmp_path)
+    events = [event for event in snapshot['events'] if event.get('details',{}).get('historical_context_source')=='provider_collection']
+    assert len(events) == 1
+    details = events[0]['details']
+    assert details['provider_corpus'] == projection
+    assert details['summary'] == row['summary']
+    assert len(json.dumps(details).encode()) < 32768
+    assert snapshot['candidates'] == []
+    assert details['execution_authorized'] is False
+    assert sync._sync_historical_context(state, contract) == []
+    events = [event for event in brain_snapshot(tmp_path)['events'] if event.get('details',{}).get('historical_context_source')=='provider_collection']
+    assert len(events) == 1

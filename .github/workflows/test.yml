@@ -105,6 +105,8 @@ jobs:
           tests_engine/test_corpus_expansion.py
           tests_engine/test_corpus_intake.py
           tests_engine/test_corpus_runtime_poll.py
+          tests_engine/test_provider_corpus.py
+          tests_engine/test_brain_historical_context_v2.py
           tests_engine/test_paper_pnl.py
           tests_engine/test_paper_pnl_browser.py
           tests_engine/test_command_center_routes.py
