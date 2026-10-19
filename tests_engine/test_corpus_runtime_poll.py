@@ -3,6 +3,7 @@ import copy
 import gzip
 import hashlib
 import json
+import os
 from datetime import datetime, timezone
 
 import pytest
@@ -142,6 +143,8 @@ def test_unclosed_native_rows_never_supply_a_fallback_mark(tmp_path):
 
 
 def _corpus(tmp_path, contracts):
+    if os.name != "posix":
+        pytest.skip("private corpus intake requires POSIX no-follow directory opens")
     from icarus_engine.corpus_intake import CorpusFeed, load_vault_bars
     filename = "databento_mnq_5m.csv.gz"
     rows = ["ts_open,open,high,low,close,volume,instrument_id"]
