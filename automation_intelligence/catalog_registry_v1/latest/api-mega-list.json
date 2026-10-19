@@ -1,6 +1,6 @@
 {
   "catalog_id": "api-mega-list",
-  "content_sha256": "70d72358486691d205e69453e5aec7f38fd3f2170aa442ff93518caaaf909d28",
+  "content_sha256": "ede95ff7e41cd7d19acf58750a5bc218617c60aa7ef8a3a06d5672641c3d0b6f",
   "execution_authorized": false,
   "import_summary": {
     "catalog_id": "api-mega-list",
@@ -12,15 +12,15 @@
     "raw_count": 11036,
     "rejected": 7,
     "review_required": 11014,
-    "snapshot_id": "6c48a25031cbac2f224e59d36ad1c1b80e2a2759d040b8c6320bc7f7ac7ecd8c",
+    "snapshot_id": "9536d223c64241522e3c580ddb9a21d8227d1f09a6115b1e15b2d362a2285d78",
     "unique_candidates": 7884
   },
   "parser_revision": "catalog-registry-v3",
   "production_decision_authorized": false,
-  "retrieved_at": "2026-10-18T09:01:52.634358Z",
-  "snapshot_id": "6c48a25031cbac2f224e59d36ad1c1b80e2a2759d040b8c6320bc7f7ac7ecd8c",
+  "retrieved_at": "2026-10-19T10:13:41.405665Z",
+  "snapshot_id": "9536d223c64241522e3c580ddb9a21d8227d1f09a6115b1e15b2d362a2285d78",
   "status": "SUCCESS",
-  "upstream_commit": "7d16023d8f9a5292e5731bd62f8b16f408734748",
+  "upstream_commit": "9c804ec268673aeebc9db921c5437f637f445e95",
   "upstream_path": "README.md",
   "upstream_repo": "cporter202/API-mega-list"
 }
