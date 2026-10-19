@@ -20,6 +20,7 @@ through the same `candles/recent_ex/ticker` interface.
 from __future__ import annotations
 
 import json
+import math
 import time
 import urllib.error
 import urllib.parse
@@ -98,8 +99,12 @@ class Yahoo:
 
     @staticmethod
     def _bars(res: dict, granularity: int = 60) -> List[Bar]:
-        """Rows with a complete OHLC, aligned to the granularity (drops Yahoo's non-aligned quote row) and,
-        for intraday granularities, carrying at least one trade (drops flat zero-volume placeholder rows)."""
+        """Return usable Yahoo rows, excluding malformed provider candles.
+
+        One invalid candle must not invalidate an otherwise useful history batch:
+        the batch receipt records the resulting gap, while the adapter rejects
+        non-finite/negative-volume or internally inconsistent OHLCV rows here.
+        """
         ts = res.get("timestamp") or []
         q = ((res.get("indicators") or {}).get("quote") or [{}])[0]
         o, h, l, c, v = (q.get(k) or [] for k in ("open", "high", "low", "close", "volume"))
@@ -111,10 +116,20 @@ class Yahoo:
             t = int(t)
             if intraday and t % granularity != 0:
                 continue
-            vol = float(v[i] or 0.0) if i < len(v) else 0.0
-            if intraday and vol == 0.0 and o[i] == h[i] == l[i] == c[i]:
+            try:
+                op, hi, lo, cl = (float(x[i]) for x in (o, h, l, c))
+                vol = float(v[i] or 0.0) if i < len(v) else 0.0
+            except (TypeError, ValueError, OverflowError):
                 continue
-            out.append(Bar(t, float(o[i]), float(h[i]), float(l[i]), float(c[i]), vol))
+            values = (op, hi, lo, cl, vol)
+            if (not all(math.isfinite(value) for value in values)
+                    or vol < 0
+                    or lo > min(op, cl)
+                    or hi < max(op, cl)):
+                continue
+            if intraday and vol == 0.0 and op == hi == lo == cl:
+                continue
+            out.append(Bar(t, op, hi, lo, cl, vol))
         out.sort(key=lambda b: b.ts)
         return out
 
