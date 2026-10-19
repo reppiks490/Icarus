@@ -364,7 +364,11 @@ def test_encrypted_owner_credentials_roundtrip_without_plaintext_files(tmp_path)
     assert m.connect("paper_one")["status"] == "CONNECTED_READ_ONLY"
     assert seen == ["OWNER_PRIVATE"]
     assert all(b"OWNER_PRIVATE" not in p.read_bytes() for p in tmp_path.rglob("*") if p.is_file())
-    assert all(p.stat().st_mode & 0o077 == 0 for p in tmp_path.rglob("*") if p.is_file())
+    # Windows mode bits do not attest file ACLs; keep encryption and redaction
+    # coverage above active on every platform. ACL privacy is not claimed here.
+    import os
+    if os.name == "posix":
+        assert all(p.stat().st_mode & 0o077 == 0 for p in tmp_path.rglob("*") if p.is_file())
 
 
 def policy():
