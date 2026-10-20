@@ -1,6 +1,6 @@
 # Scoped Workspace API Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Expose the selected paper workspace's trading state and controls to the approved common dashboard, with explicit identity and no parent fallback.
 
@@ -38,11 +38,11 @@
 
 HTTP routes: `/api/command-centers/{id}/status`, `/assets`, `/inputs/{symbol}`, `/trades/{symbol}`, `/export/{symbol}.csv`; preserve existing root snapshot, performance and chart routes. CSV uses `X-Icarus-Workspace` and `X-Icarus-Config-Revision` plus a workspace-prefixed attachment filename. Add identity/revision to existing chart/performance responses without changing their existing fields or bounds. Status authentication matches main status (owner/viewer read); writes remain owner-only.
 
-- [ ] Add real HTTP tests with five deliberately different same-symbol runner histories/trades/settings; assert selected status, inputs, trade rows and CSV content/headers.
-- [ ] Add absent runtime/asset, foreign query selector, path injection/encoding, invalid resources and chart identity cases. A healthy parent must remain untouched and never supply a missing workspace value.
-- [ ] Run `python -m pytest tests_engine/test_workspace_api.py -q`; observe new-route failures before implementation.
-- [ ] Implement the facade and strict route integration; preserve legacy field shapes and use truthful paper/replay history labels.
-- [ ] Run new module plus existing command-center, chart, P&L and performance routes; require green. Include the new module in Windows CI and commit.
+- [x] Add real HTTP tests with five deliberately different same-symbol runner histories/trades/settings; assert selected status, inputs, trade rows and CSV content/headers.
+- [x] Add absent runtime/asset, foreign query selector, path injection/encoding, invalid resources and chart identity cases. A healthy parent must remain untouched and never supply a missing workspace value.
+- [x] Run `python -m pytest tests_engine/test_workspace_api.py -q`; observe new-route failures before implementation.
+- [x] Implement the facade and strict route integration; preserve legacy field shapes and use truthful paper/replay history labels.
+- [x] Run new module plus existing command-center, chart, P&L and performance routes; require green. Include the new module in Windows CI and commit.
 
 ### Task 2: Revisioned settings and explicit control scope
 

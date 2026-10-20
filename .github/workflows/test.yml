@@ -110,6 +110,7 @@ jobs:
           tests_engine/test_command_center_routes.py
           tests_engine/test_workspace_chart_routes.py
           tests_engine/test_workspace_config.py
+          tests_engine/test_workspace_api.py
           -q
         env:
           TZ: UTC

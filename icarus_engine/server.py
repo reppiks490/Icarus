@@ -242,6 +242,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         runner.latency_telemetry = latency_telemetry
     from .paper_workspaces import PaperWorkspaceManager
     command_centers = PaperWorkspaceManager(port)
+    from .workspace_api import WorkspaceAPI, WorkspaceAPIError
+    workspace_api = WorkspaceAPI(command_centers)
     if start:
         command_centers.start()
 
@@ -1493,33 +1495,43 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if len(parts) not in (4, 5, 6) or parts[3] not in workspace_ids:
                     return self._json(404, {"detail": "unknown command center resource"})
                 profile_id = parts[3]
+                resource = parts[4] if len(parts) > 4 else None
+                if resource in {"status", "assets", "performance", "inputs", "trades", "export"}:
+                    expected_parts = 5 if resource in {"status", "assets", "performance"} else 6
+                    if len(parts) != expected_parts:
+                        return self._json(404, {"detail": "unknown command center resource"})
+                    if resource == "status" and not self._auth():
+                        return self._json(401, {"detail": "authentication required"})
+                    if resource != "performance" and set(q) & {"workspace", "profile", "asset", "symbol"}:
+                        return self._json(400, {"detail": "scope is selected by the canonical workspace route"})
+                    symbol = parts[5] if len(parts) == 6 else None
+                    try:
+                        if resource == "export":
+                            if not symbol.endswith(".csv"):
+                                return self._json(404, {"detail": "unknown workspace export"})
+                            symbol = symbol[:-4]
+                            csv, identity = workspace_api.export(profile_id, symbol)
+                            return self._send(200, csv.encode("utf-8"), "text/csv", {
+                                "Content-Disposition": f'attachment; filename="{profile_id}_{symbol}_trades.csv"',
+                                "X-Icarus-Workspace": profile_id,
+                                "X-Icarus-Config-Revision": str(identity["config_revision"]),
+                            })
+                        return self._json(200, workspace_api.read(profile_id, resource, symbol,
+                                          limit=self._int(q, "limit", 100, 1, 2000)))
+                    except WorkspaceAPIError as ex:
+                        return self._json(ex.status, ex.as_dict(profile_id))
                 if len(parts) == 4:
                     result = workspace_snapshot(profile_id)
                     return self._json(200 if result is not None else 404, result or {"detail": "unknown command center"})
-                if len(parts) == 5 and parts[4] == "performance":
-                    from .workspace_performance import snapshot as performance_snapshot
-                    portfolio = command_centers.portfolios.get(profile_id)
-                    if portfolio is None:
-                        return self._json(503, {"workspace_id": profile_id, "available": False,
-                                                "reason": "RUNTIME_UNAVAILABLE", "execution_authorized": False})
-                    # Explicit configured simulation capital, never a broker balance.
-                    capitals = [getattr(runner.spec, "capital", None) for runner in portfolio.runner_list()]
-                    capital = (sum(capitals) if capitals and all(type(value) in (int, float)
-                               and math.isfinite(value) and value > 0 for value in capitals) else None)
-                    if capital is not None and not math.isfinite(capital):
-                        capital = None
-                    result = performance_snapshot(portfolio.journal, capital=capital)
-                    result["workspace_id"] = profile_id
-                    return self._json(200, result)
                 if len(parts) != 6 or parts[4] != "chart":
                     return self._json(404, {"detail": "unknown command center resource"})
-                portfolio = command_centers.portfolios.get(profile_id)
-                if portfolio is None:
-                    return self._json(503, {"detail": "selected paper runtime is unavailable"})
-                runner = portfolio.runners.get(parts[5])
-                if runner is None:
-                    return self._json(404, {"detail": "asset is not running in this workspace"})
-                return self._json(200, runner.chart(self._int(q, "n", 240, 20, 5000), offset=self._int(q, "offset", 0, 0, 50000), nonblocking=True))
+                if set(q) & {"workspace", "profile", "asset", "symbol"}:
+                    return self._json(400, {"detail": "scope is selected by the canonical workspace route"})
+                try:
+                    return self._json(200, workspace_api.chart(profile_id, parts[5],
+                                      n=self._int(q, "n", 240, 20, 5000), offset=self._int(q, "offset", 0, 0, 50000)))
+                except WorkspaceAPIError as ex:
+                    return self._json(ex.status, ex.as_dict(profile_id))
             if p.path.startswith("/dashboards/"):
                 target = p.path[len("/dashboards/"):]
                 if target not in workspace_ids and target != "connections":

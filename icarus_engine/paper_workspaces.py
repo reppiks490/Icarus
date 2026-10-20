@@ -656,7 +656,13 @@ class PaperWorkspaceManager:
         ledgers = []
         for profile_id, profile in self.profiles.items():
             portfolio = self.portfolios.get(profile_id)
-            status = portfolio.status(nonblocking=True) if portfolio else {"assets": [], "all_warm": False}
+            try:
+                status = portfolio.status(nonblocking=True) if portfolio else {"assets": [], "all_warm": False}
+            except RuntimeError:
+                # One initial/busy runner must not disconnect every workspace's
+                # overview or turn missing open marks into known zeroes.
+                status = {"assets": [], "all_warm": False, "view_stale": True,
+                          "snapshot_unavailable": True}
             runners = portfolio.runner_list() if portfolio else []
             effective = runners[0].inputs_base.to_dict() if runners else {}
             closed = portfolio.journal.closed_paper_profit() if portfolio else {"realized_pnl": 0.0, "closed_pieces": 0, "last_close_ts": None}
