@@ -49,12 +49,12 @@
 
 **Interfaces:** `WorkspacePortfolio._resolved(spec, workspace=None)` resolves workspace-wide inputs/chart plus only `asset_overrides[spec.symbol]`, including its optional shared-library preset. `WorkspacePortfolio.reconfigure(candidate, *, persist=None)` stages changes and calls the optional zero-argument persistence callback before publishing runners/revision and releasing gated workers. `PaperWorkspaceManager.update` restores exact old file bytes on any failed save/replay/worker-start step. Inherited parent `rewarm_asset` is not used for scoped writes.
 
-- [ ] Write real two-asset runner tests proving an NQ edit changes only NQ, survives reload and ignores poisoned parent `inputs.NQ.json`. Include partial chart overrides and an explicit preset.
-- [ ] Write transaction failure tests for replay, persistence and worker start; assert old configuration, runner state/identity, exact saved bytes, unchanged sibling files and no main per-asset files written. Test an open/pending sibling blocks an NQ edit.
-- [ ] Run the new tests; observe missing overrides and/or rollback failures before implementing.
-- [ ] Implement effective resolution through the existing resolver and staged transaction; keep metadata/chart precedence and conservative flat guards. Use atomic same-directory writes for restored bytes too. Preserve existing lifecycle tests.
-- [ ] Run `python -m pytest tests_engine/test_workspace_config.py tests_engine/test_paper_workspaces.py tests_engine/test_paper_workspaces_runtime.py -q`; require all pass.
-- [ ] Commit the isolated resolution/transaction task.
+- [x] Write real two-asset runner tests proving an NQ edit changes only NQ, survives reload and ignores poisoned parent `inputs.NQ.json`. Include partial chart overrides and an explicit preset.
+- [x] Write transaction failure tests for replay, persistence and worker start; assert old configuration, runner state/identity, exact saved bytes, unchanged sibling files and no main per-asset files written. Test an open/pending sibling blocks an NQ edit.
+- [x] Run the new tests; observe missing overrides and/or rollback failures before implementing.
+- [x] Implement effective resolution through the existing resolver and staged transaction; keep metadata/chart precedence and conservative flat guards. Use atomic same-directory writes for restored bytes too. Preserve existing lifecycle tests.
+- [x] Run `python -m pytest tests_engine/test_workspace_config.py tests_engine/test_paper_workspaces.py tests_engine/test_paper_workspaces_runtime.py -q`; require all pass.
+- [x] Commit the isolated resolution/transaction task.
 
 ### Task 3: Compare-and-swap revisions and explicit asset edits
 

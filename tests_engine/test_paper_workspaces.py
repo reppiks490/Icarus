@@ -71,8 +71,10 @@ class _WorkspacePortfolio:
     def status(self, *, nonblocking=False):
         return getattr(self, "status_data", {"assets": [], "all_warm": self.started, "net": 0.0})
 
-    def reconfigure(self, candidate):
+    def reconfigure(self, candidate, *, persist=None):
         self.reconfigure_calls.append(copy.deepcopy(candidate))
+        if persist is not None:
+            persist()
         return {"ok": True, "id": candidate["id"]}
 
 

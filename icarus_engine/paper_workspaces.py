@@ -25,6 +25,7 @@ from .runtime import (
     apply_spec_meta,
     resolve_inputs,
     validate_values,
+    preset_path,
 )
 
 
@@ -211,10 +212,15 @@ class WorkspacePortfolio(Portfolio):
 
     def _resolved(self, spec, workspace=None):
         workspace = self.workspace if workspace is None else workspace
-        chart = validate_chart_config(workspace["chart"])
+        override = workspace.get("asset_overrides", {}).get(spec.symbol, {})
+        chart = validate_chart_config({**workspace["chart"], **override.get("chart", {})})
+        values = {**workspace["inputs"], **override.get("inputs", {})}
+        preset = override.get("preset", self.preset)
+        if override.get("preset") and not Path(preset_path(self.base_dir, preset)).is_file():
+            raise ValueError(f"workspace preset {preset!r} not found")
         spec = apply_chart_config(spec, chart, pin=True)
         inputs, meta, sources = resolve_inputs(
-            spec, self.base_dir, self.profile, self.preset, workspace["inputs"],
+            spec, self.base_dir, self.profile, preset, values,
             skip_asset_overrides=True, extra_label=f"command-center:{workspace['id']}"
         )
         spec = apply_spec_meta(spec, meta)
@@ -222,15 +228,20 @@ class WorkspacePortfolio(Portfolio):
         return spec, inputs, sources
 
     def make_runner(self, spec, *, workspace=None):
-        spec, inputs, sources = self._resolved(spec, workspace)
         base_spec = copy.deepcopy(spec)
+        spec, inputs, sources = self._resolved(spec, workspace)
+        selected = self.workspace if workspace is None else workspace
+        preset = selected.get("asset_overrides", {}).get(spec.symbol, {}).get("preset", self.preset)
         scale = self._ref_price() if spec.symbol != self.pts_ref_symbol else 0.0
         cfg = RunnerConfig(spec=spec, inputs=inputs, warmup_bars=self.warmup_bars,
-                           sources=sources, profile=self.profile, preset=self.preset or spec.preset,
+                           sources=sources, profile=self.profile, preset=preset or spec.preset,
                            pts_ref_price=scale, base_dir=self.base_dir, base_spec=base_spec)
         runner = AssetRunner(cfg, self.journal, self.feeds)
         runner.latency_telemetry = self.latency_telemetry
         return runner
+
+    def rewarm_asset(self, *_args, **_kwargs):
+        raise ValueError("workspace settings require the revisioned workspace configuration transaction")
 
     def _refresh_continuous_feeds(self, now=None):
         if self.workspace["id"] != "cc1":
@@ -249,12 +260,13 @@ class WorkspacePortfolio(Portfolio):
                 return
         return super()._run(runner)
 
-    def reconfigure(self, candidate: Dict[str, Any]) -> Dict[str, Any]:
+    def reconfigure(self, candidate: Dict[str, Any], *, persist=None) -> Dict[str, Any]:
         requested = _validate_assets(candidate["assets"])
         chart = validate_chart_config(candidate["chart"])
         values = dict(candidate["inputs"])
         validate_values(values)
-        configuration_changed = chart != self.workspace["chart"] or values != self.workspace["inputs"]
+        configuration_changed = any(candidate.get(key) != self.workspace.get(key)
+                                    for key in ("chart", "inputs", "asset_overrides"))
         with self._lock, ExitStack() as locks:
             if self._stop.is_set():
                 raise ValueError("command center paper runtime is stopped")
@@ -295,6 +307,8 @@ class WorkspacePortfolio(Portfolio):
                                  for r in previous.values()]
                     # Existing transactional replay also validates all old runners.
                     self._reconfigure_existing(candidate)
+                if persist is not None:
+                    persist()
                 if started:
                     for runner in additions:
                         self._spawn(runner)
@@ -310,7 +324,8 @@ class WorkspacePortfolio(Portfolio):
                 staged = {runner.symbol: runner for runner in additions}
                 self.runners = {symbol: previous.get(symbol, staged.get(symbol)) for symbol in requested}
                 self.order = requested
-                self.workspace.update({"assets": requested, "chart": chart, "inputs": values})
+                self.workspace.clear()
+                self.workspace.update(copy.deepcopy(candidate))
             except Exception:
                 for runner in additions:
                     runner._removed = True
@@ -339,13 +354,8 @@ class WorkspacePortfolio(Portfolio):
         plans = []
         for runner in runners:
             runner.ensure_configurable()
-            spec = apply_chart_config(copy.deepcopy(runner.cfg.base_spec or runner.spec), chart, pin=True)
-            inputs, meta, sources = resolve_inputs(
-                spec, self.base_dir, self.profile, self.preset, values,
-                skip_asset_overrides=True, extra_label=f"command-center:{self.workspace['id']}"
-            )
-            spec = apply_spec_meta(spec, meta)
-            spec = apply_chart_config(spec, chart, pin=True)
+            spec, inputs, sources = self._resolved(
+                copy.deepcopy(runner.cfg.base_spec or runner.spec), candidate)
             runner.ensure_cached_timeframes(inputs)
             spec.chart_tf = runner.ensure_cached_chart_timeframe(spec.chart_tf)
             plans.append((runner, spec, inputs, sources))
@@ -360,15 +370,15 @@ class WorkspacePortfolio(Portfolio):
                 for runner, spec, inputs, sources in plans:
                     runner.spec = spec
                     runner.cfg.spec = spec
-                    runner.cfg.base_spec = copy.deepcopy(spec)
                     runner.cfg.sources = list(sources)
+                    override = candidate.get("asset_overrides", {}).get(runner.symbol, {})
+                    runner.cfg.preset = override.get("preset", self.preset) or spec.preset
                     runner.rewarm(inputs, sources, reset_live_boundary=True)
             except Exception:
                 for runner, snapshot, base_spec in reversed(snapshots):
                     runner.restore_configuration_snapshot(snapshot)
                     runner.cfg.base_spec = base_spec
                 raise
-        self.workspace.update({"chart": chart, "inputs": values})
         return {"ok": True, "id": self.workspace["id"], "assets": [r.symbol for r in runners],
                 "chart": chart, "inputs": values, "paper_only": True, "execution_authorized": False}
 
@@ -727,17 +737,26 @@ class PaperWorkspaceManager:
                 values.update(body["inputs"])
                 validate_values(values)
                 candidate["inputs"] = values
+            if "asset_overrides" in body:
+                candidate["asset_overrides"] = copy.deepcopy(body["asset_overrides"])
+            candidate = normalize_workspace(candidate)
             portfolio = self.portfolios.get(profile_id)
             if portfolio is None:
                 raise ValueError("command center paper runtime is not running")
-            old_profile = copy.deepcopy(old)
-            self._save(candidate)
+            old_bytes = self._path(profile_id).read_bytes()
             # reconfigure all runners while holding one workspace boundary; each runtime
             # replays its cached bars and restores exact state if any replay fails.
             try:
-                result = portfolio.reconfigure(candidate)
+                result = portfolio.reconfigure(candidate, persist=lambda: self._save(candidate))
             except Exception:
-                self._save(old_profile)
+                path = self._path(profile_id)
+                if not path.exists() or path.read_bytes() != old_bytes:
+                    tmp = path.with_suffix(".json.rollback.tmp")
+                    with tmp.open("wb") as fh:
+                        fh.write(old_bytes)
+                        fh.flush()
+                        os.fsync(fh.fileno())
+                    os.replace(tmp, path)
                 raise
             self.profiles[profile_id] = candidate
             portfolio.workspace = candidate
