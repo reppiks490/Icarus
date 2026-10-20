@@ -263,8 +263,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         accounting = state.get("paper_pnl", {})
         valid = (accounting.get("schema_version") == "icarus.paper-pnl.v1"
                  and accounting.get("paper_only") is True and accounting.get("execution_authorized") is False
-                 and len(rows) == 4 and {row.get("id") for row in rows} == workspace_ids
-                 and all(key in command_centers.portfolios for key in workspace_ids))
+                 and len(rows) == 4 and {row.get("id") for row in rows} == workspace_ids)
         amounts = accounting.get("aggregate", {}) if valid else {}
         complete = valid and amounts.get("accounting_complete") is True
         aggregate = state.get("aggregate", {})

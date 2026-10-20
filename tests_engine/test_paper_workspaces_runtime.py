@@ -28,6 +28,7 @@ def _open_test_position(runner, direction):
     runner.em.entry("Acceptance", direction, 1)
     runner.em.process_bar(Bar(60, 100, 100, 100, 100, 1), 1)
     runner.last_price = 105.0 if direction > 0 else 95.0
+    runner.last_price_ts = time.time()
 
 
 def test_command_center_api_scopes_controls_and_closes_workspace_journals(

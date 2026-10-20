@@ -122,6 +122,43 @@ def test_complete_paper_accounting_reuses_manager_totals(engine, monkeypatch):
     srv.command_centers.portfolios.clear()
 
 
+def test_missing_other_runtime_preserves_valid_individual_pnl_on_both_endpoints(engine):
+    srv, request = engine
+    journals = []
+    try:
+        for key in ("cc1", "cc2", "cc3"):
+            journal = Journal(":memory:")
+            journals.append(journal)
+            srv.command_centers.portfolios[key] = types.SimpleNamespace(
+                journal=journal, runner_list=lambda: [],
+                status=lambda **kwargs: {"assets": [], "positions": 0, "open_profit": 0.0},
+            )
+        journals[0].con.execute(
+            "INSERT INTO trades (symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,profit,live) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            ("NQ", "closed", 1, 1, 100, 1000, 101, 1060, "test", 10, 1),
+        )
+        journals[0].con.commit()
+        code, combined = request("/api/command-centers")
+        assert code == 200
+        for key in ("cc1", "cc4"):
+            code, dedicated = request("/api/command-centers/" + key)
+            assert code == 200
+            own = next(row for row in combined["profiles"] if row["id"] == key)
+            assert dedicated["paper_pnl"] is not None
+            for field in ("profiles", "aggregate"):
+                assert dedicated["paper_pnl"][field] == combined["paper_pnl"][field]
+            assert dedicated["aggregate"]["total_pnl"] is None
+            assert dedicated["aggregate"]["realized_pnl"] is None
+            assert dedicated["profile"]["pnl"] == own["pnl"]
+            assert dedicated["profile"]["pnl"]["realized_pnl"] == (10 if key == "cc1" else None)
+            assert dedicated["accounting"]["complete"] is False
+    finally:
+        srv.command_centers.portfolios.clear()
+        for journal in journals:
+            journal.close()
+
+
 def test_old_ui_links_all_four_separate_views(engine):
     status, script = engine[1]("/command-centers-ui.js")
     assert status == 200

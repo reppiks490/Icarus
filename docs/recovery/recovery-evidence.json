@@ -1,0 +1,2703 @@
+{
+  "external_tool_state": {
+    "firecrawl": "HTTP_402_INSUFFICIENT_CREDITS; requested lookup did not run; no retry or purchase"
+  },
+  "full_recovery_complete": false,
+  "full_system_restart_performed": false,
+  "generated_at_utc": "2026-10-20T18:14:10.564530+00:00",
+  "hosted_failure_annotations": [
+    {
+      "annotations": [
+        {
+          "annotation_level": "failure",
+          "message": "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        },
+        {
+          "annotation_level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        }
+      ],
+      "job_id": 118578968000
+    },
+    {
+      "annotations": [
+        {
+          "annotation_level": "failure",
+          "message": "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        },
+        {
+          "annotation_level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        }
+      ],
+      "job_id": 118489545801
+    },
+    {
+      "annotations": [
+        {
+          "annotation_level": "failure",
+          "message": "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        },
+        {
+          "annotation_level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        }
+      ],
+      "job_id": 118534847255
+    },
+    {
+      "annotations": [
+        {
+          "annotation_level": "failure",
+          "message": "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        },
+        {
+          "annotation_level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        }
+      ],
+      "job_id": 118613128501
+    }
+  ],
+  "hosted_workflow_failures": [
+    {
+      "checks": [
+        {
+          "conclusion": "failure",
+          "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39408129200/job/118578968000",
+          "name": "sweep",
+          "output": {
+            "annotations_count": 2,
+            "annotations_url": "https://api.github.com/repos/reppiks490/Icarus-engine/check-runs/118578968000/annotations",
+            "summary": null,
+            "text": null,
+            "title": null
+          },
+          "status": "completed"
+        }
+      ],
+      "conclusion": "failure",
+      "created_at": "2026-10-20T10:28:00Z",
+      "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+      "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39408129200",
+      "name": "cl-depth-sweep",
+      "run_id": 39408129200,
+      "run_started_at": "2026-10-20T10:28:00Z",
+      "status": "completed",
+      "updated_at": "2026-10-20T10:28:03Z"
+    },
+    {
+      "checks": [
+        {
+          "conclusion": "failure",
+          "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39380903441/job/118489545801",
+          "name": "lab",
+          "output": {
+            "annotations_count": 2,
+            "annotations_url": "https://api.github.com/repos/reppiks490/Icarus-engine/check-runs/118489545801/annotations",
+            "summary": null,
+            "text": null,
+            "title": null
+          },
+          "status": "completed"
+        }
+      ],
+      "conclusion": "failure",
+      "created_at": "2026-10-20T06:31:52Z",
+      "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+      "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39380903441",
+      "name": "cl-lab",
+      "run_id": 39380903441,
+      "run_started_at": "2026-10-20T06:31:52Z",
+      "status": "completed",
+      "updated_at": "2026-10-20T06:31:56Z"
+    },
+    {
+      "checks": [
+        {
+          "conclusion": "failure",
+          "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39394829278/job/118534847255",
+          "name": "acquire",
+          "output": {
+            "annotations_count": 2,
+            "annotations_url": "https://api.github.com/repos/reppiks490/Icarus-engine/check-runs/118534847255/annotations",
+            "summary": null,
+            "text": null,
+            "title": null
+          },
+          "status": "completed"
+        }
+      ],
+      "conclusion": "failure",
+      "created_at": "2026-10-20T08:38:15Z",
+      "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+      "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39394829278",
+      "name": "databento-depth-corpus",
+      "run_id": 39394829278,
+      "run_started_at": "2026-10-20T08:38:15Z",
+      "status": "completed",
+      "updated_at": "2026-10-20T08:38:19Z"
+    },
+    {
+      "checks": [
+        {
+          "conclusion": "failure",
+          "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39418451662/job/118613128501",
+          "name": "seal",
+          "output": {
+            "annotations_count": 2,
+            "annotations_url": "https://api.github.com/repos/reppiks490/Icarus-engine/check-runs/118613128501/annotations",
+            "summary": null,
+            "text": null,
+            "title": null
+          },
+          "status": "completed"
+        }
+      ],
+      "conclusion": "failure",
+      "created_at": "2026-10-20T11:55:36Z",
+      "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+      "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39418451662",
+      "name": "depth-vault",
+      "run_id": 39418451662,
+      "run_started_at": "2026-10-20T11:55:36Z",
+      "status": "completed",
+      "updated_at": "2026-10-20T11:55:40Z"
+    }
+  ],
+  "live_broker_arming": false,
+  "local_checks": {
+    "accounting_regressions": {
+      "green": "Final focused/full verification recorded below; no PC symptom closure inferred.",
+      "red": "4 initial cases failed on original source; 5 expanded projection cases and 1 dedicated HTTP case failed before their respective fixes"
+    },
+    "focused": {
+      "command": "python -m pytest tests_engine/test_paper_workspaces.py tests_engine/test_paper_workspaces_runtime.py tests_engine/test_paper_pnl.py tests_engine/test_paper_pnl_browser.py tests_engine/test_command_center_routes.py -q --tb=short -o addopts=\"\"",
+      "engineering_only": true,
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/icarus-pnl-final-focused-tests.log",
+      "log_sha256": "d54b3c53de4ce42a7478b9564a4ff2f015659f0f554d18343c46e0a5acf9cd89",
+      "scope": "Accounting and endpoint isolation regression",
+      "summary": "133 passed in 27.46s"
+    },
+    "hub_compile_and_adversarial": {
+      "adversarial": {
+        "failure_injection_v0_1.py": {
+          "ok": true,
+          "output": "{'structural_deletions_rejected': 1000, 'adapter_deletions_not_ready': 1000, 'digest_corruptions_rejected': 750, 'identity_substitutions_rejected': 750, 'backend_substitutions_not_ready': 500, 'receipt_attacks_rejected': 500, 'secret_injections_rejected': 300, 'malformed_fail_closed': 500, 'backend_digest_substitutions_not_ready': 500, 'policy_digest_substitutions_not_ready': 500, 'attestation_shape_corruptions_not_ready': 500}\nTOTAL_ATTACK_CASES 6800"
+        },
+        "failure_injection_v0_4.py": {
+          "ok": true,
+          "output": "BACKEND_SUBSTITUTIONS_REJECTED=500/500\nPINNED_POLICY_SUBSTITUTIONS_REJECTED=500/500\nSTRICT_INCLUSION_NODE_MUTATIONS_REJECTED=500/500\nFALSE_INDEX_RELABELS_REJECTED=500/500\nWITNESS_MUTATIONS_REJECTED=400/400\nMALFORMED_INPUTS_FAIL_CLOSED_SAFE_FOR_SIBLINGS=300/300\nDEPENDENCY_DIGEST_CONTRACT_SUBSTITUTIONS_REJECTED=500/500\nPROVENANCE_DELETIONS_DETECTED=26/26\nTOTAL_ATTACKS=3226"
+        },
+        "hostile_test_v0_8.py": {
+          "ok": true,
+          "output": "ORDER_ATTACKS_REJECTED=500\nBAD_NODE_LENGTHS_REJECTED=500\nMALFORMED_TOP_LEVEL_FAIL_CLOSED=500"
+        },
+        "property_test_v0_7.py": {
+          "ok": true,
+          "output": "{'valid_transitions': 2016, 'max_proof_nodes': 7, 'mutated_proofs_rejected': 1000}"
+        },
+        "property_test_v0_8.py": {
+          "ok": true,
+          "output": "VALID_INCLUSIONS=8256\nMAX_PROOF_NODES=7\nMUTATED_NODES_REJECTED=1500\nGEOMETRY_ATTACKS_REJECTED=1000\nBINDING_ATTACKS_REJECTED=1000\nV06_FALSE_INDEX_RELABELS_ACCEPTED=42\nV08_FALSE_INDEX_RELABELS_REJECTED=42"
+        }
+      },
+      "compile": {
+        "aegis": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "aion": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "argus": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "ascension": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "athena": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "daedalus": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "infrastructure": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "janus": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "nexus": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "oracle": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "prometheus": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "supermesh_x": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        }
+      }
+    },
+    "hub_connections": {
+      "all_ok": true,
+      "basis": "DETERMINISTIC_INTERNAL_CONTRACT_FIXTURES",
+      "command": "PYTHONPATH=src python -m divine_providence.cli connect",
+      "count": 10,
+      "exit_code": 0,
+      "owner_runtime_link_proven": false
+    },
+    "hub_system_passed_test_sum": 2179,
+    "hub_systems": {
+      "aegis": {
+        "counts": {
+          "passed": 36
+        },
+        "passed": true,
+        "seconds": 1.58,
+        "timed_out": false
+      },
+      "aion": {
+        "counts": {
+          "passed": 37
+        },
+        "passed": true,
+        "seconds": 1.32,
+        "timed_out": false
+      },
+      "argus": {
+        "counts": {
+          "passed": 447
+        },
+        "passed": true,
+        "seconds": 2.95,
+        "timed_out": false
+      },
+      "ascension": {
+        "counts": {
+          "passed": 160
+        },
+        "passed": true,
+        "seconds": 1.0,
+        "timed_out": false
+      },
+      "athena": {
+        "counts": {
+          "passed": 18
+        },
+        "passed": true,
+        "seconds": 0.56,
+        "timed_out": false
+      },
+      "daedalus": {
+        "counts": {
+          "passed": 64
+        },
+        "passed": true,
+        "seconds": 28.98,
+        "timed_out": false
+      },
+      "infrastructure": {
+        "counts": {
+          "passed": 345
+        },
+        "passed": true,
+        "seconds": 2.19,
+        "timed_out": false
+      },
+      "janus": {
+        "counts": {
+          "passed": 144
+        },
+        "passed": true,
+        "seconds": 8.65,
+        "timed_out": false
+      },
+      "nexus": {
+        "counts": {
+          "passed": 366
+        },
+        "passed": true,
+        "seconds": 18.69,
+        "timed_out": false
+      },
+      "oracle": {
+        "counts": {
+          "passed": 39
+        },
+        "passed": true,
+        "seconds": 0.96,
+        "timed_out": false
+      },
+      "prometheus": {
+        "counts": {
+          "passed": 171
+        },
+        "passed": true,
+        "seconds": 1.35,
+        "timed_out": false
+      },
+      "supermesh_x": {
+        "counts": {
+          "passed": 352
+        },
+        "passed": true,
+        "seconds": 2.06,
+        "timed_out": false
+      }
+    },
+    "hub_tests": {
+      "collected_cases": 165,
+      "command": "PYTHONPATH=src python -m pytest tests -q --tb=short",
+      "count_basis": "165 reported by collect-only; full hub process exit 0 recorded separately",
+      "engineering_only": true,
+      "exit_code": 0
+    },
+    "runtime_full": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=\"\"",
+      "engineering_only": true,
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/icarus-final-full-tests.log",
+      "log_sha256": "3003e2d44bb8d9d4c560661331541be9c8e5374e90a7ea2b4dd449d1667ca43c",
+      "scope": "Full tests_engine after all source changes",
+      "summary": "3463 passed, 4 skipped, 111 subtests passed in 174.92s (0:02:54)"
+    },
+    "satellite_checks": [
+      {
+        "command": [
+          "python",
+          "-m",
+          "pytest",
+          "tests",
+          "-q",
+          "-o",
+          "addopts=",
+          "--tb=short"
+        ],
+        "exit_code": 0,
+        "log": "/workspace/scratch/daedalus-research-os-tests.log",
+        "repository": "reppiks490/daedalus-research-os",
+        "tail": "...........................................................              [100%]\n59 passed in 13.34s\n"
+      },
+      {
+        "command": [
+          "python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-v"
+        ],
+        "exit_code": 0,
+        "log": "/workspace/scratch/aion-parallax-research-tests.log",
+        "repository": "reppiks490/aion-parallax-research",
+        "tail": "e_uses_documented_regular_candle_family (test_parallax_manifest.ManifestTests.test_candidate_archive_uses_documented_regular_candle_family) ... ok\ntest_documented_candidate_archive_is_regular_candle_family (test_parallax_manifest.ManifestTests.test_documented_candidate_archive_is_regular_candle_family) ... ok\ntest_malformed_member_is_visible_and_not_counted_as_parsed (test_parallax_manifest.ManifestTests.test_malformed_member_is_visible_and_not_counted_as_parsed) ... ok\ntest_preserves_physical_members_duplicate_headers_and_logical_rows (test_parallax_manifest.ManifestTests.test_preserves_physical_members_duplicate_headers_and_logical_rows) ... ok\ntest_preserves_tick_range_and_chart_family_claims (test_parallax_manifest.ManifestTests.test_preserves_tick_range_and_chart_family_claims) ... ok\n\n----------------------------------------------------------------------\nRan 24 tests in 0.616s\n\nOK\n"
+      },
+      {
+        "command": [
+          "python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-v"
+        ],
+        "exit_code": 0,
+        "log": "/workspace/scratch/icarus-csv-evidence-lab-tests.log",
+        "repository": "reppiks490/icarus-csv-evidence-lab",
+        "tail": "header_is_preserved (test_audit.AuditTests.test_long_header_is_preserved) ... ok\ntest_missing_timestamp_column_is_not_clean (test_audit.AuditTests.test_missing_timestamp_column_is_not_clean) ... ok\ntest_quoted_comma_is_one_row (test_audit.AuditTests.test_quoted_comma_is_one_row) ... ok\ntest_identical_inventory_does_not_grant_market_authority (test_reconcile.ReconcileTests.test_identical_inventory_does_not_grant_market_authority) ... ok\ntest_invalid_hash_is_rejected (test_reconcile.ReconcileTests.test_invalid_hash_is_rejected) ... ok\ntest_missing_hash_and_duplicate_multiplicity (test_reconcile.ReconcileTests.test_missing_hash_and_duplicate_multiplicity) ... ok\ntest_row_count_semantics_are_not_assumed_equal (test_reconcile.ReconcileTests.test_row_count_semantics_are_not_assumed_equal) ... ok\n\n----------------------------------------------------------------------\nRan 17 tests in 0.013s\n\nOK\n"
+      },
+      {
+        "command": [
+          "python",
+          "-m",
+          "pytest",
+          "tests",
+          "-q",
+          "-o",
+          "addopts=",
+          "--tb=short"
+        ],
+        "exit_code": 0,
+        "log": "/workspace/scratch/icarus-causal-router-tests.log",
+        "repository": "reppiks490/icarus-causal-router",
+        "tail": "..................................................                                                     [100%]\n50 passed, 42 subtests passed in 1.05s\n"
+      }
+    ]
+  },
+  "new_spend_authorized_or_performed": false,
+  "open_pr_inventory": {
+    "captured_at_utc": "2026-10-20T18:04:31.050Z",
+    "items": [
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 456,
+        "repository": "reppiks490/Icarus",
+        "title": "Expose four corpus-backed dashboards with strict paper accounting and firm inventory",
+        "url": "https://github.com/reppiks490/Icarus/pull/456"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 458,
+        "repository": "reppiks490/Icarus",
+        "title": "Bind research as-of selectors to authenticated receipt bodies",
+        "url": "https://github.com/reppiks490/Icarus/pull/458"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 216,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Consume retained provider archives offline with verified read receipts",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/216"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 457,
+        "repository": "reppiks490/Icarus",
+        "title": "Consume provider statistics in Brain and four dashboard research views",
+        "url": "https://github.com/reppiks490/Icarus/pull/457"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 211,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Prove private corpus consumption and substantive operation access",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/211"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 455,
+        "repository": "reppiks490/Icarus",
+        "title": "Bind discovery access evidence to API origins and query variants",
+        "url": "https://github.com/reppiks490/Icarus/pull/455"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 452,
+        "repository": "reppiks490/Icarus",
+        "title": "Consume private retained corpora in four isolated paper workspaces",
+        "url": "https://github.com/reppiks490/Icarus/pull/452"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 213,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Bind corpus requests to approved Databento account budgets",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/213"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 214,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Expire dedicated provider delivery evidence and preserve its provenance",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/214"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 454,
+        "repository": "reppiks490/Icarus",
+        "title": "research: ICARUS INTUITION \u03a9 \u2014 episodic cognition, causal intake, expert calibration",
+        "url": "https://github.com/reppiks490/Icarus/pull/454"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 453,
+        "repository": "reppiks490/Icarus",
+        "title": "Integrate trusted-source GRU research challenger and persisted replay checks",
+        "url": "https://github.com/reppiks490/Icarus/pull/453"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 59,
+        "repository": "reppiks490/divine-providence",
+        "title": "Contain hub child processes and verify tour continuity",
+        "url": "https://github.com/reppiks490/divine-providence/pull/59"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 45,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "Track Icarus requirements, current PR evidence, and active repairs",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/45"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 451,
+        "repository": "reppiks490/Icarus",
+        "title": "Preserve A200 receipt integrity before runtime hashing",
+        "url": "https://github.com/reppiks490/Icarus/pull/451"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 209,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Repair FR-1 provenance and fail closed on incomplete trial accounting",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/209"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 51,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "Separate current workers from stale sessions in the coordination headline",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/51"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 46,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "Coordination: futures integration stopping point",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/46"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 449,
+        "repository": "reppiks490/Icarus",
+        "title": "Docs: record futures integration stopping point",
+        "url": "https://github.com/reppiks490/Icarus/pull/449"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 44,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "coordination: register champion stopping point",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/44"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 448,
+        "repository": "reppiks490/Icarus",
+        "title": "docs: add champion qualification handoff",
+        "url": "https://github.com/reppiks490/Icarus/pull/448"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 43,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "docs: record A200 Pulse stopping handoff",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/43"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 28,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "Record Yahoo-only A200 probe default",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/28"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 42,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "coordination: track Node test coverage repair",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/42"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 435,
+        "repository": "reppiks490/Icarus",
+        "title": "Fail closed outside futures calendar coverage",
+        "url": "https://github.com/reppiks490/Icarus/pull/435"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 41,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "Coordination: claim A200 to Pulse runtime admission",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/41"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 432,
+        "repository": "reppiks490/Icarus",
+        "title": "Tests: separate Databento admission from execution qualification",
+        "url": "https://github.com/reppiks490/Icarus/pull/432"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 186,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Make Sentinel provider health multi-lane accurate",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/186"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 438,
+        "repository": "reppiks490/Icarus",
+        "title": "Separate paper readiness from futures qualification",
+        "url": "https://github.com/reppiks490/Icarus/pull/438"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 445,
+        "repository": "reppiks490/Icarus",
+        "title": "Refresh broker and prop-firm integration baseline",
+        "url": "https://github.com/reppiks490/Icarus/pull/445"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 414,
+        "repository": "reppiks490/Icarus",
+        "title": "Canonicalize ICARUS 32-root futures authority",
+        "url": "https://github.com/reppiks490/Icarus/pull/414"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 387,
+        "repository": "reppiks490/Icarus",
+        "title": "Claim GRU holdout before loading terminal rows",
+        "url": "https://github.com/reppiks490/Icarus/pull/387"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 167,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Coordination: refresh asset, shadow, and transcript status",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/167"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 141,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Atlas: advisory finite-model decision value and prospective evidence",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/141"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 173,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Coordination: record browser fix and current reviews",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/173"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 353,
+        "repository": "reppiks490/Icarus",
+        "title": "Research-only deep learning challenger for ICARUS",
+        "url": "https://github.com/reppiks490/Icarus/pull/353"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 137,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "R01-C2: pre-register FR-1, the win-rate frontier (for Codex review)",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/137"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 148,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "RT01 design: real-price shadow execution twin",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/148"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 330,
+        "repository": "reppiks490/Icarus",
+        "title": "DRAFT C02: process-safe Brain journal and intake persistence",
+        "url": "https://github.com/reppiks490/Icarus/pull/330"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 142,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "R01-C2 FR-1 code (draft): frontier engine, trial ledger, leakage tests",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/142"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 332,
+        "repository": "reppiks490/Icarus",
+        "title": "Design: ICARUS Capability & Data Discovery Registry",
+        "url": "https://github.com/reppiks490/Icarus/pull/332"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 3,
+        "repository": "reppiks490/ideas-reality",
+        "title": "WIP: vault expansion round 1 (W69O\u2013W84Q)",
+        "url": "https://github.com/reppiks490/ideas-reality/pull/3"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 140,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "CL-84 (draft): port PR 84's Databento guards onto current cl_lab",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/140"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 84,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Harden Databento scheduled corpus activation and cost controls",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/84"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 2,
+        "repository": "reppiks490/more-instructions-for-sol-and-astra-effort-swapping",
+        "title": "Build AEONFALL's player loop and owner-gated Sovereign Unmaking",
+        "url": "https://github.com/reppiks490/more-instructions-for-sol-and-astra-effort-swapping/pull/2"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 7,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "ICARUS: preserve recovery evidence and correct research assurance status",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/7"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 1,
+        "repository": "reppiks490/more-instructions-for-sol-and-astra-effort-swapping",
+        "title": "Advance AEONFALL timers by elapsed simulation time",
+        "url": "https://github.com/reppiks490/more-instructions-for-sol-and-astra-effort-swapping/pull/1"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 2,
+        "repository": "reppiks490/ideas-reality",
+        "title": "Deep edge research handoff \u2014 RDX series",
+        "url": "https://github.com/reppiks490/ideas-reality/pull/2"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 295,
+        "repository": "reppiks490/Icarus",
+        "title": "Surface private research-satellite Actions allocation hold",
+        "url": "https://github.com/reppiks490/Icarus/pull/295"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 198,
+        "repository": "reppiks490/Icarus",
+        "title": "mobile: ICARUS native app foundation",
+        "url": "https://github.com/reppiks490/Icarus/pull/198"
+      }
+    ],
+    "limit": "Discovery metadata, not a supersession/merge qualification; unreviewed entries remain explicitly unreviewed."
+  },
+  "open_recovery_work": [
+    "Shared main trading dashboard implementation for CC1-CC4 with isolated controls",
+    "Exact owner PC checkout/interpreter/module origins/data root/startup command",
+    "Source-to-consumer freshness, entitlement and actual-read audit for all required data",
+    "Matched real-input before/after accuracy comparison; metric definition and denominator unknown",
+    "Futures and prop-firm account/program integration and reconciliation",
+    "Isolated recovery rehearsal and private state backup/rollback evidence",
+    "Required hosted checks on proposed release refs; account billing execution blocker",
+    "Exact-head disposition of every relevant open PR/workstream"
+  ],
+  "owner_pc_runtime_observed": false,
+  "repositories": [
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:07.802797+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 3493,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 10418,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 1281,
+          "state": "READ"
+        }
+      },
+      "head": "10a9e2072cb93b5e09f5396340f9c2ba19dd6dd7",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/Icarus",
+      "role": "CANONICAL_RUNTIME",
+      "root_entries": [
+        ".gitattributes",
+        ".github",
+        ".gitignore",
+        ".superpowers",
+        "AGENTS.md",
+        "AION_HANDOFF.md",
+        "ASSURANCE_INDEX.md",
+        "ASTRA_DO_NOT.md",
+        "ASTRA_HANDOFF.md",
+        "ASTRA_ORDER.md",
+        "CANDIDATE_COG_GROK.md",
+        "COMMANDS.md",
+        "CSV_ACCESS_GROK.md",
+        "DATA.md",
+        "ENGINE_UNIVERSE_GROK.md",
+        "EVENTS_GROK.md",
+        "GITHUB_NATIVE_DATA_FEDERATION.md",
+        "GOAL.md",
+        "GROK.md",
+        "HANDOFF_LOG.md",
+        "ICARUS_EMPIRICAL_QUALIFICATION.md",
+        "ICARUS_INTEGRATION_INDEX.md",
+        "ICARUS_LOOP_INDEX.md",
+        "MODELS_GROK.md",
+        "MODEL_HANDOFF.md",
+        "OPUS_ORDER.md",
+        "OVERRIDE.md",
+        "PAID_NEXT.md",
+        "PARALLAX-PROPOSAL.md",
+        "PARITY.md",
+        "README.md",
+        "SCHWAB_GROK.md",
+        "SETUP.md",
+        "SPEC.md",
+        "TRAINERS_GROK.md",
+        "UNIVERSES.json",
+        "automation_intelligence",
+        "config",
+        "coordination",
+        "deploy",
+        "docs",
+        "history",
+        "icarus-aion-source-v0.1.zip",
+        "icarus_agent",
+        "icarus_bridge",
+        "icarus_control",
+        "icarus_engine",
+        "icarus_futures",
+        "icarus_plant",
+        "instruction.txt",
+        "integration",
+        "pine",
+        "presets",
+        "pyproject.toml",
+        "scripts",
+        "start-agent.ps1",
+        "start-engine-background.ps1",
+        "start-engine-background.sh",
+        "start-plant.bat",
+        "start-plant.ps1",
+        "start-plant.sh",
+        "start-yahoo.bat",
+        "start-yahoo.ps1",
+        "state.json",
+        "studies",
+        "tests",
+        "tests_engine",
+        "tools"
+      ],
+      "size": 14710,
+      "startup_files": [
+        "SETUP.md",
+        "start-agent.ps1",
+        "start-engine-background.ps1",
+        "start-engine-background.sh",
+        "start-plant.bat",
+        "start-plant.ps1",
+        "start-plant.sh",
+        "start-yahoo.bat",
+        "start-yahoo.ps1"
+      ],
+      "test_files": 256,
+      "tracked_files": 2439,
+      "workflows": [
+        ".github/workflows/ascendancy-foundry-evaluator-contract.yml",
+        ".github/workflows/ascendancy-mechanism-contribution-contract.yml",
+        ".github/workflows/atlas-diagnostic-pytest.yml",
+        ".github/workflows/catalog-registry-refresh.yml",
+        ".github/workflows/config-job-contract.yml",
+        ".github/workflows/engine-federation-consumer-contract.yml",
+        ".github/workflows/icarus-full-export.yml",
+        ".github/workflows/intelligence-feed-contract.yml",
+        ".github/workflows/live-engine-federation-gate.yml",
+        ".github/workflows/live-engine-historical-context-gate.yml",
+        ".github/workflows/omnivision-stage0.yml",
+        ".github/workflows/provider-exhaustive-collection.yml",
+        ".github/workflows/source-data-contract.yml",
+        ".github/workflows/test.yml",
+        ".github/workflows/ui-visual-contract.yml",
+        ".github/workflows/windows-background-contract.yml",
+        ".github/workflows/workspace-performance.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:07.803278+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 3918,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 12895,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 1214,
+          "state": "READ"
+        }
+      },
+      "head": "df67307a6923c1ff2d02047c74591d4e2dbe8963",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/Icarus-engine",
+      "role": "SHARED_DATA_HEALTH_AND_RESEARCH",
+      "root_entries": [
+        ".claude",
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "AGENT_CREDENTIALS.md",
+        "CHANGELOG.md",
+        "CLAUDE.md",
+        "HANDOFF.md",
+        "ICARUS_STATE.md",
+        "README.md",
+        "automation_intelligence",
+        "cl_lab",
+        "config",
+        "conftest.py",
+        "coordination",
+        "data",
+        "docs",
+        "icarus",
+        "icarus_bridge",
+        "icarus_engine",
+        "integration",
+        "pine",
+        "presets",
+        "pyproject.toml",
+        "research",
+        "start-engine-background.ps1",
+        "tests",
+        "tests_cl",
+        "tests_engine",
+        "tools"
+      ],
+      "size": 1513176,
+      "startup_files": [
+        "start-engine-background.ps1"
+      ],
+      "test_files": 587,
+      "tracked_files": 17197,
+      "workflows": [
+        ".github/workflows/automation-durability-watchdog.yml",
+        ".github/workflows/brain-federation-contract.yml",
+        ".github/workflows/chatgpt-hybrid-loop-bridge.yml",
+        ".github/workflows/cl-depth-sweep.yml",
+        ".github/workflows/cl-federation-watch.yml",
+        ".github/workflows/cl-lab.yml",
+        ".github/workflows/coordination-mirror.yml",
+        ".github/workflows/data-sentinel.yml",
+        ".github/workflows/databento-bars-vault.yml",
+        ".github/workflows/databento-depth-corpus.yml",
+        ".github/workflows/databento-depth-research-context.yml",
+        ".github/workflows/depth-vault.yml",
+        ".github/workflows/external-data-fabric.yml",
+        ".github/workflows/futures-universe-probe.yml",
+        ".github/workflows/github-native-ai-plane.yml",
+        ".github/workflows/github-native-credential-health.yml",
+        ".github/workflows/github-native-local-model-canary.yml",
+        ".github/workflows/interrepo-peer-intelligence.yml",
+        ".github/workflows/native-five-research.yml",
+        ".github/workflows/native-provider-access.yml",
+        ".github/workflows/official-economic-events.yml",
+        ".github/workflows/provider-exhaustive-collection.yml",
+        ".github/workflows/provider-supplemental-collection.yml",
+        ".github/workflows/provider-supplemental-promote.yml",
+        ".github/workflows/restored-five-durability-watchdog.yml",
+        ".github/workflows/restored-five-local-shadow-canary.yml",
+        ".github/workflows/restored-five-local-shadow.yml",
+        ".github/workflows/restored-five-native-liveness.yml",
+        ".github/workflows/sec-edgar-data.yml",
+        ".github/workflows/secret-inventory.yml",
+        ".github/workflows/tests.yml",
+        ".github/workflows/windows-background-contract.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:07.803422+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 321,
+          "state": "READ"
+        }
+      },
+      "head": "ce82124352762c14eb33836a5c894bc3a2a71dfe",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/multi-level-csv",
+      "role": "SOURCE_ARCHIVE_REFERENCE_NOT_RUNTIME",
+      "root_entries": [
+        "2nd 60 half.zip",
+        "CANDIDATE_COG_GROK.md",
+        "Csv 2nd 60.zip",
+        "Csv files for different chart types.zip",
+        "Csv first 60.zip",
+        "Csv last 57.zip",
+        "ENGINE_UNIVERSE_GROK.md",
+        "First 60 half.zip",
+        "Full csv candles only.zip",
+        "Last 57 half.zip",
+        "More csv by ticks with chart candle and volume profiles technicals built in.zip",
+        "README.md"
+      ],
+      "size": 151066,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 12,
+      "workflows": []
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:07.803775+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 783,
+          "state": "READ"
+        }
+      },
+      "head": "a482e7d1801fa7fa5aec093960097c0051c0403c",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/csv-data-multi-chart-type",
+      "role": "SOURCE_ARCHIVE_REFERENCE_NOT_RUNTIME",
+      "root_entries": [
+        "Csv indexes.zip",
+        "README.md"
+      ],
+      "size": 22034,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 2,
+      "workflows": []
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:07.820820+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 562,
+          "state": "READ"
+        }
+      },
+      "head": "05d010eb36e71d8c2d77f28c8ba72e7200cd924e",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/more-instructions-for-sol-and-astra-effort-swapping",
+      "role": "UNRELATED_AEONFALL",
+      "root_entries": [
+        ".github",
+        "README.md",
+        "ROADMAP.md",
+        "STATUS.md",
+        "content",
+        "docs",
+        "schemas",
+        "tools",
+        "verse",
+        "world"
+      ],
+      "size": 1598,
+      "startup_files": [],
+      "test_files": 1,
+      "tracked_files": 237,
+      "workflows": [
+        ".github/workflows/catalog-validation.yml",
+        ".github/workflows/crafting-validation.yml",
+        ".github/workflows/verse-static-validation.yml"
+      ]
+    },
+    {
+      "branch": "claude/effort-status-tjzcfd",
+      "captured_at_utc": "2026-10-20T18:00:08.091554+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 13431,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 923,
+          "state": "READ"
+        }
+      },
+      "head": "b7d81200b99e73f4e8f7c660df4e9364bb2336b0",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/new",
+      "role": "UNRELATED_CHARACTER3D",
+      "root_entries": [
+        ".claude",
+        ".dockerignore",
+        ".env.example",
+        ".github",
+        ".gitignore",
+        "Dockerfile",
+        "GUIDE.md",
+        "README.md",
+        "app",
+        "blender_scripts",
+        "config",
+        "docs",
+        "pyproject.toml",
+        "release_manifest.json",
+        "scripts",
+        "tests"
+      ],
+      "size": 51852,
+      "startup_files": [],
+      "test_files": 66,
+      "tracked_files": 315,
+      "workflows": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/pages.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:08.494706+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 3889,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 5782,
+          "state": "READ"
+        }
+      },
+      "head": "05064b169c280e881f7b349f0cd04b2987ad0b45",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/icarus-owner-actions",
+      "role": "COORDINATION_AND_OWNER_CONSTRAINTS",
+      "root_entries": [
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "EXPORT_MATRIX.md",
+        "OWNER_TASKS.md",
+        "PROVIDERS_AND_COSTS.md",
+        "README.md",
+        "WORKFLOW_ASSURANCE_REGISTRY.md",
+        "coordination",
+        "coordination_fabric",
+        "docs",
+        "intake",
+        "mission",
+        "templates",
+        "tests"
+      ],
+      "size": 1753,
+      "startup_files": [],
+      "test_files": 7,
+      "tracked_files": 345,
+      "workflows": [
+        ".github/workflows/coordination-fabric.yml",
+        ".github/workflows/coordination-maintenance.yml",
+        ".github/workflows/mission-register.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:08.496479+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 3792,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 648,
+          "state": "READ"
+        }
+      },
+      "head": "135dd303c065543e747b8bc1df4cdaaf09d09bdd",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/daedalus-research-os",
+      "role": "RESEARCH_SIBLING",
+      "root_entries": [
+        ".github",
+        ".gitignore",
+        "AUDIT_CHECKPOINT.txt",
+        "README.md",
+        "docs",
+        "pyproject.toml",
+        "scripts",
+        "src",
+        "tests"
+      ],
+      "size": 136,
+      "startup_files": [],
+      "test_files": 28,
+      "tracked_files": 73,
+      "workflows": [
+        ".github/workflows/assurance.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:08.503534+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 2425,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 6035,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 404,
+          "state": "READ"
+        }
+      },
+      "head": "bd48df0fbaa62e730a6f905a30b390e660610006",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/aion-parallax-research",
+      "role": "MEMORY_RESEARCH_SIBLING",
+      "root_entries": [
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "README.md",
+        "aion",
+        "contracts",
+        "docs",
+        "pyproject.toml",
+        "tests"
+      ],
+      "size": 138,
+      "startup_files": [],
+      "test_files": 2,
+      "tracked_files": 40,
+      "workflows": [
+        ".github/workflows/parallax-tests.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:08.524172+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 2379,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 3747,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 364,
+          "state": "READ"
+        }
+      },
+      "head": "b4bc06a378aade2d14e27bb289108a6f645f3fc4",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/icarus-csv-evidence-lab",
+      "role": "CSV_EVIDENCE_SIBLING",
+      "root_entries": [
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "README.md",
+        "automation_intelligence",
+        "docs",
+        "pyproject.toml",
+        "src",
+        "tests",
+        "tools"
+      ],
+      "size": 523,
+      "startup_files": [],
+      "test_files": 4,
+      "tracked_files": 429,
+      "workflows": [
+        ".github/workflows/python-package-conda.yml",
+        ".github/workflows/restored-five-durability-watchdog.yml",
+        ".github/workflows/restored-five-native-liveness.yml",
+        ".github/workflows/restored-five-watchdog-ci.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:09.141046+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 2186,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 415,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 410,
+          "state": "READ"
+        }
+      },
+      "head": "cba6e187589853b69d80ee74a63c323b2564ecb1",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/icarus-causal-router",
+      "role": "SYNTHETIC_RESEARCH_ASSURANCE",
+      "root_entries": [
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "README.md",
+        "baton-pass.state.json",
+        "causal_router",
+        "docs",
+        "pyproject.toml",
+        "tests"
+      ],
+      "size": 75,
+      "startup_files": [],
+      "test_files": 5,
+      "tracked_files": 25,
+      "workflows": [
+        ".github/workflows/assurance.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:11:44.277231+00:00",
+      "documentation": {},
+      "head": "c38eef396f202bcdd9310ae5c23a9930d0211e4d",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/all-of-the-build-as-they-are-as-of-2-13am-9-26-2026",
+      "remote_ref_check": {
+        "exit_code": 0,
+        "ref_count": 2
+      },
+      "role": "ARCHIVE_REFERENCE_NOT_RUNTIME",
+      "root_entries": [
+        "builds"
+      ],
+      "size": 0,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 1,
+      "workflows": []
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:11:45.390012+00:00",
+      "documentation": {},
+      "inspection": "EMPTY_REMOTE_VERIFIED",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/builds",
+      "remote_ref_check": {
+        "exit_code": 0,
+        "ref_count": 0
+      },
+      "role": "EMPTY_REMOTE_REFERENCE",
+      "size": 0
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:09.623879+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 2526,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 8075,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 995,
+          "state": "READ"
+        }
+      },
+      "head": "27ae69c593ede3019957100cd401625bd2424f43",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/divine-providence",
+      "role": "SUBSYSTEM_HUB",
+      "root_entries": [
+        ".env.example",
+        ".gitattributes",
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "PROVENANCE.md",
+        "README.md",
+        "docs",
+        "provenance",
+        "pyproject.toml",
+        "scripts",
+        "src",
+        "systems",
+        "tests"
+      ],
+      "size": 7412,
+      "startup_files": [],
+      "test_files": 368,
+      "tracked_files": 1825,
+      "workflows": [
+        ".github/workflows/icarus-institution.yml",
+        ".github/workflows/icarus-observatory.yml",
+        ".github/workflows/nexus-tests.yml",
+        ".github/workflows/o14-corpus-audit.yml",
+        ".github/workflows/onchain-proof-clock-tests.yml",
+        ".github/workflows/subsystem-evolution-tests.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:09.633270+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 493,
+          "state": "READ"
+        }
+      },
+      "head": "d26eb91f4f14e4e0132c24bc9772e7b998372b84",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/skills-expand-your-team-with-copilot",
+      "role": "GITHUB_TUTORIAL_NOT_RUNTIME",
+      "root_entries": [
+        ".devcontainer",
+        ".github",
+        ".vscode",
+        "LICENSE",
+        "README.md",
+        "docs",
+        "src"
+      ],
+      "size": 3332,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 73,
+      "workflows": [
+        ".github/workflows/0-start-exercise.yml",
+        ".github/workflows/1-assign.yml",
+        ".github/workflows/2-collaborate.yml",
+        ".github/workflows/3-prepare-environment.yml",
+        ".github/workflows/4-play-time.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:09.770341+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 698,
+          "state": "READ"
+        }
+      },
+      "head": "464afc97a402009d8a18ae275b342e200ab6bfa6",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/skills-scale-institutional-knowledge-using-copilot-spaces",
+      "role": "GITHUB_TUTORIAL_NOT_RUNTIME",
+      "root_entries": [
+        ".devcontainer",
+        ".github",
+        ".gitignore",
+        "LICENSE",
+        "README.md",
+        "docs"
+      ],
+      "size": 6102,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 59,
+      "workflows": [
+        ".github/workflows/0-start-exercise.yml",
+        ".github/workflows/1-step.yml",
+        ".github/workflows/2-step.yml",
+        ".github/workflows/3-last-step.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:10.159998+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 3768,
+          "state": "READ"
+        }
+      },
+      "head": "0741679319829ca9cfc68811a2f83a199a1a43ab",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/big-contracts-tracker",
+      "role": "PUBLIC_REFERENCE_BUCKET_NOT_INTEGRATED",
+      "root_entries": [
+        "README.md",
+        "data",
+        "schema"
+      ],
+      "size": 6,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 3,
+      "workflows": []
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:10.224042+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 1589,
+          "state": "READ"
+        }
+      },
+      "head": "de380224349713e4ddff8c078dedb7a891ff2a0a",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/ideas-reality",
+      "role": "RESEARCH_INBOX_NOT_RUNTIME",
+      "root_entries": [
+        "CLAUDE_HANDOFF.md",
+        "README.md",
+        "research"
+      ],
+      "size": 919,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 322,
+      "workflows": []
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:11:46.040560+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 18,
+          "state": "READ"
+        }
+      },
+      "head": "9bf191b921ca1255617495c5548b49b28260a4ef",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/stacks-on-stacks",
+      "remote_ref_check": {
+        "exit_code": 0,
+        "ref_count": 2
+      },
+      "role": "REFERENCE_STUB_NOT_RUNTIME",
+      "root_entries": [
+        "README.md"
+      ],
+      "size": 0,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 1,
+      "workflows": []
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:10.409248+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 3322,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 5892,
+          "state": "READ"
+        }
+      },
+      "head": "d30ddd7a3526f0c1ee32a8a66ed83b13752e2e6f",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/cash-flow-",
+      "role": "UNRELATED_MONEYFALL",
+      "root_entries": [
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "CODEX_START_HERE.md",
+        "README.md",
+        "apps",
+        "config",
+        "coordination",
+        "docs",
+        "scripts",
+        "src",
+        "tests"
+      ],
+      "size": 306,
+      "startup_files": [
+        "CODEX_START_HERE.md"
+      ],
+      "test_files": 12,
+      "tracked_files": 107,
+      "workflows": [
+        ".github/workflows/permit-source-watch.yml",
+        ".github/workflows/verify.yml"
+      ]
+    }
+  ],
+  "restart_decision": "NO_GO",
+  "schema_version": "icarus.recovery-audit.v1",
+  "session_id": "icarus1-20261020-system-recovery",
+  "source_manifest_snapshot": {
+    "commit": "df67307a6923c1ff2d02047c74591d4e2dbe8963",
+    "limits": "Recorded manifest declarations retain their original meaning; LIVE labels are not independently reverified consumption. Compare current per-repository receipts and observed consumers, especially where Sentinel disagrees.",
+    "path": "config/data_ingestion_manifest.json",
+    "repository": "reppiks490/Icarus-engine",
+    "sources": [
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/massive.json",
+          "automation_intelligence/provider_collection_v1/research_context.json"
+        ],
+        "id": "massive",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/twelve.json",
+          "automation_intelligence/provider_collection_v1/research_context.json"
+        ],
+        "id": "twelve_data",
+        "ingestion_state": "PARTIAL",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_PARTIAL_RESUMABLE",
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/fmp.json",
+          "automation_intelligence/cl_lab/external_data_fabric.json"
+        ],
+        "id": "fmp",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/eodhd.json",
+          "automation_intelligence/cl_lab/external_data_fabric.json"
+        ],
+        "id": "eodhd",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/tiingo.json",
+          "automation_intelligence/cl_lab/external_data_fabric.json"
+        ],
+        "id": "tiingo",
+        "ingestion_state": "PARTIAL",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_PARTIAL_RESUMABLE",
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/fred.json",
+          "automation_intelligence/provider_collection_v1/research_context.json",
+          "automation_intelligence/cl_lab/fred_alfred_manifest.json",
+          "automation_intelligence/native_research_v1/latest.json"
+        ],
+        "id": "fred",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/bybit.json",
+          "automation_intelligence/provider_collection_v1/research_context.json",
+          "automation_intelligence/native_research_v1/latest.json"
+        ],
+        "id": "bybit",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "BLOCKED_MISSING_CREDENTIAL",
+        "consumption_state": "BLOCKED",
+        "credential_state": "MISSING",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/intrinio.json"
+        ],
+        "id": "intrinio",
+        "ingestion_state": "BLOCKED",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "BLOCKED_MISSING_CREDENTIAL",
+        "consumption_state": "BLOCKED",
+        "credential_state": "MISSING",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/quiver.json"
+        ],
+        "id": "quiver",
+        "ingestion_state": "BLOCKED",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "BLOCKED_MISSING_CREDENTIAL",
+        "consumption_state": "BLOCKED",
+        "credential_state": "MISSING",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/alpaca.json"
+        ],
+        "id": "alpaca",
+        "ingestion_state": "BLOCKED",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "BLOCKED_MISSING_CREDENTIAL",
+        "consumption_state": "BLOCKED",
+        "credential_state": "MISSING",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/tickstream.json"
+        ],
+        "id": "tickstream",
+        "ingestion_state": "BLOCKED",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions+connector",
+        "canary_workflow": ".github/workflows/native-provider-access.yml",
+        "consumption_state": "PARTIAL",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "config/provider_endpoint_catalog_supplemental.json",
+          "automation_intelligence/provider_collection_v1/latest/unusual_whales.json",
+          "automation_intelligence/provider_collection_v1/native_access/latest/unusual_whales.json",
+          "automation_intelligence/provider_collection_v1/research_context.json",
+          "reppiks490/Icarus:icarus_engine/unusual_whales_intake.py",
+          "automation_intelligence/provider_collection_v1/cycles/"
+        ],
+        "id": "unusual_whales",
+        "ingestion_state": "BLOCKED",
+        "last_verified_run": "38905397776",
+        "required_for_all_ai_units": true,
+        "runtime_status": "BLOCKED_AUTHENTICATION",
+        "verification": "Credential presence is confirmed by redacted health run 38902710676. The latest supplemental request (38905397776) returned HTTP 401 for greek-exposure with zero rows; the independent native canary (38897165047) also returned HTTP 401 for market-tide. The prior successful 5-request canary (38838224842) is historical evidence only. Repair/replace the GitHub Actions credential or provider authorization before API collection resumes. The separate interactive connector intake is not proof that this GitHub Actions API lane is working.",
+        "workflow": ".github/workflows/provider-supplemental-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "Some official endpoint families returned HTTP 403 under the current provider plan; accessible endpoints returned real data and remain resumable.",
+        "canary_workflow": ".github/workflows/native-provider-access.yml",
+        "consumption_state": "PARTIAL",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "config/provider_endpoint_catalog_supplemental.json",
+          "automation_intelligence/provider_collection_v1/latest/alphavantage.json",
+          "automation_intelligence/provider_collection_v1/native_access/latest/alphavantage.json",
+          "automation_intelligence/provider_collection_v1/research_context.json"
+        ],
+        "id": "alpha_vantage",
+        "ingestion_state": "PARTIAL",
+        "last_verified_run": "38838224842",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_PARTIAL_WITH_ENTITLEMENT_LIMITS",
+        "workflow": ".github/workflows/provider-supplemental-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "Stored Finnhub credential returned HTTP 401 using documented X-Finnhub-Token authentication and also failed the prior query-token canary. Replace/repair the GitHub Finnhub secret before this lane can ingest data.",
+        "canary_workflow": ".github/workflows/native-provider-access.yml",
+        "consumption_state": "BLOCKED",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "config/provider_endpoint_catalog_supplemental.json",
+          "automation_intelligence/provider_collection_v1/latest/finnhub.json",
+          "automation_intelligence/provider_collection_v1/native_access/latest/finnhub.json"
+        ],
+        "id": "finnhub",
+        "ingestion_state": "BLOCKED",
+        "last_verified_run": "38838224842",
+        "required_for_all_ai_units": true,
+        "runtime_status": "BLOCKED_AUTHENTICATION",
+        "workflow": ".github/workflows/provider-supplemental-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "The integrity gate refuses publication because the persisted depth vault contains 156,928 derived feature rows for secondary/third accounts but no primary-account feature files. The vault key fallback is working: data/depth_vault/manifest.json records HKDF(DATABENTO_API_KEY), so the absent ICARUS_DATA_ARCHIVE_KEY is not the recovery blocker. The primary sweep ledger records $34.317511 spent against $34.344215 allocated ($0.026704 remaining); recovery/reacquisition needs a valid source for the already-paid primary feature files or a separately recorded budget allocation. Do not weaken the integrity gate.",
+        "consumption_state": "DEDICATED_LANE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "data/depth_vault/",
+          "automation_intelligence/depth_research_context_v1/",
+          ".github/workflows/databento-depth-research-context.yml",
+          ".github/workflows/cl-depth-sweep.yml"
+        ],
+        "id": "databento_depth",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "INTEGRITY_BLOCKED_PRIMARY_FEATURE_GAP",
+        "workflow": ".github/workflows/databento-depth-corpus.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "DEDICATED_LANE",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          ".github/workflows/sec-edgar-data.yml",
+          "automation_intelligence/cl_lab/sec_edgar_manifest.json"
+        ],
+        "id": "sec_edgar",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE",
+        "verification": "Current manifest contained 15,931 fact rows and 2,375 filing rows across the configured large-cap universe.",
+        "workflow": ".github/workflows/sec-edgar-data.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "BLS live ICS/HTML returns HTTP 403 from GitHub-hosted runners; the lane preserves an explicit official BLS snapshot fallback while BEA, Census and FOMC sources remain live.",
+        "consumption_state": "DEDICATED_LANE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          ".github/workflows/official-economic-events.yml",
+          "automation_intelligence/cl_lab/economic_events_manifest.json",
+          "cl_lab/feeds/economic_events.py"
+        ],
+        "id": "official_economic_events",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_WITH_BLS_FALLBACK",
+        "workflow": ".github/workflows/official-economic-events.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/external_data_fabric.json"
+        ],
+        "id": "external_data_fabric",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_WITH_PLAN_LIMITS",
+        "workflow": ".github/workflows/external-data-fabric.yml"
+      },
+      {
+        "access_mode": "repository+github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/native_research_v1/latest.json",
+          "automation_intelligence/native_research_v1/cycles/",
+          "docs/research/native-five-research.md"
+        ],
+        "id": "native_five_research",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_HOURLY",
+        "workflow": ".github/workflows/native-five-research.yml"
+      },
+      {
+        "access_mode": "repository+github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/feeds_manifest.json",
+          "automation_intelligence/cl_lab/fred_alfred_manifest.json",
+          "automation_intelligence/cl_lab/ui_feed.json",
+          "cl_lab/feeds/registry.py"
+        ],
+        "id": "cl_lab_data_fabric",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_MULTI_SOURCE_RESEARCH",
+        "workflow": ".github/workflows/cl-lab.yml"
+      },
+      {
+        "access_mode": "github_actions+runtime",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/feeds_manifest.json",
+          "automation_intelligence/native_research_v1/latest.json",
+          "cl_lab/feeds/sources.py",
+          "tools/native_research_sources.py",
+          "icarus_engine/feeds/__init__.py",
+          "icarus_engine/market_sources.py"
+        ],
+        "id": "coinbase_public",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/cl-lab.yml"
+      },
+      {
+        "access_mode": "github_actions+runtime",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/native_research_v1/latest.json",
+          "tools/native_research_sources.py",
+          "icarus_engine/feeds/__init__.py"
+        ],
+        "id": "kraken_public",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/native-five-research.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/feeds_manifest.json",
+          "cl_lab/feeds/registry.py",
+          "cl_lab/feeds/sources.py"
+        ],
+        "id": "binance_public_bulk",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/cl-lab.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/feeds_manifest.json",
+          "cl_lab/feeds/registry.py",
+          "cl_lab/feeds/sources.py"
+        ],
+        "id": "cboe_indices",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/cl-lab.yml"
+      },
+      {
+        "access_mode": "github_actions+runtime",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/feeds_manifest.json",
+          "cl_lab/feeds/registry.py",
+          "cl_lab/feeds/sources.py",
+          "icarus_engine/market_sources.py"
+        ],
+        "id": "cftc_positioning",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/cl-lab.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/feeds_manifest.json",
+          "cl_lab/feeds/registry.py",
+          "cl_lab/feeds/treasury.py"
+        ],
+        "id": "us_treasury_fiscal",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/cl-lab.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/native_research_v1/latest.json",
+          "automation_intelligence/native_research_v1/cycles/",
+          "tools/native_research_sources.py"
+        ],
+        "id": "official_release_feeds",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/native-five-research.yml"
+      },
+      {
+        "access_mode": "repository",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/interrepo/latest.json",
+          "automation_intelligence/mcp_interface/",
+          "reppiks490/Icarus:automation_intelligence/federation/icarus_engine_acceptance.json"
+        ],
+        "id": "interrepo_peer_intelligence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "FEDERATED_PEER_PACKET",
+        "workflow": ".github/workflows/interrepo-peer-intelligence.yml"
+      },
+      {
+        "access_mode": "local_runtime",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "PUBLIC",
+        "default_enabled": false,
+        "evidence_paths": [
+          "icarus_engine/market_sources.py",
+          "icarus_engine/source_watch.py",
+          "icarus_engine/research_service.py"
+        ],
+        "id": "runtime_market_sources",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "OPT_IN_DISABLED_DEFAULT",
+        "verification": "MarketSources supports bounded public CFTC, BLS, Federal Reserve, BEA, SEC, Coinbase and Yahoo DXY retrieval; SourceWatch persists schedules/claims but defaults to enabled=false, so runtime status must be inspected before claiming continuous collection.",
+        "workflow": null
+      },
+      {
+        "access_mode": "local_runtime",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "icarus_engine/feeds/__init__.py",
+          "icarus_engine/feeds/yahoo.py",
+          "icarus_engine/assets.py"
+        ],
+        "id": "engine_market_feeds",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "RUNTIME_SELECTED_FEEDS",
+        "verification": "Engine feed adapters provide keyless Coinbase and Kraken data plus delayed Yahoo futures bars; adapter existence does not prove the current runtime selected a given feed.",
+        "workflow": null
+      },
+      {
+        "access_mode": "repository+hybrid_scheduler",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/agent_fabric/robustness_guardian/heartbeat.json",
+          "automation_intelligence/agent_fabric/robustness_guardian/finalization_state.json",
+          "automation_intelligence/agent_fabric/robustness_guardian/"
+        ],
+        "id": "robustness_guardian_evidence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "ACTIVE_PERSISTED",
+        "workflow": null
+      },
+      {
+        "access_mode": "cross_repo_repository+hybrid_scheduler",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "reppiks490/icarus-csv-evidence-lab:automation_intelligence/advanced_csv/latest.json",
+          "reppiks490/icarus-csv-evidence-lab:automation_intelligence/advanced_csv/heartbeat.json",
+          "reppiks490/icarus-csv-evidence-lab:automation_intelligence/advanced_csv/history_ledger.jsonl"
+        ],
+        "id": "advanced_csv_evidence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "ACTIVE_PERSISTED",
+        "workflow": null
+      },
+      {
+        "access_mode": "repository+hybrid_scheduler",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/agent_fabric/alpha_synthesis/heartbeat.json",
+          "automation_intelligence/agent_fabric/alpha_synthesis/finalization_state.json",
+          "automation_intelligence/agent_fabric/alpha_synthesis/"
+        ],
+        "id": "alpha_synthesis_evidence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "ACTIVE_PERSISTED",
+        "workflow": null
+      },
+      {
+        "access_mode": "repository+hybrid_scheduler",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/flow/heartbeat.json",
+          "automation_intelligence/flow/finalization_state.json",
+          "automation_intelligence/flow/"
+        ],
+        "id": "flow_microstructure_evidence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "ACTIVE_PERSISTED",
+        "workflow": null
+      },
+      {
+        "access_mode": "repository+hybrid_scheduler",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/agent_fabric/apex_council/heartbeat.json",
+          "automation_intelligence/agent_fabric/apex_council/finalization_state.json",
+          "automation_intelligence/agent_fabric/apex_council/"
+        ],
+        "id": "apex_council_evidence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "ACTIVE_PERSISTED",
+        "workflow": null
+      },
+      {
+        "access_mode": "repository",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/mcp_interface/contract.json",
+          "automation_intelligence/mcp_interface/events/",
+          "automation_intelligence/mcp_interface/research_runs/"
+        ],
+        "id": "mcp_interface_evidence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "CANONICAL_EVIDENCE_BUS",
+        "workflow": null
+      },
+      {
+        "access_mode": "repository",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "coordination/README.md",
+          "coordination/board/",
+          "coordination/inbox/",
+          "docs/agent-handoffs/FEDERATED_DATA_COLLECTION.md",
+          "docs/agent-handoffs/DATA_GAP_LEDGER.md"
+        ],
+        "id": "coordination_fabric",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "MANDATORY_SESSION_CONTEXT",
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "bigdata",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "financial_datasets",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "coinversa_hyperliquid",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "crypto_com",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "coinmarketcap",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "quartr",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "lunarcrush",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "firecrawl",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "exa",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "consensus",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "wolfram",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "huggingface",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "tavily",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "config/data_ingestion_manifest.json"
+        ],
+        "id": "blockscout",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "config/data_ingestion_manifest.json"
+        ],
+        "id": "us_gold_bureau",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "dropbox_shared_folder+local_workspace",
+        "consumption_state": "BLOCKED",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "Dropbox:/ICARUS_DATA_STAGING/Databento/incoming/yahoo_cme_futures_1m_2026-09-17_to_2026-10-16.zip",
+          "Dropbox:/ICARUS_DATA_STAGING/Databento/incoming/yahoo_cme_futures_1h_2024-10_to-2026-10.zip",
+          "/workspace/yahoo_corpus_1m_recent_2026-10-16/",
+          "/workspace/yahoo_corpus_1h_2026-10-16/",
+          "Dropbox:/ICARUS_DATA_STAGING/Databento/notes/YAHOO_CORPUS_RECEIPT_2026-10-16.md"
+        ],
+        "id": "yahoo_cme_futures_seed",
+        "ingestion_state": "STAGED",
+        "required_for_all_ai_units": true,
+        "runtime_status": "SHARING_UNVERIFIED",
+        "verification": "Two Yahoo archives are present in Dropbox and this workspace: 1-minute 16-contract coverage 2026-09-17..2026-10-16; 1-hour 16-contract coverage 2024-10..2026-10. Dropbox folder is under shared parent 15245772211, but membership for every agent has not been verified; consumption is therefore blocked outside this workspace until shared access is verified."
+      },
+      {
+        "access_mode": "dropbox_shared_folder",
+        "consumption_state": "UNVERIFIED",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "Dropbox:/ICARUS_DATA_STAGING/companyfacts 2.zip"
+        ],
+        "id": "sec_edgar_companyfacts_dropbox_archive",
+        "ingestion_state": "STAGED_CONTENT_UNVERIFIED",
+        "required_for_all_ai_units": true,
+        "verification": "Dropbox metadata confirms an 877,547,017-byte ZIP. ZIP members and content have not been validated; do not treat this as the active SEC lane, which has its own verified manifest."
+      },
+      {
+        "access_mode": "dropbox_shared_folder",
+        "consumption_state": "UNVERIFIED",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "Dropbox:/ICARUS_DATA_STAGING/submissions.zip"
+        ],
+        "id": "sec_edgar_submissions_dropbox_archive",
+        "ingestion_state": "STAGED_CONTENT_UNVERIFIED",
+        "required_for_all_ai_units": true,
+        "verification": "Dropbox metadata confirms a 372,666,267-byte ZIP. ZIP members and content have not been validated; do not treat this as the active SEC lane, which has its own verified manifest."
+      }
+    ]
+  },
+  "source_verification": {
+    "baseline_runtime_sha": "10a9e2072cb93b5e09f5396340f9c2ba19dd6dd7",
+    "branch": "icarus1/restart-readiness-20261020",
+    "dependencies": {
+      "cryptography": "46.0.7",
+      "databento": "0.87.0",
+      "mcp": "2.3.0",
+      "openpyxl": "3.1.5",
+      "pytest": "9.1.1",
+      "tzdata": "2026.5",
+      "xgboost": "3.4.1"
+    },
+    "python": "3.12.14",
+    "source_file_sha256": {
+      "icarus_engine/paper_workspaces.py": "50181ab36614d2b39a0bf0a182ab6d90301a288828d5bc3748c17d6821ae6423",
+      "icarus_engine/server.py": "1ec4d701d52d5e4884b3306392425e7bb41dfcde588dafb6f81748630620a0b5",
+      "tests_engine/test_command_center_routes.py": "78be6c4eb073ad0ce4d0d8b3d086d584c859a4e52b60166f497fcbe06388a14a",
+      "tests_engine/test_paper_workspaces.py": "f8cd2631f614e29cda2e3025ee4c12bdaa5a80e310369b9174a0c36f2a4aa226",
+      "tests_engine/test_paper_workspaces_runtime.py": "2f731f4c2bb296e4e8ae7719e47f03d90841deb43a0205fa850d3b953a1d48c6"
+    }
+  },
+  "stored_data_health": {
+    "commit": "df67307a6923c1ff2d02047c74591d4e2dbe8963",
+    "counts": {
+      "BLOCKED": 6,
+      "DEGRADED": 6,
+      "FAILING": 4,
+      "OK": 69,
+      "UNKNOWN": 1
+    },
+    "generated_at": "2026-10-20T17:36:54+00:00",
+    "limits": "Stored source-qualified evidence, not direct observation of the owner PC. Intrinio repository scope must be checked against Icarus preferred-owner receipt.",
+    "non_ok_entries": [
+      {
+        "age_h": null,
+        "source": "workflow:cl-depth-sweep.yml",
+        "verdict": "FAILING",
+        "why": "latest run failure: https://github.com/reppiks490/Icarus-engine/actions/runs/39408129200"
+      },
+      {
+        "age_h": 16.7,
+        "source": "workflow:cl-lab.yml",
+        "verdict": "FAILING",
+        "why": "latest run failure: https://github.com/reppiks490/Icarus-engine/actions/runs/39380903441"
+      },
+      {
+        "age_h": 16.7,
+        "source": "workflow:databento-depth-corpus.yml",
+        "verdict": "FAILING",
+        "why": "latest run failure: https://github.com/reppiks490/Icarus-engine/actions/runs/39394829278"
+      },
+      {
+        "age_h": null,
+        "source": "workflow:depth-vault.yml",
+        "verdict": "FAILING",
+        "why": "latest run failure: https://github.com/reppiks490/Icarus-engine/actions/runs/39418451662"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/alpaca.json",
+        "rows": 0,
+        "source": "provider:alpaca",
+        "verdict": "BLOCKED",
+        "why": "no key reaches the runner"
+      },
+      {
+        "age_h": 0.1,
+        "path": "automation_intelligence/provider_collection_v1/latest/finnhub.json",
+        "rows": 0,
+        "source": "provider:finnhub",
+        "verdict": "BLOCKED",
+        "why": "BLOCKED_AUTHENTICATION"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/intrinio.json",
+        "rows": 0,
+        "source": "provider:intrinio",
+        "verdict": "BLOCKED",
+        "why": "no key reaches the runner"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/quiver.json",
+        "rows": 0,
+        "source": "provider:quiver",
+        "verdict": "BLOCKED",
+        "why": "no key reaches the runner"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/tickstream.json",
+        "rows": 0,
+        "source": "provider:tickstream",
+        "verdict": "BLOCKED",
+        "why": "no key reaches the runner"
+      },
+      {
+        "age_h": 0.1,
+        "path": "automation_intelligence/provider_collection_v1/latest/unusual_whales.json",
+        "rows": 0,
+        "source": "provider:unusual_whales",
+        "verdict": "BLOCKED",
+        "why": "BLOCKED_AUTHENTICATION"
+      },
+      {
+        "age_h": 0.1,
+        "path": "automation_intelligence/provider_collection_v1/latest/alphavantage.json",
+        "rows": 14366,
+        "source": "provider:alphavantage",
+        "verdict": "DEGRADED",
+        "why": "14366 rows; 3 endpoints denied by plan"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/bybit.json",
+        "rows": 0,
+        "source": "provider:bybit",
+        "verdict": "DEGRADED",
+        "why": "no key; keyless endpoints only, none ready"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/eodhd.json",
+        "rows": 2510,
+        "source": "provider:eodhd",
+        "verdict": "DEGRADED",
+        "why": "2510 rows; 29 endpoints denied by plan"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/fmp.json",
+        "rows": 6772,
+        "source": "provider:fmp",
+        "verdict": "DEGRADED",
+        "why": "6772 rows; 85 endpoints denied by plan"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/tiingo.json",
+        "rows": 47497,
+        "source": "provider:tiingo",
+        "verdict": "DEGRADED",
+        "why": "47497 rows; 4 endpoints denied by plan"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/twelve.json",
+        "rows": 71966,
+        "source": "provider:twelve",
+        "verdict": "DEGRADED",
+        "why": "71966 rows; 1 endpoints denied by plan"
+      },
+      {
+        "source": "workflow:databento-depth-research-context.yml",
+        "verdict": "UNKNOWN",
+        "why": "no completed run on main"
+      }
+    ],
+    "path": "automation_intelligence/sentinel/data_health.json",
+    "repository": "reppiks490/Icarus-engine"
+  },
+  "worker_direction": {
+    "forthcoming_primary": "Icarus 2",
+    "icarus2_created": false,
+    "primary": "Icarus 1"
+  }
+}

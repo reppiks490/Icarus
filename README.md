@@ -1,5 +1,10 @@
 # DIVINE PROVIDENCE: THE HEART OF ICARUS
 
+**Current recovery:** [Icarus recovery status](docs/recovery/ICARUS_RECOVERY_STATUS.md)
+is the shared record for Icarus 1 and the forthcoming Icarus 2. Full restart is
+**NO-GO** until its readiness gates are evidenced. The recovery branch contains
+source repairs and local checks; it does not certify the owner's installed PC.
+
 <!-- Grok (xAI) — 2026-09-20. Whole file. This repo had no README. Engine/strategy remain Astra's. -->
 
 Paper engine + TradingView-alert bridge for **THE PULSE OF ICARUS**.

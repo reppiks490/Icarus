@@ -663,25 +663,35 @@ class PaperWorkspaceManager:
                          "execution_authorized": False, "runtime_available": portfolio is not None,
                          "valuation_complete": valuation_complete, "missing_mark_symbols": missing_marks,
                          "pnl": pnl, "feed": self._feed_summary(status, portfolio)})
+        accounting = validate_paper_pnl(ledgers, as_of_ts=now)
+        for row, validated in zip(rows, accounting["profiles"]):
+            for field in ("realized_pnl", "open_pnl", "total_pnl"):
+                row["pnl"][field] = validated[field]
+            row["pnl"]["paper_pnl"] = validated["realized_pnl"]
+            row["status"]["paper_pnl"] = validated["realized_pnl"]
+            row["valuation_complete"] = validated["accounting_complete"]
         aggregate = {"workspace_count": len(rows), "capital": sum(float(row["status"].get("capital") or 0.0) for row in rows),
                      "equity": sum(float(row["status"].get("equity") or 0.0) for row in rows),
                      "net": sum(float(row["status"].get("net") or 0.0) for row in rows),
-                     "realized_pnl": sum(row["pnl"]["realized_pnl"] for row in rows),
-                     "open_pnl": sum(row["pnl"]["open_pnl"] for row in rows),
                      "open_positions": sum(int(row["status"].get("positions") or 0) for row in rows),
                      "all_warm": all(bool(row["status"].get("all_warm")) for row in rows),
                      "pnl_basis": "persisted closures after paper cutover; open mark and replay-inclusive synthetic equity are separate"}
+        # Every API consumer must receive the same four-ledger valuation. The
+        # legacy projection must not claim completeness for stale/missing marks
+        # or substitute partial sums when one of the runtimes is unavailable.
+        aggregate.update(accounting["aggregate"])
         aggregate["paper_pnl"] = aggregate["realized_pnl"]
         aggregate["runtime_count"] = sum(row["runtime_available"] for row in rows)
         aggregate["missing_runtime_ids"] = [row["id"] for row in rows if not row["runtime_available"]]
-        aggregate["accounting_complete"] = (len(rows) == 4 and not aggregate["missing_runtime_ids"]
-                                            and all(row["valuation_complete"] for row in rows))
+        if not aggregate["accounting_complete"]:
+            for field in ("capital", "equity", "net"):
+                aggregate[field] = None
         aggregate["fees_status"] = "SIMULATOR_CONFIGURED_NOT_BROKER_RECONCILED"
-        aggregate["valuation_status"] = ("PAPER_MARKS_UNVERIFIED_FRESHNESS" if aggregate["accounting_complete"]
+        aggregate["valuation_status"] = ("PAPER_VALUATION_COMPLETE" if aggregate["accounting_complete"]
                                          else "PAPER_VALUATION_INCOMPLETE")
         aggregate["reconciliation_status"] = "NO_BROKER_RECONCILIATION"
         return {"mode": "concurrent_paper", "paper_only": True, "profiles": rows, "aggregate": aggregate,
-                "paper_pnl": validate_paper_pnl(ledgers, as_of_ts=now),
+                "paper_pnl": accounting,
                 "connections": self._connections(rows), "available_assets": _available_assets(),
                 "runtime_feed_mode": getattr(self.parent, "feed_mode", "unknown"),
                 "requested_futures": requested_futures_metadata(),
