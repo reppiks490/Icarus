@@ -1066,6 +1066,13 @@ class AssetRunner:
             "pts_scale": self.pts_scale,
             "cal": self.cal,
             "chart_minutes": self.chart_minutes,
+            "chart_mode": self.chart_mode,
+            "chart_value": self.chart_value,
+            "chart_seconds": self.chart_seconds,
+            "event_minute_agg": self.event_minute_agg,
+            "event_chart_agg": self.event_chart_agg,
+            "_event_chart_session": self._event_chart_session,
+            "_public_views": self._public_views,
             "em": self.em,
             "strat": self.strat,
             "htf_tfs": list(self.htf_tfs),
@@ -1104,7 +1111,9 @@ class AssetRunner:
         self.inputs_base = snap["inputs_base"]
         self.inputs = snap["inputs"]
         self.pts_scale = snap["pts_scale"]
-        for name in ("cal", "chart_minutes", "em", "strat", "chains", "chart_agg", "ha", "_real_ohlc_warned",
+        for name in ("cal", "chart_minutes", "chart_mode", "chart_value", "chart_seconds",
+                     "event_minute_agg", "event_chart_agg", "_event_chart_session", "_public_views",
+                     "em", "strat", "chains", "chart_agg", "ha", "_real_ohlc_warned",
                      "bar_index", "state", "live_from_ts", "live_closed_start", "last_sub_ts", "last_price",
                      "last_price_ts", "last_bar_wall", "_fills_seen", "_closed_seen", "runtime_error", "last_error"):
             setattr(self, name, snap[name])

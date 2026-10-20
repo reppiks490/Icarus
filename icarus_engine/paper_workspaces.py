@@ -15,7 +15,7 @@ from .assets import REGISTRY, apply_chart_config, validate_chart_config
 from .workspace_universe import dashboard_assets
 from .futures_catalog import FUTURES_PRODUCTS
 from .paper_pnl import validate_paper_pnl
-from .workspace_config import normalize_workspace
+from .workspace_config import WorkspaceRevisionConflict, normalize_workspace
 from .runtime import (
     AssetRunner,
     FlattenUnavailableError,
@@ -243,6 +243,12 @@ class WorkspacePortfolio(Portfolio):
     def rewarm_asset(self, *_args, **_kwargs):
         raise ValueError("workspace settings require the revisioned workspace configuration transaction")
 
+    def preset_for(self, runner):
+        override = self.workspace.get("asset_overrides", {}).get(runner.symbol, {})
+        if "preset" in override:
+            return override["preset"]
+        return super().preset_for(runner)
+
     def _refresh_continuous_feeds(self, now=None):
         if self.workspace["id"] != "cc1":
             return False
@@ -324,8 +330,7 @@ class WorkspacePortfolio(Portfolio):
                 staged = {runner.symbol: runner for runner in additions}
                 self.runners = {symbol: previous.get(symbol, staged.get(symbol)) for symbol in requested}
                 self.order = requested
-                self.workspace.clear()
-                self.workspace.update(copy.deepcopy(candidate))
+                self.workspace = copy.deepcopy(candidate)
             except Exception:
                 for runner in additions:
                     runner._removed = True
@@ -339,8 +344,7 @@ class WorkspacePortfolio(Portfolio):
                 for runner, snapshot, base_spec in reversed(snapshots):
                     runner.restore_configuration_snapshot(snapshot)
                     runner.cfg.base_spec = base_spec
-                self.workspace.clear()
-                self.workspace.update(old_workspace)
+                self.workspace = old_workspace
                 raise
             gate.set()
         return {"ok": True, "id": self.workspace["id"], "assets": requested,
@@ -367,13 +371,15 @@ class WorkspacePortfolio(Portfolio):
                 runner.ensure_configurable()
             snapshots = [(runner, runner.configuration_snapshot(), copy.deepcopy(runner.cfg.base_spec)) for runner, *_ in plans]
             try:
+                for runner, *_ in plans:
+                    runner.publish_read_views()
                 for runner, spec, inputs, sources in plans:
                     runner.spec = spec
                     runner.cfg.spec = spec
                     runner.cfg.sources = list(sources)
                     override = candidate.get("asset_overrides", {}).get(runner.symbol, {})
                     runner.cfg.preset = override.get("preset", self.preset) or spec.preset
-                    runner.rewarm(inputs, sources, reset_live_boundary=True)
+                    runner.rewarm(inputs, sources, reset_live_boundary=True, _publish_views=False)
             except Exception:
                 for runner, snapshot, base_spec in reversed(snapshots):
                     runner.restore_configuration_snapshot(snapshot)
@@ -639,6 +645,12 @@ class PaperWorkspaceManager:
         return {"feeds": feeds, "adapters": adapters, "execution_authorized": False}
 
     def snapshot(self):
+        # Keep settings, effective runner inputs and revision in one committed view.
+        # Runner locks alone cannot protect the manager's configuration identity.
+        with self._lock:
+            return self._snapshot()
+
+    def _snapshot(self):
         now = int(time.time())
         rows = []
         ledgers = []
@@ -726,10 +738,21 @@ class PaperWorkspaceManager:
             candidate = copy.deepcopy(old)
             if not isinstance(body, dict):
                 raise ValueError("workspace update must be an object")
+            if set(body) - {"assets", "chart", "inputs", "asset_overrides", "expected_revision"}:
+                raise ValueError("unknown workspace update fields or conflicting asset selector")
+            if "expected_revision" not in body:
+                if old.get("asset_overrides") or "asset_overrides" in body:
+                    raise ValueError("expected_revision is required for per-asset workspace settings")
+            else:
+                expected = body["expected_revision"]
+                if type(expected) is not int or expected < 0:
+                    raise ValueError("expected_revision must be a nonnegative integer")
+                if expected != old["config_revision"]:
+                    raise WorkspaceRevisionConflict("workspace configuration revision changed; reload before editing")
             if "assets" in body:
                 candidate["assets"] = _validate_assets(body["assets"])
             if "chart" in body:
-                candidate["chart"] = validate_chart_config(body["chart"])
+                candidate["chart"] = {**old["chart"], **validate_chart_config(body["chart"])}
             if "inputs" in body:
                 if not isinstance(body["inputs"], dict):
                     raise ValueError("inputs must be an object")
@@ -740,6 +763,10 @@ class PaperWorkspaceManager:
             if "asset_overrides" in body:
                 candidate["asset_overrides"] = copy.deepcopy(body["asset_overrides"])
             candidate = normalize_workspace(candidate)
+            for override in candidate["asset_overrides"].values():
+                if override.get("preset") and not Path(preset_path(self.parent.base_dir, override["preset"])).is_file():
+                    raise ValueError("workspace preset not found")
+            candidate["config_revision"] = old["config_revision"] + 1
             portfolio = self.portfolios.get(profile_id)
             if portfolio is None:
                 raise ValueError("command center paper runtime is not running")
@@ -760,6 +787,42 @@ class PaperWorkspaceManager:
                 raise
             self.profiles[profile_id] = candidate
             portfolio.workspace = candidate
+            result.update(schema_version=candidate["schema_version"], config_revision=candidate["config_revision"])
+            return result
+
+    def update_asset(self, profile_id: str, symbol: str, body: Dict[str, Any]):
+        """Apply a revisioned edit to one admitted asset, never a parent writer."""
+        if not isinstance(body, dict) or set(body) - {"expected_revision", "inputs", "chart", "preset", "reset"}:
+            raise ValueError("unknown asset configuration fields or conflicting asset selector")
+        if "expected_revision" not in body:
+            raise ValueError("expected_revision is required for asset configuration")
+        if "reset" in body and type(body["reset"]) is not bool:
+            raise ValueError("reset must be true or false")
+        if body.get("reset") and set(body) - {"expected_revision", "reset"}:
+            raise ValueError("reset cannot be combined with other asset settings")
+        if not body.get("reset") and not set(body) & {"inputs", "chart", "preset"}:
+            raise ValueError("asset configuration needs inputs, chart, preset or reset")
+        with self._lock:
+            profile = self.profiles.get(profile_id)
+            portfolio = self.portfolios.get(profile_id)
+            if (profile is None or portfolio is None or symbol not in profile["assets"]
+                    or symbol not in portfolio.runners):
+                raise ValueError("selected workspace asset is unavailable")
+            overrides = copy.deepcopy(profile["asset_overrides"])
+            if body.get("reset"):
+                overrides.pop(symbol, None)
+            else:
+                entry = overrides.setdefault(symbol, {})
+                for key in ("inputs", "chart"):
+                    if key in body:
+                        if not isinstance(body[key], dict):
+                            raise ValueError(f"asset {key} must be an object")
+                        entry[key] = {**entry.get(key, {}), **body[key]}
+                if "preset" in body:
+                    entry["preset"] = body["preset"]
+            result = self.update(profile_id, {"expected_revision": body["expected_revision"],
+                                              "asset_overrides": overrides})
+            result["asset"] = symbol
             return result
 
     def pause(self, profile_id: str, paused: bool):

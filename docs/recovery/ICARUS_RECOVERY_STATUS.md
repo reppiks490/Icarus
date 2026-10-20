@@ -57,7 +57,7 @@ ambiguous. No such installation collision has been observed on the PC yet.
    presentation or feature parity. Share the main trading surface with explicit
    workspace context, preserve independent ledgers and controls, and verify it
    in a real browser before calling this complete.
-3. **Restart/configuration parity — unverified.** The Git Bash
+3. **Installed restart/configuration parity — unverified.** The Git Bash
    `restart-command-centers.sh` helper explicitly selects file-only/offline mode;
    `start-yahoo.ps1` selects the Yahoo/Coinbase route. `start-plant.sh` is an
    NQ-only offline path. Saved selections can differ from defaults. No script
@@ -113,6 +113,18 @@ ambiguous. No such installation collision has been observed on the PC yet.
    eight failed on the original route before the repair. This does not yet make
    the four dashboard renderers identical.
 
+10. **Workspace-owned configuration — foundation implemented and reviewed.**
+    Schema 2 preserves legacy values and an immutable private original-file backup.
+    Per-asset inputs, chart settings and shared-library preset selection stay in
+    that workspace's record. Revision checks prevent lost concurrent edits;
+    rejected transactions restore exact saved bytes, runner/chart/event state and
+    cached display values. Parent per-asset writers are explicitly unavailable to
+    workspaces. Removing a configured asset requires explicit disposition of its
+    override. The owner approved the shared-dashboard design; this foundation
+    does not yet expose the new controls through the common renderer. Existing
+    additions still warm asynchronously after commit; staged warmup rollback for
+    newly added assets is not established by these tests.
+
 ## Conditions for a meaningful restart
 
 All rows must have current evidence before a restart is called ready.
@@ -145,6 +157,14 @@ disabled. Resetting or flattening positions is not a panel refresh.
   follow-up's source hashes and full-suite receipt. The 12 new chart cases are
   included in the Windows CI selection; YAML parsing and all 67 selected module
   paths were checked locally. A selection check does not establish a Windows pass.
+- Approved workspace-configuration foundation: **3,533 passed, four skipped,
+  111 subtests passed** in the final full runtime suite, exit 0. Its new module
+  passes **58 tests** and an independent final review found no material issues.
+  Review findings were reproduced before correction: cached rejected settings,
+  incomplete chart/event rollback, unselected overrides, publication consistency
+  and null-preset identity. The existing Windows job now selects this module;
+  YAML and all **68** selected paths validate locally. Current source hashes and
+  this receipt are separate from the initial accounting/chart receipts.
 - Divine Providence: hub suite exit 0 (165 collected cases); all **12 subsystem
   suites** passed, totaling **2,179 passed test cases**. All 12 compile checks,
   five ASCENSION adversarial scripts and ten hub connection fixtures passed.

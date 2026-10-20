@@ -62,12 +62,12 @@
 
 **Interfaces:** `WorkspaceRevisionConflict(ValueError)` identifies stale edits. `update(profile_id, body)` accepts `expected_revision` and validates it under the manager lock, increments only on success, returns identity and revision. Existing simple whole-workspace clients remain compatible only while no per-asset configuration exists; once overrides exist, missing revisions fail clearly. `update_asset(profile_id: str, symbol: str, body: dict)` requires `expected_revision`, accepts only `inputs`, `chart`, `preset`, `reset`, and that revision, updates only the admitted selected asset's override and delegates one transaction. Reset removes that asset's override, preserving workspace-wide settings. Missing or foreign assets never fall back to parent.
 
-- [ ] Write stale, missing, malformed/bool revision tests; use two real concurrent writers to prove exactly one success and one conflict from the same revision. Assert no mutation on rejection.
-- [ ] Write per-asset edit/reset/reload tests and reject unsupported body fields, unselected symbols, conflicting selectors and unsupported schema. Confirm legacy whole-workspace updates still preserve existing behavior before overrides exist.
-- [ ] Run the new tests; observe absent compare-and-swap/scoped-edit behavior.
-- [ ] Implement locked revision enforcement and explicit asset update, exposing revision in workspace snapshots/results. Never silently broaden an asset edit.
-- [ ] Run the full project runtime command `python -m pytest tests_engine -q --tb=short -o addopts=''`; require a green suite and record skips honestly. Add the new regression module to existing Windows selection.
-- [ ] Commit; obtain an independent review of all three tasks. Publish source/evidence to the existing draft PR, retain NO_GO, then start the scoped API/client delivery plan.
+- [x] Write stale, missing, malformed/bool revision tests; use two real concurrent writers to prove exactly one success and one conflict from the same revision. Assert no mutation on rejection.
+- [x] Write per-asset edit/reset/reload tests and reject unsupported body fields, unselected symbols, conflicting selectors and unsupported schema. Confirm legacy whole-workspace updates still preserve existing behavior before overrides exist.
+- [x] Run the new tests; observe absent compare-and-swap/scoped-edit behavior.
+- [x] Implement locked revision enforcement and explicit asset update, exposing revision in workspace snapshots/results. Never silently broaden an asset edit.
+- [x] Run the full project runtime command `python -m pytest tests_engine -q --tb=short -o addopts=''`; require a green suite and record skips honestly. Add the new regression module to existing Windows selection.
+- [x] Commit; obtain an independent review of all three tasks. Publish source/evidence to the existing draft PR, retain NO_GO, then start the scoped API/client delivery plan.
 
 ## Execution record
 

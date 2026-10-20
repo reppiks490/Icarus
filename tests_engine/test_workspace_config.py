@@ -133,7 +133,7 @@ def test_asset_edit_reconfigures_only_its_effective_values_and_survives_reload(m
     nq, es = (portfolio.runners[s] for s in ("NQ", "ES"))
     es_before = es.inputs_base.to_dict()
     sibling_file = manager._path("cc2").read_bytes()
-    manager.update("cc1", {"asset_overrides": {"NQ": {"inputs": {"tp1_pts": 17}}}})
+    manager.update("cc1", {"expected_revision": 0, "asset_overrides": {"NQ": {"inputs": {"tp1_pts": 17}}}})
     assert nq.inputs_base.tp1_pts == 17
     assert es.inputs_base.to_dict() == es_before
     assert manager._path("cc2").read_bytes() == sibling_file
@@ -194,7 +194,7 @@ def test_asset_edit_retains_flat_workspace_guard(manager_factory, pending):
     original = _unusual_saved_bytes(manager)
     getattr(portfolio.runners["ES"].em, pending).append(object())
     with pytest.raises(ValueError, match="flatten|pending"):
-        manager.update("cc1", {"asset_overrides": {"NQ": {"inputs": {"tp1_pts": 17}}}})
+        manager.update("cc1", {"expected_revision": 0, "asset_overrides": {"NQ": {"inputs": {"tp1_pts": 17}}}})
     assert portfolio.runners["NQ"].inputs_base.tp1_pts != 17
     assert manager._path("cc1").read_bytes() == original
 
@@ -215,9 +215,246 @@ def test_preset_edit_and_reset_restore_original_asset_properties(manager_factory
     preset = manager.root.parent / "presets" / "commission-example.json"
     preset.parent.mkdir(exist_ok=True)
     preset.write_text('{"tp1_pts":17,"_meta":{"commission":77}}')
-    manager.update("cc1", {"asset_overrides": {"NQ": {"preset": "commission-example"}}})
+    manager.update("cc1", {"expected_revision": 0, "asset_overrides": {"NQ": {"preset": "commission-example"}}})
     assert nq.cfg.preset == "commission-example"
     assert nq.spec.commission == 77
-    manager.update("cc1", {"asset_overrides": {}})
+    manager.update("cc1", {"expected_revision": 1, "asset_overrides": {}})
     assert nq.cfg.preset is None
     assert nq.spec.commission == commission
+
+
+def test_revision_is_persisted_and_stale_edit_does_not_mutate(manager_factory):
+    manager = manager_factory(start=True)
+    result = manager.update("cc1", {"expected_revision": 0, "inputs": {"tp1_pts": 17}})
+    assert result.get("config_revision") == 1
+    before = manager._path("cc1").read_bytes()
+    with pytest.raises(ValueError, match="revision") as rejected:
+        manager.update("cc1", {"expected_revision": 0, "inputs": {"tp1_pts": 19}})
+    assert type(rejected.value).__name__ == "WorkspaceRevisionConflict"
+    assert manager._path("cc1").read_bytes() == before
+    assert manager.portfolios["cc1"].runners["NQ"].inputs_base.tp1_pts == 17
+    assert manager_factory().profiles["cc1"]["config_revision"] == 1
+    profile = next(p for p in manager.snapshot()["profiles"] if p["id"] == "cc1")
+    assert profile["config_revision"] == 1
+
+
+@pytest.mark.parametrize("revision", [True, False, -1, 0.5, "0", None])
+def test_malformed_revision_rejected_before_mutation(manager_factory, revision):
+    manager = manager_factory(start=True)
+    before = manager._path("cc1").read_bytes()
+    with pytest.raises(ValueError, match="revision"):
+        manager.update("cc1", {"expected_revision": revision, "inputs": {"tp1_pts": 17}})
+    assert manager._path("cc1").read_bytes() == before
+
+
+def test_concurrent_writers_with_same_revision_cannot_lose_an_edit(manager_factory):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    manager = manager_factory(start=True)
+    barrier = Barrier(2)
+
+    def edit(value):
+        barrier.wait(timeout=5)
+        try:
+            return manager.update("cc1", {"expected_revision": 0, "inputs": {"tp1_pts": value}})
+        except ValueError as ex:
+            return ex
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(edit, (17, 19)))
+    accepted = [r for r in results if isinstance(r, dict)]
+    rejected = [r for r in results if isinstance(r, ValueError)]
+    assert len(accepted) == len(rejected) == 1
+    assert type(rejected[0]).__name__ == "WorkspaceRevisionConflict"
+    assert accepted[0]["config_revision"] == 1
+    saved = json.loads(manager._path("cc1").read_text())
+    assert saved["config_revision"] == 1
+    assert saved["inputs"]["tp1_pts"] == accepted[0]["inputs"]["tp1_pts"]
+
+
+def test_explicit_asset_edit_and_reset_are_revisioned_and_local(manager_factory):
+    manager = manager_factory(start=True)
+    portfolio = manager.portfolios["cc1"]
+    before_es = portfolio.runners["ES"].inputs_base.to_dict()
+    result = manager.update_asset("cc1", "NQ", {"expected_revision": 0, "inputs": {"tp1_pts": 17}})
+    assert result["id"] == "cc1" and result["asset"] == "NQ" and result["config_revision"] == 1
+    assert portfolio.runners["NQ"].inputs_base.tp1_pts == 17
+    assert portfolio.runners["ES"].inputs_base.to_dict() == before_es
+    before = manager._path("cc1").read_bytes()
+    with pytest.raises(ValueError, match="revision"):
+        manager.update("cc1", {"inputs": {"tp1_pts": 19}})
+    assert manager._path("cc1").read_bytes() == before
+    result = manager.update_asset("cc1", "NQ", {"expected_revision": 1, "reset": True})
+    assert result["config_revision"] == 2
+    assert portfolio.runners["NQ"].inputs_base.tp1_pts == before_es["tp1_pts"]
+    assert manager_factory().profiles["cc1"]["asset_overrides"] == {}
+
+
+@pytest.mark.parametrize("symbol,body", [
+    ("NQ", {"inputs": {"tp1_pts": 17}}),
+    ("CL", {"expected_revision": 0, "inputs": {"tp1_pts": 17}}),
+    ("nq", {"expected_revision": 0, "inputs": {"tp1_pts": 17}}),
+    ("NQ", {"expected_revision": 0, "asset": "ES", "inputs": {"tp1_pts": 17}}),
+    ("NQ", {"expected_revision": 0, "reset": "yes"}),
+    ("NQ", {"expected_revision": 0, "reset": True, "inputs": {"tp1_pts": 17}}),
+    ("NQ", {"expected_revision": 0, "inputs": {"invented": 17}}),
+    ("NQ", {"expected_revision": 0, "chart": {"made_up": True}}),
+])
+def test_asset_edit_rejects_ambiguous_or_invalid_request_without_mutation(manager_factory, symbol, body):
+    manager = manager_factory(start=True)
+    before = manager._path("cc1").read_bytes()
+    with pytest.raises(ValueError):
+        manager.update_asset("cc1", symbol, body)
+    assert manager._path("cc1").read_bytes() == before
+
+
+@pytest.mark.parametrize("body", [
+    {"asset": "NQ", "inputs": {"tp1_pts": 17}},
+    {"schema_version": 999, "inputs": {"tp1_pts": 17}},
+    {"config_revision": 0, "inputs": {"tp1_pts": 17}},
+    {"unknown": 17},
+    {"asset_overrides": {"NQ": {"inputs": {"tp1_pts": 17}}}},
+])
+def test_workspace_update_rejects_unsupported_writers_and_selectors(manager_factory, body):
+    manager = manager_factory(start=True)
+    before = manager._path("cc1").read_bytes()
+    with pytest.raises(ValueError):
+        manager.update("cc1", body)
+    assert manager._path("cc1").read_bytes() == before
+
+
+def test_uncommitted_and_failed_edit_never_leaks_into_cached_public_views(manager_factory, monkeypatch):
+    manager = manager_factory(start=True)
+    nq = manager.portfolios["cc1"].runners["NQ"]
+    nq.publish_read_views()
+    original = nq._busy_read_view(0)
+    preset = manager.root.parent / "presets" / "rejected-example.json"
+    preset.parent.mkdir(exist_ok=True)
+    preset.write_text('{"_meta":{"slippage_ticks":77}}')
+    observed = []
+    save = manager._save
+
+    def fail_after_replace(profile):
+        observed.append(nq._busy_read_view(0))
+        save(profile)
+        raise OSError("injected reviewed persistence failure")
+
+    monkeypatch.setattr(manager, "_save", fail_after_replace)
+    with pytest.raises(OSError, match="reviewed persistence"):
+        manager.update_asset("cc1", "NQ", {"expected_revision": 0, "preset": "rejected-example"})
+    observed.append(nq._busy_read_view(0))
+    assert nq.spec.slippage_ticks == original["slippage_ticks"]
+    assert all(row["slippage_ticks"] == original["slippage_ticks"] for row in observed)
+    assert all(row["preset"] == original["preset"] for row in observed)
+
+
+def test_failed_timeframe_edit_restores_chart_routing_and_event_state(manager_factory, monkeypatch):
+    from icarus_engine.pine.timeframe import Bar
+    manager = manager_factory(start=True)
+    nq = manager.portfolios["cc1"].runners["NQ"]
+    nq.subbars.append((Bar(1789506000, 100, 101, 99, 100, 1), 1))
+    original = (nq.spec.chart_tf, nq.chart_minutes, nq.chart_mode, nq.chart_value, nq.chart_seconds)
+    nq.event_minute_agg = minute_state = object()
+    nq.event_chart_agg = chart_state = object()
+    nq._event_chart_session = "prior-observed-session"
+    save = manager._save
+
+    def fail_after_replace(profile):
+        save(profile)
+        raise OSError("injected timeframe persistence failure")
+
+    monkeypatch.setattr(manager, "_save", fail_after_replace)
+    with pytest.raises(OSError, match="timeframe persistence"):
+        manager.update_asset("cc1", "NQ", {"expected_revision": 0, "chart": {"timeframe": "10"}})
+    assert (nq.spec.chart_tf, nq.chart_minutes, nq.chart_mode, nq.chart_value, nq.chart_seconds) == original
+    assert nq.event_minute_agg is minute_state
+    assert nq.event_chart_agg is chart_state
+    assert nq._event_chart_session == "prior-observed-session"
+    assert manager.profiles["cc1"]["config_revision"] == 0
+
+
+@pytest.mark.parametrize("override", [{"inputs": {"tp1_pts": 17}}, {"preset": "missing-example"}])
+def test_whole_workspace_writer_cannot_configure_unselected_asset(manager_factory, override):
+    manager = manager_factory(start=True)
+    before = manager._path("cc1").read_bytes()
+    with pytest.raises(ValueError, match="selected|admitted"):
+        manager.update("cc1", {"expected_revision": 0, "asset_overrides": {"CL": override}})
+    assert manager._path("cc1").read_bytes() == before
+    assert manager.profiles["cc1"]["config_revision"] == 0
+
+
+def test_removing_configured_asset_requires_explicit_override_disposition(manager_factory):
+    manager = manager_factory(start=True)
+    manager.update_asset("cc1", "NQ", {"expected_revision": 0, "inputs": {"tp1_pts": 17}})
+    before = manager._path("cc1").read_bytes()
+    with pytest.raises(ValueError, match="selected|admitted"):
+        manager.update("cc1", {"expected_revision": 1, "assets": ["ES"]})
+    assert manager._path("cc1").read_bytes() == before
+    manager.update("cc1", {"expected_revision": 1, "assets": ["ES"], "asset_overrides": {}})
+    assert manager.profiles["cc1"]["assets"] == ["ES"]
+
+
+def test_snapshot_cannot_pair_new_runtime_with_old_configuration_revision(manager_factory, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    manager = manager_factory(start=True)
+    entered, release, reader_entered, reader_done = (Event() for _ in range(4))
+    save = manager._save
+
+    def blocked_save(profile):
+        save(profile)
+        entered.set()
+        assert release.wait(5)
+
+    def read():
+        reader_entered.set()
+        snapshot = manager.snapshot()
+        reader_done.set()
+        return next(p for p in snapshot["profiles"] if p["id"] == "cc1")
+
+    monkeypatch.setattr(manager, "_save", blocked_save)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        writer = executor.submit(manager.update, "cc1", {"expected_revision": 0, "inputs": {"tp1_pts": 17}})
+        assert entered.wait(3)
+        reader = executor.submit(read)
+        assert reader_entered.wait(3)
+        try:
+            assert not reader_done.wait(.5), "snapshot escaped the configuration commit boundary"
+        finally:
+            release.set()
+        writer.result(timeout=5)
+        row = reader.result(timeout=5)
+    assert row["config_revision"] == 1
+    assert row["effective_inputs"]["tp1_pts"] == 17
+
+
+def test_explicit_null_preset_and_reset_have_distinct_replay_identity(manager_factory):
+    from icarus_engine.backtest import freeze_replay_port
+    manager = manager_factory()
+    preset = manager.root.parent / "presets" / "baseline-example.json"
+    preset.parent.mkdir(exist_ok=True)
+    preset.write_text('{"tp1_pts":123}')
+    manager.parent.preset = "baseline-example"
+    manager = manager_factory(start=True)
+    portfolio = manager.portfolios["cc1"]
+    nq = portfolio.runners["NQ"]
+    assert nq.inputs_base.tp1_pts == 123
+    manager.update_asset("cc1", "NQ", {"expected_revision": 0, "preset": None})
+    assert nq.inputs_base.tp1_pts != 123
+    assert nq.cfg.preset is None
+    assert portfolio.preset_for(nq) is None
+    frozen = freeze_replay_port(portfolio, "NQ")
+    assert frozen.preset_for(frozen.runners["NQ"]) is None
+    manager.update_asset("cc1", "NQ", {"expected_revision": 1, "reset": True})
+    assert nq.inputs_base.tp1_pts == 123
+    assert portfolio.preset_for(nq) == "baseline-example"
+
+
+def test_partial_workspace_chart_edit_preserves_other_saved_chart_choices(manager_factory):
+    manager = manager_factory(start=True)
+    before = copy.deepcopy(manager.profiles["cc1"]["chart"])
+    manager.update("cc1", {"expected_revision": 0, "chart": {"fill_on": "chart"}})
+    expected = {**before, "fill_on": "chart"}
+    assert manager.profiles["cc1"]["chart"] == expected
+    assert manager.portfolios["cc1"].runners["NQ"].spec.chart_tf == before["timeframe"]
+    assert manager_factory().profiles["cc1"]["chart"] == expected

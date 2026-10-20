@@ -2991,5 +2991,55 @@
     ],
     "registration_observed_from": "reppiks490/icarus-owner-actions:coordination/sessions/icarus2-20261020-federation-integration.json",
     "registration_started_at_utc": "2026-10-20T18:13:50.114225Z"
+  },
+  "workspace_configuration_followup": {
+    "approval": "Owner explicitly approved the shared-dashboard written design and directed continued implementation; coordination event011.",
+    "full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/workspace-config-reviewed-full-tests.log",
+      "log_sha256": "b40dc1065fa805bdd6a19d1aab2cffe098e75d94ab4902477c90ea794857e8a0",
+      "result": "3533 passed, 4 skipped, 111 subtests passed in 183.71s"
+    },
+    "limits": [
+      "Offline engineering fixtures do not establish trading accuracy or provider/broker connectivity.",
+      "New asset additions still warm asynchronously after commit; staged startup-warmup rollback for additions is not established.",
+      "Common dashboard, scoped HTTP APIs/jobs and context client are subsequent delivery layers.",
+      "No full restart, main merge, deployment or live activation."
+    ],
+    "new_module": {
+      "command": "python -m pytest tests_engine/test_workspace_config.py -q",
+      "independent_observer": "workspace_configuration_final_review",
+      "material_findings_remaining": 0,
+      "result": "58 passed"
+    },
+    "recorded_at_utc": "2026-10-20T23:24:04.386312+00:00",
+    "regressions_observed_before_repair": [
+      "19 initial schema/migration validation failures",
+      "7 per-asset resolution/exact-file rollback failures",
+      "Inherited parent writer and preset identity/reset failures",
+      "22 revision/scoped-edit validation failures",
+      "Cached uncommitted view leak and chart/event rollback (2 failures)",
+      "Unselected overrides and implicit configured-asset removal (3 failures)",
+      "Snapshot escaping the configuration commit boundary",
+      "Explicit null preset identity falling back to parent preset",
+      "Partial whole-workspace chart edit discarding saved choices"
+    ],
+    "scope": "APPROVED_WORKSPACE_CONFIGURATION_FOUNDATION; no renderer switch or deployment",
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "23aa0f3bd4ee58c49080ea228c4900c447e7a107e31c8555602c4400f5e91822",
+      "icarus_engine/paper_workspaces.py": "89126c02c62e587f8003be883c5aa4870cc3cbf9fc7214fee5312b61f9adf57c",
+      "icarus_engine/runtime.py": "e55137f6273d3b5a148fdf6ca49901816d3dfe0f3d7519fac1dfde0390ddc9a2",
+      "icarus_engine/workspace_config.py": "6189ba6eef138d6e37d42978bbf3e7e335c2db0d7f64ce55253d817266bb941c",
+      "tests_engine/test_paper_workspaces.py": "d6237a3830c493b6800276bf5d3e81f06216b164e90c8ead9ae742a6b49841ba",
+      "tests_engine/test_workspace_config.py": "46b2b91cfe5cdaf2807e6ee7864e6241a5f91590d21e9e9a371ef38ca8c54b4d"
+    },
+    "upstream_receipt_merge": "25d560b1d67848e244e59095f9f9152c3d7ab09b; provider/federation receipts only, runtime code unchanged",
+    "windows_ci": {
+      "execution": "New exact-head hosted run still required",
+      "module": "tests_engine/test_workspace_config.py",
+      "selection_check": "YAML parsed and all 68 selected modules exist without duplicates",
+      "workflow": ".github/workflows/test.yml"
+    }
   }
 }

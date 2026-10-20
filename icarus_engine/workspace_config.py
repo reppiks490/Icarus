@@ -13,6 +13,10 @@ _FIELDS = {"id", "name", "description", "assets", "chart", "inputs",
            "schema_version", "config_revision", "asset_overrides"}
 
 
+class WorkspaceRevisionConflict(ValueError):
+    """The settings changed after the caller read the selected workspace."""
+
+
 def _inputs(value):
     if not isinstance(value, dict):
         raise ValueError("workspace inputs must be an object")
@@ -43,8 +47,8 @@ def normalize_workspace(profile: dict) -> dict:
         raise ValueError("asset_overrides must be an object")
     result["asset_overrides"] = {}
     for symbol, override in overrides.items():
-        if symbol not in REGISTRY:
-            raise ValueError("asset_overrides require canonical asset symbols")
+        if symbol not in REGISTRY or symbol not in result["assets"]:
+            raise ValueError("asset_overrides require canonical symbols admitted to the selected workspace; reset or explicitly remove overrides before removing an asset")
         if not isinstance(override, dict) or set(override) - {"inputs", "chart", "preset"}:
             raise ValueError("unknown per-asset workspace settings")
         entry = {}
