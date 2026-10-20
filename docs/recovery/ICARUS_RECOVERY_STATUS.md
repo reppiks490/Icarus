@@ -85,13 +85,20 @@ ambiguous. No such installation collision has been observed on the PC yet.
    six blocked, six degraded, four failing and one unknown entry. Those classes
    have different meanings. A stored history file or successful collector is not
    evidence that every runtime/subsystem reads fresh, entitled data.
-7. **Hosted workflow blocker — externally identified.** Four runs labeled failing
+7. **Earlier hosted workflow failures — externally identified.** Four runs labeled failing
    by that Sentinel snapshot never started their jobs. GitHub check annotations
    for runs `39408129200`, `39380903441`, `39394829278`, `39418451662` state:
    “The job was not started because recent account payments have failed or your
    spending limit needs to be increased.” This is an account/billing execution
-   blocker, not a code exception. No billing change, paid rerun or provider
+   rejection of those attempts, not a code exception. No billing change, paid rerun or provider
    acquisition was performed. Exact run/check evidence is in the inventory.
+   The owner subsequently reported that two repos were temporarily private and
+   are now public. Both Icarus repositories were independently confirmed public.
+   At `2026-10-20T18:25:37Z`, a newer `cl-lab` run `39471755340`, created at
+   `18:05:44Z`, was executing steps. No newer completed run was found yet for the
+   other three lanes. A blanket current billing block is therefore **not
+   established**; keep the historical failures separate from the new run's
+   eventual result. No rerun or provider request was initiated by this check.
 8. **Research tooling blocker.** A Firecrawl lookup was rejected with HTTP 402
    for insufficient credits. No research result was returned; no retry or
    purchase was performed. GitHub and direct public primary-source reads remain
@@ -111,7 +118,7 @@ All rows must have current evidence before a restart is called ready.
 | Accuracy comparison | Reproducible before/after metric on matched real inputs/configuration; regression explained and required behavior verified | Open |
 | Futures and firms | Exact contract economics/feeds, supported paper/read-only account connection, effective program policy, fees/risk/reconciliation tests and visible access | Open |
 | Recovery rehearsal | Isolated stop/start, saved config and journal recovery, failure handling, panel refresh and rollback observed without altering the owner's running system | Open |
-| Hosted and operator verification | Required checks on the proposed release head, clear disposition of blocked jobs, actual PC/runtime evidence | Hosted account blocker; PC not connected |
+| Hosted and operator verification | Required checks on the proposed release head, fresh disposition of earlier rejected jobs, actual PC/runtime evidence | Current draft checks/new Engine lab observed separately; PC not connected |
 
 Local suite success does not remove these gates. Live broker arming remains
 disabled. Resetting or flattening positions is not a panel refresh.
