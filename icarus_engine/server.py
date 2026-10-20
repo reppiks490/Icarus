@@ -1519,7 +1519,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 runner = portfolio.runners.get(parts[5])
                 if runner is None:
                     return self._json(404, {"detail": "asset is not running in this workspace"})
-                return self._json(200, runner.chart(self._int(q, "n", 240, 20, 1000), nonblocking=True))
+                return self._json(200, runner.chart(self._int(q, "n", 240, 20, 5000), offset=self._int(q, "offset", 0, 0, 50000), nonblocking=True))
             if p.path.startswith("/dashboards/"):
                 target = p.path[len("/dashboards/"):]
                 if target not in workspace_ids and target != "connections":

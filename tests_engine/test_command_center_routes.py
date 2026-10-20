@@ -90,7 +90,7 @@ def test_chart_is_scoped_to_workspace_and_auth_controls_preserved(engine):
     srv.command_centers.portfolios["cc2"] = workspace
     code, result = request("/api/command-centers/cc2/chart/NQ?n=40")
     assert code == 200 and result["bars"][0]["c"] == 121
-    workspace_runner.chart.assert_called_once_with(40, nonblocking=True)
+    workspace_runner.chart.assert_called_once_with(40, offset=0, nonblocking=True)
     assert request("/api/command-centers/cc1/chart/NQ")[0] == 503
     assert request("/api/command-centers/cc2/chart/ES")[0] == 404
     assert request("/admin/command-centers/cc2/pause", method="POST", body={"paused": True})[0] == 401

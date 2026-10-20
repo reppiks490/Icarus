@@ -104,6 +104,15 @@ ambiguous. No such installation collision has been observed on the PC yet.
    purchase was performed. GitHub and direct public primary-source reads remain
    available independently.
 
+9. **Workspace chart pagination — repaired in this branch.** The scoped chart
+   endpoint ignored `offset`, so requesting an older page returned the latest
+   bars again. It also capped requests at 1,000 bars while the main chart allowed
+   5,000. The scoped route now forwards the same bounded page size and offset to
+   the selected workspace runner. Twelve offline HTTP cases cover distinct
+   pages, overlays/fills, history metadata, bounds and parent/sibling isolation;
+   eight failed on the original route before the repair. This does not yet make
+   the four dashboard renderers identical.
+
 ## Conditions for a meaningful restart
 
 All rows must have current evidence before a restart is called ready.
@@ -125,10 +134,15 @@ disabled. Resetting or flattening positions is not a panel refresh.
 
 ## Verification completed in this cloud session
 
-- Final runtime source suite: **3,463 passed, four skipped, 111 subtests passed**;
+- Initial accounting-repair runtime suite: **3,463 passed, four skipped, 111 subtests passed**;
   process exit 0. The five-module accounting/API regression selection passed
   **133 tests**, process exit 0. Failing pre-repair regressions were observed
   before each accounting change. No strategy parameters were retuned.
+- Chart-paging follow-up: **3,475 passed, four skipped, 111 subtests passed** in
+  the full runtime suite, exit 0. Its focused selection passed **52 tests**;
+  independent review reran the **12** new HTTP cases with no material findings.
+  The initial accounting source hashes/receipts remain separate from this
+  follow-up's source hashes and full-suite receipt.
 - Divine Providence: hub suite exit 0 (165 collected cases); all **12 subsystem
   suites** passed, totaling **2,179 passed test cases**. All 12 compile checks,
   five ASCENSION adversarial scripts and ten hub connection fixtures passed.

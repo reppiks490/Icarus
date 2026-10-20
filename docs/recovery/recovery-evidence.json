@@ -1,10 +1,52 @@
 {
+  "chart_paging_followup": {
+    "focused_green": {
+      "command": "python -m pytest tests_engine/test_workspace_chart_routes.py tests_engine/test_command_center_routes.py tests_engine/test_chart_history_pagination.py tests_engine/test_workspace_performance_routes.py tests_engine/test_paper_workspaces_runtime.py",
+      "exit_code": 0,
+      "observer": "workspace_backend_audit",
+      "result": "52 passed in 38.46s"
+    },
+    "full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=\"\"",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/icarus-chart-full-tests.log",
+      "log_sha256": "eef1da6da19a54b9cf3ae2e2712f9913b6a64ae23ee6d9475b399d33f9aa34c1",
+      "observer": "Icarus 1",
+      "result": "3475 passed, 4 skipped, 111 subtests passed in 184.42s (0:03:04)"
+    },
+    "independent_review": {
+      "command": "python -m pytest -q tests_engine/test_workspace_chart_routes.py",
+      "exit_code": 0,
+      "observer": "recovery_review",
+      "result": "12 passed; no material findings"
+    },
+    "limits": [
+      "Synthetic offline bars and real HTTP/runner code, not market efficacy evidence.",
+      "Does not implement shared renderer, change strategies, acquire provider data, deploy or restart."
+    ],
+    "original_route_red": {
+      "command": "python -m pytest tests_engine/test_workspace_chart_routes.py",
+      "exit_code": 1,
+      "observer": "workspace_backend_audit",
+      "result": "8 failed, 4 passed in 6.75s"
+    },
+    "recorded_at_utc": "2026-10-20T18:36:36.743231+00:00",
+    "scope": "BOUNDED_SCOPED_CHART_API_REPAIR; shared-dashboard architecture remains proposed",
+    "source_file_sha256": {
+      "icarus_engine/paper_workspaces.py": "50181ab36614d2b39a0bf0a182ab6d90301a288828d5bc3748c17d6821ae6423",
+      "icarus_engine/server.py": "274a58b8d3639338f99c7ba0bec7da88297ae395989430f5cbff7ac4590fb2d5",
+      "tests_engine/test_command_center_routes.py": "ddc89236d39b51f0d46a1661e33fa4892f73748866f5a6239a37da9d79305a73",
+      "tests_engine/test_paper_workspaces.py": "f8cd2631f614e29cda2e3025ee4c12bdaa5a80e310369b9174a0c36f2a4aa226",
+      "tests_engine/test_paper_workspaces_runtime.py": "2f731f4c2bb296e4e8ae7719e47f03d90841deb43a0205fa850d3b953a1d48c6",
+      "tests_engine/test_workspace_chart_routes.py": "ababbdaa89edacdf78a70f2fbebb755f514b8adcf64ccf81004e02d21bfa943c"
+    }
+  },
   "external_tool_state": {
     "firecrawl": "HTTP_402_INSUFFICIENT_CREDITS; requested lookup did not run; no retry or purchase"
   },
   "full_recovery_complete": false,
   "full_system_restart_performed": false,
-  "generated_at_utc": "2026-10-20T18:27:48.953601+00:00",
+  "generated_at_utc": "2026-10-20T18:36:36.743885+00:00",
   "hosted_failure_annotations": [
     {
       "annotations": [
@@ -839,6 +881,32 @@
     "Exact-head disposition of every relevant open PR/workstream"
   ],
   "owner_pc_runtime_observed": false,
+  "previous_draft_hosted_checks": {
+    "head_sha": "ae38967519725c21588821307f013d936f5050cd",
+    "limit": "These receipts qualify the prior draft head; a subsequent source commit requires its own checks.",
+    "runs": [
+      {
+        "conclusion": "success",
+        "id": 39473477637,
+        "name": "tests"
+      },
+      {
+        "conclusion": "success",
+        "id": 39473478046,
+        "name": "configuration-job-contract"
+      },
+      {
+        "conclusion": "success",
+        "id": 39473478042,
+        "name": "Four portfolio performance"
+      },
+      {
+        "conclusion": "success",
+        "id": 39473477689,
+        "name": "intelligence-feed-contract"
+      }
+    ]
+  },
   "repositories": [
     {
       "branch": "main",
@@ -2546,13 +2614,15 @@
       "xgboost": "3.4.1"
     },
     "python": "3.12.14",
+    "scope": "INITIAL_ACCOUNTING_REPAIR",
     "source_file_sha256": {
       "icarus_engine/paper_workspaces.py": "50181ab36614d2b39a0bf0a182ab6d90301a288828d5bc3748c17d6821ae6423",
       "icarus_engine/server.py": "1ec4d701d52d5e4884b3306392425e7bb41dfcde588dafb6f81748630620a0b5",
       "tests_engine/test_command_center_routes.py": "78be6c4eb073ad0ce4d0d8b3d086d584c859a4e52b60166f497fcbe06388a14a",
       "tests_engine/test_paper_workspaces.py": "f8cd2631f614e29cda2e3025ee4c12bdaa5a80e310369b9174a0c36f2a4aa226",
       "tests_engine/test_paper_workspaces_runtime.py": "2f731f4c2bb296e4e8ae7719e47f03d90841deb43a0205fa850d3b953a1d48c6"
-    }
+    },
+    "source_reviewed_commit": "bf582b8e69536d3dd734f34c9ae2b1594a42f20f"
   },
   "stored_data_health": {
     "commit": "df67307a6923c1ff2d02047c74591d4e2dbe8963",
