@@ -4,7 +4,7 @@
   },
   "full_recovery_complete": false,
   "full_system_restart_performed": false,
-  "generated_at_utc": "2026-10-20T18:14:10.564530+00:00",
+  "generated_at_utc": "2026-10-20T18:17:17.991038+00:00",
   "hosted_failure_annotations": [
     {
       "annotations": [
@@ -2696,8 +2696,14 @@
     "repository": "reppiks490/Icarus-engine"
   },
   "worker_direction": {
-    "forthcoming_primary": "Icarus 2",
-    "icarus2_created": false,
-    "primary": "Icarus 1"
+    "icarus2_session_id": "icarus2-20261020-federation-integration",
+    "icarus2_session_registered": true,
+    "integration_completion_inferred": false,
+    "primary_workers": [
+      "Icarus 1",
+      "Icarus 2"
+    ],
+    "registration_observed_from": "reppiks490/icarus-owner-actions:coordination/sessions/icarus2-20261020-federation-integration.json",
+    "registration_started_at_utc": "2026-10-20T18:13:50.114225Z"
   }
 }

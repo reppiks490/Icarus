@@ -1,14 +1,17 @@
 # Icarus recovery status
 
 **Restart decision: NO-GO.** This is the current recovery record for Icarus 1 and
-the forthcoming Icarus 2. A full restart has not been performed. Source inspection,
+Icarus 2. A full restart has not been performed. Source inspection,
 engineering tests, hosted automation and the owner's PC runtime are separate
 evidence levels. No source-only result establishes that the PC is repaired.
 
 The owner's current two-worker direction supersedes the old five-name selection
 board for this workstream. Claims and updates remain on the existing
 [`icarus-owner-actions` coordination bus](https://github.com/reppiks490/icarus-owner-actions/blob/main/coordination/START_HERE.md),
-session `icarus1-20261020-system-recovery`. Icarus 2 has not yet joined.
+session `icarus1-20261020-system-recovery`. Icarus 2 registered separately as
+`icarus2-20261020-federation-integration` at `2026-10-20T18:13:50.114225Z`.
+Its first PLAN explicitly preserves Icarus 1's runtime recovery paths and claims
+nonoverlapping federation/integration work. Registration is not completion.
 
 ## Verified starting point
 
@@ -136,13 +139,14 @@ and CC1–CC4 have not yet been made identical.
 
 ## Next-worker handoff
 
-Icarus 1 retains integration/release judgment and this evidence record. When the
-owner creates Icarus 2, it should read this page and the existing coordination
-entrypoint, create its own session and claim nonoverlapping work. A useful split
+Icarus 1 retains runtime recovery/release judgment and this evidence record.
+Icarus 2 has registered its separate federation/integration session and should
+consume the pinned recovery evidence through the existing coordination entrypoint.
+A useful split
 is Icarus 1 on the shared dashboard/startup/accounting path and Icarus 2 on
 data-to-subsystem consumption, futures/accounts and matched accuracy evidence,
-with independent cross-review of each other's changes. This is a proposed split,
-not a claim that Icarus 2 has accepted or completed it.
+with independent cross-review of each other's changes. The detailed assignment
+beyond Icarus 2's published claim remains a proposed split, not a completion claim.
 
 Do not merge old PR stacks by title or by a dated “done” note. Compare their exact
 heads with the recorded runtime baseline, preserve required independent research,
