@@ -39,6 +39,15 @@
       "tests_engine/test_paper_workspaces.py": "f8cd2631f614e29cda2e3025ee4c12bdaa5a80e310369b9174a0c36f2a4aa226",
       "tests_engine/test_paper_workspaces_runtime.py": "2f731f4c2bb296e4e8ae7719e47f03d90841deb43a0205fa850d3b953a1d48c6",
       "tests_engine/test_workspace_chart_routes.py": "ababbdaa89edacdf78a70f2fbebb755f514b8adcf64ccf81004e02d21bfa943c"
+    },
+    "windows_ci_selection": {
+      "added_module": "tests_engine/test_workspace_chart_routes.py",
+      "job": "engine-windows",
+      "limits": "Workflow selection validation only; Windows execution is a separate hosted check.",
+      "local_validation": "YAML parsed; all 67 selected modules exist, no duplicate selections; git diff --check passed",
+      "recorded_at_utc": "2026-10-20T18:41:23.992568+00:00",
+      "workflow": ".github/workflows/test.yml",
+      "workflow_sha256": "a04f2e28bcc8b13e844104f0db18fa1ca28a3049a917744adea292f7f996b0d1"
     }
   },
   "external_tool_state": {

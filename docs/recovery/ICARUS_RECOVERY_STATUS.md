@@ -142,7 +142,9 @@ disabled. Resetting or flattening positions is not a panel refresh.
   the full runtime suite, exit 0. Its focused selection passed **52 tests**;
   independent review reran the **12** new HTTP cases with no material findings.
   The initial accounting source hashes/receipts remain separate from this
-  follow-up's source hashes and full-suite receipt.
+  follow-up's source hashes and full-suite receipt. The 12 new chart cases are
+  included in the Windows CI selection; YAML parsing and all 67 selected module
+  paths were checked locally. A selection check does not establish a Windows pass.
 - Divine Providence: hub suite exit 0 (165 collected cases); all **12 subsystem
   suites** passed, totaling **2,179 passed test cases**. All 12 compile checks,
   five ASCENSION adversarial scripts and ten hub connection fixtures passed.

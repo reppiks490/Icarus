@@ -108,6 +108,7 @@ jobs:
           tests_engine/test_paper_pnl.py
           tests_engine/test_paper_pnl_browser.py
           tests_engine/test_command_center_routes.py
+          tests_engine/test_workspace_chart_routes.py
           -q
         env:
           TZ: UTC
