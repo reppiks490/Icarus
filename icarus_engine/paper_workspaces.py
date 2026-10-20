@@ -15,6 +15,7 @@ from .assets import REGISTRY, apply_chart_config, validate_chart_config
 from .workspace_universe import dashboard_assets
 from .futures_catalog import FUTURES_PRODUCTS
 from .paper_pnl import validate_paper_pnl
+from .workspace_config import normalize_workspace
 from .runtime import (
     AssetRunner,
     FlattenUnavailableError,
@@ -399,19 +400,29 @@ class PaperWorkspaceManager:
                     saved = json.load(fh)
                 if not isinstance(saved, dict) or saved.get("id") != default["id"]:
                     raise ValueError(f"invalid command center profile: {path.name}")
-                profile.update({k: saved[k] for k in ("name", "description", "assets", "chart", "inputs") if k in saved})
+                profile.update(saved)
             if path.exists() and "assets" in saved:
                 profile["assets"] = _validate_assets(saved["assets"])
-            profile["chart"] = validate_chart_config(profile["chart"])
-            values = dict(profile["inputs"])
-            validate_values(values)
-            profile["inputs"] = values
+            profile = normalize_workspace(profile)
             self.profiles[profile["id"]] = profile
             if not path.exists():
                 self._save(profile)
 
     def _save(self, profile):
         path = self._path(profile["id"])
+        if path.exists():
+            original = path.read_bytes()
+            saved = json.loads(original)
+            if saved.get("schema_version", 1) == 1:
+                backup = path.with_name(f"{profile['id']}.pre-v2.json")
+                try:
+                    with backup.open("xb") as fh:
+                        fh.write(original)
+                        fh.flush()
+                        os.fsync(fh.fileno())
+                except FileExistsError:
+                    if backup.read_bytes() != original:
+                        raise ValueError("workspace migration backup conflicts with the original record")
         tmp = path.with_suffix(".json.tmp")
         with tmp.open("w", encoding="utf-8") as fh:
             json.dump(profile, fh, indent=2, sort_keys=True)

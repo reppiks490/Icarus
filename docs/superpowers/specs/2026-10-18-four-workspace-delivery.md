@@ -40,7 +40,7 @@ Native expansion run39162615234 succeeded on all three caches at Engineced31fcfc
 
 ## 2026-10-20 amendment: the same main trading dashboard in every workspace
 
-**Design proposal; architectural implementation is not complete.** This amendment
+**Owner-approved design (2026-10-20); architectural implementation is in progress.** This amendment
 extends the existing contract instead of creating a second dashboard authority.
 The owner now requires CC1–CC4 to match the main trading dashboard, with working
 configuration, charts and panels. The current independent workspace configuration
