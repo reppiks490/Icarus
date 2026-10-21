@@ -111,6 +111,7 @@ jobs:
           tests_engine/test_workspace_chart_routes.py
           tests_engine/test_workspace_config.py
           tests_engine/test_workspace_api.py
+          tests_engine/test_workspace_jobs.py
           -q
         env:
           TZ: UTC

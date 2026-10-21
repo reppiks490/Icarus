@@ -6,6 +6,8 @@ import math
 
 from .assets import chart_capabilities
 from .paper_workspaces import _available_assets
+from .runtime import FlattenUnavailableError
+from .workspace_config import WorkspaceRevisionConflict
 
 
 class WorkspaceAPIError(ValueError):
@@ -13,10 +15,11 @@ class WorkspaceAPIError(ValueError):
         super().__init__(detail)
         self.status = status
         self.reason = reason or ("RUNTIME_UNAVAILABLE" if status == 503 else "RESOURCE_UNAVAILABLE")
+        self.receipt = {}
 
     def as_dict(self, profile_id):
         return {"detail": str(self), "workspace_id": profile_id, "available": False,
-                "reason": self.reason, "execution_authorized": False}
+                "reason": self.reason, "execution_authorized": False, **self.receipt}
 
 
 class WorkspaceAPI:
@@ -42,21 +45,27 @@ class WorkspaceAPI:
         return {"workspace_id": profile["id"], "config_revision": profile["config_revision"],
                 "paper_only": True, "execution_authorized": False}
 
+    def _status(self, profile_id):
+        self._selected(profile_id)
+        try:
+            state = self.manager.snapshot()
+        except RuntimeError as ex:
+            raise WorkspaceAPIError(503, "paper snapshot is not ready", "SNAPSHOT_UNAVAILABLE") from ex
+        selected = next(row for row in state["profiles"] if row["id"] == profile_id)
+        if not selected["runtime_available"]:
+            raise WorkspaceAPIError(503, "selected paper runtime is unavailable")
+        if selected["status"].get("snapshot_unavailable"):
+            raise WorkspaceAPIError(503, "paper snapshot is not ready", "SNAPSHOT_UNAVAILABLE")
+        accounting = next(row for row in state["paper_pnl"]["profiles"] if row["id"] == profile_id)
+        return {**selected["status"], **self._identity(selected), "accounting": accounting,
+                "pnl_basis": selected["pnl"]["basis"]}
+
     def read(self, profile_id, resource, symbol=None, *, limit=100):
-        with self.manager._lock:
+        if resource == "status" and symbol is None:
+            return self._status(profile_id)
+        with self.manager.configuration_lock(profile_id):
             profile, portfolio, runner = self._selected(profile_id, symbol)
             identity = self._identity(profile)
-            if resource == "status" and symbol is None:
-                try:
-                    state = self.manager.snapshot()
-                except RuntimeError as ex:
-                    raise WorkspaceAPIError(503, "paper snapshot is not ready", "SNAPSHOT_UNAVAILABLE") from ex
-                selected = next(row for row in state["profiles"] if row["id"] == profile_id)
-                if selected["status"].get("snapshot_unavailable"):
-                    raise WorkspaceAPIError(503, "paper snapshot is not ready", "SNAPSHOT_UNAVAILABLE")
-                accounting = next(row for row in state["paper_pnl"]["profiles"] if row["id"] == profile_id)
-                return {**selected["status"], **identity, "accounting": accounting,
-                        "pnl_basis": selected["pnl"]["basis"]}
             if resource == "performance" and symbol is None:
                 from .workspace_performance import snapshot
                 capitals = [getattr(r.spec, "capital", None) for r in portfolio.runner_list()]
@@ -91,7 +100,7 @@ class WorkspaceAPI:
             raise WorkspaceAPIError(404, "unknown command center resource")
 
     def chart(self, profile_id, symbol, *, n=240, offset=0):
-        with self.manager._lock:
+        with self.manager.configuration_lock(profile_id):
             profile, _, runner = self._selected(profile_id, symbol)
             try:
                 chart = runner.chart(n, offset=offset, nonblocking=True)
@@ -100,6 +109,47 @@ class WorkspaceAPI:
             return {**chart, **self._identity(profile)}
 
     def export(self, profile_id, symbol):
-        with self.manager._lock:
+        with self.manager.configuration_lock(profile_id):
             profile, _, runner = self._selected(profile_id, symbol)
             return runner.export_csv(), self._identity(profile)
+
+    def control(self, profile_id, symbol, action, body):
+        with self.manager.configuration_lock(profile_id):
+            _, portfolio, runner = self._selected(profile_id, symbol)
+            scope = "workspace" if symbol is None else "asset"
+            try:
+                if action == "config":
+                    result = (self.manager.update(profile_id, body) if symbol is None
+                              else self.manager.update_asset(profile_id, symbol, body))
+                elif action == "pause":
+                    if set(body) != {"paused"} or type(body["paused"]) is not bool:
+                        raise ValueError("pause accepts only paused: true or false; use the asset route for an asset control")
+                    result = self.manager.pause(profile_id, body["paused"], asset=symbol)
+                elif action == "flatten":
+                    if set(body) != {"confirm"} or body["confirm"] is not True:
+                        raise ValueError("flatten accepts only confirm: true; use the asset route for an asset control")
+                    result = self.manager.flatten(profile_id, asset=symbol)
+                else:
+                    raise WorkspaceAPIError(404, "unknown workspace control")
+            except FlattenUnavailableError as ex:
+                targets = portfolio.runner_list() if runner is None else [runner]
+                open_assets = [r.symbol for r in targets if r.em.open or getattr(getattr(r.em, "shadow", None), "open", ())]
+                error = WorkspaceAPIError(409, str(ex), "FLATTEN_UNAVAILABLE")
+                error.receipt = {**self._identity(self.manager.profiles[profile_id]),
+                    "error": "flatten_unavailable",
+                    "profile_id": profile_id, "asset": symbol, "scope": scope,
+                    "flattened_positions": int(getattr(ex, "flattened_positions", 0) or 0),
+                    "shadow_censored_positions": int(getattr(ex, "shadow_censored_positions", 0) or 0),
+                    "failed_assets": list(getattr(ex, "failed_assets", [])),
+                    "partial": bool(getattr(ex, "partial", False)), "open_assets": open_assets,
+                    "positions_remain_open": bool(open_assets),
+                    "paused": bool(portfolio.paused) if runner is None else bool(runner.paused)}
+                raise error from ex
+            except WorkspaceRevisionConflict as ex:
+                raise WorkspaceAPIError(409, str(ex), "REVISION_CONFLICT") from ex
+            except WorkspaceAPIError:
+                raise
+            except (ValueError, TypeError, KeyError) as ex:
+                raise WorkspaceAPIError(400, str(ex), "INVALID_CONTROL") from ex
+            return {**result, **self._identity(self.manager.profiles[profile_id]),
+                    "asset": symbol, "scope": scope}

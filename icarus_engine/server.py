@@ -244,6 +244,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     command_centers = PaperWorkspaceManager(port)
     from .workspace_api import WorkspaceAPI, WorkspaceAPIError
     workspace_api = WorkspaceAPI(command_centers)
+    from .workspace_jobs import ScopedWorkspaceJobs, WorkspaceJobError
+    workspace_jobs = ScopedWorkspaceJobs(command_centers)
     if start:
         command_centers.start()
 
@@ -1492,10 +1494,30 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                             "execution_authorized": False})
             if p.path.startswith("/api/command-centers/"):
                 parts = p.path.split("/")
-                if len(parts) not in (4, 5, 6) or parts[3] not in workspace_ids:
+                if len(parts) not in (4, 5, 6, 7) or parts[3] not in workspace_ids:
                     return self._json(404, {"detail": "unknown command center resource"})
                 profile_id = parts[3]
                 resource = parts[4] if len(parts) > 4 else None
+                if resource == "jobs":
+                    if len(parts) not in (6, 7) or (len(parts) == 7 and parts[6] != "trades.csv"):
+                        return self._json(404, {"detail": "unknown workspace job resource"})
+                    if not self._auth():
+                        return self._json(401, {"detail": "authentication required"})
+                    if set(parse_qs(p.query, keep_blank_values=True)) & {"workspace", "profile", "asset", "symbol"}:
+                        return self._json(400, {"detail": "scope is selected by the canonical workspace route"})
+                    try:
+                        row = workspace_jobs.get(profile_id, parts[5], full=q.get("full", ["1"])[0] != "0")
+                        if len(parts) == 7:
+                            csv_text = workspace_jobs.export_csv(profile_id, parts[5])
+                            return self._send(200, csv_text.encode("utf-8"), "text/csv", {
+                                "Content-Disposition": f'attachment; filename="{profile_id}_{row["asset"]}_{row["id"]}_trades.csv"',
+                                "X-Icarus-Workspace": profile_id,
+                                "X-Icarus-Config-Revision": str(row["config_revision"]),
+                            })
+                        return self._json(200, row)
+                    except WorkspaceJobError as ex:
+                        return self._json(ex.status, {"detail": ex.detail, "workspace_id": profile_id,
+                                                      "paper_only": True, "execution_authorized": False})
                 if resource in {"status", "assets", "performance", "inputs", "trades", "export"}:
                     expected_parts = 5 if resource in {"status", "assets", "performance"} else 6
                     if len(parts) != expected_parts:
@@ -2172,6 +2194,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 self._drain_body()
                 return self._json(403, {"detail": "bad host"})
             p = urlparse(self.path)
+            q = parse_qs(p.query, keep_blank_values=True)
             if p.path == "/research/events":
                 secret = os.environ.get("ICARUS_INGEST_SECRET", "")
                 if not secret:
@@ -2228,49 +2251,47 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except (OSError, RuntimeError):
                     return self._json(503, {"detail": "account connection unavailable"})
             if p.path.startswith("/admin/command-centers/"):
-                parts = [part for part in p.path.split("/") if part]
-                if len(parts) == 3 and parts[2] in {"cc1", "cc2", "cc3", "cc4"}:
+                if set(q) & {"workspace", "profile", "asset", "symbol"}:
+                    return self._json(400, {"detail": "scope is selected by the canonical workspace route"})
+                # Preserve empty segments: malformed paths must never become a
+                # valid whole-workspace command through slash normalization.
+                parts = p.path.split("/")[1:]
+                profile_id = parts[2] if len(parts) > 2 else None
+                symbol = None
+                action = None
+                if profile_id in workspace_ids:
+                    if len(parts) == 3:
+                        action = "config"
+                    elif len(parts) == 4 and parts[3] in {"pause", "flatten"}:
+                        action = parts[3]
+                    elif (len(parts) == 6 and parts[3] == "assets"
+                          and parts[5] in {"config", "pause", "flatten"}):
+                        symbol, action = parts[4], parts[5]
+                if action is None:
                     try:
-                        return self._json(200, command_centers.update(parts[2], body))
-                    except (ValueError, TypeError, KeyError) as ex:
-                        return self._json(400, {"detail": str(ex)})
-                    except Exception as ex:
-                        port.journal.log("ERROR", f"command center {parts[2]} update: {type(ex).__name__}: {ex}")
-                        return self._json(500, {"detail": f"{type(ex).__name__}: {ex}"})
-                if len(parts) == 4 and parts[2] in {"cc1", "cc2", "cc3", "cc4"} and parts[3] == "pause":
-                    if not isinstance(body.get("paused"), bool):
-                        return self._json(400, {"detail": "paused must be a boolean"})
-                    try:
-                        return self._json(200, command_centers.pause(parts[2], body["paused"]))
-                    except (ValueError, TypeError, KeyError) as ex:
-                        return self._json(400, {"detail": str(ex)})
-                if len(parts) == 4 and parts[2] in {"cc1", "cc2", "cc3", "cc4"} and parts[3] == "flatten":
-                    if body.get("confirm") is not True:
-                        return self._json(400, {"detail": "confirm must be true to flatten this paper workspace"})
-                    try:
-                        return self._json(200, command_centers.flatten(parts[2]))
-                    except FlattenUnavailableError as ex:
-                        portfolio = command_centers.portfolios.get(parts[2])
-                        open_assets = []
-                        if portfolio is not None:
-                            for runner in portfolio.runner_list():
-                                shadow = getattr(runner.em, "shadow", None)
-                                if runner.em.open or (shadow is not None and shadow.open):
-                                    open_assets.append(runner.symbol)
-                        return self._json(409, {
-                            "error": "flatten_unavailable",
-                            "detail": str(ex),
-                            "profile_id": parts[2],
-                            "flattened_positions": int(getattr(ex, "flattened_positions", 0) or 0),
-                            "shadow_censored_positions": int(getattr(ex, "shadow_censored_positions", 0) or 0),
-                            "failed_assets": list(getattr(ex, "failed_assets", [])),
-                            "partial": bool(getattr(ex, "partial", False)),
-                            "open_assets": open_assets,
-                            "positions_remain_open": bool(open_assets),
-                            "paused": bool(portfolio and portfolio.paused),
-                        })
-                    except (ValueError, TypeError, KeyError) as ex:
-                        return self._json(400, {"detail": str(ex)})
+                        if profile_id in workspace_ids:
+                            if len(parts) == 5 and parts[3:] == ["config", "async"]:
+                                return self._json(202, workspace_jobs.submit_config(profile_id, "*", body))
+                            if len(parts) == 7 and parts[3] == "assets" and parts[5:] == ["config", "async"]:
+                                return self._json(202, workspace_jobs.submit_config(profile_id, parts[4], body))
+                            if len(parts) == 6 and parts[3] == "assets" and parts[5] == "backtest":
+                                return self._json(202, workspace_jobs.submit_backtest(profile_id, parts[4], body))
+                            if len(parts) == 6 and parts[3] == "jobs" and parts[5] == "compare":
+                                if not isinstance(body, dict) or set(body) - {"csv", "tol"}:
+                                    return self._json(400, {"detail": "comparison accepts csv and optional tol only"})
+                                return self._json(200, workspace_jobs.compare(profile_id, parts[4],
+                                                          body.get("csv"), body.get("tol", 1)))
+                        return self._json(404, {"detail": "unknown command center control"})
+                    except WorkspaceJobError as ex:
+                        return self._json(ex.status, {"detail": ex.detail, "workspace_id": profile_id,
+                                                      "paper_only": True, "execution_authorized": False})
+                try:
+                    return self._json(200, workspace_api.control(profile_id, symbol, action, body))
+                except WorkspaceAPIError as ex:
+                    return self._json(ex.status, ex.as_dict(profile_id))
+                except Exception:
+                    return self._json(500, {"detail": "workspace control failed", "workspace_id": profile_id,
+                                            "execution_authorized": False})
             if p.path == "/admin/access/add":
                 try:
                     user = access_registry.add(body.get("label", ""))
@@ -3324,6 +3345,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
     srv = ResearchHTTPServer(("127.0.0.1", http_port), H)
     srv.command_centers = command_centers
+    srv.workspace_jobs = workspace_jobs
     srv.account_connections = account_connections
     srv.research = research
     srv.loop_intelligence_sync = loop_intelligence_sync

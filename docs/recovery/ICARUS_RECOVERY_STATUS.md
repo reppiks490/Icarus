@@ -125,6 +125,19 @@ ambiguous. No such installation collision has been observed on the PC yet.
     additions still warm asynchronously after commit; staged warmup rollback for
     newly added assets is not established by these tests.
 
+11. **Scoped trading API, controls and jobs — implemented and locally verified.**
+    Status, inputs, charts, trades and CSV use the selected workspace and revision.
+    Per-asset controls stay distinct from whole-workspace controls; conflicting
+    selectors and stale configuration edits fail before mutation. Configuration
+    jobs and frozen backtests own their reads, CSV and comparisons; a foreign or
+    parent job cannot be read through another workspace. Transactions in one
+    workspace no longer block siblings; a busy snapshot becomes unavailable.
+    Invalid preset costs and local file admission failures now fail safely.
+    These APIs are not yet connected to the shared main dashboard renderer.
+    Jobs remain bounded process-local records. The final independent whole-diff
+    review was interrupted by its usage limit after confirming all three reported
+    corrections; root inspected the diff and completed the full runtime suite.
+
 ## Conditions for a meaningful restart
 
 All rows must have current evidence before a restart is called ready.
@@ -165,6 +178,16 @@ disabled. Resetting or flattening positions is not a panel refresh.
   and null-preset identity. The existing Windows job now selects this module;
   YAML and all **68** selected paths validate locally. Current source hashes and
   this receipt are separate from the initial accounting/chart receipts.
+- Scoped API/control/job follow-up: **3,650 passed, four skipped, 111 subtests
+  passed**, exit0, in223.72s. This includes real offline HTTP job ownership,
+  frozen replay sources, CSV metadata, configuration/control scope, costs and
+  per-workspace concurrency. The first full run caught one legacy flatten error
+  field regression; the field was restored before the passing fresh full run.
+  Windows selection now includes70 existing modules. Published6ac Linux passed,
+  but Windows job118944172965 failed a fixture startup-reset race; its mechanism
+  was reproduced and the genuine offline warmup fixture corrected. Current-head
+  hosted Windows results remain pending. Independent review confirmed all three
+  reported fixes; its final whole-diff check stopped at a usage limit.
 - Divine Providence: hub suite exit 0 (165 collected cases); all **12 subsystem
   suites** passed, totaling **2,179 passed test cases**. All 12 compile checks,
   five ASCENSION adversarial scripts and ten hub connection fixtures passed.

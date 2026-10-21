@@ -253,3 +253,313 @@ def test_trade_read_waits_for_complete_runner_cutover_state(workspace_http):
         writer.result(timeout=5)
         code, payload, _ = reader.result(timeout=5)
     assert code == 200 and payload["trades"][0]["live"] is True
+
+
+def _unaffected_state(server, parent):
+    import hashlib
+    journals = {"main": parent.journal, **{k: p.journal for k, p in server.command_centers.portfolios.items() if k != "cc1"}}
+    result = {key: hashlib.sha256("\n".join(journal.con.iterdump()).encode()).hexdigest()
+              for key, journal in journals.items()}
+    result.update({key + "-settings": server.command_centers._path(key).read_bytes()
+                   for key in ("cc2", "cc3", "cc4")})
+    result["parent-inputs"] = (server.command_centers.root.parent / "inputs.NQ.json").read_bytes()
+    return result
+
+
+def _add_second_asset(server):
+    manager = server.command_centers
+    manager.update("cc1", {"expected_revision": 0, "assets": ["NQ", "ES"]})
+    runner = manager.portfolios["cc1"].runners["ES"]
+    _seed(runner, 500, "cc1-es-entry")
+    return runner
+
+
+def _open_live(runner):
+    runner.em.entry("new-live-" + runner.symbol, 1, 1)
+    runner.em.process_bar(Bar(240, 100, 100, 100, 100, 1), 3)
+    runner.last_price = 110
+    runner.last_price_ts = time.time()
+    runner._closed_seen = len(runner.em.closed)
+    runner._fills_seen = len(runner.em.fills)
+
+
+def test_revisioned_asset_config_http_preserves_sibling_and_parent(workspace_http):
+    server, parent, request = workspace_http
+    es = _add_second_asset(server)
+    before_es = es.inputs_base.to_dict()
+    before = _unaffected_state(server, parent)
+    path = "/admin/command-centers/cc1/assets/NQ/config"
+    code, result, _ = request(path, body={"expected_revision": 1, "inputs": {"tp1_pts": 17}})
+    assert code == 200 and result["workspace_id"] == "cc1" and result["asset"] == "NQ"
+    assert result["config_revision"] == 2
+    assert server.command_centers.portfolios["cc1"].runners["NQ"].inputs_base.tp1_pts == 17
+    assert es.inputs_base.to_dict() == before_es
+    assert _unaffected_state(server, parent) == before
+    saved = server.command_centers._path("cc1").read_bytes()
+    assert request(path, body={"expected_revision": 1, "inputs": {"tp1_pts": 19}})[0] == 409
+    assert server.command_centers._path("cc1").read_bytes() == saved
+    assert request(path, body={"inputs": {"tp1_pts": 19}})[0] == 400
+
+
+@pytest.mark.parametrize("action,body", [("config", {"expected_revision": 0, "inputs": {"tp1_pts": 17}}),
+                                          ("pause", {"paused": True}), ("flatten", {"confirm": True})])
+def test_workspace_mutations_require_owner_and_viewer_can_read(workspace_http, action, body):
+    server, parent, request = workspace_http
+    code, created, _ = request("/admin/access/add", body={"label": "test-viewer"})
+    assert code == 201
+    viewer = created["user"]["token"]
+    before = _unaffected_state(server, parent)
+    selected = server.command_centers._path("cc1").read_bytes()
+    path = "/admin/command-centers/cc1/assets/NQ/" + action
+    assert request(path, body=body, token=None)[0] == 401
+    assert request(path, body=body, token=viewer)[0] == 403
+    assert request("/api/command-centers/cc1/status", token=viewer)[0] == 200
+    assert server.command_centers._path("cc1").read_bytes() == selected
+    assert _unaffected_state(server, parent) == before
+    assert not server.command_centers.portfolios["cc1"].runners["NQ"].paused
+
+
+def test_asset_pause_resume_does_not_change_workspace_or_other_runners(workspace_http):
+    server, parent, request = workspace_http
+    es = _add_second_asset(server)
+    portfolio = server.command_centers.portfolios["cc1"]
+    before = _unaffected_state(server, parent)
+    path = "/admin/command-centers/cc1/assets/NQ/pause"
+    code, result, _ = request(path, body={"paused": True})
+    assert code == 200 and result["asset"] == "NQ" and result["scope"] == "asset"
+    assert portfolio.runners["NQ"].paused and not es.paused and not portfolio.paused
+    assert request(path, body={"paused": False})[0] == 200
+    assert not portfolio.runners["NQ"].paused
+    assert _unaffected_state(server, parent) == before
+
+
+@pytest.mark.parametrize("suffix,body", [
+    ("pause", {"paused": True, "asset": "NQ"}),
+    ("flatten", {"confirm": True, "asset": "NQ"}),
+    ("pause", {"paused": True, "symbol": "NQ"}),
+    ("pause", {"paused": True, "workspace": "cc2"}),
+])
+def test_whole_workspace_controls_reject_misleading_selectors(workspace_http, suffix, body):
+    server, parent, request = workspace_http
+    before = _unaffected_state(server, parent)
+    assert request("/admin/command-centers/cc1/" + suffix, body=body)[0] == 400
+    assert not server.command_centers.portfolios["cc1"].paused
+    assert not server.command_centers.portfolios["cc1"].runners["NQ"].paused
+    assert _unaffected_state(server, parent) == before
+
+
+@pytest.mark.parametrize("suffix,body", [("pause", {"paused": True}), ("flatten", {"confirm": True}),
+                                        ("assets/NQ/pause", {"paused": True})])
+@pytest.mark.parametrize("query", ["asset=NQ", "symbol=NQ", "workspace=cc2", "profile=cc2"])
+def test_workspace_controls_reject_query_scope_before_any_mutation(workspace_http, suffix, body, query):
+    server, parent, request = workspace_http
+    es = _add_second_asset(server)
+    nq = server.command_centers.portfolios["cc1"].runners["NQ"]
+    before = _unaffected_state(server, parent)
+    assert request("/admin/command-centers/cc1/" + suffix + "?" + query, body=body)[0] == 400
+    assert not nq.paused and not es.paused
+    assert _unaffected_state(server, parent) == before
+
+
+@pytest.mark.parametrize("resource", ["cc1//pause", "cc1/pause/", "cc1/assets/NQ//pause", "cc1/assets/NQ%2FES/pause", "cc1/assets/ES/pause"])
+def test_malformed_or_unadmitted_control_routes_fail_without_parent_mutation(workspace_http, resource):
+    server, parent, request = workspace_http
+    before = _unaffected_state(server, parent)
+    assert request("/admin/command-centers/" + resource, body={"paused": True})[0] == 404
+    assert not server.command_centers.portfolios["cc1"].runners["NQ"].paused
+    assert _unaffected_state(server, parent) == before
+
+
+def test_asset_flatten_closes_only_selected_paper_position(workspace_http):
+    server, parent, request = workspace_http
+    es = _add_second_asset(server)
+    nq = server.command_centers.portfolios["cc1"].runners["NQ"]
+    _open_live(nq); _open_live(es)
+    before = _unaffected_state(server, parent)
+    code, result, _ = request("/admin/command-centers/cc1/assets/NQ/flatten", body={"confirm": True})
+    assert code == 200 and result["flattened_positions"] == 1
+    assert result["workspace_id"] == "cc1" and result["asset"] == "NQ"
+    assert result["execution_authorized"] is False
+    assert nq.em.position_size == 0 and es.em.position_size == 1
+    assert nq.paused and not es.paused
+    assert _unaffected_state(server, parent) == before
+
+
+def test_asset_flatten_without_mark_reports_unavailable_without_touching_sibling(workspace_http):
+    server, _, request = workspace_http
+    es = _add_second_asset(server)
+    nq = server.command_centers.portfolios["cc1"].runners["NQ"]
+    _open_live(nq); _open_live(es)
+    nq.last_price = None
+    code, result, _ = request("/admin/command-centers/cc1/assets/NQ/flatten", body={"confirm": True})
+    assert code == 409 and result["flattened_positions"] == 0
+    assert result["partial"] is False and result["positions_remain_open"] is True
+    assert nq.em.position_size == 1 and es.em.position_size == 1
+    assert not es.paused
+
+
+def test_asset_flatten_receipt_reports_actual_close_if_later_step_raises(workspace_http, monkeypatch):
+    server, _, request = workspace_http
+    nq = server.command_centers.portfolios["cc1"].runners["NQ"]
+    _open_live(nq)
+    flatten = nq.flatten
+
+    def close_then_fail(*args, **kwargs):
+        flatten(*args, **kwargs)
+        raise OSError("injected post-close receipt failure")
+
+    monkeypatch.setattr(nq, "flatten", close_then_fail)
+    code, result, _ = request("/admin/command-centers/cc1/assets/NQ/flatten", body={"confirm": True})
+    assert code == 409 and result["flattened_positions"] == 1
+    assert result["partial"] is True and result["positions_remain_open"] is False
+    assert nq.em.position_size == 0
+
+
+def _finished_job(request, workspace, receipt):
+    deadline = time.monotonic() + 4
+    while True:
+        code, row, _ = request(f"/api/command-centers/{workspace}/jobs/{receipt['job']}")
+        assert code == 200, row
+        if row["status"] != "running":
+            assert row["status"] == "done", row
+            return row
+        assert time.monotonic() < deadline, row
+        time.sleep(.01)
+
+
+def _job_tape(server, workspace):
+    runner = server.command_centers.portfolios[workspace].runners["NQ"]
+    runner.spec.calendar = "crypto"
+    runner.spec.session = "eth"
+    runner.subbars = [(Bar(1_700_000_000 // 60 * 60 + k * 60,
+                          runner.last_price + k, runner.last_price + k + 2,
+                          runner.last_price + k - 1, runner.last_price + k + 1, 1), 1)
+                      for k in range(30)]
+
+
+@pytest.mark.parametrize("suffix,settings", [
+    ("assets/NQ/config/async", {"inputs": {"tp1_pts": 17}}),
+    ("config/async", {"inputs": {"tp1_pts": 17}}),
+])
+def test_workspace_config_jobs_commit_and_report_both_revisions(workspace_http, suffix, settings):
+    server, parent, request = workspace_http
+    before = _unaffected_state(server, parent)
+    code, receipt, _ = request("/admin/command-centers/cc1/" + suffix,
+                               body={"expected_revision": 0, **settings})
+    assert code == 202, receipt
+    assert receipt["workspace_id"] == "cc1" and receipt["config_revision"] == 0
+    row = _finished_job(request, "cc1", receipt)
+    assert row["kind"] == "config" and row["config_revision"] == 0
+    assert row["result"]["config_revision"] == 1
+    code, inputs, _ = request("/api/command-centers/cc1/inputs/NQ")
+    assert code == 200 and inputs["config_revision"] == 1 and inputs["base"]["tp1_pts"] == 17
+    assert _unaffected_state(server, parent) == before
+
+
+@pytest.mark.parametrize("workspace", ["cc1", "cc2", "cc3", "cc4"])
+def test_workspace_backtest_job_csv_and_compare_use_frozen_selected_source(workspace_http, workspace):
+    server, parent, request = workspace_http
+    _job_tape(server, workspace)
+    before = _unaffected_state(server, parent)
+    code, receipt, _ = request(f"/admin/command-centers/{workspace}/assets/NQ/backtest",
+                               body={"expected_revision": 0})
+    assert code == 202, receipt
+    row = _finished_job(request, workspace, receipt)
+    assert row["workspace_id"] == workspace and row["config_revision"] == 0
+    result = row["result"]
+    assert result["workspace_id"] == workspace and result["paper_only"] is True
+    assert result["execution_authorized"] is False and result["bars"] > 0
+    source = result["config"]["reproducibility"]["source_config"]["base_inputs"]
+    assert source["tp1_pts"] == int(workspace[-1]) * 10
+    job_path = f"/api/command-centers/{workspace}/jobs/{receipt['job']}"
+    assert "result" not in request(job_path + "?full=0")[1]
+    # Historical downloads retain the accepted revision after current settings change.
+    server.command_centers.update_asset(workspace, "NQ", {"expected_revision": 0, "inputs": {"tp1_pts": 71}})
+    code, csv_text, headers = request(job_path + "/trades.csv", raw=True)
+    assert code == 200 and csv_text.startswith("Trade number,")
+    assert headers["X-Icarus-Workspace"] == workspace and headers["X-Icarus-Config-Revision"] == "0"
+    assert workspace in headers["Content-Disposition"] and receipt["job"] in headers["Content-Disposition"]
+    code, comparison, _ = request(f"/admin/command-centers/{workspace}/jobs/{receipt['job']}/compare",
+                                  body={"csv": csv_text, "tol": 1})
+    assert code == 200 and comparison["workspace_id"] == workspace
+    assert comparison["config_revision"] == 0 and "report" in comparison
+    # The cc1 helper includes its selected file, so compare unrelated state only for cc1.
+    if workspace == "cc1":
+        assert _unaffected_state(server, parent) == before
+
+
+def test_workspace_job_ownership_precedes_read_export_and_compare(workspace_http, monkeypatch):
+    from icarus_engine import backtest
+    server, _, request = workspace_http
+    _job_tape(server, "cc1")
+    code, receipt, _ = request("/admin/command-centers/cc1/assets/NQ/backtest", body={"expected_revision": 0})
+    assert code == 202
+    _finished_job(request, "cc1", receipt)
+    monkeypatch.setitem(backtest.JOBS, "parent-forged", {"private": "must not read parent jobs"})
+    for workspace, job in (("cc2", receipt["job"]), ("cc1", "parent-forged")):
+        path = f"/api/command-centers/{workspace}/jobs/{job}"
+        assert request(path)[0] == 404
+        assert request(path + "/trades.csv")[0] == 404
+        assert request(f"/admin/command-centers/{workspace}/jobs/{job}/compare", body={"csv": "invalid"})[0] == 404
+
+
+def test_workspace_jobs_preserve_auth_and_reject_config_csv(workspace_http):
+    server, _, request = workspace_http
+    code, created, _ = request("/admin/access/add", body={"label": "job-reader"})
+    assert code == 201
+    viewer = created["user"]["token"]
+    route = "/admin/command-centers/cc1/assets/NQ/config/async"
+    body = {"expected_revision": 0, "inputs": {"tp1_pts": 17}}
+    assert request(route, body=body, token=None)[0] == 401
+    assert request(route, body=body, token=viewer)[0] == 403
+    code, receipt, _ = request(route, body=body)
+    assert code == 202
+    _finished_job(request, "cc1", receipt)
+    path = f"/api/command-centers/cc1/jobs/{receipt['job']}"
+    assert request(path, token=None)[0] == 401
+    assert request(path, token=viewer)[0] == 200
+    assert request(path + "/trades.csv", token=None)[0] == 401
+    assert request(path + "/trades.csv")[0] == 409
+    assert request(f"/admin/command-centers/cc1/jobs/{receipt['job']}/compare", body={"csv": "invalid"})[0] == 409
+
+
+@pytest.mark.parametrize("resource", ["config/async", "assets/NQ/config/async", "assets/NQ/backtest", "jobs/missing/compare"])
+def test_workspace_jobs_reject_query_scope_before_acceptance(workspace_http, resource):
+    server, parent, request = workspace_http
+    before = _unaffected_state(server, parent)
+    body = {"expected_revision": 0, "inputs": {"tp1_pts": 17}}
+    assert request("/admin/command-centers/cc1/" + resource + "?asset=", body=body)[0] == 400
+    assert _unaffected_state(server, parent) == before
+
+
+@pytest.mark.parametrize("body,status", [({}, 400), ({"expected_revision": 9}, 409),
+                                        ({"expected_revision": 0, "asset": "ES"}, 400)])
+def test_workspace_backtest_rejects_invalid_admission(workspace_http, body, status):
+    server, parent, request = workspace_http
+    before = _unaffected_state(server, parent)
+    assert request("/admin/command-centers/cc1/assets/NQ/backtest", body=body)[0] == status
+    assert _unaffected_state(server, parent) == before
+
+
+@pytest.mark.parametrize("resource", ["config/async", "backtest"])
+def test_workspace_job_admission_io_failure_is_sanitized_unavailable(workspace_http, monkeypatch, resource):
+    server, parent, request = workspace_http
+    manager = server.command_centers
+    preset = manager.root.parent / "presets" / "unreadable.json"
+    preset.parent.mkdir(exist_ok=True)
+    preset.write_text("{}")
+    saved = manager._path("cc1").read_bytes()
+    before = _unaffected_state(server, parent)
+
+    def inaccessible(*_args, **_kwargs):
+        raise PermissionError("private-filesystem-path-must-not-leak")
+
+    monkeypatch.setattr(paper_workspaces, "resolve_inputs", inaccessible)
+    code, error, _ = request("/admin/command-centers/cc1/assets/NQ/" + resource,
+                              body={"expected_revision": 0, "preset": "unreadable"})
+    assert code == 503 and error["workspace_id"] == "cc1"
+    assert "private-filesystem-path" not in json.dumps(error)
+    assert not server.workspace_jobs._jobs
+    assert manager._path("cc1").read_bytes() == saved
+    assert manager.profiles["cc1"]["config_revision"] == 0
+    assert _unaffected_state(server, parent) == before

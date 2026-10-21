@@ -5,6 +5,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 
 import pytest
 
@@ -24,11 +25,12 @@ class _OfflineFeed:
 
 
 def _open_test_position(runner, direction):
-    runner.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
-    runner.em.entry("Acceptance", direction, 1)
-    runner.em.process_bar(Bar(60, 100, 100, 100, 100, 1), 1)
-    runner.last_price = 105.0 if direction > 0 else 95.0
-    runner.last_price_ts = time.time()
+    with runner.lock:
+        runner.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+        runner.em.entry("Acceptance", direction, 1)
+        runner.em.process_bar(Bar(60, 100, 100, 100, 100, 1), 1)
+        runner.last_price = 105.0 if direction > 0 else 95.0
+        runner.last_price_ts = time.time()
 
 
 def test_command_center_api_scopes_controls_and_closes_workspace_journals(
@@ -41,6 +43,15 @@ def test_command_center_api_scopes_controls_and_closes_workspace_journals(
         tuple({**profile, "assets": ["NQ"]} for profile in paper_workspaces._PROFILE_DEFAULTS),
     )
     monkeypatch.setattr(paper_workspaces, "REGISTRY", {"NQ": REGISTRY["NQ"], "CL": REGISTRY["CL"]})
+    # Genuine offline warmup avoids a startup-retry reset racing the positions
+    # deliberately opened below. Empty file-mode history never finishes warmup.
+    history = tmp_path / "history"
+    history.mkdir()
+    start_ts = int(datetime(2026, 9, 14, 13, 30, tzinfo=timezone.utc).timestamp())
+    rows = "ts,open,high,low,close,volume\n" + "".join(
+        f"{start_ts + k * 60},100,100,100,100,1\n" for k in range(60))
+    for symbol in ("NQ", "CL"):
+        (history / f"{symbol}_1m.csv").write_text(rows, encoding="utf-8")
     feed = _OfflineFeed()
     parent = Portfolio(
         Journal(":memory:"), str(tmp_path), profile="nq", pts_ref_symbol="NQ",
@@ -55,10 +66,12 @@ def test_command_center_api_scopes_controls_and_closes_workspace_journals(
     try:
         deadline = time.monotonic() + 5
         while not all(
-            portfolio.runner_list()[0].warm
+            portfolio.runner_list()[0].warm and portfolio.runner_list()[0].bar_index >= 0
             for portfolio in server.command_centers.portfolios.values()
         ) and time.monotonic() < deadline:
             time.sleep(0.01)
+        assert all(r.warm and r.bar_index >= 0
+                   for portfolio in server.command_centers.portfolios.values() for r in portfolio.runner_list())
 
         cc1 = server.command_centers.portfolios["cc1"].runner_list()[0]
         cc2 = server.command_centers.portfolios["cc2"].runner_list()[0]

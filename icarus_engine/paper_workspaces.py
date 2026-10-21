@@ -223,8 +223,15 @@ class WorkspacePortfolio(Portfolio):
             spec, self.base_dir, self.profile, preset, values,
             skip_asset_overrides=True, extra_label=f"command-center:{workspace['id']}"
         )
+        # Validate raw effective metadata before apply_spec_meta can truncate a
+        # fractional tick count. Startup-pinned properties retain precedence.
+        from .backtest import validate_backtest_params
+        costs = ("commission", "capital", "slippage_ticks")
+        pins = set(getattr(spec, "config_pins", ()) or ())
+        validate_backtest_params({key: meta[key] for key in costs if key in meta and key not in pins})
         spec = apply_spec_meta(spec, meta)
         spec = apply_chart_config(spec, chart, pin=True)
+        validate_backtest_params({key: getattr(spec, key) for key in costs})
         return spec, inputs, sources
 
     def make_runner(self, spec, *, workspace=None):
@@ -396,11 +403,17 @@ class PaperWorkspaceManager:
         self.root = Path(parent.base_dir or os.getcwd()) / "command_centers"
         self.root.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
+        self._configuration_locks = {profile_id: threading.RLock() for profile_id in _IDS}
         self._closing_journals: set[int] = set()
         self._feeds = {name: SharedFeed(feed) for name, feed in parent.feeds.items()}
         self.profiles: Dict[str, Dict[str, Any]] = {}
         self.portfolios: Dict[str, WorkspacePortfolio] = {}
         self._load_profiles()
+
+    def configuration_lock(self, profile_id):
+        if profile_id not in self.profiles:
+            raise ValueError("unknown command center profile")
+        return self._configuration_locks[profile_id]
 
     def _path(self, profile_id):
         if profile_id not in _IDS:
@@ -644,26 +657,25 @@ class PaperWorkspaceManager:
         ]
         return {"feeds": feeds, "adapters": adapters, "execution_authorized": False}
 
-    def snapshot(self):
-        # Keep settings, effective runner inputs and revision in one committed view.
-        # Runner locks alone cannot protect the manager's configuration identity.
-        with self._lock:
-            return self._snapshot()
-
-    def _snapshot(self):
-        now = int(time.time())
-        rows = []
-        ledgers = []
-        for profile_id, profile in self.profiles.items():
+    def _profile_snapshot(self, profile_id, now):
+        # Never wait behind another workspace's replay. A busy record exposes
+        # committed settings and explicit unavailable valuation, no candidate inputs.
+        lock = self.configuration_lock(profile_id)
+        acquired = lock.acquire(blocking=False)
+        try:
+            profile = copy.deepcopy(self.profiles[profile_id])
             portfolio = self.portfolios.get(profile_id)
             try:
+                if portfolio is not None and not acquired:
+                    raise RuntimeError("workspace configuration is changing")
                 status = portfolio.status(nonblocking=True) if portfolio else {"assets": [], "all_warm": False}
             except RuntimeError:
                 # One initial/busy runner must not disconnect every workspace's
                 # overview or turn missing open marks into known zeroes.
                 status = {"assets": [], "all_warm": False, "view_stale": True,
                           "snapshot_unavailable": True}
-            runners = portfolio.runner_list() if portfolio else []
+            readable = portfolio if acquired and not status.get("snapshot_unavailable") else None
+            runners = readable.runner_list() if readable else []
             effective = runners[0].inputs_base.to_dict() if runners else {}
             closed = portfolio.journal.closed_paper_profit() if portfolio else {"realized_pnl": 0.0, "closed_pieces": 0, "last_close_ts": None}
             missing_marks = []
@@ -689,19 +701,35 @@ class PaperWorkspaceManager:
                 marks.append(now - int(math.ceil(age)))
             marks_complete = (len(marks) == len(open_assets) == position_count
                               and not status.get("view_stale", False))
-            ledgers.append({"id": profile_id, "currency": "USD", "runtime_available": portfolio is not None,
+            ledger = {"id": profile_id, "currency": "USD", "runtime_available": portfolio is not None,
                             "snapshot_ts": now, "realized_pnl": closed["realized_pnl"] if portfolio else None,
                             "open_pnl": status.get("open_profit", 0.0) if portfolio and not status.get("view_stale", False) else None,
                             "open_positions": position_count,
-                            "oldest_open_mark_ts": min(marks) if marks and marks_complete else None})
+                      "oldest_open_mark_ts": min(marks) if marks and marks_complete else None}
             pnl = {**closed, "open_pnl": open_pnl, "paper_pnl": closed["realized_pnl"],
                    "replay_inclusive_net": float(status.get("net") or 0.0),
                    "basis": "persisted closures after paper cutover; open mark and replay-inclusive net shown separately"}
             status["paper_pnl"] = pnl["paper_pnl"]
-            rows.append({**copy.deepcopy(profile), "status": status, "effective_inputs": effective, "paper_only": True,
+            row = {**copy.deepcopy(profile), "status": status, "effective_inputs": effective, "paper_only": True,
                          "execution_authorized": False, "runtime_available": portfolio is not None,
                          "valuation_complete": valuation_complete, "missing_mark_symbols": missing_marks,
-                         "pnl": pnl, "feed": self._feed_summary(status, portfolio)})
+                   "pnl": pnl, "feed": self._feed_summary(status, readable)}
+            return row, ledger
+        finally:
+            if acquired:
+                lock.release()
+
+    def snapshot(self):
+        return self._snapshot()
+
+    def _snapshot(self):
+        now = int(time.time())
+        rows = []
+        ledgers = []
+        for profile_id in self.profiles:
+            row, ledger = self._profile_snapshot(profile_id, now)
+            rows.append(row)
+            ledgers.append(ledger)
         accounting = validate_paper_pnl(ledgers, as_of_ts=now)
         for row, validated in zip(rows, accounting["profiles"]):
             for field in ("realized_pnl", "open_pnl", "total_pnl"):
@@ -739,7 +767,7 @@ class PaperWorkspaceManager:
     def update(self, profile_id: str, body: Dict[str, Any]):
         if profile_id not in self.profiles:
             raise ValueError("unknown command center profile")
-        with self._lock:
+        with self.configuration_lock(profile_id):
             old = self.profiles[profile_id]
             candidate = copy.deepcopy(old)
             if not isinstance(body, dict):
@@ -808,7 +836,7 @@ class PaperWorkspaceManager:
             raise ValueError("reset cannot be combined with other asset settings")
         if not body.get("reset") and not set(body) & {"inputs", "chart", "preset"}:
             raise ValueError("asset configuration needs inputs, chart, preset or reset")
-        with self._lock:
+        with self.configuration_lock(profile_id):
             profile = self.profiles.get(profile_id)
             portfolio = self.portfolios.get(profile_id)
             if (profile is None or portfolio is None or symbol not in profile["assets"]
@@ -831,16 +859,24 @@ class PaperWorkspaceManager:
             result["asset"] = symbol
             return result
 
-    def pause(self, profile_id: str, paused: bool):
+    @staticmethod
+    def _control_targets(portfolio, asset):
+        if asset is None:
+            return portfolio.runner_list()
+        if asset not in portfolio.workspace["assets"] or asset not in portfolio.runners:
+            raise ValueError("asset is not running in this workspace")
+        return [portfolio.runners[asset]]
+
+    def pause(self, profile_id: str, paused: bool, *, asset=None):
         if profile_id not in self.portfolios:
             raise ValueError("unknown command center profile")
         portfolio = self.portfolios[profile_id]
-        with portfolio._lock:
+        with self.configuration_lock(profile_id), portfolio._lock:
             previous = portfolio.paused
             cancelled = 0
             changed = []
             try:
-                for runner in portfolio.runner_list():
+                for runner in self._control_targets(portfolio, asset):
                     old = runner.paused
                     cancelled += runner.set_paused(bool(paused))
                     changed.append((runner, old))
@@ -849,17 +885,19 @@ class PaperWorkspaceManager:
                     runner.set_paused(old)
                 portfolio.paused = previous
                 raise
-            portfolio.paused = bool(paused)
+            if asset is None:
+                portfolio.paused = bool(paused)
         return {"ok": True, "id": profile_id, "paused": bool(paused),
                 "cancelled_pending_entries": cancelled, "paper_only": True}
 
-    def flatten(self, profile_id: str):
+    def flatten(self, profile_id: str, *, asset=None):
         if profile_id not in self.portfolios:
             raise ValueError("unknown command center profile")
         portfolio = self.portfolios[profile_id]
-        with portfolio._lock:
-            runners = portfolio.runner_list()
-            portfolio.paused = True
+        with self.configuration_lock(profile_id), portfolio._lock:
+            runners = self._control_targets(portfolio, asset)
+            if asset is None:
+                portfolio.paused = True
             pause_errors = []
             for runner in runners:
                 try:

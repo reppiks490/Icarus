@@ -46,6 +46,24 @@ def _legacy(manager):
     return value, raw
 
 
+@pytest.mark.parametrize("cost,value", [("commission", -7), ("capital", 0),
+                                       ("slippage_ticks", -1), ("slippage_ticks", 1.5)])
+def test_invalid_preset_costs_cannot_commit_configuration(manager_factory, cost, value):
+    manager = manager_factory(start=True)
+    runner = manager.portfolios["cc1"].runners["NQ"]
+    before = (manager._path("cc1").read_bytes(), copy.deepcopy(manager.profiles["cc1"]),
+              copy.deepcopy(runner.spec), runner.inputs_base)
+    preset = manager.root.parent / "presets" / "invalid-costs.json"
+    preset.parent.mkdir(exist_ok=True)
+    preset.write_text(json.dumps({"_meta": {cost: value}}))
+    with pytest.raises(ValueError, match=cost):
+        manager.update_asset("cc1", "NQ", {"expected_revision": 0, "preset": "invalid-costs"})
+    assert manager._path("cc1").read_bytes() == before[0]
+    assert manager.profiles["cc1"] == before[1]
+    assert runner.spec == before[2]
+    assert runner.inputs_base == before[3]
+
+
 def test_legacy_record_migrates_without_changing_values_or_bytes(manager_factory):
     first = manager_factory()
     legacy, original = _legacy(first)
@@ -419,11 +437,14 @@ def test_snapshot_cannot_pair_new_runtime_with_old_configuration_revision(manage
         reader = executor.submit(read)
         assert reader_entered.wait(3)
         try:
-            assert not reader_done.wait(.5), "snapshot escaped the configuration commit boundary"
+            assert reader_done.wait(1), "one replay must not stall the complete workspace overview"
+            row = reader.result(timeout=1)
+            assert row["status"]["snapshot_unavailable"] is True
+            assert row["effective_inputs"] == {}
         finally:
             release.set()
         writer.result(timeout=5)
-        row = reader.result(timeout=5)
+    row = next(p for p in manager.snapshot()["profiles"] if p["id"] == "cc1")
     assert row["config_revision"] == 1
     assert row["effective_inputs"]["tp1_pts"] == 17
 
@@ -458,3 +479,34 @@ def test_partial_workspace_chart_edit_preserves_other_saved_chart_choices(manage
     assert manager.profiles["cc1"]["chart"] == expected
     assert manager.portfolios["cc1"].runners["NQ"].spec.chart_tf == before["timeframe"]
     assert manager_factory().profiles["cc1"]["chart"] == expected
+
+
+def test_configuration_transactions_in_other_workspaces_do_not_wait_for_replay(manager_factory, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError
+    from threading import Event
+    manager = manager_factory(start=True)
+    nq = manager.portfolios["cc1"].runners["NQ"]
+    entered, release = Event(), Event()
+    rewarm = nq.rewarm
+
+    def blocked(*args, **kwargs):
+        entered.set()
+        assert release.wait(5)
+        return rewarm(*args, **kwargs)
+
+    monkeypatch.setattr(nq, "rewarm", blocked)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(manager.update_asset, "cc1", "NQ", {"expected_revision": 0, "inputs": {"tp1_pts": 17}})
+        assert entered.wait(3)
+        second = executor.submit(manager.update_asset, "cc2", "NQ", {"expected_revision": 0, "inputs": {"tp1_pts": 19}})
+        try:
+            try:
+                result = second.result(timeout=1)
+            except TimeoutError:
+                result = None
+            assert result is not None, "CC2 configuration stalled behind unrelated CC1 replay"
+            assert result["config_revision"] == 1
+        finally:
+            release.set()
+        first.result(timeout=5)
+        second.result(timeout=5)

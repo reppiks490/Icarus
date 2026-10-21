@@ -2992,6 +2992,79 @@
     "registration_observed_from": "reppiks490/icarus-owner-actions:coordination/sessions/icarus2-20261020-federation-integration.json",
     "registration_started_at_utc": "2026-10-20T18:13:50.114225Z"
   },
+  "workspace_api_jobs_followup": {
+    "focused_verification": [
+      "298passed after per-workspace locks and cost/query fixes",
+      "73passed HTTP/lifecycle before final two I/O cases",
+      "2passed admission I/O cases",
+      "10passed flatten compatibility selection"
+    ],
+    "full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/workspace-api-jobs-full-final.log",
+      "log_sha256": "8e638ae7a310f72b2882432449d9884078e6ef9dd3a7ebc986bf1f1254704e43",
+      "result": "3650 passed, 4 skipped, 111 subtests passed in223.72s"
+    },
+    "independent_review": {
+      "all_reported_findings_reproduced_and_corrected": true,
+      "final_whole_diff_review_complete": false,
+      "findings": [
+        "Invalid preset costs",
+        "Query selectors broadening controls",
+        "Admission I/O disconnect"
+      ],
+      "limit": "Reviewer confirmed corrections then stopped at its usage limit before final diff consistency check; root inspected the final diff and ran full suite. No final independent clear is asserted.",
+      "observer": "workspace_configuration_final_review",
+      "verification": [
+        "63passed focused selection",
+        "2passed admission I/O cases"
+      ]
+    },
+    "limits": [
+      "No common renderer switch, runtime deployment, full system restart, main release merge or live activation.",
+      "Offline deterministic engineering fixtures do not establish trading accuracy, source freshness or connected brokers.",
+      "Existing new-asset startup remains asynchronous after commit; staged startup rollback is unverified.",
+      "Jobs are bounded process-local records, not durable work queues; shared * default edits preserve per-asset precedence until explicit UI transformation is implemented.",
+      "Owner PC installation and the reported accuracy decline remain unobserved."
+    ],
+    "previous_published_hosted_ci": {
+      "commit": "6ac652e9505732a886bc5c807eeda80daab24b5a",
+      "linux": "success",
+      "tests_run": 39514770172,
+      "three_other_contracts": "success",
+      "windows": "failure",
+      "windows_failure_reproduction": "Missing offline CSV caused startup retry reset of seeded position; independent Event-controlled reproduction and passing CSV-fixture probe. Fixture now provides genuine local bars, asserts warmup and locks seed; no hosted Windows pass claimed.",
+      "windows_job": 118944172965
+    },
+    "recorded_at_utc": "2026-10-21T11:57:26.946469+00:00",
+    "regressions_observed_before_repair": [
+      "15 missing scoped read route failures; reviewed busy/chart/trade-lock failures",
+      "11 scoped control failures",
+      "2 cross-workspace global-lock serialization failures",
+      "24 preset-cost/query-scope failures",
+      "11 missing job-route failures with4already-passing scope refusals",
+      "2 preset admission I/O disconnects",
+      "1 full-suite legacy flatten error-field regression"
+    ],
+    "scope": "SCOPED_TRADING_READS_CONTROLS_AND_FROZEN_JOBS; shared renderer unchanged",
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "5dcecdedc9ebc1832249eac0a7763ae72b946874a537aa26b9ca5e9c23c83cad",
+      "icarus_engine/paper_workspaces.py": "fb60d8b73769debdcf98f649f2d54b54b7d58c5b52a7a49a5bce7840b4fca1c1",
+      "icarus_engine/server.py": "3d29bbb5c1d2184f6ec21114e8fbed0dfcf097242c304e04c5977f477eff6994",
+      "icarus_engine/workspace_api.py": "350dad4fc5ecf80c817816a9403b5ebd510d5fdd7bd1544266d73365383eddcf",
+      "icarus_engine/workspace_jobs.py": "0e1607a93b5c827c7cc32767c9e974dd32a361a9ecd0fbc84243913bf47ff0e7",
+      "tests_engine/test_paper_workspaces_runtime.py": "01ecc047e6f2f6d75d0eca81523450b664f93ce28fd22662ffa6225570591c9a",
+      "tests_engine/test_workspace_api.py": "996e700b995ed90d79d2b883b098a452f931f81f0a273dcf90249e16e6cc7532",
+      "tests_engine/test_workspace_config.py": "18b1c3f31e9f076eb7674d96881740fc18eee74dac547f17f5186acfeaf44e15",
+      "tests_engine/test_workspace_jobs.py": "ec3686d0b60c5f452fd711428d6b8e1af9c4a8acd36666ce97d85a61eee257e1"
+    },
+    "windows_ci_selection": {
+      "execution": "Fresh hosted exact-head results pending publication",
+      "local_check": "YAML parsed; all selected module paths exist without duplicates",
+      "modules": 70
+    }
+  },
   "workspace_configuration_followup": {
     "approval": "Owner explicitly approved the shared-dashboard written design and directed continued implementation; coordination event011.",
     "full_suite": {

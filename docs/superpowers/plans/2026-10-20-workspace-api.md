@@ -50,12 +50,26 @@ HTTP routes: `/api/command-centers/{id}/status`, `/assets`, `/inputs/{symbol}`, 
 
 **Interfaces:** Add explicit `/admin/command-centers/{id}/assets/{symbol}/config`, `/pause`, `/flatten` endpoints. Config delegates `manager.update_asset`, including mandatory expected revision, returning 409 for `WorkspaceRevisionConflict`; invalid inputs are 400. Asset pause accepts exactly `{paused: bool}`; asset flatten accepts exactly `{confirm: true}` and pauses/flattens only that runner. Whole-workspace existing routes retain their semantics and reject unknown/conflicting selector fields. Extend manager control methods with explicit keyword asset scope while preserving conservative configuration guards and flatten receipts. Missing assets return unavailable before mutation. Never pass workspace requests to main `/admin` handlers.
 
-- [ ] Add authorized, viewer and unauthenticated HTTP cases; stale and missing revisions; malformed/duplicate path segments; whole-workspace bodies with misleading asset selectors. Hash parent/sibling saved state and journals around each rejected mutation.
-- [ ] Add real one-asset pause/resume/flatten cases with two assets and all four ledgers; prove sibling state is unchanged. Include mark failure and partial-flatten truth without broker claims.
-- [ ] Run new cases and observe missing/broadened-scope failures.
-- [ ] Implement explicit routing and guarded manager operations, mapping typed conflicts/unavailable errors to truthful HTTP responses.
+- [x] Add authorized, viewer and unauthenticated HTTP cases; stale and missing revisions; malformed/duplicate path segments; whole-workspace bodies with misleading asset selectors. Hash parent/sibling saved state and journals around each rejected mutation.
+- [x] Add real one-asset pause/resume/flatten cases with two assets and all four ledgers; prove sibling state is unchanged. Include mark failure and partial-flatten truth without broker claims.
+- [x] Run new cases and observe missing/broadened-scope failures.
+- [x] Implement explicit routing and guarded manager operations, mapping typed conflicts/unavailable errors to truthful HTTP responses.
 - [ ] Run the full runtime suite and independent review; publish exact-head results. Then deliver scoped configuration/backtest jobs and the context client before any renderer switch.
 
 ## Execution record
 
 Continue under the owner's approved design and explicit implementation instruction. No routine permission checkpoint, merge, deployment, full system restart, provider acquisition or live activation is included. Keep the Icarus 1 identity/session and Icarus 2's separate federation boundary. Shared preset libraries and repository evidence remain shared read-only; no completed connection is inferred from configuration.
+
+### Scoped configuration/backtest HTTP delivery
+
+- [x] Expose owner-only configuration jobs at `/admin/command-centers/{id}/config/async` and `/assets/{symbol}/config/async`, plus `/assets/{symbol}/backtest`. Require expected_revision and reject body/query scope conflicts.
+- [x] Authenticate workspace-owned `/api/command-centers/{id}/jobs/{job}` and `/trades.csv`; retain the accepted source revision after current configuration changes. Compare only the selected workspace's completed backtest through `/admin/command-centers/{id}/jobs/{job}/compare`.
+- [x] Observe missing HTTP route failures (11 failed / four passed), then verify real offline configuration commits, four selected replay sources, frozen job identity, foreign/main job refusal, CSV headers and owner/viewer boundaries.
+- [x] Reproduce local preset read failure disconnects (two failures); return sanitized unavailable JSON without accepting jobs or changing configuration.
+- [ ] Complete fresh full runtime suite and final independent review; publish exact source and CI receipts.
+
+Per-workspace locks now protect transactions and admission. Busy snapshots expose unavailable valuation/inputs while unrelated workspaces remain responsive. Invalid effective preset costs fail before admission and during resolution; raw fractional tick costs are checked before coercion. The earlier globally blocking snapshot test now requires explicit unavailable state during the same commit boundary.
+
+The published6ac Windows failure was independently reproduced as a fixture startup retry resetting seeded positions: file mode had no history and the five-second retry raced the test. The acceptance fixture now supplies deterministic real CSV warmup bars, asserts successful warmup and locks manual position seeding, retaining all isolation/control assertions. Fresh hosted Windows verification remains required.
+
+Final local full suite: 3650passed,4skipped,111subtests in223.72s, exit0. First full caught one legacy flatten error-field regression, repaired and verified with10focused cases before the fresh full run. Independent reviewer confirmed all reported fixes but its final whole-diff pass was interrupted by usage limit; do not call that a final independent clear. Source/log hashes and hosted boundaries are in recovery-evidence.json. Publication and current-head hosted checks remain separate.
