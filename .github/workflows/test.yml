@@ -114,6 +114,10 @@ jobs:
           tests_engine/test_workspace_jobs.py
           tests_engine/test_workspace_client.py
           tests_engine/test_workspace_context.py
+          tests_engine/test_workspace_ui.py
+          tests_engine/test_workspace_dashboard_browser.py
+          tests_engine/test_workspace_performance.py
+          tests_engine/test_workspace_market_data.py
           -q
         env:
           TZ: UTC
