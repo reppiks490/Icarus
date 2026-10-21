@@ -1,5 +1,7 @@
 # DIVINE PROVIDENCE: THE HEART OF ICARUS
 
+**Current PC / Git Bash startup and complete command guide: [START_HERE.md](START_HERE.md).** Use the recovery branch for the updated five-dashboard version.
+
 <!-- Grok (xAI) — 2026-09-20. Whole file. This repo had no README. Engine/strategy remain Astra's. -->
 
 Paper engine + TradingView-alert bridge for **THE PULSE OF ICARUS**.
