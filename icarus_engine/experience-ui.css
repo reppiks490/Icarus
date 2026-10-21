@@ -4832,6 +4832,17 @@ html {overflow-x:clip}
 
 /* Desktop measurements must not override mobile geometry while a viewport
    callback is pending. Only the desktop media rule consumes these variables. */
+@media (max-width:760px) {
+  /* A filtered or transformed header contains fixed descendants. Release that
+     containing block on mobile so the bottom-docked drawer uses the viewport,
+     even before a delayed resize/scroll callback can run. */
+  :root .top {
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+    filter:none!important;
+    transform:none!important;
+  }
+}
 @media (width > 760px) {
   :root .experience-settings > div,
   :root[data-world]:not([data-world=""]) .experience-settings > div {

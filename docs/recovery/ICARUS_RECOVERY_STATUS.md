@@ -360,3 +360,5 @@ rebase or has an external blocker. The open-PR inventory is discovery evidence;
 unreviewed entries remain unreviewed.
 
 The bounded next-work list is [Icarus2 remaining-access continuation](ICARUS2_NEXT_12_DAYS.md). Keep the as-is launch separate from full-system NO_GO.
+
+Final presentation follow-up: required hosted workspace browser43cases passed, then the delayed-resize settings drawer failed its viewport bound. A forced containing-header regression reproduced the failure locally. Mobile CSS now releases that containing block;4targeted browser cases and122UI/world/JS cases passed, plus unchanged cinema errors[]/writes[]. The3852full-suite receipt remains the preceding startup phase; exact source/log receipts are separate.

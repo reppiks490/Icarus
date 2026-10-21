@@ -695,6 +695,48 @@
       }
     ]
   },
+  "mobile_drawer_containing_header_followup": {
+    "final_ui_suite": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/as-is-final-ui-suite.log",
+      "log_sha256": "c1a760bf46ec2f4e13063035803a8bcf4032888df57f981ab5df54789e91c989",
+      "result": "122 passed, 1 skipped in 220.57s (0:03:40)",
+      "scope": "Actual five-route browser suite, Performance, dashboard JS, world immersion/cinema invariants; optional legacy default-cache browser skip retained separately."
+    },
+    "hosted_failure": {
+      "failure": "Required settings resize test: drawer y=-375.78125 while placement callbacks delayed; fixed child anchored to filtered/transformed header.",
+      "job": 119521969306,
+      "preceding_actual_workspace_browser_cases": "43passed",
+      "run": 39686515357
+    },
+    "local_red": {
+      "local_log": "/workspace/scratch/as-is-drawer-resize-red.log",
+      "log_sha256": "f14e7cc38f729338ea3b91ea47ae7f080ac6180dbbf6a6bd090a445e2b9da58b",
+      "result": "1 failed, 106 deselected in 3.65s"
+    },
+    "recorded_at_utc": "2026-10-21T22:37:50.502497+00:00",
+    "repair": "At mobile widths remove header backdrop-filter/filter/transform so fixed drawer bottom anchors to viewport without waiting for JS. Desktop placement remains unchanged. Stronger existing regression explicitly supplies a containing header independent of browser/theme.",
+    "review": "Root native; no fresh independent whole-branch clearance.",
+    "source_file_sha256": {
+      "icarus_engine/experience-ui.css": "6a2ada51341e676b4256665c360590a0e0978d48d53c74863b7b1dbc2c4e7376",
+      "tests_engine/test_workspace_api.py": "29b0309aadf952b347675a787e2dacfa023b7aee87f7a1ae60e0cba0d1937b14"
+    },
+    "source_parent": "6ed1fe8e06da47ffe07eb30671be1cb7df2c70a7",
+    "targeted_browser": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/as-is-drawer-focused-green.log",
+      "log_sha256": "6e4380690cf334462caeceae5a134bf48bdefdc71aebd2f70815443938413aa5",
+      "result": "4 passed, 218 deselected in 8.94s"
+    },
+    "tradeoff": "Mobile header blur is disabled; drawer remains inside viewport.",
+    "unchanged_cinema": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/as-is-final-cinema.log",
+      "log_sha256": "1366c744df7c423339d85c8ad2908c90161c326edcbee33c4e10d7f8163e0b24",
+      "result": "{\"passed\":true,\"errors\":[],\"writes\":[],\"fixture\":{\"same\":true,\"first\":1,\"second\":1,\"surface\":true,\"scan\":true,\"hover\":true,\"x\":\"40.00%\",\"y\":\"60.00%\"}}"
+    },
+    "verification_limit": "The3852full receipt belongs to the preceding operator-startup phase. This narrow presentation/test-fixture correction has fresh4targeted +122UI checks and unchanged cinema, not a new full-runtime rerun. Hosted new-head checks remain separate."
+  },
   "new_spend_authorized_or_performed": false,
   "open_pr_inventory": {
     "captured_at_utc": "2026-10-20T18:04:31.050Z",

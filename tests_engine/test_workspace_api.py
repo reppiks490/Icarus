@@ -763,6 +763,9 @@ def test_settings_resize_uses_mobile_geometry_when_viewport_callbacks_are_delaye
                 ? function(event){if(!window.holdPlacementEvents)listener.call(this,event);} : listener,options);
             """)
             page.goto(base + "/", wait_until="load")
+            # Reproduce the fixed-containing-header condition independently of
+            # Chromium's backdrop-filter implementation or runner theme.
+            page.add_style_tag(content=".top{transform:translateZ(0)!important;backdrop-filter:blur(2px)!important}")
             page.locator(".experience-settings summary").click()
             page.wait_for_function("""()=>{const s=document.querySelector('.experience-settings > div').style;
               return Boolean(s.left||s.getPropertyValue('--settings-left'));}""")
