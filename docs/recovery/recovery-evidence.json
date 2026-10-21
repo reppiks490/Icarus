@@ -96,6 +96,20 @@
     },
     "source_parent": "2a2ec2a21a2426697259fd227b4c5db57d985bfb",
     "source_review": "Root native launcher/docs review. Icarus2 independently reviewed its two test-only deltas; no fresh independent whole-branch clearance claimed.",
+    "upstream_receipt_and_documentation_merge": {
+      "automation_receipt_paths": 34,
+      "code_or_test_changes": false,
+      "encrypted_checkpoint": "Preserved opaque; not decrypted.",
+      "limit": "Receipt updates and code identity do not prove provider freshness or consumer operation.",
+      "main_head": "091e38b2957826c0695ac24d0d34b3b222ee0e15",
+      "paths": 36,
+      "public_doc_paths": [
+        "README.md",
+        "START_HERE.md"
+      ],
+      "readme_resolution": "Retained current operator banner and recovery intro; main added only the identical operator banner.",
+      "tested_source_hashes_unchanged": true
+    },
     "windows_ci_selection": {
       "all_paths_and_yaml_valid": true,
       "limit": "Shell harness skips on Windows; actual PC/Git Bash cold setup remains unobserved. New head hosted results remain separate.",
