@@ -73,3 +73,21 @@ Per-workspace locks now protect transactions and admission. Busy snapshots expos
 The published6ac Windows failure was independently reproduced as a fixture startup retry resetting seeded positions: file mode had no history and the five-second retry raced the test. The acceptance fixture now supplies deterministic real CSV warmup bars, asserts successful warmup and locks manual position seeding, retaining all isolation/control assertions. Fresh hosted Windows verification remains required.
 
 Final local full suite: 3650passed,4skipped,111subtests in223.72s, exit0. First full caught one legacy flatten error-field regression, repaired and verified with10focused cases before the fresh full run. Independent reviewer confirmed all reported fixes but its final whole-diff pass was interrupted by usage limit; do not call that a final independent clear. Source/log hashes and hosted boundaries are in recovery-evidence.json. Publication and current-head hosted checks remain separate.
+
+### Task 3: Selected replay scope and explicit revisioned rewarm
+
+The common renderer's native rewarm command needs an explicit workspace operation; unchanged configuration is not a reliable replay request. Source review also found `_reconfigure_existing` replays every old runner for any per-asset override change. Settings remain isolated, but an unrelated flat sibling's emulator/cutover can be rebuilt unnecessarily. Reproduce this before changing it; do not attribute the owner's accuracy report to this source observation.
+
+Files: existing `paper_workspaces.py`, `workspace_jobs.py`, `server.py`, `workspace-client.js` and their existing configuration/job/HTTP/client regression modules, all inside Icarus1 claims.
+
+Interfaces: `WorkspacePortfolio.reconfigure(candidate, *, persist=None, force_symbols=None)` selects changed override symbols, all selected symbols for workspace-default changes, and explicitly forced symbols. Preserve the conservative flat-workspace guard and exact transaction rollback; unrelated runners must retain emulator/cutover/cache identity. `_reconfigure_existing(candidate, symbols=...)` validates all existing runners for the flat guard but resolves/replays only selected retained symbols.
+
+`PaperWorkspaceManager.rewarm(profile_id, symbol_or_none, body)` accepts exactly a mandatory expected_revision, uses the same selected transaction lock/persistence/rollback, and advances one revision after replay. Asset-null means explicitly the whole workspace. `ScopedWorkspaceJobs.submit_rewarm(workspace_id, symbol, body)` uses the existing bounded config-job ownership/conflict machinery, validates revision/admitted warm scope before acceptance and rechecks inside the manager transaction. It must not call inherited parent writers or providers.
+
+HTTP: owner-only `/admin/command-centers/{id}/rewarm/async` and `/assets/{symbol}/rewarm/async`, with exact routes/query scope/body validation and typed conflicts. `IcarusClient.rewarm(asset_or_null, expectedRevision)` returns an accepted config-job receipt and preserves the caller's revision; main uses its existing `/admin/rewarm/async` contract. No renderer switch in this task.
+
+- [ ] Write/observe failing selected-asset configuration replay tests: NQ edits replay NQ once, ES's engine/cutover/cache stay untouched, whole-default edits replay both, an open sibling still prevents mutation.
+- [ ] Implement selective existing-runner plans inside the current transaction; verify existing cost, rollback, publication and concurrency regressions.
+- [ ] Write/observe missing rewarm tests for unchanged settings with real cached bars, one-asset versus whole scope, stale/missing revision, failures before/after persistence, parent/sibling file/journal safety and no provider calls.
+- [ ] Implement manager/service/HTTP/client rewarm with accepted-source identity and actual completion; verify config-job conflict/idempotency plus read/export ownership remain unchanged.
+- [ ] Run the relevant focused suites, root diff review and fresh full runtime suite before publishing the replay-control checkpoint. Keep final independent review availability explicit.

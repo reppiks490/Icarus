@@ -3114,5 +3114,58 @@
       "selection_check": "YAML parsed and all 68 selected modules exist without duplicates",
       "workflow": ".github/workflows/test.yml"
     }
+  },
+  "workspace_context_client_followup": {
+    "focused": "191passed in65.08s; client17behavior cases; browser1passed in2.21s",
+    "full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/workspace-client-bootstrap-full.log",
+      "log_sha256": "2997a9f326d28778d383513ccc4f0475cdc7c30203cd0eddcb45b8c2afc85cef",
+      "result": "3671passed,4skipped,111subtests in228.09s"
+    },
+    "limits": [
+      "Main bootstrap is initialized before UI modules; legacy renderer call migration and CC renderer switch remain open.",
+      "Backend jobs and client are engineering evidence, not data freshness, accuracy or broker operating proof.",
+      "No release merge, deployment, full system restart or live activation."
+    ],
+    "previous_backend_hosted_checks": {
+      "all_four": "completed/success",
+      "commit": "ce6a15f3eba3f71de8606fddb78ea65027cf8a09",
+      "configuration": 39595853336,
+      "intelligence": 39595853362,
+      "linux_job": 119207846881,
+      "performance": 39595853354,
+      "tests": 39595854165,
+      "windows_job": 119207847137
+    },
+    "real_browser": {
+      "engine": "installed Chromium via Playwright",
+      "network": "loopback only; external requests aborted; deterministic offline runtimes",
+      "result": "1passed; frozen context, authenticated main status price900, no page errors"
+    },
+    "recorded_at_utc": "2026-10-21T12:15:35.476106+00:00",
+    "red_evidence": [
+      "1missing-client failure",
+      "2CSV/native-preset cases",
+      "2admission-receipt revision cases",
+      "2missing-bootstrap/static-route cases"
+    ],
+    "review": "Native root self-review; no final independent review claimed while specialist is usage-limited.",
+    "scope": "EXPLICIT_CLIENT_AND_MAIN_BOOTSTRAP; common-renderer/module migration remains open",
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "a3ed08ae1b353ed4fb06592ee620dbf93d48a0ed4c14015058e498fadba4e3c2",
+      "icarus_engine/dashboard.html": "0ddc3ad3da88507df7f960b82cd9aba424f4e2b1f8563ed1b8b14a5d6a2f19ef",
+      "icarus_engine/server.py": "b37990ca2f0ca1e9bf27208325bd11a44c87072f700944008bb5ec85c681af9e",
+      "icarus_engine/workspace-client.js": "a984d06565ad7d3b2039a173701f4870e785462f803bd5d153619bb8a3eed802",
+      "tests_engine/test_dashboard_js.py": "9771561f31b32a05c6aef2d58f5d27d30b7db9f385dc2dc4d0aefd84a94057ff",
+      "tests_engine/test_workspace_api.py": "8736d195966b0d78f41557a4adf1897e6fafc5555601269065d35e6ebe0a4bbd",
+      "tests_engine/test_workspace_client.py": "0acea76f661dec1d1d8dfed3a5f801e3231ff088ee78db3915b3c95ae4b72915"
+    },
+    "windows_selection": {
+      "current_client_head_execution": "pending publication",
+      "modules": 71,
+      "yaml_and_paths": "valid/no_duplicates"
+    }
   }
 }

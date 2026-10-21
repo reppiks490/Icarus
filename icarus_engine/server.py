@@ -222,6 +222,25 @@ COMMANDS = [
 
 def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: bool = True):
     html_path = Path(__file__).parent / "dashboard.html"
+
+    def dashboard_html(workspace_id):
+        if workspace_id not in {"main", "cc1", "cc2", "cc3", "cc4"}:
+            raise ValueError("unknown dashboard context")
+        capabilities = {"paper_only": workspace_id != "main", "execution_authorized": False,
+                        "scoped_trading": workspace_id != "main",
+                        "parent_runtime_panels": workspace_id == "main"}
+        # Identity/capabilities are server constants, never query/body/token data.
+        encoded = json.dumps({"id": workspace_id, "capabilities": capabilities}).replace("<", "\\u003c")
+        bootstrap = ('<script id="icarus-workspace-bootstrap">'
+                     f'const icContext={encoded};Object.freeze(icContext.capabilities);Object.freeze(icContext);'
+                     'Object.defineProperty(window,"IcarusWorkspace",{value:icContext,writable:false,configurable:false});'
+                     '</script>')
+        html = html_path.read_bytes()
+        marker = b"<!-- ICARUS_WORKSPACE_BOOTSTRAP -->"
+        if html.count(marker) != 1:
+            raise RuntimeError("dashboard context bootstrap marker is unavailable")
+        return brand.render(html.replace(marker, bootstrap.encode("utf-8")))
+
     access_registry = AccessRegistry(port.base_dir or os.getcwd(), token)
     meta = load_meta()
     research = ResearchWorkspace(port)
@@ -1570,7 +1589,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 snapshot["input_meta"] = meta
                 return self._json(200, snapshot)
             if p.path == "/":
-                return self._send(200, brand.render(html_path.read_bytes()), "text/html")
+                return self._send(200, dashboard_html("main"), "text/html")
+            if p.path == "/workspace-client.js":
+                return self._send(200, (html_path.parent / "workspace-client.js").read_bytes(), "text/javascript")
             if p.path == "/research-ui.js":
                 return self._send(200, (html_path.parent / "research-ui.js").read_bytes(), "text/javascript")
             if p.path == "/shadow-twin-ui.js":

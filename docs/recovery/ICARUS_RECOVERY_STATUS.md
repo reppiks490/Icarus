@@ -138,6 +138,17 @@ ambiguous. No such installation collision has been observed on the PC yet.
     review was interrupted by its usage limit after confirming all three reported
     corrections; root inspected the diff and completed the full runtime suite.
 
+12. **Explicit browser context — client and main bootstrap verified.**
+    A frozen server identity initializes before every linked UI module. The
+    client explicitly selects reads, controls, revisioned configuration, frozen
+    jobs, comparisons, authenticated CSV and full-page navigation. It rejects
+    mismatched identities/revisions and obsolete responses; cancellation and
+    deadlines cannot fall back to main. A real Chromium startup check passed.
+    The four CC renderers and legacy module calls still require migration.
+    Per-asset edits currently replay unrelated runners inside that workspace;
+    selected replay and an explicit scoped rewarm operation are the next repairs.
+    This source observation does not explain the reported accuracy decline.
+
 ## Conditions for a meaningful restart
 
 All rows must have current evidence before a restart is called ready.
@@ -188,6 +199,11 @@ disabled. Resetting or flattening positions is not a panel refresh.
   was reproduced and the genuine offline warmup fixture corrected. Current-head
   hosted Windows results remain pending. Independent review confirmed all three
   reported fixes; its final whole-diff check stopped at a usage limit.
+- Context client and main bootstrap: **3,671 passed, four skipped, 111 subtests**
+  in228.09s; focused191passed, real Chromium startup1passed. Root inspected the
+  client; no independent final approval is claimed. Backend checkpointce6a15f
+  passed all four hosted workflows, including Linux/Windows tests39595854165.
+  Current client-head hosted execution remains a separate pending result.
 - Divine Providence: hub suite exit 0 (165 collected cases); all **12 subsystem
   suites** passed, totaling **2,179 passed test cases**. All 12 compile checks,
   five ASCENSION adversarial scripts and ten hub connection fixtures passed.

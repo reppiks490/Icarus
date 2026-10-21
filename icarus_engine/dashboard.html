@@ -168,6 +168,20 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
 
 <div class="pal" id="pal"><div class="box"><input id="palq" placeholder="Type a command… (pause NQ, flatten, inputs GC, add ES, export …)"><div id="palList"></div></div></div>
 
+<!-- ICARUS_WORKSPACE_BOOTSTRAP -->
+<script src="/workspace-client.js"></script>
+<script>
+Object.defineProperty(window, 'IcarusClient', {
+  value: IcarusWorkspaceClient.create(window.IcarusWorkspace, {
+    origin: location.origin,
+    fetch: window.fetch.bind(window),
+    token: () => localStorage.getItem('icarus-engine-token') || '',
+  }),
+  writable: false,
+  configurable: false,
+});
+window.addEventListener('pagehide', () => window.IcarusClient.close(), {once:true});
+</script>
 <script src="/research-ui.js"></script>
 <script src="/sources-ui.js"></script>
 <script src="/market-data-ui.js"></script>

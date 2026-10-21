@@ -1,6 +1,9 @@
 """Real HTTP workspace reads and controls cannot select the parent portfolio."""
 import copy
 import json
+import re
+import shutil
+import subprocess
 import threading
 import time
 from collections import deque
@@ -563,3 +566,55 @@ def test_workspace_job_admission_io_failure_is_sanitized_unavailable(workspace_h
     assert manager._path("cc1").read_bytes() == saved
     assert manager.profiles["cc1"]["config_revision"] == 0
     assert _unaffected_state(server, parent) == before
+
+
+def test_main_dashboard_bootstrap_precedes_every_ui_module_without_exposing_token(workspace_http):
+    _, _, request = workspace_http
+    code, html, _ = request("/", raw=True)
+    assert code == 200
+    bootstrap = re.search(r'<script id="icarus-workspace-bootstrap">([\s\S]*?)</script>', html)
+    assert bootstrap, "main page must receive server-owned identity before UI scripts"
+    assert html.index(bootstrap.group(0)) < html.index('src="/workspace-client.js"') < html.index('src="/research-ui.js"')
+    assert html.index('window.IcarusClient') < html.index('src="/research-ui.js"')
+    assert "api-owner" not in html
+    if shutil.which("node"):
+        script = "const vm=require('node:vm'),assert=require('node:assert/strict'),w={};w.window=w;vm.runInNewContext(" + json.dumps(bootstrap.group(1)) + ",w);assert.equal(w.IcarusWorkspace.id,'main');assert(Object.isFrozen(w.IcarusWorkspace));assert(Object.isFrozen(w.IcarusWorkspace.capabilities));assert.equal(Object.getOwnPropertyDescriptor(w,'IcarusWorkspace').writable,false);"
+        result = subprocess.run([shutil.which("node"), "-e", script], capture_output=True, text=True, timeout=10)
+        assert result.returncode == 0, result.stderr
+
+
+def test_client_static_route_and_dedicated_pages_remain_available_before_renderer_migration(workspace_http):
+    _, _, request = workspace_http
+    code, source, headers = request("/workspace-client.js", raw=True)
+    assert code == 200 and "IcarusWorkspaceClient" in source and "javascript" in headers["Content-Type"]
+    for profile in ("cc1", "cc2", "cc3", "cc4"):
+        code, html, _ = request("/dashboards/" + profile, raw=True)
+        assert code == 200 and 'src="/workspace-dashboard.js"' in html
+
+
+def test_main_context_initializes_in_real_browser_before_status_reads(workspace_http):
+    playwright = pytest.importorskip("playwright.sync_api")
+    server, _, _ = workspace_http
+    errors = []
+    base = f"http://127.0.0.1:{server.server_port}"
+    with playwright.sync_playwright() as runtime:
+        try:
+            browser = runtime.chromium.launch(headless=True, executable_path=shutil.which("chromium"))
+        except playwright.Error as error:
+            pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
+        try:
+            page = browser.new_page(viewport={"width": 1440, "height": 1000}, reduced_motion="reduce")
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.route("**/*", lambda route: route.continue_() if route.request.url.startswith(base + "/") else route.abort())
+            page.add_init_script("localStorage.setItem('icarus-engine-token','api-owner')")
+            page.goto(base + "/", wait_until="load")
+            state = page.evaluate("""async () => ({
+              id: window.IcarusClient.context.id,
+              frozen: Object.isFrozen(window.IcarusWorkspace) && Object.isFrozen(window.IcarusClient),
+              status: await window.IcarusClient.read('status'),
+            })""")
+            assert state["id"] == "main" and state["frozen"]
+            assert next(a for a in state["status"]["assets"] if a["symbol"] == "NQ")["price"] == 900
+            assert not errors, errors
+        finally:
+            browser.close()

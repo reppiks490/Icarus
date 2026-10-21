@@ -57,9 +57,9 @@ JSON calls throw a typed `WorkspaceClientError` for HTTP errors, unavailable ope
 
 **Interfaces:** The server injects immutable `window.IcarusWorkspace` before `/workspace-client.js` and every linked UI module. The main route receives `{id:'main', capabilities:...}`. The factory is instantiated once as `window.IcarusClient` with the original native fetch transport and existing token getter. Bootstrap contains no token or operator-private configuration. Serve the static client route. CC routes retain their dedicated renderer until the following renderer-integration plan is complete.
 
-- [ ] Write failing real HTTP bootstrap-order, identity, no-token and static-client route cases, plus a Node/browser-compatible initialization check.
-- [ ] Run the new cases, implement server injection and early initialization, then require green with dashboard/auth/route checks.
-- [ ] Verify current UI behavior remains unchanged while the explicit client is available. Record fresh source hashes and reviewed branch receipts.
+- [x] Write failing real HTTP bootstrap-order, identity, no-token and static-client route cases, plus a Node/browser-compatible initialization check.
+- [x] Run the new cases, implement server injection and early initialization, then require green with dashboard/auth/route checks.
+- [x] Verify current UI behavior remains unchanged while the explicit client is available. Record fresh source hashes and reviewed branch receipts.
 
 ## Following integration boundary
 
@@ -70,3 +70,5 @@ The approved specification still requires all runtime and separate-module caller
 Native execution continues under the owner's approved design and repeated explicit continue instruction; no new routine approval is pending. The earlier execution ledger already records that preference. Review helpers stopped at their reported usage limits; do not replace that missing final review with an invented approval. Keep Icarus2's separate federation cycle and all stopped automation boundaries intact.
 
 Task1 evidence: initial missing-client RED1failure; initial13Node behavior cases green. Self-review reproduced2CSV/native-preset defects and2admission-receipt revision defects, then fixed them. Current client17cases plus existing dashboard JS checks passed86tests in2.23s; direct node --check also passed after adding the parse selection. No renderer switch or final independent reviewer approval is implied.
+
+Task2 evidence:2missing-bootstrap/static-route failures observed before implementation; client/API/dashboard/command-center selection191passed in65.08s. Real Chromium startup1passed (installed /usr/bin/chromium; default Playwright browser cache absent), confirming frozen main context, authenticated main source900 and no page errors. Fresh full suite3671passed,4skipped,111subtests in228.09s, exit0. Dedicated CC pages remain until the following renderer migration. Root self-review only; independent reviewer remains unavailable at its prior usage limit.
