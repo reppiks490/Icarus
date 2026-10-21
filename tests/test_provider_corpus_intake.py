@@ -278,9 +278,15 @@ def test_opt_in_requested_families_warm_exact_full_and_micro_corpora_on_all_four
     assert report["market_validation"] is report["execution_authorized"] is False
 
 
-def test_default_corpus_receipt_preserves_original_schema_and_unexpanded_profiles(tmp_path):
-    from icarus_engine.paper_workspaces import _PROFILE_DEFAULTS
-    from tools.provider_corpus_intake import main
+def test_default_corpus_receipt_preserves_original_schema_and_unexpanded_profiles(tmp_path, monkeypatch):
+    import copy
+    from tools import provider_corpus_intake as intake
+    # Keep CL outside this fixture's baseline even when operator defaults expand.
+    baseline = copy.deepcopy(intake._PROFILE_DEFAULTS)
+    for profile in baseline:
+        profile["assets"] = ["NQ"]
+    monkeypatch.setattr(intake, "_PROFILE_DEFAULTS", baseline)
+    main = intake.main
     args, report, _, _ = _bundle(tmp_path, filename="databento_cl_5m.csv.gz")
     assert main(args) == 0
     result = json.loads(report.read_text())
@@ -289,6 +295,6 @@ def test_default_corpus_receipt_preserves_original_schema_and_unexpanded_profile
         "consumption_purposes", "execution_authorized", "production_decision_authorized", "market_validation",
         "raw_payloads_included"}
     assert not result["paper_warmup_used"]
-    for workspace, default in zip(result["workspaces"], _PROFILE_DEFAULTS):
+    for workspace, default in zip(result["workspaces"], baseline):
         assert workspace["assets"] == []
         assert set(workspace["unavailable_assets"]) == set(default["assets"])

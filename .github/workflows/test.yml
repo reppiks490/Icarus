@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: "22"
       - run: pip install -e ".[dev,ml,bridge,databento]" "cryptography>=44,<47"
-      - run: python -m pytest tests_engine -q
+      - run: python -m pytest tests_engine tests/test_provider_corpus_intake.py -q
         env:
           TZ: UTC
       - run: python -m icarus_plant --root /tmp/icarus-plant-ci setup
@@ -118,6 +118,9 @@ jobs:
           tests_engine/test_workspace_dashboard_browser.py
           tests_engine/test_workspace_performance.py
           tests_engine/test_workspace_market_data.py
+          tests_engine/test_restart_persistence.py
+          tests_engine/test_as_is_launcher.py
+          tests/test_provider_corpus_intake.py
           -q
         env:
           TZ: UTC

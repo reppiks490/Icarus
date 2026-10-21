@@ -1,6 +1,11 @@
 # Icarus recovery status
 
-**Restart decision: NO-GO.** This is the current recovery record for Icarus 1 and
+**Current operator commands: [START_HERE.md](../../START_HERE.md).** The owner has
+requested a limited as-is paper launch despite remaining full-readiness gaps.
+The tested launcher preserves a chosen existing private root and requires explicit
+feed/assets; this cloud session cannot start the owner’s PC.
+
+**Full recovery restart decision: NO-GO.** This is the current recovery record for Icarus 1 and
 Icarus 2. A full restart has not been performed. Source inspection,
 engineering tests, hosted automation and the owner's PC runtime are separate
 evidence levels. No source-only result establishes that the PC is repaired.
@@ -316,6 +321,27 @@ owner's saved configuration, all licensed history, live consumers or a recovered
 accuracy result. Optional local skips are listed per phase. Main and CC1–CC4 now
 share the renderer; unavailable panels remain explicit unfinished integrations.
 
+## Current as-is operator delivery
+
+The owner subsequently authorized prioritizing a usable current paper startup
+without claiming full readiness. [START_HERE.md](../../START_HERE.md) is the
+canonical full PC/Git Bash command page; README, COMMANDS and SETUP point to it.
+The launcher requires explicit feed/main assets, verifies its source/interpreter,
+uses the chosen existing private root, refuses an occupied port without killing
+another process and opens the browser under an owned foreground supervisor.
+A stopped-state backup and separate source worktree preserve rollback; a saved
+local shortcut works without an active ChatGPT session.
+
+This phase passed **3,852 tests, four skipped, 111 subtests** in423.13s, exit0,
+with five changed source/test/workflow paths frozen. Four launcher regressions
+passed after failing first. Actual contained shell→plant→engine startup served
+all five identities and the four-ledger API, then owned shutdown exited0.
+Icarus2's exact reviewed463/464 test blobs are incorporated, with their paths
+included in the intended Windows coverage. This is cloud/synthetic evidence,
+not a PC restart, cold Windows install, sustained service or open-position
+recovery certificate. No broker was armed. See the evidence inventory for source
+and log hashes, prior canceled visual result and separate Icarus2 browser proof.
+
 ## Next-worker handoff
 
 Icarus 1 retains runtime recovery/release judgment and this evidence record.
@@ -332,3 +358,5 @@ heads with the recorded runtime baseline, preserve required independent research
 and record whether each change remains required, is already integrated, needs a
 rebase or has an external blocker. The open-PR inventory is discovery evidence;
 unreviewed entries remain unreviewed.
+
+The bounded next-work list is [Icarus2 remaining-access continuation](ICARUS2_NEXT_12_DAYS.md). Keep the as-is launch separate from full-system NO_GO.

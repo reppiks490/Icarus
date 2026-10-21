@@ -1,4 +1,108 @@
 {
+  "as_is_operator_delivery": {
+    "actual_launcher": {
+      "containment": "Inherited Python audit hook rejects ordinary nonloopback DNS/connect and credential file opens. This is not an OS network sandbox or proof of zero attempted activity; file feed selected.",
+      "details": "Actual new shell wrapper -> foreground plant -> engine, five real HTML identities and four-ledger API paper authority, owned SIGINT shutdown exited0. Temporary synthetic root; no owner-PC state.",
+      "exit_code": 0,
+      "launcher_log": {
+        "local_log": "/workspace/scratch/as-is-actual-launcher.log",
+        "log_sha256": "c9df6b65627d692797f0c676e19fac1f895f4193b659a8132f02f2036af62fa4",
+        "result": "  dashboard live: http://127.0.0.1:36731/  token=icarus"
+      },
+      "limits": "Brief startup/shutdown observation, not sustained operation, open-position recovery or verified background integrations.",
+      "local_log": "/workspace/scratch/as-is-actual-smoke.log",
+      "log_sha256": "518695232ccd9db24451e2526c4e20e2939f75ef3542b7a6fe4615a85303ce64",
+      "result": "launcher_exit 0"
+    },
+    "behavior": [
+      "Canonical START_HERE.md plus README/COMMANDS/SETUP pointers; separate source worktree and stopped-state private backup preserve original checkout/data.",
+      "Explicit feed and main assets, checkout virtualenv, package-origin/version/root readback, saved-profile count, occupied-port refusal without killing, foreground owned shutdown, browser startup.",
+      "Saved local one-command shortcut, all five trading URLs/Connections, status/configuration/export/import/help/diagnostic/rollback commands; local core independent of ChatGPT session.",
+      "Reviewed Icarus2 test-only463/464 exact blobs incorporated; root fixture and restart regression added to intended Windows selection and root fixture also Linux."
+    ],
+    "focused": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/as-is-startup-focused.log",
+      "log_sha256": "de83694ead8029c5ec8358f66096afd376a2c9063c7d57c888d85e4c0fceec15",
+      "result": "59 passed, 1 skipped in 15.53s"
+    },
+    "full_suite": {
+      "command": "python -m pytest tests_engine tests/test_provider_corpus_intake.py -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/as-is-final-full.log",
+      "log_sha256": "9d521455acaec5afcd5322aaf54659c0f5fe54f0dba7a6de9657558ada5f593f",
+      "result": "3852 passed, 4 skipped, 111 subtests passed in 423.13s (0:07:03)",
+      "status": "completed"
+    },
+    "full_system_restart_performed": false,
+    "handoff": "docs/recovery/ICARUS2_NEXT_12_DAYS.md",
+    "icarus2_later_receipts": {
+      "actual_browser": "43passed, no skips;4API/browser cases; Shadow Twin/Depth/Cinema/world contracts exited0 on2a production bytes.",
+      "freshness": "Actual-clock handshake passed2026-10-21T20:36:16.179183+00:00 against Enginee4b69a; separate timed observation, not permanent freshness.",
+      "handoff": "icarus-owner-actions:coordination/handoffs/icarus2-restart-verification-20261021.md",
+      "persistence": "Two clean synthetic cloud process lifecycles and actual file-fed plant startup/shutdown; not owner-PC or sustained service proof."
+    },
+    "incorporated_test_blobs": {
+      "tests/test_provider_corpus_intake.py": "fcfa344689dc8690b47a7b5fbe7ee44d69929505",
+      "tests_engine/test_restart_persistence.py": "2f5b1177cc53491dc2867665f0311c8111311732"
+    },
+    "launcher_regression_green": {
+      "local_log": "/workspace/scratch/as-is-launcher-green.log",
+      "log_sha256": "b4e6716fbd6745e8531d806d530757d7b2e907a881718c8369d92405a53c4ebc",
+      "result": "4 passed in 0.25s"
+    },
+    "launcher_regression_red": {
+      "local_log": "/workspace/scratch/as-is-launcher-red.log",
+      "log_sha256": "5ddffb1c72e956c67555723a82d370e45d68e1b892390dd0eade3e0f745f3f7c",
+      "result": "4 failed in 0.12s"
+    },
+    "limits": [
+      "Actual operator PC has no connection to this cloud session. User must run the published local command.",
+      "No claim all adapters/accounts/entitled sources/accuracy or sustained operation is complete.",
+      "Open in-memory position recovery not certified; capture before stopping; never flatten merely to make restart pass.",
+      "No release code-main merge, provider purchase, credential publication or live execution."
+    ],
+    "live_broker_arming": false,
+    "operator_pc_restarted": false,
+    "operator_runbook": "START_HERE.md",
+    "owner_direction": "Prioritize a standalone current as-is paper launch and prominent complete GitHub command guide; preserve full-readiness gaps and Icarus2 continuation.",
+    "preceding_2a_hosted": {
+      "head": "2a2ec2a21a2426697259fd227b4c5db57d985bfb",
+      "historical_handshake": {
+        "cause": "packet age3073.677s exceeded1800s; no weakened guard or rerun.",
+        "conclusion": "failure",
+        "run": 39654368024
+      },
+      "other_five_workflows": "success",
+      "tests": {
+        "linux": "success",
+        "run": 39654368046,
+        "windows": "success"
+      },
+      "visual": {
+        "conclusion": "cancelled",
+        "limit": "At required five-route browser step; cancellation cause not established.",
+        "run": 39654368099
+      }
+    },
+    "public_documentation_publication": "Requested default-main command guide and README pointer; runtime source remains recovery branch, no code-main merge.",
+    "recorded_at_utc": "2026-10-21T22:22:58.765562+00:00",
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "7506364684ec46db3f599f2a9e1b1bf595770c18e86d47759dd05b3e07c3fe76",
+      "scripts/start-as-is.sh": "2149b13fe47782694ea6c518c70c7591d4bed2e4a1e15a529d2f2f0668f800d2",
+      "tests/test_provider_corpus_intake.py": "37c1c0bf56870597d9b56c8cf9c71fd07332763772453e4e51ffb87aaa349952",
+      "tests_engine/test_as_is_launcher.py": "b0919620e32d4728c35b438ef8680530e6986d09ebce9309d90c53b343bc1dd4",
+      "tests_engine/test_restart_persistence.py": "3ef8476a296a839497fac1747eb652f1a1f1f1653f837fce5b2cb09119dd6aa4"
+    },
+    "source_parent": "2a2ec2a21a2426697259fd227b4c5db57d985bfb",
+    "source_review": "Root native launcher/docs review. Icarus2 independently reviewed its two test-only deltas; no fresh independent whole-branch clearance claimed.",
+    "windows_ci_selection": {
+      "all_paths_and_yaml_valid": true,
+      "limit": "Shell harness skips on Windows; actual PC/Git Bash cold setup remains unobserved. New head hosted results remain separate.",
+      "test_paths": 79
+    }
+  },
+  "as_is_paper_startup_authorized": true,
   "chart_paging_followup": {
     "focused_green": {
       "command": "python -m pytest tests_engine/test_workspace_chart_routes.py tests_engine/test_command_center_routes.py tests_engine/test_chart_history_pagination.py tests_engine/test_workspace_performance_routes.py tests_engine/test_paper_workspaces_runtime.py",
@@ -937,6 +1041,7 @@
     "Required hosted checks on proposed release refs and fresh results for previously rejected workflow attempts",
     "Exact-head disposition of every relevant open PR/workstream"
   ],
+  "operator_pc_runtime_restarted": false,
   "owner_pc_runtime_observed": false,
   "persisted_pnl_validation_followup": {
     "behavior": [

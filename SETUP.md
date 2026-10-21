@@ -1,5 +1,7 @@
 # Setup (dummy list)
 
+**Current PC / Git Bash startup and complete command guide: [START_HERE.md](START_HERE.md).** Use the recovery branch for the updated five-dashboard version.
+
 <!-- Grok (xAI) — 2026-09-20. Whole file. Do this on your PC, not in Grok. -->
 
 You are setting up **Brain B** (the Python engine). The CSV is its market.
