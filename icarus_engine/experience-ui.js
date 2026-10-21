@@ -215,9 +215,16 @@
       const top = placeAbove
         ? Math.max(12, anchor.top - height - 8)
         : Math.max(12, Math.min(anchor.bottom + 8, window.innerHeight - height - 12));
-      settingsPanel.style.setProperty('--settings-left', `${left}px`);
+      // A filtered/transformed sticky header can contain fixed descendants.
+      // Measurements above are viewport coordinates; CSS inset values are
+      // relative to that containing block's padding edge instead.
+      const container = settingsPanel.offsetParent;
+      const origin = container?.getBoundingClientRect();
+      const originLeft = origin ? origin.left + container.clientLeft - container.scrollLeft : 0;
+      const originTop = origin ? origin.top + container.clientTop - container.scrollTop : 0;
+      settingsPanel.style.setProperty('--settings-left', `${left - originLeft}px`);
       settingsPanel.style.setProperty('--settings-right', 'auto');
-      settingsPanel.style.setProperty('--settings-top', `${top}px`);
+      settingsPanel.style.setProperty('--settings-top', `${top - originTop}px`);
     };
     settings.addEventListener('toggle', () => {
       if (settings.open) requestAnimationFrame(() => requestAnimationFrame(placeSettingsPanel));

@@ -651,6 +651,35 @@ def test_workspace_rewarm_refuses_invalid_revision_or_body_scope(workspace_http,
     assert not server.workspace_jobs._jobs and _unaffected_state(server, parent) == before
 
 
+def test_settings_desktop_placement_accounts_for_fixed_containing_header(workspace_http):
+    playwright = pytest.importorskip("playwright.sync_api")
+    server, _, _ = workspace_http
+    with playwright.sync_playwright() as runtime:
+        try:
+            browser = runtime.chromium.launch(headless=True, executable_path=shutil.which("chromium"))
+        except playwright.Error as error:
+            pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
+        try:
+            page = browser.new_page(viewport={"width": 800, "height": 600}, reduced_motion="reduce")
+            base = f"http://127.0.0.1:{server.server_port}"
+            page.route("**/*", lambda route: route.continue_() if route.request.url.startswith(base + "/") else route.abort())
+            page.add_init_script("localStorage.setItem('icarus-engine-token','api-owner');sessionStorage.setItem('icarus-intro-seen','1')")
+            page.goto(base + "/", wait_until="load")
+            # A filtered/transformed header establishes the fixed drawer's
+            # containing block. Its origin need not coincide with the viewport.
+            page.add_style_tag(content=".top{position:relative!important;margin:41px 0 0 31px!important;transform:translateZ(0)!important}")
+            page.locator(".experience-settings summary").click()
+            page.wait_for_function("()=>document.querySelector('.experience-settings > div').style.getPropertyValue('--settings-left') !== ''")
+            panel = page.locator(".experience-settings > div").bounding_box()
+            trigger = page.locator(".experience-settings summary").bounding_box()
+            assert panel and trigger
+            assert panel["x"] >= 12 and panel["x"] + panel["width"] <= 788, panel
+            assert panel["y"] >= 12 and panel["y"] + panel["height"] <= 588, panel
+            assert panel["y"] >= trigger["y"] + trigger["height"] or panel["y"] + panel["height"] <= trigger["y"], (panel, trigger)
+        finally:
+            browser.close()
+
+
 def test_settings_resize_uses_mobile_geometry_when_viewport_callbacks_are_delayed(workspace_http):
     playwright = pytest.importorskip("playwright.sync_api")
     server, _, _ = workspace_http

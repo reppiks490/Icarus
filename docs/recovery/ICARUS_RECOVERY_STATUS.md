@@ -13,6 +13,13 @@ session `icarus1-20261020-system-recovery`. Icarus 2 registered separately as
 Its first PLAN explicitly preserves Icarus 1's runtime recovery paths and claims
 nonoverlapping federation/integration work. Registration is not completion.
 
+Current context-guard checkpoint `d3a1720` passed hosted runtime tests and four
+contracts; its browser visual check failed on desktop settings placement. A
+nonzero containing-header origin reproduces the overflow. The coordinate repair
+passes both deterministic desktop/mobile cases and the unchanged cinema contract
+locally. Fresh hosted visual confirmation is pending; common-renderer Tasks2–4
+remain open. Exact phase receipts are in the evidence inventory.
+
 ## Verified starting point
 
 The [evidence inventory](recovery-evidence.json) records exact inspected revisions,

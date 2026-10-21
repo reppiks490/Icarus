@@ -50,6 +50,32 @@
       "workflow_sha256": "a04f2e28bcc8b13e844104f0db18fa1ca28a3049a917744adea292f7f996b0d1"
     }
   },
+  "desktop_settings_followup": {
+    "behavior": "Convert viewport drawer coordinates to fixed containing-header padding-edge coordinates; preserve desktop CSS variables/mobile media geometry.",
+    "checks": [
+      {
+        "local_log": "/workspace/scratch/settings-desktop-red.log",
+        "log_sha256": "27f28326304e8c15212bdadf1daabd0762332ccf4437844a5aff18b30b0f0e87",
+        "result": "1 failed geometry before fix"
+      },
+      {
+        "local_log": "/workspace/scratch/settings-placement-green.log",
+        "log_sha256": "99db33d5c94c6f7da021687c7391181685cc33299c5435b1c861e2db3be3ec87",
+        "result": "2 passed desktop/mobile"
+      },
+      {
+        "local_log": "/workspace/scratch/desktop-placement-cinema.log",
+        "log_sha256": "1366c744df7c423339d85c8ad2908c90161c326edcbee33c4e10d7f8163e0b24",
+        "result": "unchanged cinema passed; errors[]; writes[]"
+      }
+    ],
+    "limits": [
+      "Local browser evidence; new hosted visual verification pending.",
+      "No original cinema assertions or waits relaxed; no PC restart or live activation."
+    ],
+    "regression": "Transformed header with nonzero origin reproduced bottom672px in600px viewport before correction.",
+    "source_parent": "d3a17207df07ff4ca878a25db787f8ec1e62fae2"
+  },
   "external_tool_state": {
     "firecrawl": "HTTP_402_INSUFFICIENT_CREDITS; requested lookup did not run; no retry or purchase"
   },
@@ -3225,6 +3251,20 @@
       "local_log": "/workspace/scratch/workspace-context-guard-full.log",
       "log_sha256": "97e23129f92b2bce45cbe1a2c0cab793d448e81eaa8908b5da1b0ac5d929a64f",
       "result": "3736passed,4skipped,111subtests in252.16s"
+    },
+    "hosted_verification": {
+      "head": "d3a17207df07ff4ca878a25db787f8ec1e62fae2",
+      "other_contracts": "4 success",
+      "tests": {
+        "conclusion": "success",
+        "run": 39609414673
+      },
+      "visual": {
+        "assertion": "browser_cinema.cjs:176 settings bottom629 in600px viewport",
+        "conclusion": "failure",
+        "job": 119254022392,
+        "run": 39609414779
+      }
     },
     "limits": [
       "Typed core renderer/module migration and CC common HTML switch remain pending.",
