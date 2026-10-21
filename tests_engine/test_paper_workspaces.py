@@ -1,6 +1,7 @@
 import copy
 import sqlite3
 import threading
+import time
 from types import SimpleNamespace
 from http.server import ThreadingHTTPServer
 
@@ -11,6 +12,57 @@ from icarus_engine.assets import REGISTRY as ASSET_REGISTRY
 from icarus_engine.pine.timeframe import Bar
 from icarus_engine.runtime import Inputs, Journal, Portfolio
 from icarus_engine.server import serve
+
+
+@pytest.mark.parametrize('fault',['valid','empty','null_profit','text_profit','future_close'])
+def test_invalid_persisted_closure_cannot_become_complete_combined_pnl(tmp_path,monkeypatch,fault):
+    from icarus_engine.workspace_performance import snapshot as performance
+    manager=_manager(tmp_path,monkeypatch);manager.start()
+    try:
+        now=int(time.time());journal=manager.portfolios['cc1'].journal
+        if fault!='empty':
+            profit=None if fault=='null_profit' else 'unknown' if fault=='text_profit' else 10.0
+            exit_ts=now+86400 if fault=='future_close' else now-1
+            with journal._lock:
+                journal.con.execute('INSERT INTO trades(symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,profit,live) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                                    ('NQ','persisted-boundary',1,1,100.0,now-60,101.0,exit_ts,profit,1))
+                journal.con.commit()
+        state=manager.snapshot();aggregate=state['paper_pnl']['aggregate']
+        detail=performance(journal,as_of_ts=now)
+        if fault in ['valid','empty']:
+            expected=10.0 if fault=='valid' else 0.0
+            assert aggregate['accounting_complete'] and aggregate['realized_pnl']==expected
+            assert detail['available'] and detail['realized_pnl']==expected
+        else:
+            assert not detail['available'] and detail['reason']=='INVALID_PERSISTED_TRADE'
+            assert not aggregate['accounting_complete'] and aggregate['realized_pnl'] is None,aggregate
+            row=next(p for p in state['profiles'] if p['id']=='cc1')
+            assert row['pnl']['reason']=='INVALID_PERSISTED_TRADE'
+            assert all(p['realized_pnl']==0 for p in state['paper_pnl']['profiles'] if p['id']!='cc1')
+    finally:
+        manager.stop()
+
+
+def test_persisted_closures_use_shared_snapshot_clock_when_wall_time_advances(tmp_path,monkeypatch):
+    manager=_manager(tmp_path,monkeypatch);manager.start()
+    try:
+        now=1_790_000_000
+        journal=manager.portfolios['cc1'].journal
+        with journal._lock:
+            journal.con.execute('INSERT INTO trades(symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,profit,live) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                                ('NQ','after-snapshot',1,1,100.0,now-60,101.0,now+1,10.0,1))
+            journal.con.commit()
+        calls=[]
+        def clock():
+            calls.append(True)
+            return now if len(calls)==1 else now+1000
+        monkeypatch.setattr(paper_workspaces.time,'time',clock)
+        state=manager.snapshot()
+        assert state['paper_pnl']['as_of_ts']==now
+        assert state['paper_pnl']['aggregate']['realized_pnl'] is None
+        assert not state['paper_pnl']['aggregate']['accounting_complete']
+    finally:
+        manager.stop()
 
 
 class _Parent:

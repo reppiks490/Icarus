@@ -39,6 +39,55 @@ def _sample(items, limit):
     return [items[i * (len(items) - 1) // (limit - 1)] for i in range(limit)]
 
 
+def read_persisted_trades(journal, *, as_of_ts):
+    """Validate every persisted paper closure before any accounting aggregation.
+
+    A malformed row invalidates this ledger, rather than being omitted or
+    coerced by SQL. Callers supply their common observation clock. The returned
+    rows are detached under the journal owner lock and contain all runs/symbols.
+    """
+    now = as_of_ts
+    if not _finite(now) or not 0 < now < 253402214400:
+        raise ValueError('as_of_ts must be finite positive UTC epoch seconds')
+    try:
+        with journal._lock:
+            if journal._closed:
+                return [], 'JOURNAL_CLOSED'
+            malformed_live = journal.con.execute(
+                "SELECT COUNT(*) FROM trades WHERE live IS NULL OR typeof(live)!='integer' OR live NOT IN (0,1)"
+            ).fetchone()[0]
+            if malformed_live:
+                return [], 'INVALID_LIVE_FLAG'
+            raw = journal.con.execute(
+                f"SELECT {','.join(_COLUMNS)} FROM trades WHERE live=1 ORDER BY exit_ts,id LIMIT ?",
+                (_MAX_ROWS + 1,)
+            ).fetchall()
+    except (sqlite3.Error, AttributeError):
+        return [], 'JOURNAL_READ_FAILED'
+    if len(raw) > _MAX_ROWS:
+        return [], 'LEDGER_TOO_LARGE'
+    trades = []
+    for values in raw:
+        row = dict(zip(_COLUMNS, values))
+        entry, exit_, profit = row['entry_ts'], row['exit_ts'], row['profit']
+        integer_fields = {'id': 1, 'qty': 1, 'piece': 0, 'run_id': 0,
+                          'lot_id': 0, 'entry_qty': 0, 'bars': 0}
+        invalid_integer = any(type(row[key]) is not int or row[key] < minimum
+                              for key, minimum in integer_fields.items())
+        if (invalid_integer
+                or type(row['direction']) is not int or row['direction'] not in (-1, 1)
+                or type(entry) is not int or type(exit_) is not int
+                or not _finite(profit) or not 0 < entry <= exit_ <= now
+                or any(not _finite(row[key])
+                       for key in ('entry_price', 'exit_price'))
+                or not isinstance(row['symbol'], str) or not row['symbol'].strip()
+                or not isinstance(row['entry_id'], str) or not row['entry_id'].strip()
+                or (row['exit_comment'] is not None and not isinstance(row['exit_comment'], str))):
+            return [], 'INVALID_PERSISTED_TRADE'
+        trades.append(row)
+    return trades, None
+
+
 def snapshot(journal, *, as_of_ts=None, capital=None, max_points=400, trade_limit=100):
     """Snapshot a runtime.Journal without writes or filtering by current assets.
 
@@ -82,23 +131,9 @@ def snapshot(journal, *, as_of_ts=None, capital=None, max_points=400, trade_limi
         ratios['reason'] = reason
         return result
 
-    try:
-        with journal._lock:
-            if journal._closed:
-                return unavailable('JOURNAL_CLOSED')
-            malformed_live = journal.con.execute(
-                "SELECT COUNT(*) FROM trades WHERE live IS NULL OR typeof(live)!='integer' OR live NOT IN (0,1)"
-            ).fetchone()[0]
-            if malformed_live:
-                return unavailable('INVALID_LIVE_FLAG')
-            raw = journal.con.execute(
-                f"SELECT {','.join(_COLUMNS)} FROM trades WHERE live=1 ORDER BY exit_ts,id LIMIT ?",
-                (_MAX_ROWS + 1,)
-            ).fetchall()
-    except (sqlite3.Error, AttributeError):
-        return unavailable('JOURNAL_READ_FAILED')
-    if len(raw) > _MAX_ROWS:
-        return unavailable('LEDGER_TOO_LARGE')
+    valid_trades, reason = read_persisted_trades(journal, as_of_ts=now)
+    if reason:
+        return unavailable(reason)
     trades = []
     daily = {}
     cumulative = 0.0
@@ -106,23 +141,8 @@ def snapshot(journal, *, as_of_ts=None, capital=None, max_points=400, trade_limi
     max_drawdown = 0.0
     curve = []
     profits = []
-    for values in raw:
-        row = dict(zip(_COLUMNS, values))
-        entry, exit_, profit = row['entry_ts'], row['exit_ts'], row['profit']
-        integer_fields = {'id': 1, 'qty': 1, 'piece': 0, 'run_id': 0,
-                          'lot_id': 0, 'entry_qty': 0, 'bars': 0}
-        invalid_integer = any(type(row[key]) is not int or row[key] < minimum
-                              for key, minimum in integer_fields.items())
-        if (invalid_integer
-                or type(row['direction']) is not int or row['direction'] not in (-1, 1)
-                or type(entry) is not int or type(exit_) is not int
-                or not _finite(profit) or not 0 < entry <= exit_ <= now
-                or any(not _finite(row[key])
-                       for key in ('entry_price', 'exit_price'))
-                or not isinstance(row['symbol'], str) or not row['symbol'].strip()
-                or not isinstance(row['entry_id'], str) or not row['entry_id'].strip()
-                or (row['exit_comment'] is not None and not isinstance(row['exit_comment'], str))):
-            return unavailable('INVALID_PERSISTED_TRADE')
+    for row in valid_trades:
+        exit_, profit = row['exit_ts'], row['profit']
         cumulative += profit
         if not math.isfinite(cumulative):
             return unavailable('NONFINITE_AGGREGATE')

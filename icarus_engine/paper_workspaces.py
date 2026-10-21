@@ -689,7 +689,7 @@ class PaperWorkspaceManager:
             readable = portfolio if acquired and not status.get("snapshot_unavailable") else None
             runners = readable.runner_list() if readable else []
             effective = runners[0].inputs_base.to_dict() if runners else {}
-            closed = portfolio.journal.closed_paper_profit() if portfolio else {"realized_pnl": 0.0, "closed_pieces": 0, "last_close_ts": None}
+            closed = portfolio.journal.closed_paper_profit(as_of_ts=now) if portfolio else {"realized_pnl": 0.0, "closed_pieces": 0, "last_close_ts": None}
             missing_marks = []
             for asset in status.get("assets", []):
                 if asset.get("position"):

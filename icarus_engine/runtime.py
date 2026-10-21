@@ -230,19 +230,26 @@ class Journal:
             self.con.execute("INSERT INTO equity VALUES (?,?)", (time.time(), equity))
             self.con.commit()
 
-    def closed_paper_profit(self) -> Dict[str, Any]:
-        """Persisted closures processed after the live paper cutover, across runs.
+    def closed_paper_profit(self, *, as_of_ts=None) -> Dict[str, Any]:
+        """Validated persisted closures after the paper cutover, across runs.
 
-        A trade can have entered during warmup and closed after cutover. This is
-        deliberately a closure-time measure, not a broker account statement.
+        A trade can enter during warmup and close after cutover. Invalid rows
+        make realized P&L unknown; an actually empty ledger remains zero.
         """
-        with self._lock:
-            profit, count, last_close = self.con.execute(
-                "SELECT COALESCE(SUM(profit), 0), COUNT(*), MAX(exit_ts) "
-                "FROM trades WHERE live=1"
-            ).fetchone()
-        return {"realized_pnl": float(profit), "closed_pieces": int(count),
-                "last_close_ts": int(last_close) if last_close is not None else None}
+        from .workspace_performance import read_persisted_trades
+        now = time.time() if as_of_ts is None else as_of_ts
+        rows, reason = read_persisted_trades(self, as_of_ts=now)
+        unknown = {"realized_pnl": None, "closed_pieces": None, "last_close_ts": None}
+        if reason:
+            return {**unknown, "reason": reason}
+        try:
+            profit = math.fsum(row['profit'] for row in rows)
+        except (OverflowError, ValueError):
+            return {**unknown, "reason": "NONFINITE_AGGREGATE"}
+        if not math.isfinite(profit):
+            return {**unknown, "reason": "NONFINITE_AGGREGATE"}
+        return {"realized_pnl": profit, "closed_pieces": len(rows),
+                "last_close_ts": rows[-1]['exit_ts'] if rows else None}
 
     def export_trades_csv(self, path: str, *, live_only: bool = False) -> int:
         with self._lock:

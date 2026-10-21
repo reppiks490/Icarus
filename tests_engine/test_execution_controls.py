@@ -140,7 +140,8 @@ def test_flatten_pending_only_cancels_intent_without_a_fill():
 def test_flatten_open_trade_cannot_fill_pending_reversal():
     r = make_runner()
     r.em.entry("Long", 1, 1)
-    r.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+    r.em.process_bar(Bar(60, 100, 100, 100, 100, 1), 0)
+    r.bar_index = 0
     r.strat.w_slot_queue = [0]
     r.strat.tod_hour_queue = [8]
     pending(r, -1)
