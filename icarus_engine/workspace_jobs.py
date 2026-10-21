@@ -131,6 +131,20 @@ class ScopedWorkspaceJobs:
                 raise WorkspaceJobError(404, "workspace preset not found")
         return candidate
 
+    @staticmethod
+    def _resolve_candidate(port, candidate, symbols=None):
+        # Admission reads configuration only, without constructing runners or
+        # fetching data. The committing transaction resolves/validates again.
+        with port._lock:
+            for selected in candidate["assets"] if symbols is None else symbols:
+                runner = port.runners.get(selected)
+                if runner is None:
+                    spec = copy.deepcopy(REGISTRY[selected])
+                else:
+                    with runner.lock:
+                        spec = copy.deepcopy(runner.cfg.base_spec or runner.spec)
+                port._resolved(spec, candidate)
+
     def submit_config(self, workspace_id, symbol, body):
         try:
             if not isinstance(body, dict):
@@ -150,18 +164,7 @@ class ScopedWorkspaceJobs:
             revision = self._revision(profile, params)
             try:
                 candidate = self._validate_config(profile, symbol, params)
-                # Resolve every affected candidate without constructing runners
-                # or fetching data, so invalid costs fail before a job exists.
-                # The committing transaction resolves and validates again.
-                with port._lock:
-                    for selected in candidate["assets"]:
-                        runner = port.runners.get(selected)
-                        if runner is None:
-                            spec = copy.deepcopy(REGISTRY[selected])
-                        else:
-                            with runner.lock:
-                                spec = copy.deepcopy(runner.cfg.base_spec or runner.spec)
-                        port._resolved(spec, candidate)
+                self._resolve_candidate(port, candidate)
             except OSError as error:
                 raise WorkspaceJobError(503, "workspace configuration files are unavailable") from error
             except (TypeError, ValueError, OverflowError) as error:
@@ -174,6 +177,34 @@ class ScopedWorkspaceJobs:
                 return self.manager.update_asset(workspace_id, symbol, copy.deepcopy(params))
 
             return self._accept("config", workspace_id, symbol, revision, params, work, identity)
+
+    def submit_rewarm(self, workspace_id, symbol, body):
+        if not isinstance(body, dict) or set(body) != {"expected_revision"}:
+            raise WorkspaceJobError(400, "rewarm accepts only expected_revision; scope belongs in the route")
+        params = copy.deepcopy(body)
+        try:
+            identity = "rewarm:" + json.dumps(params, sort_keys=True, allow_nan=False)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise self._bad_request(error) from error
+        existing = self._active_config(workspace_id, symbol, identity)
+        if existing is not None:
+            return existing
+        with self._configuration_lock(workspace_id):
+            profile, port, _runner = self._source(workspace_id, symbol, whole=True)
+            revision = self._revision(profile, params)
+            try:
+                selected = profile["assets"] if symbol == "*" else [symbol]
+                self._resolve_candidate(port, profile, selected)
+            except OSError as error:
+                raise WorkspaceJobError(503, "workspace configuration files are unavailable") from error
+            except (TypeError, ValueError, OverflowError) as error:
+                raise self._bad_request(error) from error
+
+            def work(_progress):
+                return self.manager.rewarm(workspace_id, None if symbol == "*" else symbol, copy.deepcopy(params))
+
+            return self._accept("config", workspace_id, symbol, revision,
+                                {"operation": "rewarm", **params}, work, identity)
 
     @staticmethod
     def _validate_cached(frozen, symbol, params):

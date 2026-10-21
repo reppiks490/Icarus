@@ -86,8 +86,10 @@ Interfaces: `WorkspacePortfolio.reconfigure(candidate, *, persist=None, force_sy
 
 HTTP: owner-only `/admin/command-centers/{id}/rewarm/async` and `/assets/{symbol}/rewarm/async`, with exact routes/query scope/body validation and typed conflicts. `IcarusClient.rewarm(asset_or_null, expectedRevision)` returns an accepted config-job receipt and preserves the caller's revision; main uses its existing `/admin/rewarm/async` contract. No renderer switch in this task.
 
-- [ ] Write/observe failing selected-asset configuration replay tests: NQ edits replay NQ once, ES's engine/cutover/cache stay untouched, whole-default edits replay both, an open sibling still prevents mutation.
-- [ ] Implement selective existing-runner plans inside the current transaction; verify existing cost, rollback, publication and concurrency regressions.
-- [ ] Write/observe missing rewarm tests for unchanged settings with real cached bars, one-asset versus whole scope, stale/missing revision, failures before/after persistence, parent/sibling file/journal safety and no provider calls.
-- [ ] Implement manager/service/HTTP/client rewarm with accepted-source identity and actual completion; verify config-job conflict/idempotency plus read/export ownership remain unchanged.
-- [ ] Run the relevant focused suites, root diff review and fresh full runtime suite before publishing the replay-control checkpoint. Keep final independent review availability explicit.
+- [x] Write/observe failing selected-asset configuration replay tests: NQ edits replay NQ once, ES's engine/cutover/cache stay untouched, whole-default edits replay both, an open sibling still prevents mutation.
+- [x] Implement selective existing-runner plans inside the current transaction; verify existing cost, rollback, publication and concurrency regressions.
+- [x] Write/observe missing rewarm tests for unchanged settings with real cached bars, one-asset versus whole scope, stale/missing revision, failures before/after persistence, parent/sibling file/journal safety and no provider calls.
+- [x] Implement manager/service/HTTP/client rewarm with accepted-source identity and actual completion; verify config-job conflict/idempotency plus read/export ownership remain unchanged.
+- [x] Run the relevant focused suites, root diff review and fresh full runtime suite before publishing the replay-control checkpoint. Keep final independent review availability explicit.
+
+Task3 final local verification:3699passed,4skipped,111subtests in231.52s, exit0; focused350passed. Root diff review completed; independent-review availability remains explicitly limited. Source/log hashes and preceding e9a33b7 six-workflow success are in recovery-evidence.json.

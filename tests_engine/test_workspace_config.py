@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from icarus_engine import paper_workspaces
+from icarus_engine.pine.timeframe import Bar
 
 
 @pytest.fixture
@@ -44,6 +45,110 @@ def _legacy(manager):
     raw = (json.dumps(value, separators=(",", ":")) + "\n\n").encode()
     manager._path("cc1").write_bytes(raw)
     return value, raw
+
+
+def _track_replays(monkeypatch, portfolio):
+    calls = []
+    for symbol, runner in portfolio.runners.items():
+        original = runner.rewarm
+        def recorded(*args, _symbol=symbol, _original=original, **kwargs):
+            calls.append(_symbol)
+            return _original(*args, **kwargs)
+        monkeypatch.setattr(runner, "rewarm", recorded)
+    return calls
+
+
+def test_asset_edit_preserves_unrelated_runner_engine_cutover_and_cached_views(manager_factory, monkeypatch):
+    manager = manager_factory(start=True)
+    portfolio = manager.portfolios["cc1"]
+    es = portfolio.runners["ES"]
+    es.live_from_ts = 1234
+    es.publish_read_views()
+    prior = (es.em, es.strat, es.inputs_base, es.live_from_ts, copy.deepcopy(es._public_views))
+    calls = _track_replays(monkeypatch, portfolio)
+    manager.update_asset("cc1", "NQ", {"expected_revision": 0, "inputs": {"tp1_pts": 17}})
+    assert calls == ["NQ"], "one asset edit must not replay its unrelated sibling"
+    assert es.em is prior[0] and es.strat is prior[1] and es.inputs_base is prior[2]
+    assert es.live_from_ts == prior[3] and es._public_views == prior[4]
+
+
+def test_batch_override_edit_replays_only_changed_admitted_symbols(manager_factory, monkeypatch):
+    manager = manager_factory(start=True)
+    manager.update_asset("cc1", "ES", {"expected_revision": 0, "inputs": {"tp1_pts": 33}})
+    portfolio = manager.portfolios["cc1"]
+    calls = _track_replays(monkeypatch, portfolio)
+    overrides = copy.deepcopy(manager.profiles["cc1"]["asset_overrides"])
+    overrides["NQ"] = {"inputs": {"tp1_pts": 17}}
+    manager.update("cc1", {"expected_revision": 1, "asset_overrides": overrides})
+    assert calls == ["NQ"]
+
+
+def test_workspace_default_edit_replays_all_existing_runners(manager_factory, monkeypatch):
+    manager = manager_factory(start=True)
+    calls = _track_replays(monkeypatch, manager.portfolios["cc1"])
+    manager.update("cc1", {"expected_revision": 0, "inputs": {"tp1_pts": 17}})
+    assert calls == ["NQ", "ES"]
+
+
+def test_unselected_open_sibling_still_blocks_asset_configuration(manager_factory, monkeypatch):
+    manager = manager_factory(start=True)
+    portfolio = manager.portfolios["cc1"]
+    es = portfolio.runners["ES"]
+    es.em.entry("guard", 1, 1)
+    es.em.process_bar(Bar(0, 100, 100, 100, 100, 1), 0)
+    assert es.em.open
+    calls = _track_replays(monkeypatch, portfolio)
+    before = manager._path("cc1").read_bytes()
+    with pytest.raises(ValueError, match="flat|open|pending"):
+        manager.update_asset("cc1", "NQ", {"expected_revision": 0, "inputs": {"tp1_pts": 17}})
+    assert not calls and manager._path("cc1").read_bytes() == before
+    assert manager.profiles["cc1"]["config_revision"] == 0
+
+
+@pytest.mark.parametrize("asset,expected", [("NQ", ["NQ"]), (None, ["NQ", "ES"])])
+def test_explicit_rewarm_replays_unchanged_selected_settings_once(manager_factory, monkeypatch, asset, expected):
+    manager = manager_factory(start=True)
+    portfolio = manager.portfolios["cc1"]
+    before = copy.deepcopy(manager.profiles["cc1"])
+    engines = {key: runner.em for key, runner in portfolio.runners.items()}
+    calls = _track_replays(monkeypatch, portfolio)
+    result = manager.rewarm("cc1", asset, {"expected_revision": 0})
+    assert calls == expected and result["rewarmed_assets"] == expected
+    assert result["config_revision"] == 1
+    after = manager.profiles["cc1"]
+    assert {k: v for k, v in after.items() if k != "config_revision"} == {k: v for k, v in before.items() if k != "config_revision"}
+    assert json.loads(manager._path("cc1").read_text())["config_revision"] == 1
+    for key, runner in portfolio.runners.items():
+        assert (runner.em is not engines[key]) == (key in expected)
+
+
+@pytest.mark.parametrize("body", [{}, {"expected_revision": True}, {"expected_revision": 9},
+                                 {"expected_revision": 0, "asset": "ES"}, {"expected_revision": 0, "inputs": {}}])
+def test_rewarm_rejects_revision_and_scope_before_replay(manager_factory, monkeypatch, body):
+    manager = manager_factory(start=True)
+    calls = _track_replays(monkeypatch, manager.portfolios["cc1"])
+    saved = manager._path("cc1").read_bytes()
+    with pytest.raises(ValueError):
+        manager.rewarm("cc1", "NQ", body)
+    assert not calls and manager._path("cc1").read_bytes() == saved
+    assert manager.profiles["cc1"]["config_revision"] == 0
+
+
+def test_explicit_rewarm_restores_selected_state_and_exact_file_after_replace_failure(manager_factory, monkeypatch):
+    manager = manager_factory(start=True)
+    portfolio = manager.portfolios["cc1"]
+    before = {symbol: runner.em for symbol, runner in portfolio.runners.items()}
+    saved = manager._path("cc1").read_bytes()
+    save = manager._save
+    def replace_then_fail(candidate):
+        save(candidate)
+        raise OSError("injected post-replace failure")
+    monkeypatch.setattr(manager, "_save", replace_then_fail)
+    with pytest.raises(OSError, match="post-replace"):
+        manager.rewarm("cc1", "NQ", {"expected_revision": 0})
+    assert manager._path("cc1").read_bytes() == saved
+    assert manager.profiles["cc1"]["config_revision"] == 0
+    assert all(runner.em is before[symbol] for symbol, runner in portfolio.runners.items())
 
 
 @pytest.mark.parametrize("cost,value", [("commission", -7), ("capital", 0),

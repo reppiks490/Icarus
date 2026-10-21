@@ -423,3 +423,40 @@ def test_real_configuration_jobs_in_two_workspaces_commit_independently(jobs_mod
     while jobs.get("cc1", first["job"])["status"] == "running" and time.monotonic() < deadline:
         time.sleep(.005)
     assert jobs.get("cc1", first["job"])["status"] == "done"
+
+
+def test_rewarm_job_reuses_active_request_and_commits_only_selected_runner(jobs_module, manager, deferred, monkeypatch):
+    jobs = jobs_module.ScopedWorkspaceJobs(manager)
+    port = manager.portfolios["cc1"]
+    before = port.runners["ES"].em
+    body = {"expected_revision": 0}
+    receipt = jobs.submit_rewarm("cc1", "NQ", body)
+    again = jobs.submit_rewarm("cc1", "NQ", body)
+    assert receipt["created"] is True and again["created"] is False and receipt["job"] == again["job"]
+    assert len(deferred.pending) == 1
+    _error(jobs_module, 409, lambda: jobs.submit_config("cc1", "NQ", {"expected_revision": 0, "inputs": {"tp1_pts": 17}}))
+    _error(jobs_module, 404, lambda: jobs.get("cc2", receipt["job"]))
+    deferred.run()
+    row = jobs.get("cc1", receipt["job"])
+    assert row["status"] == "done" and row["kind"] == "config" and row["config_revision"] == 0
+    assert row["result"]["config_revision"] == 1 and row["result"]["rewarmed_assets"] == ["NQ"]
+    assert port.runners["ES"].em is before
+
+
+@pytest.mark.parametrize("body,status", [({}, 400), ({"expected_revision": True}, 400),
+                                        ({"expected_revision": 1}, 409),
+                                        ({"expected_revision": 0, "asset": "ES"}, 400)])
+def test_rewarm_job_admission_is_revisioned_and_exact(jobs_module, manager, deferred, body, status):
+    jobs = jobs_module.ScopedWorkspaceJobs(manager)
+    _error(jobs_module, status, lambda: jobs.submit_rewarm("cc1", "NQ", body))
+    assert not jobs._jobs and not deferred.pending
+
+
+def test_rewarm_job_rechecks_revision_at_commit(jobs_module, manager, deferred):
+    jobs = jobs_module.ScopedWorkspaceJobs(manager)
+    receipt = jobs.submit_rewarm("cc1", "NQ", {"expected_revision": 0})
+    manager.update_asset("cc1", "ES", {"expected_revision": 0, "inputs": {"tp1_pts": 71}})
+    deferred.run()
+    row = jobs.get("cc1", receipt["job"])
+    assert row["status"] == "error" and "revision" in row["error"]
+    assert manager.profiles["cc1"]["config_revision"] == 1

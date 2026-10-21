@@ -145,9 +145,10 @@ ambiguous. No such installation collision has been observed on the PC yet.
     mismatched identities/revisions and obsolete responses; cancellation and
     deadlines cannot fall back to main. A real Chromium startup check passed.
     The four CC renderers and legacy module calls still require migration.
-    Per-asset edits currently replay unrelated runners inside that workspace;
-    selected replay and an explicit scoped rewarm operation are the next repairs.
-    This source observation does not explain the reported accuracy decline.
+    Per-asset edits now preserve unrelated runner engine/cutover/cache state;
+    explicit revisioned rewarm jobs replay unchanged settings in the selected
+    asset or whole workspace. The flat-workspace guard and exact rollback stay
+    enforced. This repair does not explain the reported accuracy decline.
 
 ## Conditions for a meaningful restart
 
@@ -204,6 +205,13 @@ disabled. Resetting or flattening positions is not a panel refresh.
   client; no independent final approval is claimed. Backend checkpointce6a15f
   passed all four hosted workflows, including Linux/Windows tests39595854165.
   Current client-head hosted execution remains a separate pending result.
+- Selected replay/explicit rewarm follow-up: **3,699 passed, four skipped,
+  111 subtests** in231.52s, exit0; focused350passed. Unrelated sibling replay
+  was reproduced before the scope repair. Settings/replay share one exact-file
+  rollback transaction; revision/job/auth/ownership and no-provider boundaries
+  are covered. Root reviewed the diff; no fresh independent clear is claimed.
+  Previous client-bootstrap e9a33b7 passed all six hosted workflows, including
+  Linux/Windows tests39598192902. Current replay-head hosted checks are separate.
 - Divine Providence: hub suite exit 0 (165 collected cases); all **12 subsystem
   suites** passed, totaling **2,179 passed test cases**. All 12 compile checks,
   five ASCENSION adversarial scripts and ten hub connection fixtures passed.

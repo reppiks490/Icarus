@@ -209,3 +209,16 @@ const {c,calls}=client('cc1',()=>reply({...identity('cc1',9),job:'ws-wrong-sourc
 await assert.rejects(operation==='configure'?c.configure('NQ',{inputs:{tp1_pts:17}},8):c.backtest('NQ',{},8),error('INVALID_IDENTITY'));
 assert.equal(calls.length,1);assert.equal(calls[0].body.expected_revision,8);
 """)
+
+
+def test_explicit_rewarm_uses_caller_revision_and_config_job_scope():
+    run_js(r"""
+const {c,calls}=client('cc2',()=>reply({...identity('cc2',3),job:'ws-rewarm'},202));
+await c.rewarm('NQ',3);await c.rewarm(null,3);
+assert.equal(calls[0].path,'/admin/command-centers/cc2/assets/NQ/rewarm/async');
+assert.equal(calls[1].path,'/admin/command-centers/cc2/rewarm/async');
+assert.deepEqual(calls[0].body,{expected_revision:3});assert.deepEqual(calls[1].body,{expected_revision:3});
+await assert.rejects(c.rewarm('NQ',undefined));assert.equal(calls.length,2);
+const main=client('main',()=>reply({job:'main-rewarm'},202));await main.c.rewarm('NQ');
+assert.equal(main.calls[0].path,'/admin/rewarm/async');assert.deepEqual(main.calls[0].body,{asset:'NQ'});
+""")

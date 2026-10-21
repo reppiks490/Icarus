@@ -3167,5 +3167,57 @@
       "modules": 71,
       "yaml_and_paths": "valid/no_duplicates"
     }
+  },
+  "workspace_selected_replay_followup": {
+    "behavior": [
+      "Per-asset override changes replay only affected retained symbols; whole-default changes replay selected assets.",
+      "Conservative flat-workspace guard retained, including open unselected siblings.",
+      "Unchanged settings can be replayed by explicit asset or whole-workspace revisioned jobs.",
+      "Same transaction/persistence/exact-file rollback used by settings and rewarm; revision rechecked at worker commit.",
+      "Active rewarm requests reuse identical accepted work, reject conflicting config work and foreign job reads.",
+      "Client keeps caller revision; no parent per-asset writer or provider request in rewarm."
+    ],
+    "focused": "350passed in54.64s; earlier manager166passed; Node/service7passed",
+    "full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/workspace-selected-rewarm-full.log",
+      "log_sha256": "0a687cfc8c54ddae0c3d9e91d82c9597122e79233a9826c2e9f3ffa0e12e5202",
+      "result": "3699passed,4skipped,111subtests in231.52s"
+    },
+    "limits": [
+      "Current replay-source hosted checks remain separate from preceding client checks.",
+      "No common renderer switch, release merge, runtime restart, provider acquisition or live activation.",
+      "No accuracy gain or explanation of the reported accuracy regression established."
+    ],
+    "observed_red": [
+      "2unrelated-sibling replay failures (2safety cases already passing)",
+      "8missing manager rewarm cases",
+      "7missing job/client rewarm cases",
+      "5missing HTTP rewarm cases"
+    ],
+    "previous_context_client_hosted": {
+      "all_six": "completed/success",
+      "commit": "e9a33b79109f021fc6a32b7373bd52d30e4ebcae",
+      "configuration": 39598192909,
+      "consumer": 39598192978,
+      "intelligence": 39598192976,
+      "performance": 39598192960,
+      "tests": 39598192902,
+      "visual": 39598192894
+    },
+    "recorded_at_utc": "2026-10-21T12:31:55.304315+00:00",
+    "review": "Native root diff review; no fresh independent final approval claimed while reviewer is usage-limited.",
+    "scope": "SELECTED_REPLAY_AND_EXPLICIT_REVISIONED_REWARM; common-renderer migration remains open",
+    "source_file_sha256": {
+      "icarus_engine/paper_workspaces.py": "8ae4eaa355786b4c035d68a98dd3b67b4e883e227237f744661796a2e792145f",
+      "icarus_engine/server.py": "ca41bdd77b1b9d03e3fc02a27e63585ad812355d622fffa7d4e16a22b24ec34d",
+      "icarus_engine/workspace-client.js": "b5269d87418c2fa1373d0d50a7f5c30084b9263d89766b06ddf5ec4c37a21cc3",
+      "icarus_engine/workspace_jobs.py": "1168e6fd9099a25e0ec32209d321155d81b42dc5e3f0f6b199717e3081d7212b",
+      "tests_engine/test_workspace_api.py": "48ef1d96da80242c9660d9922ff8a6c9a269b5bd7cfc698e6e6d7a1d74841823",
+      "tests_engine/test_workspace_client.py": "e1d29cb6cec543a29c0c1c222c75826c6cdaa5c037d35849d5ff86b24804b425",
+      "tests_engine/test_workspace_config.py": "c919ca793ec715a5bd416add6c9ebd8cbae168ef0ac9a043b6bb9568dd5278f5",
+      "tests_engine/test_workspace_jobs.py": "3b1170750e565b5844d030d93946eb1cfccb26036a9d0a6a0094875fb5003191"
+    }
   }
 }

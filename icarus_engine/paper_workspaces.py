@@ -273,7 +273,7 @@ class WorkspacePortfolio(Portfolio):
                 return
         return super()._run(runner)
 
-    def reconfigure(self, candidate: Dict[str, Any], *, persist=None) -> Dict[str, Any]:
+    def reconfigure(self, candidate: Dict[str, Any], *, persist=None, force_symbols=None) -> Dict[str, Any]:
         requested = _validate_assets(candidate["assets"])
         chart = validate_chart_config(candidate["chart"])
         values = dict(candidate["inputs"])
@@ -285,6 +285,14 @@ class WorkspacePortfolio(Portfolio):
                 raise ValueError("command center paper runtime is stopped")
             previous = dict(self.runners)
             previous_order = list(self.order)
+            forced = set(force_symbols or ())
+            if not forced <= set(previous) & set(requested):
+                raise ValueError("rewarm requires admitted running assets")
+            defaults_changed = any(candidate.get(key) != self.workspace.get(key) for key in ("chart", "inputs"))
+            changed_symbols = (set(requested) if defaults_changed else {
+                symbol for symbol in requested
+                if candidate.get("asset_overrides", {}).get(symbol, {}) != self.workspace.get("asset_overrides", {}).get(symbol, {})
+            }) | forced
             removed = [runner for symbol, runner in previous.items() if symbol not in requested]
             # Stage construction and provider preparation without publishing maps.
             additions = []
@@ -315,11 +323,12 @@ class WorkspacePortfolio(Portfolio):
                     if runner.em.open or runner.em._pending_entries or runner.em._pending_closes:
                         raise ValueError(f"{runner.symbol}: flatten open positions and cancel pending orders before removing the asset")
                     runner.ensure_configurable()
-                if configuration_changed:
+                if configuration_changed or forced:
                     snapshots = [(r, r.configuration_snapshot(), copy.deepcopy(r.cfg.base_spec))
-                                 for r in previous.values()]
-                    # Existing transactional replay also validates all old runners.
-                    self._reconfigure_existing(candidate)
+                                 for r in previous.values() if r.symbol in changed_symbols]
+                    # Retain the flat-workspace guard while replaying only the
+                    # explicitly changed/forced retained runners.
+                    self._reconfigure_existing(candidate, symbols=changed_symbols)
                 if persist is not None:
                     persist()
                 if started:
@@ -355,9 +364,10 @@ class WorkspacePortfolio(Portfolio):
                 raise
             gate.set()
         return {"ok": True, "id": self.workspace["id"], "assets": requested,
+                "rewarmed_assets": [symbol for symbol in requested if symbol in previous and symbol in changed_symbols],
                 "chart": chart, "inputs": values, "paper_only": True, "execution_authorized": False}
 
-    def _reconfigure_existing(self, candidate: Dict[str, Any]) -> Dict[str, Any]:
+    def _reconfigure_existing(self, candidate: Dict[str, Any], *, symbols=None) -> Dict[str, Any]:
         chart = validate_chart_config(candidate["chart"])
         values = dict(candidate["inputs"])
         validate_values(values)
@@ -365,6 +375,8 @@ class WorkspacePortfolio(Portfolio):
         plans = []
         for runner in runners:
             runner.ensure_configurable()
+            if symbols is not None and runner.symbol not in symbols:
+                continue
             spec, inputs, sources = self._resolved(
                 copy.deepcopy(runner.cfg.base_spec or runner.spec), candidate)
             runner.ensure_cached_timeframes(inputs)
@@ -800,29 +812,50 @@ class PaperWorkspaceManager:
             for override in candidate["asset_overrides"].values():
                 if override.get("preset") and not Path(preset_path(self.parent.base_dir, override["preset"])).is_file():
                     raise ValueError("workspace preset not found")
-            candidate["config_revision"] = old["config_revision"] + 1
+            return self._commit_candidate(profile_id, candidate)
+
+    def _commit_candidate(self, profile_id, candidate, *, force_symbols=None):
+        # Caller holds the selected configuration lock and validated its revision.
+        candidate["config_revision"] = self.profiles[profile_id]["config_revision"] + 1
+        portfolio = self.portfolios.get(profile_id)
+        if portfolio is None:
+            raise ValueError("command center paper runtime is not running")
+        old_bytes = self._path(profile_id).read_bytes()
+        kwargs = {"persist": lambda: self._save(candidate)}
+        if force_symbols is not None:
+            kwargs["force_symbols"] = force_symbols
+        try:
+            result = portfolio.reconfigure(candidate, **kwargs)
+        except Exception:
+            path = self._path(profile_id)
+            if not path.exists() or path.read_bytes() != old_bytes:
+                tmp = path.with_suffix(".json.rollback.tmp")
+                with tmp.open("wb") as fh:
+                    fh.write(old_bytes)
+                    fh.flush()
+                    os.fsync(fh.fileno())
+                os.replace(tmp, path)
+            raise
+        self.profiles[profile_id] = candidate
+        portfolio.workspace = candidate
+        result.update(schema_version=candidate["schema_version"], config_revision=candidate["config_revision"])
+        return result
+
+    def rewarm(self, profile_id, symbol, body):
+        if not isinstance(body, dict) or set(body) != {"expected_revision"}:
+            raise ValueError("rewarm accepts only expected_revision; scope belongs in the route")
+        expected = body["expected_revision"]
+        if type(expected) is not int or expected < 0:
+            raise ValueError("expected_revision must be a nonnegative integer")
+        with self.configuration_lock(profile_id):
+            profile = self.profiles[profile_id]
+            if expected != profile["config_revision"]:
+                raise WorkspaceRevisionConflict("workspace configuration revision changed; reload before rewarming")
             portfolio = self.portfolios.get(profile_id)
-            if portfolio is None:
-                raise ValueError("command center paper runtime is not running")
-            old_bytes = self._path(profile_id).read_bytes()
-            # reconfigure all runners while holding one workspace boundary; each runtime
-            # replays its cached bars and restores exact state if any replay fails.
-            try:
-                result = portfolio.reconfigure(candidate, persist=lambda: self._save(candidate))
-            except Exception:
-                path = self._path(profile_id)
-                if not path.exists() or path.read_bytes() != old_bytes:
-                    tmp = path.with_suffix(".json.rollback.tmp")
-                    with tmp.open("wb") as fh:
-                        fh.write(old_bytes)
-                        fh.flush()
-                        os.fsync(fh.fileno())
-                    os.replace(tmp, path)
-                raise
-            self.profiles[profile_id] = candidate
-            portfolio.workspace = candidate
-            result.update(schema_version=candidate["schema_version"], config_revision=candidate["config_revision"])
-            return result
+            selected = profile["assets"] if symbol is None else [symbol]
+            if portfolio is None or any(asset not in profile["assets"] or asset not in portfolio.runners for asset in selected):
+                raise ValueError("selected workspace asset is unavailable")
+            return self._commit_candidate(profile_id, copy.deepcopy(profile), force_symbols=set(selected))
 
     def update_asset(self, profile_id: str, symbol: str, body: Dict[str, Any]):
         """Apply a revisioned edit to one admitted asset, never a parent writer."""

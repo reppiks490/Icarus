@@ -2295,6 +2295,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                 return self._json(202, workspace_jobs.submit_config(profile_id, "*", body))
                             if len(parts) == 7 and parts[3] == "assets" and parts[5:] == ["config", "async"]:
                                 return self._json(202, workspace_jobs.submit_config(profile_id, parts[4], body))
+                            if len(parts) == 5 and parts[3:] == ["rewarm", "async"]:
+                                return self._json(202, workspace_jobs.submit_rewarm(profile_id, "*", body))
+                            if len(parts) == 7 and parts[3] == "assets" and parts[5:] == ["rewarm", "async"]:
+                                return self._json(202, workspace_jobs.submit_rewarm(profile_id, parts[4], body))
                             if len(parts) == 6 and parts[3] == "assets" and parts[5] == "backtest":
                                 return self._json(202, workspace_jobs.submit_backtest(profile_id, parts[4], body))
                             if len(parts) == 6 and parts[3] == "jobs" and parts[5] == "compare":

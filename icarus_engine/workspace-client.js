@@ -161,6 +161,16 @@
       return accepted(await json(scoped?`${admin}/assets/${asset}/backtest`:'/admin/backtest',
         {body,historical:true,expected:scoped?expectedRevision:null}),'backtest');
     }
+    async function rewarm(asset=null, expectedRevision) {
+      if (asset!==null) symbol(asset);
+      let path, body;
+      if (scoped) {
+        revision(expectedRevision);
+        path=asset===null?`${admin}/rewarm/async`:`${admin}/assets/${asset}/rewarm/async`;
+        body={expected_revision:expectedRevision};
+      } else { path='/admin/rewarm/async';body={asset:asset??'*'}; }
+      return accepted(await json(path,{body,historical:true,expected:scoped?expectedRevision:null}),'config');
+    }
     async function control(action, asset=null) {
       if (!['pause','resume','flatten'].includes(action)) fail('UNAVAILABLE','This control is unavailable',503);
       if (asset!==null) symbol(asset);
@@ -215,7 +225,7 @@
       return path+(asset===null?'':'?asset='+symbol(asset));
     }
     function close() { closed=true; for (const cancel of active) cancel(); }
-    return Object.freeze({context,read,configure,backtest,control,job,compare,csv,shared,href,close});
+    return Object.freeze({context,read,configure,backtest,rewarm,control,job,compare,csv,shared,href,close});
   }
   globalThis.IcarusWorkspaceClient=Object.freeze({create,WorkspaceClientError});
 })();

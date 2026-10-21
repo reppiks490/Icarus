@@ -305,7 +305,8 @@ def test_revisioned_asset_config_http_preserves_sibling_and_parent(workspace_htt
 
 
 @pytest.mark.parametrize("action,body", [("config", {"expected_revision": 0, "inputs": {"tp1_pts": 17}}),
-                                          ("pause", {"paused": True}), ("flatten", {"confirm": True})])
+                                          ("pause", {"paused": True}), ("flatten", {"confirm": True}),
+                                          ("rewarm/async", {"expected_revision": 0})])
 def test_workspace_mutations_require_owner_and_viewer_can_read(workspace_http, action, body):
     server, parent, request = workspace_http
     code, created, _ = request("/admin/access/add", body={"label": "test-viewer"})
@@ -526,7 +527,7 @@ def test_workspace_jobs_preserve_auth_and_reject_config_csv(workspace_http):
     assert request(f"/admin/command-centers/cc1/jobs/{receipt['job']}/compare", body={"csv": "invalid"})[0] == 409
 
 
-@pytest.mark.parametrize("resource", ["config/async", "assets/NQ/config/async", "assets/NQ/backtest", "jobs/missing/compare"])
+@pytest.mark.parametrize("resource", ["config/async", "assets/NQ/config/async", "assets/NQ/backtest", "jobs/missing/compare", "rewarm/async", "assets/NQ/rewarm/async"])
 def test_workspace_jobs_reject_query_scope_before_acceptance(workspace_http, resource):
     server, parent, request = workspace_http
     before = _unaffected_state(server, parent)
@@ -544,13 +545,17 @@ def test_workspace_backtest_rejects_invalid_admission(workspace_http, body, stat
     assert _unaffected_state(server, parent) == before
 
 
-@pytest.mark.parametrize("resource", ["config/async", "backtest"])
+@pytest.mark.parametrize("resource", ["config/async", "backtest", "rewarm/async"])
 def test_workspace_job_admission_io_failure_is_sanitized_unavailable(workspace_http, monkeypatch, resource):
     server, parent, request = workspace_http
     manager = server.command_centers
     preset = manager.root.parent / "presets" / "unreadable.json"
     preset.parent.mkdir(exist_ok=True)
     preset.write_text("{}")
+    body = {"expected_revision": 0, "preset": "unreadable"}
+    if resource == "rewarm/async":
+        manager.update_asset("cc1", "NQ", body)
+        body = {"expected_revision": 1}
     saved = manager._path("cc1").read_bytes()
     before = _unaffected_state(server, parent)
 
@@ -559,12 +564,12 @@ def test_workspace_job_admission_io_failure_is_sanitized_unavailable(workspace_h
 
     monkeypatch.setattr(paper_workspaces, "resolve_inputs", inaccessible)
     code, error, _ = request("/admin/command-centers/cc1/assets/NQ/" + resource,
-                              body={"expected_revision": 0, "preset": "unreadable"})
+                              body=body)
     assert code == 503 and error["workspace_id"] == "cc1"
     assert "private-filesystem-path" not in json.dumps(error)
     assert not server.workspace_jobs._jobs
     assert manager._path("cc1").read_bytes() == saved
-    assert manager.profiles["cc1"]["config_revision"] == 0
+    assert manager.profiles["cc1"]["config_revision"] == body["expected_revision"]
     assert _unaffected_state(server, parent) == before
 
 
@@ -618,3 +623,28 @@ def test_main_context_initializes_in_real_browser_before_status_reads(workspace_
             assert not errors, errors
         finally:
             browser.close()
+
+
+@pytest.mark.parametrize("scope,expected", [("assets/NQ/rewarm/async", ["NQ"]), ("rewarm/async", ["NQ", "ES"])])
+def test_explicit_workspace_rewarm_job_is_selected_and_revisioned(workspace_http, scope, expected):
+    server, parent, request = workspace_http
+    es = _add_second_asset(server)
+    engines = {symbol: runner.em for symbol, runner in server.command_centers.portfolios["cc1"].runners.items()}
+    before = _unaffected_state(server, parent)
+    code, receipt, _ = request("/admin/command-centers/cc1/" + scope, body={"expected_revision": 1})
+    assert code == 202 and receipt["config_revision"] == 1
+    row = _finished_job(request, "cc1", receipt)
+    assert row["kind"] == "config" and row["config_revision"] == 1
+    assert row["result"]["config_revision"] == 2 and row["result"]["rewarmed_assets"] == expected
+    for symbol, runner in server.command_centers.portfolios["cc1"].runners.items():
+        assert (runner.em is not engines[symbol]) == (symbol in expected)
+    assert _unaffected_state(server, parent) == before
+
+
+@pytest.mark.parametrize("body,status", [({}, 400), ({"expected_revision": 1}, 409),
+                                        ({"expected_revision": 0, "asset": "ES"}, 400)])
+def test_workspace_rewarm_refuses_invalid_revision_or_body_scope(workspace_http, body, status):
+    server, parent, request = workspace_http
+    before = _unaffected_state(server, parent)
+    assert request("/admin/command-centers/cc1/assets/NQ/rewarm/async", body=body)[0] == status
+    assert not server.workspace_jobs._jobs and _unaffected_state(server, parent) == before
