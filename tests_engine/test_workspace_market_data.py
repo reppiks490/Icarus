@@ -1,6 +1,9 @@
 """Selected market diagnostics cannot acquire data or start subscriptions."""
 import copy
 import threading
+import shutil
+import subprocess
+from pathlib import Path
 from collections import defaultdict, deque
 from types import SimpleNamespace
 
@@ -81,3 +84,26 @@ def test_unknown_or_unlocked_provider_is_explicitly_unavailable(provider):
 @pytest.mark.parametrize('resource,kwargs',[('snapshot',{}),('depth',{'schema':'bad'}),('ticks',{'limit':0}),('ticks',{'limit':10001}),('ticks',{'limit':True})])
 def test_invalid_cached_diagnostic_request_rejects_without_provider_access(resource,kwargs):
     with pytest.raises(ValueError):snapshot(runner(owner()),resource,**kwargs)
+
+
+def test_market_console_does_not_label_missing_session_metadata_healthy():
+    node=shutil.which('node')
+    if not node:pytest.skip('optional Node unavailable')
+    source=Path(__file__).resolve().parents[1]/'icarus_engine/market-data-ui.js'
+    script=r"""
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const health={innerHTML:''},errors={innerHTML:''};
+const world={esc:String,document:{querySelector:s=>s==='#mdHealth'?health:s==='#mdErrors'?errors:null}};
+vm.runInNewContext(fs.readFileSync(process.argv[1],'utf8'),world);
+world.marketDataRender({ok:true,data:{}},{ok:true,data:{ticks:[]}},{ok:true,data:{events:[]}},{ok:true,data:{}});
+assert(health.innerHTML.includes('UNOBSERVED'),health.innerHTML);
+assert(!errors.innerHTML.includes('No feed error reported'),errors.innerHTML);
+world.marketDataRender({ok:true,data:{metadata:{core_session_ok:true,
+ depth_schema_health:{'mbp-10':true,mbo:false},depth_errors:{mbo:'denied'},depth_error:'mbo: denied'}}},
+ {ok:true,data:{ticks:[{ts_event:Math.floor(Date.now()/1000),price:100,size:1}]}},
+ {ok:true,data:{events:[]}},{ok:true,data:{}});
+assert(health.innerHTML.includes('Depth mbp-10</div><div class="v"><span class="chip b">OK</span>'),health.innerHTML);
+assert(/Freshness.*class="chip b">LIVE/.test(health.innerHTML),health.innerHTML);
+"""
+    result=subprocess.run([node,'-e',script,str(source)],text=True,capture_output=True,timeout=10)
+    assert result.returncode==0,result.stdout+result.stderr

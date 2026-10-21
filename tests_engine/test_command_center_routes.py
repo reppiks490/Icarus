@@ -20,7 +20,7 @@ def engine(tmp_path, monkeypatch):
     monkeypatch.setenv("ICARUS_FEED", "file")
     journal = Journal(":memory:")
     parent = Portfolio(journal, str(tmp_path), feeds={})
-    srv = serve(parent, 0, token="owner-test", start=False)
+    srv = serve(parent, 0, token="owner-test", start=False, shared_dashboard=False)
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
 

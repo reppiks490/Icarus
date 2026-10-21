@@ -211,7 +211,7 @@
       evidenceDraft.source = source;
       evidenceDraft.ttl_seconds = ttl;
       const token = localStorage.getItem('icarus-engine-token') || 'icarus';
-      const response = await fetch('/admin/possibility/evidence', {
+      const response = await IcarusClient.request('/admin/possibility/evidence', {
         method:'POST', cache:'no-store', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
         body:JSON.stringify({asset:selected, values, source, ttl_seconds:ttl}),
       });
@@ -243,8 +243,8 @@
       const query = selected ? '?asset='+encodeURIComponent(selected) : '';
       const ledgerQuery = '?asset='+encodeURIComponent(selected||'')+'&limit=100&include_expired='+(ledgerIncludeExpired?'true':'false');
       const [response, ledgerResponse] = await Promise.all([
-        fetch('/api/possibility'+query,{cache:'no-store',headers:{'Authorization':'Bearer '+token}}),
-        fetch('/api/possibility/evidence'+ledgerQuery,{cache:'no-store',headers:{'Authorization':'Bearer '+token}}),
+        IcarusClient.request('/api/possibility'+query,{cache:'no-store',headers:{'Authorization':'Bearer '+token}}),
+        IcarusClient.request('/api/possibility/evidence'+ledgerQuery,{cache:'no-store',headers:{'Authorization':'Bearer '+token}}),
       ]);
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || data.error || ('HTTP '+response.status));
@@ -289,7 +289,7 @@
     if (quickInflight.has(symbol)) return quickInflight.get(symbol);
     const token = localStorage.getItem('icarus-engine-token') || 'icarus';
     const task = (async () => {
-      const response = await fetch('/api/possibility?asset='+encodeURIComponent(symbol), {cache:'no-store', headers:{'Authorization':'Bearer '+token}});
+      const response = await IcarusClient.request('/api/possibility?asset='+encodeURIComponent(symbol), {cache:'no-store', headers:{'Authorization':'Bearer '+token}});
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || data.error || ('HTTP '+response.status));
       quickCache.set(symbol, {at:Date.now(), data});

@@ -1,6 +1,7 @@
 """Real HTTP workspace reads and controls cannot select the parent portfolio."""
 import copy
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -589,13 +590,72 @@ def test_main_dashboard_bootstrap_precedes_every_ui_module_without_exposing_toke
         assert result.returncode == 0, result.stderr
 
 
-def test_client_static_route_and_dedicated_pages_remain_available_before_renderer_migration(workspace_http):
+def test_client_static_route_and_common_pages_bind_selected_server_identity(workspace_http):
     _, _, request = workspace_http
     code, source, headers = request("/workspace-client.js", raw=True)
     assert code == 200 and "IcarusWorkspaceClient" in source and "javascript" in headers["Content-Type"]
     for profile in ("cc1", "cc2", "cc3", "cc4"):
         code, html, _ = request("/dashboards/" + profile, raw=True)
-        assert code == 200 and 'src="/workspace-dashboard.js"' in html
+        assert code == 200 and 'src="/workspace-client.js"' in html
+        match=re.search(r'const icContext=(.*?);Object.freeze',html)
+        assert match and json.loads(match.group(1))['id']==profile
+
+
+def test_selected_market_panel_reads_only_actual_runner_cached_symbol(workspace_http):
+    from tests_engine.test_workspace_market_data import owner
+    from icarus_engine.paper_workspaces import SharedFeed
+    from icarus_engine.feeds.databento import TradeTick
+    _, parent, request=workspace_http
+    server=workspace_http[0];feed=owner()
+    selected=server.command_centers.portfolios['cc1'].runners['NQ']
+    selected.spec.ticker='NQ_SELECTED'
+    selected.feed=SharedFeed(feed)
+    feed._trades['NQ_SELECTED']=deque([TradeTick(100,100_000_000_000,141,1)])
+    feed._trades['NQ_PARENT']=deque([TradeTick(100,100_000_000_000,941,1)])
+    parent.runners['NQ'].spec.ticker='NQ_PARENT'
+    parent.runners['NQ'].feed=SharedFeed(feed)
+    code,payload,_=request('/api/command-centers/cc1/panels/market-data?asset=NQ&resource=ticks&limit=1')
+    assert code==200,payload
+    assert payload['workspace_id']=='cc1' and payload['config_revision']==0
+    assert payload['provider_symbol']=='NQ_SELECTED' and payload['ticks'][0]['price']==141
+    assert payload['cached_only'] and payload['acquisition_requested'] is False
+    assert request('/api/command-centers/cc1/panels/market-data?asset=ES&resource=ticks')[0]==404
+
+
+@pytest.mark.parametrize('query',['asset=NQ&resource=snapshot','asset=NQ&resource=ticks&workspace=cc2',
+                                 'asset=NQ&asset=ES&resource=ticks','resource=ticks'])
+def test_selected_market_panel_refuses_ambiguous_or_unsupported_reads(workspace_http,query):
+    _,_,request=workspace_http
+    assert request('/api/command-centers/cc1/panels/market-data?'+query)[0]==400
+
+
+def test_selected_market_panel_retains_viewer_auth_and_unavailable_provider_truth(workspace_http):
+    _,_,request=workspace_http
+    viewer=request('/admin/access/add',body={'label':'cached-market-viewer'})[1]['user']['token']
+    path='/api/command-centers/cc2/panels/market-data?asset=NQ&resource=capabilities'
+    assert request(path,token=None)[0]==401
+    code,payload,_=request(path,token=viewer)
+    assert code==200 and payload['workspace_id']=='cc2'
+    assert payload['available'] is False and payload['metadata']=={}
+    assert payload['reason']=='LOCKED_PROVIDER_CACHE_UNAVAILABLE'
+
+
+@pytest.mark.parametrize('scope,profit',[('main',90),('cc1',10),('cc2',20),('cc3',30),('cc4',40)])
+def test_persisted_performance_has_five_distinct_journal_sources(workspace_http,scope,profit):
+    server,parent,request=workspace_http
+    now=int(time.time())
+    for identity,amount in [('main',90),('cc1',10),('cc2',20),('cc3',30),('cc4',40)]:
+        journal=parent.journal if identity=='main' else server.command_centers.portfolios[identity].journal
+        with journal._lock:
+            journal.con.execute('INSERT INTO trades(symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,profit,live) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                                ('REMOVED',identity+'-persisted',1,1,100.0,now-60,101.0,now-1,amount,1))
+            journal.con.commit()
+    path='/api/performance' if scope=='main' else '/api/command-centers/'+scope+'/performance'
+    code,payload,_=request(path)
+    assert code==200,payload
+    assert payload['workspace_id']==scope and payload['realized_pnl']==profit
+    assert payload['trades'][0]['entry_id']==scope+'-persisted'
+    if scope=='main':assert request(path,token=None)[0]==401
 
 
 def test_main_context_initializes_in_real_browser_before_status_reads(workspace_http):
@@ -605,8 +665,9 @@ def test_main_context_initializes_in_real_browser_before_status_reads(workspace_
     base = f"http://127.0.0.1:{server.server_port}"
     with playwright.sync_playwright() as runtime:
         try:
-            browser = runtime.chromium.launch(headless=True, executable_path=shutil.which("chromium"))
+            browser = runtime.chromium.launch(headless=True, executable_path=os.environ.get("ICARUS_BROWSER_BINARY") or shutil.which("chromium"))
         except playwright.Error as error:
+            if os.environ.get("ICARUS_REQUIRE_WORKSPACE_BROWSER")=="1":raise
             pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
         try:
             page = browser.new_page(viewport={"width": 1440, "height": 1000}, reduced_motion="reduce")
@@ -656,8 +717,9 @@ def test_settings_desktop_placement_accounts_for_fixed_containing_header(workspa
     server, _, _ = workspace_http
     with playwright.sync_playwright() as runtime:
         try:
-            browser = runtime.chromium.launch(headless=True, executable_path=shutil.which("chromium"))
+            browser = runtime.chromium.launch(headless=True, executable_path=os.environ.get("ICARUS_BROWSER_BINARY") or shutil.which("chromium"))
         except playwright.Error as error:
+            if os.environ.get("ICARUS_REQUIRE_WORKSPACE_BROWSER")=="1":raise
             pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
         try:
             page = browser.new_page(viewport={"width": 800, "height": 600}, reduced_motion="reduce")
@@ -685,8 +747,9 @@ def test_settings_resize_uses_mobile_geometry_when_viewport_callbacks_are_delaye
     server, _, _ = workspace_http
     with playwright.sync_playwright() as runtime:
         try:
-            browser = runtime.chromium.launch(headless=True, executable_path=shutil.which("chromium"))
+            browser = runtime.chromium.launch(headless=True, executable_path=os.environ.get("ICARUS_BROWSER_BINARY") or shutil.which("chromium"))
         except playwright.Error as error:
+            if os.environ.get("ICARUS_REQUIRE_WORKSPACE_BROWSER")=="1":raise
             pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
         try:
             page = browser.new_page(viewport={"width": 800, "height": 600}, reduced_motion="reduce")
@@ -768,8 +831,9 @@ def test_cached_page_lifecycle_does_not_permanently_close_its_context(workspace_
     server, _, _ = workspace_http
     with playwright.sync_playwright() as runtime:
         try:
-            browser = runtime.chromium.launch(headless=True, executable_path=shutil.which("chromium"))
+            browser = runtime.chromium.launch(headless=True, executable_path=os.environ.get("ICARUS_BROWSER_BINARY") or shutil.which("chromium"))
         except playwright.Error as error:
+            if os.environ.get("ICARUS_REQUIRE_WORKSPACE_BROWSER")=="1":raise
             pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
         try:
             page = browser.new_page(reduced_motion="reduce")

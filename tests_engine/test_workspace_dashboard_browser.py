@@ -1,8 +1,11 @@
-"""Common renderer integration before enabling it on production CC routes."""
+"""Actual five-route common renderer, source isolation and lifecycle acceptance."""
 import json
+import os
 import re
 import shutil
+from pathlib import Path
 from contextlib import contextmanager
+from urllib.parse import urlparse
 
 import pytest
 
@@ -10,32 +13,24 @@ from tests_engine.test_workspace_api import _job_tape, workspace_http  # noqa: F
 
 
 @contextmanager
-def common_page(workspace_http, scope="cc1", token="api-owner"):
+def common_page(workspace_http, scope="cc1", token="api-owner", *, viewport=None):
     playwright = pytest.importorskip("playwright.sync_api")
     server, _, request = workspace_http
     base = f"http://127.0.0.1:{server.server_port}"
-    code, html, _ = request("/", raw=True)
-    assert code == 200
-    # Test-only rendering of the existing main HTML with a server-constant
-    # identity. The actual CC route stays on its rollback renderer until all
-    # core, panel and parity dependencies pass.
-    context = {"id": scope, "capabilities": {"paper_only": scope != "main",
-               "execution_authorized": False, "scoped_trading": scope != "main",
-               "parent_runtime_panels": scope == "main"}}
-    html = re.sub(r"const icContext=.*?;Object.freeze", "const icContext=" + json.dumps(context) + ";Object.freeze", html, count=1)
     path = "/" if scope == "main" else "/dashboards/" + scope
     with playwright.sync_playwright() as runtime:
         try:
-            browser = runtime.chromium.launch(headless=True, executable_path=shutil.which("chromium"))
+            browser = runtime.chromium.launch(headless=True, executable_path=os.environ.get("ICARUS_BROWSER_BINARY") or shutil.which("chromium"))
         except playwright.Error as error:
+            if os.environ.get("ICARUS_REQUIRE_WORKSPACE_BROWSER")=="1":raise
             pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
         try:
-            page = browser.new_page(viewport={"width": 1440, "height": 1000}, reduced_motion="reduce")
+            page = browser.new_page(viewport=viewport or {"width": 1440, "height": 1000}, reduced_motion="reduce")
+            page.icarus_errors=[]
+            page.on('pageerror',lambda error:page.icarus_errors.append(str(error)))
             page.add_init_script("localStorage.setItem('icarus-engine-token'," + json.dumps(token) + ");sessionStorage.setItem('icarus-intro-seen','1')")
             def route_request(route):
-                if route.request.url == base + path and route.request.is_navigation_request():
-                    route.fulfill(status=200, content_type="text/html", body=html)
-                elif route.request.url.startswith(base + "/"):
+                if route.request.url.startswith(base + "/"):
                     route.continue_()
                 else:
                     route.abort()
@@ -90,6 +85,23 @@ def test_common_input_draft_conflict_preserves_edits_and_original_revision(works
         assert state["result"] is None and state["edit"] == 77 and state["revision"] == 0, state
         assert "revision" in state["toast"].lower(), state
         assert request("/api/command-centers/cc1/inputs/NQ")[1]["base"]["tp1_pts"] == 12
+        page.locator('#inRevert').click()
+        page.wait_for_function('()=>inState.revision===1')
+        assert page.evaluate('({value:inState.base.tp1_pts,edits:inState.edits})')=={'value':12,'edits':{}}
+
+
+def test_common_unrelated_config_completion_does_not_discard_or_rebase_draft(workspace_http):
+    _,_,request=workspace_http
+    with common_page(workspace_http) as (page,base):
+        page.evaluate("setView('inputs')")
+        page.wait_for_function("()=>inState.asset==='NQ'")
+        page.evaluate('inState.edits.tp1_pts=77')
+        assert request('/admin/command-centers/cc1/assets/NQ/config',body={'inputs':{'tp1_pts':12},'expected_revision':0})[0]==200
+        page.route(base+'/api/command-centers/cc1/jobs/external-config',lambda route:route.fulfill(
+            status=200,content_type='application/json',body=json.dumps({'id':'external-config','kind':'config','workspace_id':'cc1',
+            'config_revision':0,'paper_only':True,'execution_authorized':False,'status':'done','result':{'config_revision':1}})))
+        page.evaluate("async()=>{await watchConfigJob('external-config','External configuration')}")
+        assert page.evaluate('({value:inState.edits.tp1_pts,revision:inState.revision})')=={'value':77,'revision':0}
 
 
 def test_common_viewer_controls_disabled_and_server_rejects_bypass(workspace_http):
@@ -219,3 +231,180 @@ def test_common_backtest_job_and_csv_retain_accepted_source_revision(workspace_h
             csv=exported.read()
         comparison=page.evaluate("csv=>IcarusClient.compare(BT.job,csv)",csv)
         assert comparison['workspace_id']=='cc1' and comparison['config_revision']==0 and comparison['report']
+
+
+def test_common_linked_panels_never_request_parent_runtime_readers(workspace_http):
+    from icarus_engine.workspace_context import SHARED_READS
+    with common_page(workspace_http) as (page,_):
+        reads=[]
+        page.on('request',lambda req:reads.append(urlparse(req.url).path) if req.method=='GET' else None)
+        for panel in ['brain','research','sources','market-data','evolution','parallax','possibility',
+                      'pantheon','sibyl','apex','ascendancy','learning','chronofold','commissioning',
+                      'integrity','engine-control','autopilot','system','golive','agent']:
+            page.evaluate('panel=>setView(panel)',panel)
+            page.wait_for_timeout(30)
+        page.wait_for_timeout(150)
+        parent=[path for path in reads if (path.startswith('/api/') or path=='/status/public')
+                and not path.startswith('/api/command-centers/cc1/')
+                and path not in SHARED_READS and not path.startswith('/api/market-history/')]
+        assert not parent,parent
+
+
+def test_common_commissioning_direct_post_uses_rejecting_selected_endpoint(workspace_http):
+    server,parent,_=workspace_http
+    with common_page(workspace_http) as (page,_):
+        held=[]
+        page.route(re.compile(r'.*/(?:api/commissioning|api/command-centers/cc1/panels/commissioning).*'),lambda route:held.append(route))
+        page.on('dialog',lambda dialog:dialog.dismiss())
+        page.evaluate("setView('commissioning')")
+        # Exercise the module's direct action handler even when the normal
+        # unsupported-panel UI disables it. The server must still refuse it.
+        with page.expect_request(lambda req:req.method=='POST') as submitted:
+            page.evaluate("()=>document.querySelector('#scTick').onclick()")
+        assert urlparse(submitted.value.url).path=='/admin/command-centers/cc1/unavailable'
+        assert not parent.runners['NQ'].paused
+        assert not server.command_centers.portfolios['cc1'].runners['NQ'].paused
+
+
+def test_common_unavailable_panel_controls_and_shared_evidence_are_labeled(workspace_http):
+    with common_page(workspace_http) as (page,base):
+        held=[]
+        page.route(base+'/api/command-centers/cc1/panels/engine-control',lambda route:held.append(route))
+        page.evaluate("setView('engine-control')")
+        assert 'CC1' in page.locator('[data-workspace-scope-note]').inner_text()
+        assert page.locator('#view button:not(:disabled)').count()==0
+        for route in held:
+            route.fulfill(status=503,content_type='application/json',body='{"workspace_id":"cc1","detail":"unavailable"}')
+        page.evaluate("setView('system')")
+        assert 'Shared' in page.locator('[data-workspace-scope-note]').inner_text()
+
+
+@pytest.mark.parametrize('scope,profit',[('main',90),('cc1',10),('cc2',20),('cc3',30),('cc4',40)])
+def test_common_persisted_performance_component_uses_selected_journal(workspace_http,scope,profit):
+    server,parent,_=workspace_http
+    journal=parent.journal if scope=='main' else server.command_centers.portfolios[scope].journal
+    import time
+    now=int(time.time())
+    with journal._lock:
+        journal.con.execute('INSERT INTO trades(symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,profit,live) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                            ('REMOVED',scope+'-persisted',1,1,100.0,now-60,101.0,now-1,profit,1))
+        journal.con.commit()
+    with common_page(workspace_http,scope) as (page,_):
+        page.evaluate("setView('performance')")
+        assert page.locator('#workspace-performance').count()==1
+        page.wait_for_function("()=>document.querySelector('#performance-count').textContent==='1'")
+        assert str(profit)+'.00' in page.locator('#performance-realized').inner_text()
+        assert scope.upper() in page.locator('#performance-title').inner_text()
+        assert page.locator('#performance-trades').inner_text().startswith('REMOVED')
+        assert page.locator('#performance-switch option').count()==5
+
+
+@pytest.mark.parametrize('scope',['main','cc1','cc2','cc3','cc4'])
+def test_common_evidence_preserves_corpus_catalog_and_connections(workspace_http,monkeypatch,scope):
+    monkeypatch.setattr('icarus_engine.corpus_evidence.snapshot',lambda:{
+        'status':'HISTORICAL_CONSUMPTION_VERIFIED','corpora':[{
+            'cache_name':'fixture_corpus','dataset_count':1,'retained_rows':100,'historical':True,
+            'workspaces':{key:{'input_tag':key+'-only'} for key in ['cc1','cc2','cc3','cc4']}}]})
+    with common_page(workspace_http,scope) as (page,_):
+        page.evaluate("setView('evidence')")
+        assert page.locator('#workspace-evidence').count()==1
+        page.wait_for_function("()=>document.querySelector('#corpus-sources').textContent.includes('fixture_corpus')")
+        page.wait_for_function("()=>document.querySelector('#a200-instrument').options.length===200")
+        page.locator('#corpus-sources details').evaluate_all('nodes=>nodes.forEach(node=>node.open=true)')
+        text=page.locator('#corpus-sources').inner_text()
+        for key in ['cc1','cc2','cc3','cc4']:
+            assert (key+'-only' in text)==(scope==key),text
+        assert page.locator('#workspace-evidence a[href="/dashboards/connections"]').count()==1
+        assert page.locator('#a200-rows tr').count()==200
+
+
+def test_common_equity_history_is_explicit_and_retains_receipt_authority(workspace_http):
+    from urllib.parse import parse_qs,unquote
+    with common_page(workspace_http) as (page,_):
+        reads=[];mode={'wrong':False}
+        def history(route):
+            url=urlparse(route.request.url);instrument=unquote(url.path.rsplit('/',1)[1]);query=parse_qs(url.query)
+            start=int(query['start_ts'][0]);reads.append(instrument)
+            route.fulfill(status=200,content_type='application/json',body=json.dumps({
+                'instrument':{'instrument_id':instrument},'provider':'fmp' if mode['wrong'] else 'yahoo',
+                'execution_authorized':False,'pulse_enabled':False,'qualification':'UNQUALIFIED',
+                'receipt':{'instrument_id':instrument,'provider':'yahoo','receipt_id':'b'*64,'checksum_sha256':'a'*64},
+                'bars':[{'ts':start+i*3600,'o':100,'h':102,'l':99,'c':100+i,'v':10} for i in range(2)]}))
+        page.route('**/api/market-history/**',history)
+        page.evaluate("setView('evidence')")
+        page.wait_for_function("()=>document.querySelector('#a200-instrument').options.length===200")
+        assert reads==[]
+        page.locator('#evidenceReadHistory').click()
+        page.wait_for_function("()=>document.querySelector('#a200-receipt').textContent.includes('aaaaaaaa')")
+        assert len(reads)==1
+        receipt=json.loads(page.locator('#a200-receipt').inner_text())
+        assert receipt['instrument_id']==reads[0] and receipt['provider']=='yahoo'
+        assert receipt['pulse_enabled'] is False and receipt['execution_authorized'] is False
+        mode['wrong']=True
+        page.locator('#evidenceReadHistory').click()
+        page.wait_for_function("()=>document.querySelector('#a200-history-note').textContent.includes('identity or authority')")
+        assert 'aaaaaaaa' not in page.locator('#a200-receipt').inner_text()
+
+
+def test_common_equity_history_requires_owner_both_in_ui_and_server(workspace_http):
+    _,_,request=workspace_http
+    viewer=request('/admin/access/add',body={'label':'shared-evidence-viewer'})[1]['user']['token']
+    with common_page(workspace_http,token=viewer) as (page,_):
+        page.evaluate("setView('evidence')")
+        page.wait_for_function("()=>document.querySelector('#a200-instrument').options.length===200")
+        assert page.locator('#evidenceReadHistory').is_disabled()
+    assert request('/api/market-history/not-a-catalog-id?start_ts=1&end_ts=60&interval_seconds=60',token=viewer)[0]==403
+
+
+def test_actual_five_dashboard_routes_share_main_source_and_bind_server_identity(workspace_http):
+    _,_,request=workspace_http
+    baseline=None
+    for scope in ['main','cc1','cc2','cc3','cc4']:
+        code,html,_=request('/' if scope=='main' else '/dashboards/'+scope,raw=True)
+        assert code==200
+        match=re.search(r'const icContext=(.*?);Object.freeze',html)
+        assert match,scope
+        assert json.loads(match.group(1))['id']==scope
+        normalized=re.sub(r'<script id="icarus-workspace-bootstrap">.*?</script>','',html,flags=re.S)
+        if baseline is None:baseline=normalized
+        assert normalized==baseline,scope
+    code,connections,_=request('/dashboards/connections',raw=True)
+    assert code==200 and 'src="/workspace-dashboard.js"' in connections
+
+
+@pytest.mark.parametrize('scope,price',[('main',900),('cc1',100),('cc2',200),('cc3',300),('cc4',400)])
+@pytest.mark.parametrize('viewport',[{'width':390,'height':844},{'width':1440,'height':1000}])
+def test_actual_common_dashboard_desktop_mobile_components_and_source(workspace_http,scope,price,viewport,tmp_path):
+    with common_page(workspace_http,scope,viewport=viewport) as (page,_):
+        assert page.locator('#workspaceIdentity').inner_text()==scope.upper()
+        assert page.evaluate("last.assets.find(a=>a.symbol==='NQ').price")==price
+        views=page.locator('#tabs [data-v]').evaluate_all('nodes=>nodes.map(node=>node.dataset.v)')
+        assert {'overview','performance','evidence','inputs','backtest','market-data','command-centers','brain','commissioning'}.issubset(views)
+        assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+        output=Path(os.environ.get('ICARUS_BROWSER_OUTPUT',str(tmp_path)));output.mkdir(parents=True,exist_ok=True)
+        page.screenshot(path=str(output/('common-'+scope+'-'+str(viewport['width'])+'.png')),full_page=True)
+        for panel,selector in [('performance','#workspace-performance'),('evidence','#workspace-evidence'),('inputs','#inGroups'),('market-data','#mdHealth')]:
+            page.evaluate('panel=>setView(panel)',panel)
+            assert page.locator(selector).count()==1,(scope,panel)
+        page.wait_for_function("()=>document.querySelector('#mdHealth').textContent.includes('UNOBSERVED')")
+        if scope!='main':assert page.locator('#mdSnapshot').is_disabled()
+        assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+        assert not page.icarus_errors,page.icarus_errors
+
+
+def test_actual_query_state_and_full_navigation_cannot_reselect_workspace(workspace_http):
+    with common_page(workspace_http,'cc1') as (page,base):
+        page.goto(base+'/dashboards/cc1?workspace=cc4&profile=cc4#overview',wait_until='load')
+        page.evaluate('async()=>{await dashboardReady}')
+        assert page.evaluate('IcarusClient.context.id')=='cc1'
+        assert page.locator('#workspaceIdentity').inner_text()=='CC1'
+        page.goto(base+'/dashboards/cc1?asset=NQ',wait_until='load')
+        page.evaluate('async()=>{await dashboardReady}')
+        assert page.locator('#tabs a').get_attribute('href')=='/dashboards/cc1'
+        page.goto(base+'/dashboards/cc1#command-centers',wait_until='load')
+        page.evaluate('async()=>{await dashboardReady}')
+        page.locator('a.paper-portfolio[href="/dashboards/cc3"]').click()
+        page.wait_for_url('**/dashboards/cc3')
+        page.evaluate('async()=>{await dashboardReady}')
+        assert page.evaluate('IcarusClient.context.id')=='cc3'
+        assert page.evaluate("last.assets.find(a=>a.symbol==='NQ').price")==300

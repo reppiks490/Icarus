@@ -126,7 +126,7 @@
       if (scoped) {
         path=resource==='configuration'?api:`${api}/${resource}${asset?'/'+asset:''}`;
       } else {
-        if (['performance','configuration'].includes(resource)) fail('UNAVAILABLE','This reader is workspace-specific',503);
+        if (resource==='configuration') fail('UNAVAILABLE','This reader is workspace-specific',503);
         path=resource==='status'?'/status/public':`/api/${resource}${asset?'/'+asset:''}`;
       }
       if (resource==='chart') path+=`?n=${bound(args.n,240,20,5000)}&offset=${bound(args.offset,0,0,50000)}`;
@@ -256,6 +256,7 @@
           if (method==='GET') {
             const panel=url.pathname.replace(/^\/api\//,'').replace(/[^A-Za-z0-9_-]+/g,'-').replace(/^-|-$/g,'').toLowerCase();
             target=`${api}/panels/${panel||'unavailable'}`;
+            selected=true;
           } else {
             target=`${admin}/unavailable`;
             options={method:'POST',signal:init.signal,headers:{'Content-Type':'application/json'},
@@ -285,7 +286,7 @@
           const requested=jobPath?url.pathname.slice(jobPath.length).split('/')[0]:null;
           if (requested&&(jobPath.startsWith(api)?data?.id:data?.job)!==requested)
             fail('INVALID_IDENTITY','Response belongs to another job');
-          const historical=Boolean(requested)||typeof data?.job==='string';
+          const historical=!target.startsWith(api+'/panels/')&&(Boolean(requested)||typeof data?.job==='string');
           const known=jobs.get(requested||data?.job);
           identity(data,historical,known?.revision??null);
           if (data.kind==='backtest'&&data.result) identity(data.result,true,data.config_revision);

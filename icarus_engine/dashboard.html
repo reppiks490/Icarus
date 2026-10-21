@@ -147,6 +147,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
       <span class="small muted" id="meta">—</span><span class="small muted tnum" id="clock" title="your computer's clock (local zone) and the strategy's session clock (New York)"></span>
       <span class="badge" id="phase">—</span>
       <span class="badge" id="armed">—</span>
+      <span class="badge" id="workspaceIdentity">—</span>
       <span class="badge" id="repoHealth" title="Latest local ICARUS System Intelligence snapshot">SYS —</span>
       <button class="icon-btn" id="btnPal" title="Command palette (Ctrl+K)">⌘ Commands</button>
       <button class="icon-btn" id="btnControls">⚙︎ Token</button>
@@ -189,6 +190,8 @@ window.addEventListener('pagehide', event => {
   else window.IcarusClient.close();
 });
 </script>
+<script src="/workspace-performance-ui.js"></script>
+<script src="/workspace-evidence-ui.js"></script>
 <script src="/research-ui.js"></script>
 <script src="/sources-ui.js"></script>
 <script src="/market-data-ui.js"></script>
@@ -231,11 +234,14 @@ const age = s => s==null ? 'never' : s<60 ? `${Math.round(s)}s` : s<3600 ? `${Ma
 const tip = $('#tip'); const showTip = (h,x,y) => { tip.innerHTML=h; tip.style.display='block'; tip.style.left=(x+14)+'px'; tip.style.top=(y+14)+'px'; }; const hideTip = () => tip.style.display='none';
 let last = null, charts = {}, chartOffsets = {}, seenFills = new Set(), first = true, tradesCache = {}, tradeErrors = {}, META = null, PRESETS = [], COMMANDS = [], REGISTRY = [], catalogRefreshBusy = false, lastWideChartRefresh = 0;
 let statusLoadSeq = 0, lastStatusAt = 0;
+let workspaceViewController = null;
+function disposeWorkspaceView(){workspaceViewController?.dispose();workspaceViewController=null;}
 const chartLoadSeq = new Map(), tradeLoadSeq = new Map();
 let accessTokenOnce = null;
 const CATALOG_READY = {presets:false, commands:false, registry:false};
 const params = new URLSearchParams(location.search);
 const solo = !!params.get('asset');
+$('#workspaceIdentity').textContent=IcarusClient.context.id.toUpperCase();
 let view = solo ? 'asset:' + params.get('asset').toUpperCase() : (location.hash.slice(1) || 'overview');
 
 /* theme + token */
@@ -442,11 +448,11 @@ function setView(v) {
 }
 window.setView = setView;
 function tabsHtml(A) {
-  if (solo) return `<span class="tab active"><b class="s">${esc(params.get('asset').toUpperCase())}</b> · solo view</span><a class="tab" href="/">← all assets</a>`;
+  if (solo) return `<span class="tab active"><b class="s">${esc(params.get('asset').toUpperCase())}</b> · solo view</span><a class="tab" href="${IcarusClient.href()}">← all assets</a>`;
   const t = [`<span class="tab ${view==='overview'?'active':''}" data-v="overview">Overview</span>`];
   A.forEach(a => { const pos = a.position||0; t.push(`<span class="tab ${view==='asset:'+a.symbol?'active':''}" data-v="asset:${a.symbol}"><span class="dot ${pos>0?'long':pos<0?'short':(a.market&&a.market.open===false?'closed':'')}"></span><b class="s">${esc(a.continuous_symbol||a.symbol)}</b> <span class="muted small tnum">${px(a.price)}</span></span>`); });
   t.push(`<span class="tab" data-v="add" title="Add an asset">＋</span>`);
-  t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='access'?'active':''}" data-v="access">Access</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='command-centers'?'active':''}" data-v="command-centers">Command Center</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span><span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span><span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span><span class="tab util ${view==='market-data'?'active':''}" data-v="market-data">Market Data</span><span class="tab util ${view==='brain'?'active':''}" data-v="brain">Adaptive Brain</span><span class="tab util ${view==='evolution'?'active':''}" data-v="evolution">MCP Evolution</span><span class="tab util ${view==='parallax'?'active':''}" data-v="parallax">PARALLAX / DREAMSTATE</span><span class="tab util ${view==='possibility'?'active':''}" data-v="possibility">ICARUS Ψ</span><span class="tab util ${view==='pantheon'?'active':''}" data-v="pantheon">PANTHEON / AETHER</span><span class="tab util ${view==='sibyl'?'active':''}" data-v="sibyl">SIBYL Ω</span><span class="tab util ${view==='apex'?'active':''}" data-v="apex">APEX Ω</span><span class="tab util ${view==='ascendancy'?'active':''}" data-v="ascendancy">ASCENDANCY</span><span class="tab util ${view==='learning'?'active':''}" data-v="learning">Learning Fabric</span><span class="tab util ${view==='chronofold'?'active':''}" data-v="chronofold">ICARUS Ξ</span><span class="tab util ${view==='commissioning'?'active':''}" data-v="commissioning">Commissioning</span><span class="tab util ${view==='integrity'?'active':''}" data-v="integrity">Data Integrity</span><span class="tab util ${view==='engine-control'?'active':''}" data-v="engine-control">Engine Control</span><span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span><span class="tab util ${view==='autopilot'?'active':''}" data-v="autopilot">Tactical Autopilot</span>`);
+  t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='access'?'active':''}" data-v="access">Access</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='command-centers'?'active':''}" data-v="command-centers">Command Center</span><span class="tab util ${view==='performance'?'active':''}" data-v="performance">Performance</span><span class="tab util ${view==='evidence'?'active':''}" data-v="evidence">Evidence &amp; catalog</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span><span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span><span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span><span class="tab util ${view==='market-data'?'active':''}" data-v="market-data">Market Data</span><span class="tab util ${view==='brain'?'active':''}" data-v="brain">Adaptive Brain</span><span class="tab util ${view==='evolution'?'active':''}" data-v="evolution">MCP Evolution</span><span class="tab util ${view==='parallax'?'active':''}" data-v="parallax">PARALLAX / DREAMSTATE</span><span class="tab util ${view==='possibility'?'active':''}" data-v="possibility">ICARUS Ψ</span><span class="tab util ${view==='pantheon'?'active':''}" data-v="pantheon">PANTHEON / AETHER</span><span class="tab util ${view==='sibyl'?'active':''}" data-v="sibyl">SIBYL Ω</span><span class="tab util ${view==='apex'?'active':''}" data-v="apex">APEX Ω</span><span class="tab util ${view==='ascendancy'?'active':''}" data-v="ascendancy">ASCENDANCY</span><span class="tab util ${view==='learning'?'active':''}" data-v="learning">Learning Fabric</span><span class="tab util ${view==='chronofold'?'active':''}" data-v="chronofold">ICARUS Ξ</span><span class="tab util ${view==='commissioning'?'active':''}" data-v="commissioning">Commissioning</span><span class="tab util ${view==='integrity'?'active':''}" data-v="integrity">Data Integrity</span><span class="tab util ${view==='engine-control'?'active':''}" data-v="engine-control">Engine Control</span><span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span><span class="tab util ${view==='autopilot'?'active':''}" data-v="autopilot">Tactical Autopilot</span>`);
   return t.join('');
 }
 function systemLoopClass(status) {
@@ -460,7 +466,7 @@ async function loadAccess() {
   const target = $('#accessBody'); if (!target) return;
   const tok = localStorage.getItem(tokKey) || '';
   try {
-    const r = await fetch('/api/access', {headers:{'Authorization':'Bearer '+tok},cache:'no-store'});
+    const r = await IcarusClient.request('/api/access', {headers:{'Authorization':'Bearer '+tok},cache:'no-store'});
     const d = await r.json(); if (!r.ok) throw new Error(d.detail||('HTTP '+r.status));
     const owner = d.me?.role === 'owner';
     const users = (d.users||[]).map(u => `<tr><td>${esc(u.label)}</td><td><span class="tag">${esc(u.role)}</span></td><td>${u.active?'Active':'Revoked'}</td><td>${u.last_seen?dtz(u.last_seen):'Never'}</td><td class="tnum">${u.request_count||0}</td><td>${owner&&u.role!=='owner'&&u.active?`<button class="sm danger" data-kick-user="${esc(u.id)}">Kick</button>`:'—'}</td></tr>`).join('');
@@ -786,6 +792,11 @@ function setInputsPending(pending) {
   for(const el of document.querySelectorAll('#inApply,#inReset,#inApplyPreset,#inRevert,#inAsset,#inPreset,[data-in],[data-chart]')) el.disabled=!!pending;
   applyWritePermissions();
 }
+async function reloadInputsTab() {
+  const draft=inState;draft.pending=true;setInputsPending(true);
+  try {await loadInputsTab(null,true);}
+  finally {draft.pending=false;if(draft===inState)setInputsPending(false);}
+}
 async function submitInputOperation(path,body,label) {
   const draft=inState;
   if(draft.pending)return;
@@ -806,6 +817,32 @@ function applyWritePermissions() {
     if(!canWrite)el.title='Owner access and a fresh selected runtime are required';
   }
 }
+const unavailableWorkspacePanels=new Set(['access','brain','research','parallax','possibility','pantheon','sibyl','apex','ascendancy','learning','chronofold','commissioning','engine-control','autopilot','golive']);
+const sharedEvidencePanels=new Set(['sources','evolution','integrity','system','agent','evidence']);
+function applyPanelScope() {
+  const host=$('#view');if(!host)return;
+  const id=IcarusClient.context.id,scoped=id!=='main';
+  const unavailable=scoped&&unavailableWorkspacePanels.has(view),shared=sharedEvidencePanels.has(view);
+  const message=unavailable?`${id.toUpperCase()}: this panel is unavailable for this paper workspace. Its controls are disabled.`:
+    shared?'Shared federation evidence. This view does not establish operation of the selected paper workspace.':
+    scoped&&view==='market-data'?`${id.toUpperCase()}: existing selected-runner caches only. This view does not acquire data or start subscriptions.`:'';
+  let note=host.querySelector('[data-workspace-scope-note]');
+  if(message){
+    if(!note){note=document.createElement('p');note.className='card c12 small';note.dataset.workspaceScopeNote='';note.setAttribute('role','status');host.prepend(note);}
+    if(note.textContent!==message)note.textContent=message;
+  }else note?.remove();
+  if(unavailable){
+    for(const el of host.querySelectorAll('button,input,select,textarea')){if(!el.disabled)el.disabled=true;el.title=message;}
+  }else if(scoped&&shared){
+    for(const el of host.querySelectorAll('button,textarea')){
+      if(el.tagName==='BUTTON'&&(el.dataset.workspaceReadOnly==='true'||/(Refresh|Reload|Read|View|Filter|Search|Copy|Export|Download|Show|Open)/i.test(el.id)))continue;
+      if(!el.disabled)el.disabled=true;el.title='Shared configuration changes are unavailable from a paper workspace';
+    }
+  }
+  if(scoped&&view==='market-data'){
+    const snapshot=$('#mdSnapshot');if(snapshot){if(!snapshot.disabled)snapshot.disabled=true;snapshot.title='A complete MBO snapshot is unavailable from cached paper-workspace diagnostics';}
+  }
+}
 async function watchConfigJob(jobId, label='Configuration', draft=null) {
   if (!jobId || configJobWatchers.has(jobId)) return;
   configJobWatchers.add(jobId);
@@ -821,9 +858,11 @@ async function watchConfigJob(jobId, label='Configuration', draft=null) {
       }
       if (job.status === 'done') {
         toast(label + ' re-warm complete');
-        if(draft===inState) {draft.edits={};draft.chartEdits={};draft.pending=false;}
+        if(draft===inState) {draft.edits={};draft.chartEdits={};}
         await refresh();
-        if (view === 'inputs') await loadInputsTab(null,true);
+        const hasLocalDraft=inState.pending||Object.keys(inState.edits).length||Object.keys(inState.chartEdits).length||
+          ($('#inPreset')&&$('#inPreset').value!==(inState.preset||''));
+        if (view === 'inputs'&&(draft===inState||!hasLocalDraft)) await reloadInputsTab();
         return true;
       }
       if (job.status === 'error') {
@@ -868,7 +907,9 @@ document.addEventListener('click', async ev => {
   if (b.dataset.cmd) { await withBusyButton(b, () => runCommand(b.dataset.cmd, b.dataset.a)); return; }
   if (b.dataset.run) { const sel = document.querySelector(`select[data-scope="${b.dataset.run}"]`); await withBusyButton(b, () => runCommand(b.dataset.run, sel ? sel.value : '*')); return; }
   if (b.id === 'inApply') { const vals = inState.edits, chart = inState.chartEdits; if (!Object.keys(vals).length && !Object.keys(chart).length) return toast('nothing edited'); await withBusyButton(b,()=>submitInputOperation('/admin/inputs/async',{asset:inState.asset,values:{...vals},chart:{...chart},persist:true},'Inputs')); }
-  if (b.id === 'inRevert') { inState.edits = {}; inState.chartEdits = {}; renderChartConfig(); renderInputs(); }
+  if (b.id === 'inRevert') {
+    if(!inState.pending)await reloadInputsTab();
+  }
   if (b.id === 'inReset') { if (confirm(`Remove all per-asset overrides for ${inState.asset}?`)) await withBusyButton(b,()=>submitInputOperation('/admin/inputs/reset/async',{asset:inState.asset},'Input reset')); }
   if (b.id === 'inApplyPreset') { await withBusyButton(b,()=>submitInputOperation('/admin/preset/async',{asset:inState.asset,preset:$('#inPreset').value||null},'Preset')); }
   if (b.id === 'addBtn') {
@@ -1193,6 +1234,7 @@ function render(d) {
   const viewAsset = view.startsWith('asset:') ? A.find(a => a.symbol === view.slice(6)) : null;
   if (view.startsWith('asset:') && !viewAsset && !solo) view = 'overview';
   const rebuild = lastView !== view;
+  if(rebuild)disposeWorkspaceView();
   if (view === 'overview') {
     if (rebuild) $('#view').innerHTML = overviewHtml(d, A);
     else { const g = $('#assets'); if (g) g.innerHTML = A.map(assetCard).join(''); const h = document.createElement('div'); h.innerHTML = overviewHtml(d, A); ['goliveCard','repoAuditCard','commandCenterCard','heroCard','engineCard'].forEach(id => { const nu = h.querySelector('#'+id), cur = $('#'+id); if (nu && cur) cur.replaceWith(nu); }); }
@@ -1218,6 +1260,8 @@ function render(d) {
     if (typeof wirePossibilityQuickAsset === 'function' && rebuild) wirePossibilityQuickAsset(viewAsset.symbol);
     else if (typeof loadPossibilityQuickAsset === 'function') loadPossibilityQuickAsset(viewAsset.symbol, false);
   } else if (view === 'command-centers') { if (rebuild) { $('#view').innerHTML = paperWorkspacesHtml(); loadPaperWorkspaces(); } }
+  else if (view === 'performance') {if(rebuild){$('#view').innerHTML='<div class="c12" id="workspace-performance-mount"></div>';workspaceViewController=IcarusWorkspacePerformance.mount($('#workspace-performance-mount'),IcarusClient);}}
+  else if (view === 'evidence') {if(rebuild){$('#view').innerHTML='<div class="c12" id="workspace-evidence-mount"></div>';workspaceViewController=IcarusWorkspaceEvidence.mount($('#workspace-evidence-mount'),IcarusClient,{canReadHistory:()=>last?.permissions?.can_write===true});}}
   else if (view === 'inputs') { if (rebuild) { $('#view').innerHTML = inputsHtml(A); loadInputsTab(); } }
   else if (view === 'commands') { if (rebuild) $('#view').innerHTML = commandsHtml(A); }
   else if (view === 'backtest') { if (rebuild) {
@@ -1256,6 +1300,7 @@ function render(d) {
   else if (view === 'log') { if (rebuild) $('#view').innerHTML = `<section class="card c12"><h2>Engine log</h2><div class="log" id="log2" style="max-height:80vh"></div></section>`; $('#log2').innerHTML = (d.log||[]).slice().reverse().map(l => `<div class="${l.level}">${tms(l.ts)} ${l.level.padEnd(5)} ${esc(l.msg)}</div>`).join(''); }
   lastView = view; first = false;
   applyWritePermissions();
+  applyPanelScope();
   window.IcarusExperience?.update(d, view);
   window.IcarusWorldImmersion?.view(view);
 }
@@ -1275,7 +1320,7 @@ function expireCoreObservations(reason='Current runtime observations unavailable
   $('#phase').textContent='UNAVAILABLE';$('#phase').className='badge paused';$('#meta').textContent=reason;
   for(const el of document.querySelectorAll('.node'))el.className='node';
   applyWritePermissions();
-  if(view!=='inputs') {$('#view').innerHTML='<section class="card c12"><p class="empty">'+esc(reason)+'</p></section>';lastView=null;}
+  if(view!=='inputs') {disposeWorkspaceView();$('#view').innerHTML='<section class="card c12"><p class="empty">'+esc(reason)+'</p></section>';lastView=null;}
 }
 window.addEventListener('pageshow',event=>{if(event.persisted){expireCoreObservations('Restored page — waiting for fresh selected runtime');void refresh();}});
 setInterval(()=>{if(last&&Date.now()-lastStatusAt>10000)expireCoreObservations('Selected runtime observation expired');},1000);
@@ -1296,7 +1341,7 @@ async function refreshCombinedPaperPnl() {
 }
 async function refreshGolive() {
   try {
-    const response = await fetch('/api/golive', {cache:'no-store'});
+    const response = await IcarusClient.request('/api/golive', {cache:'no-store'});
     const data = await response.json().catch(()=>({}));
     if (!response.ok) throw new Error(data.detail||data.error||('HTTP '+response.status));
     window.ICARUS_GOLIVE = data;
@@ -1319,7 +1364,7 @@ async function refreshGolive() {
 }
 async function refreshAgent() {
   try {
-    const response = await fetch('/api/agent', {cache:'no-store'});
+    const response = await IcarusClient.request('/api/agent', {cache:'no-store'});
     const data = await response.json().catch(()=>({}));
     if (!response.ok) throw new Error(data.detail||data.error||('HTTP '+response.status));
     window.ICARUS_AGENT = data;
@@ -1344,7 +1389,7 @@ async function refreshAgent() {
 }
 async function refreshAudit() {
   try {
-    const r = await fetch('/api/system/audit', {cache:'no-store'});
+    const r = await IcarusClient.request('/api/system/audit', {cache:'no-store'});
     if (!r.ok) throw new Error('audit '+r.status);
     window.ICARUS_AUDIT = await r.json();
   } catch (e) {
@@ -1354,7 +1399,7 @@ async function refreshAudit() {
 }
 async function refreshCommandCenter() {
   try {
-    const r = await fetch('/api/overview/command-center', {cache:'no-store'});
+    const r = await IcarusClient.request('/api/overview/command-center', {cache:'no-store'});
     const data = await r.json().catch(()=>({}));
     if (!r.ok) throw new Error(data.detail||data.error||('HTTP '+r.status));
     window.ICARUS_COMMAND_CENTER = data;
@@ -1444,6 +1489,7 @@ window.addEventListener('resize', () => { if (last) { lastView = null; render(la
 setInterval(() => { const el = $('#clock'); if (el) el.textContent = `${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})} ${TZ} · ${etClock()} ET`; }, 1000);
 window.addEventListener('hashchange', () => { if (!solo) { const v = location.hash.slice(1) || 'overview'; if (v !== view) { view = v; lastView = null; if (last) render(last); } } });
 window.IcarusExperience?.init({onThemeChanged: () => { if (last) { lastView = null; render(last); } }});
+new MutationObserver(applyPanelScope).observe($('#view'),{childList:true,subtree:true,attributes:true,attributeFilter:['disabled']});
 </script>
 </body>
 </html>

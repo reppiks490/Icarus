@@ -928,7 +928,7 @@
     "limit": "Discovery metadata, not a supersession/merge qualification; unreviewed entries remain explicitly unreviewed."
   },
   "open_recovery_work": [
-    "Shared main trading dashboard implementation for CC1-CC4 with isolated controls",
+    "Selected-runtime adapters for explicitly unavailable common panels; release/hosted and owner-PC verification of the five-route common dashboard",
     "Exact owner PC checkout/interpreter/module origins/data root/startup command",
     "Source-to-consumer freshness, entitlement and actual-read audit for all required data",
     "Matched real-input before/after accuracy comparison; metric definition and denominator unknown",
@@ -3188,6 +3188,180 @@
       "Unknown or unlocked providers return unavailable diagnostics without invoking meta."
     ]
   },
+  "workspace_common_dashboard_followup": {
+    "actual_five_routes": {
+      "local_log": "/workspace/scratch/actual-common-routes-green-v2.log",
+      "log_sha256": "9fd18f608054869b5609d6cfe45c0dd3a21e4ff148ce0b3bc21e0cef5bc62e68",
+      "result": "12 passed, 29 deselected in 74.74s (0:01:14)"
+    },
+    "behavior": [
+      "Main and CC1-CC4 serve the same renderer/modules with server-frozen page identity; shared_dashboard=False preserves the dedicated renderer rollback.",
+      "Every migrated linked reader/action uses explicit workspace transport, including the Commissioning POST; mapped panel responses retain identity/revision checks.",
+      "Selected market diagnostics read only actual-runner existing locked Databento buffers; unknown session health is UNOBSERVED and cached reads cannot acquire data or promise MBO snapshots.",
+      "Unavailable runtime panels display reasons and disable controls; server bypass rejects. Shared federation readers have visible provenance.",
+      "Reusable Performance reads five independent persisted journals, including removed instruments. Shared corpus, selected consumer receipts, archived expansion, A200 qualifications and Connections remain accessible.",
+      "Research history requires explicit owner action and backend owner authorization; receipt identity, authority and bounded bars remain validated.",
+      "Discard after a conflict explicitly reloads current configuration; unrelated configuration job completion preserves unsaved edits and captured revision."
+    ],
+    "editor_regressions": {
+      "local_log": "/workspace/scratch/editor-explicit-reload-green.log",
+      "log_sha256": "35a04b48834d8d784732729edddc8532bb44304915081569cec66e368c507bad",
+      "result": "2 passed, 40 deselected in 7.95s"
+    },
+    "evidence_history_performance": {
+      "local_log": "/workspace/scratch/common-evidence-performance-final.log",
+      "log_sha256": "397e52fed328a78438f6be6f3816d5cac58acde5b45ba1f63943aeaf656422cc",
+      "result": "12 passed, 17 deselected in 39.03s"
+    },
+    "final_full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/common-dashboard-full-v2.log",
+      "log_sha256": "3e6a4441915d3ab86d7440308b46c8c4fcaa7b23a9d2160f83d9cabdfa4c2ec3",
+      "result": "3833 passed, 4 skipped, 111 subtests passed in 429.28s (0:07:09)",
+      "status": "completed"
+    },
+    "hosted_verification": {
+      "status": "Pending at source publication; current exact-head receipts are maintained in PR462 and coordination/summaries/icarus1-20261020-system-recovery.json on the owner-actions bus."
+    },
+    "initial_full": {
+      "cause": "Three standalone Node harnesses omitted the explicit client; two static wiring assertions required old raw-fetch strings. Their failed executions preceded the five test-only alignments. No behavioral failure reported.",
+      "exit_code": 1,
+      "local_log": "/workspace/scratch/common-dashboard-full-final.log",
+      "log_sha256": "786102b7e115445c8c485542c648318a82787a47c5ff7becf81cc0982053dc91",
+      "result": "5 failed, 3828 passed, 4 skipped, 111 subtests passed in 515.49s (0:08:35)"
+    },
+    "interim_focused": {
+      "local_log": "/workspace/scratch/common-dashboard-final-focused.log",
+      "log_sha256": "830625b48395dc0c0b013dc83be5a01a75a057ba7da2ab4425b78227db46e7ec",
+      "result": "352 passed in 270.76s (0:04:30)"
+    },
+    "legacy_compatibility": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/performance-legacy-installed-browser.log",
+      "log_sha256": "eeb1423b8528810d57f2142b60818a0e674da27bd99b993f515d816d381f2dde",
+      "result": "All original eight viewport/workspace cases and assertions passed using installed /usr/bin/chromium; only executable selection changed in-memory."
+    },
+    "limits": [
+      "Same renderer is presentation and selected-core parity; unavailable runtime adapters remain unfinished integrations.",
+      "Owner PC checkout/interpreter/start command/data/journals remain unobserved; no matched real-input accuracy recovery proof.",
+      "Actual futures/prop-firm accounts, program semantics and universal source-to-consumer operation remain unverified.",
+      "No provider acquisition, spending, deployment, main release merge, full system restart or live activation."
+    ],
+    "linked_contracts_final": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/common-linked-contracts-final.log",
+      "log_sha256": "80f7d1b927880ea75e1bfa65c163698a0273f27259ae2616f9f07c60607dafd7",
+      "result": "53 passed, 86 subtests passed in 2.27s"
+    },
+    "observed_red": [
+      {
+        "local_log": "/workspace/scratch/selected-market-panel-red.log",
+        "log_sha256": "a359c31ba35cfdf728964a11dd14b51ac7e4f95ba23cff415bd3163ec293262e",
+        "result": "8 failed, 136 deselected in 3.53s"
+      },
+      {
+        "local_log": "/workspace/scratch/panel-labels-red.log",
+        "log_sha256": "c681f1ccec087f361260dcf75d5ad2b83e284de26736f3e2c388c59329997616",
+        "result": "1 failed, 16 deselected in 32.63s"
+      },
+      {
+        "local_log": "/workspace/scratch/common-performance-red.log",
+        "log_sha256": "ae3fb85e3763b23015fda23143bb2a8f4d8e9ed94e695c0071e052bd07b8839e",
+        "result": "7 failed, 4 passed, 150 deselected in 19.43s"
+      },
+      {
+        "local_log": "/workspace/scratch/actual-common-routes-red.log",
+        "log_sha256": "5677819e7afc6310109362197692967a3e027965c855dbaad260db44fd96d322",
+        "result": "12 failed, 29 deselected in 83.33s (0:01:23)"
+      },
+      {
+        "local_log": "/workspace/scratch/editor-explicit-reload-red.log",
+        "log_sha256": "59e8df419e0eaf35b5dc41e073d65ea6507412406aeb941552b9cd1f5437247b",
+        "result": "2 failed, 40 deselected in 37.23s"
+      },
+      {
+        "boundary": "raw module GET and direct Commissioning POST",
+        "result": "2 failing isolation cases observed before explicit transport migration"
+      }
+    ],
+    "recorded_at_utc": "2026-10-21T18:37:01.873101+00:00",
+    "required_api_browser": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/common-dashboard-required-api-browser.log",
+      "log_sha256": "56d604356a1d9f601d9728f554928c7cc7559d30be1e463aad2909602d84cf28",
+      "result": "4 passed, 103 deselected in 22.85s"
+    },
+    "required_browser_ci": {
+      "behavior": "Installs Python Playwright, resolves the downloaded Node Chromium executable, sets ICARUS_REQUIRE_WORKSPACE_BROWSER=1 and runs actual five-route/API browser coverage before unchanged world contracts.",
+      "status": "source validated; new-head hosted run pending",
+      "workflow": ".github/workflows/ui-visual-contract.yml"
+    },
+    "required_browser_selection": {
+      "command": "ICARUS_BROWSER_BINARY=/usr/bin/chromium ICARUS_REQUIRE_WORKSPACE_BROWSER=1 python -m pytest tests_engine/test_workspace_dashboard_browser.py tests_engine/test_workspace_performance_browser.py tests_engine/test_dashboard_js.py -q -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/common-dashboard-editor-final.log",
+      "log_sha256": "bc3ef093abe613e9eecfab5ff7de847dd7d463bd60ae964af03c7cfd9adf87b3",
+      "result": "114 passed, 1 skipped in 285.34s (0:04:45)",
+      "source_limit": "Runtime/UI bytes match the final manifest; the later five changes only align standalone test transport mocks/string assertions. The optional legacy browser test skips without its default cache; its original eight cases were separately run with installed Chromium."
+    },
+    "review": {
+      "fresh_independent_whole_diff_clear": false,
+      "limit": "Independent review quota boundary preserved; documentation support is not independent approval.",
+      "root_native_diff_review": true
+    },
+    "source_file_sha256": {
+      ".github/workflows/ui-visual-contract.yml": "778dc939666f6fae37cca958e573b8f34058ceb3ffbacd59313b082556829751",
+      "icarus_engine/apex-ui.js": "05c1d6acc9740db9cc233ae20b6b0e64aad9ec233976baf96143ede6c3ea4786",
+      "icarus_engine/ascendancy-ui.js": "43bdef1867dcd0136e8cf2881715d913f8d5e815c5a6d931c448669e9e9b8f08",
+      "icarus_engine/autopilot-ui.js": "5cdee573155795438fbf5d49b2d8a6ba17e84222d21a9aaf957f5007c66fa014",
+      "icarus_engine/brain-ui.js": "dfd372f2997c3121cede647c3bac840c1b82ee0251ae4c9a502cdaad2c21fb83",
+      "icarus_engine/chronofold-ui.js": "a8481792a6dea08e1ab86f2102a193c1b6e619d42b1a2d11aafe02229d2c1b0d",
+      "icarus_engine/commissioning-ui.js": "6af02064f1733b30181895ceb5dea222c689c24ea1a8566360cc35251f9e15a1",
+      "icarus_engine/dashboard.html": "6e0392b398414e0054213ede42adad94cde7ce683c26281816359c1cfb5361d9",
+      "icarus_engine/engine-control-ui.js": "8b72408cd8968a569b382271f087780a1f48526fb533b1fdad6bc7a39763eea5",
+      "icarus_engine/evolution-ui.js": "fc1c4eadf703167bdf3a269bbafcfd9c8e91ba73afe08ef80b252ae3e43055a2",
+      "icarus_engine/integrity-ui.js": "e7854f71d1f6fe67c76a2ec92ab7fb406ed7d845192d71b2367849f94a8999ef",
+      "icarus_engine/learning-ui.js": "76e93927054bfb56067d56860fdcb8bbb8d27d45e254d1257076454c6adf2e64",
+      "icarus_engine/market-data-ui.js": "fd85048e2182ffd86b10fbd32b84f304fe8ecb54c88fe9c0e26c97339dfa8c30",
+      "icarus_engine/pantheon-ui.js": "988524c74d69cc4eabeaac9d8f6e3e73df819462423ac2ee744b5dd748d2c782",
+      "icarus_engine/paper-pnl-ui.js": "a5356819e8a4ef7e856480347e2b126cd945f1b4e485af8f21eb11a976311af6",
+      "icarus_engine/parallax-ui.js": "40aaf22adff3e3e14e6a519b379d262315fc06e8a56c00d16b9d33845231744e",
+      "icarus_engine/possibility-ui.js": "a6deb3d6b77e501a698e4114443a30a949c8651587a3e95577733bfab2b866bd",
+      "icarus_engine/research-ui.js": "98496df876987681294510b9ed92a1d2f9905340e423c29dc16bb9469c6a1573",
+      "icarus_engine/server.py": "0cf59df90a0ea8e36e094082edfde6edf298fcfe783842e5b5758a0185f3bef4",
+      "icarus_engine/sibyl-ui.js": "b3dd8e12ce2836766f93bc66577ec8fe00d9d70e6db4a6813042df7690e198a4",
+      "icarus_engine/workspace-client.js": "bb0f7ecf5bf967bf3284a1f940d6a61ebd277639ada9606694421435b193d41d",
+      "icarus_engine/workspace-evidence-ui.js": "0b0c55294f356a782b53aea39f27d7fb5191d226a4b0c7958c1366e592953899",
+      "icarus_engine/workspace-performance-ui.js": "303e188162c842aa090e5ecc44654af94e72395ef5eb938054869fd3bcd9de7d",
+      "icarus_engine/workspace_api.py": "2cd40ee7aeeeeb0bd3997baccbba5d1444be86e2d0b08ec0ce45c409d070fd24",
+      "tests_engine/test_chronofold_integration.py": "f5fb3afd78831a5513ad61b8c758859b95f274c7c9fe37238ad8dc6fa0f6ab7c",
+      "tests_engine/test_command_center_routes.py": "284a7ff3c0d68f5f4f846670be75df76406a7cbc3e5e5298131f60be1994dfb8",
+      "tests_engine/test_commissioning_integration.py": "b3f93922800920177e354ca22396e0861a7bc74a87a483ac4f156d233cc4e3c7",
+      "tests_engine/test_dashboard_js.py": "aefc823fad995e961f6fe5556b048283a23bdd8e5fc3340c7fd169720c11ee5f",
+      "tests_engine/test_evolution_ui_status.py": "4c3828869be97c86b82147115aa8c486a94e783d678b6aaf09f3a71c6371c5cd",
+      "tests_engine/test_historical_trade_admission.py": "7f409fe36f9e8b26433207aae3a697e0cb315393252b666a12075ed29922b1a4",
+      "tests_engine/test_intelligence_feed.py": "bbe35b5e0ebbed10e545500e7222c59a095b416b91e61bbe1c5d24829d521bbb",
+      "tests_engine/test_native_validation_ui.py": "46d2f431d87913e6359697ab528c87f7076ac6a409f141a34ca0e2b69e35929d",
+      "tests_engine/test_source_data_contract.py": "41bf0495826f02f72f136eaaebb0a7507ca0e5de275a5538f3726a0ee4cde580",
+      "tests_engine/test_workspace_api.py": "955a25de8cf3a96df7947501303442ccb37b7ed39ab6da3104e7255cfec82f8d",
+      "tests_engine/test_workspace_client.py": "939ce22e204d567a2d6f20d718f215952ebd9719ae5e4d7f620a21502cb73598",
+      "tests_engine/test_workspace_dashboard_browser.py": "5a1ac22124fb326d28f320f3f11f080255df331d2306e0930c3933624c18c44a",
+      "tests_engine/test_workspace_market_data.py": "eb6ea3916fdd9f1e21808e4c699448e934604934b47c383840b6d11c97f50ee3"
+    },
+    "source_parent": "91fb8c7280a287012d3dce9004ad9833267b8b68",
+    "unchanged_cinema": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/common-dashboard-cinema.log",
+      "log_sha256": "1366c744df7c423339d85c8ad2908c90161c326edcbee33c4e10d7f8163e0b24",
+      "result": "{\"passed\":true,\"errors\":[],\"writes\":[],\"fixture\":{\"same\":true,\"first\":1,\"second\":1,\"surface\":true,\"scan\":true,\"hover\":true,\"x\":\"40.00%\",\"y\":\"60.00%\"}}"
+    },
+    "windows_selection": {
+      "existing_modules": 76,
+      "limit": "Path selection is not a new-head Windows pass.",
+      "yaml_and_all_paths_valid": true
+    }
+  },
   "workspace_configuration_followup": {
     "approval": "Owner explicitly approved the shared-dashboard written design and directed continued implementation; coordination event011.",
     "full_suite": {
@@ -3397,7 +3571,42 @@
       "result": "484passed in148.53s"
     },
     "hosted_verification": {
-      "status": "pending publication; prior68acaec all6success stays separate"
+      "conclusion": "all six workflows succeeded",
+      "head_sha": "91fb8c7280a287012d3dce9004ad9833267b8b68",
+      "limit": "This published core phase does not certify later common-renderer source.",
+      "runs": [
+        {
+          "conclusion": "success",
+          "id": 39643359886,
+          "name": "tests"
+        },
+        {
+          "conclusion": "success",
+          "id": 39643359867,
+          "name": "ui-visual-contract"
+        },
+        {
+          "conclusion": "success",
+          "id": 39643359877,
+          "name": "configuration-job-contract"
+        },
+        {
+          "conclusion": "success",
+          "id": 39643360016,
+          "name": "intelligence-feed-contract"
+        },
+        {
+          "conclusion": "success",
+          "id": 39643360073,
+          "name": "Four portfolio performance"
+        },
+        {
+          "conclusion": "success",
+          "id": 39643360142,
+          "name": "engine-federation-consumer-contract"
+        }
+      ],
+      "status": "completed"
     },
     "limits": [
       "Actual CC routes still dedicated; common panel migration and five-route acceptance remain incomplete.",

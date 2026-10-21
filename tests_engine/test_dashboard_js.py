@@ -22,6 +22,7 @@ NODE = shutil.which("node")
         "icarus_engine/dashboard.html",
         "icarus_engine/workspace-client.js",
         "icarus_engine/workspace-ui.js",
+        "icarus_engine/workspace-evidence-ui.js",
         "icarus_bridge/dashboard.html",
         "icarus_engine/research-ui.js",
         "icarus_engine/shadow-twin-ui.js",
@@ -216,7 +217,7 @@ def test_engine_dashboard_surfaces_repository_mcp_audit():
     assert 'id="repoHealth"' in src
     assert 'data-v="system">System</span>' in src
     assert "repositoryAuditCard(window.ICARUS_AUDIT" in src
-    assert "fetch('/api/system/audit'" in src
+    assert "IcarusClient.request('/api/system/audit'" in src
     assert "setInterval(refreshAudit, 20000)" in src
     assert "System Intelligence" in src
     assert "Automation loops" in src

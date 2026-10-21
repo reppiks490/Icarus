@@ -221,7 +221,10 @@ COMMANDS = [
 ]
 
 
-def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: bool = True):
+def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: bool = True,
+          shared_dashboard: bool = True):
+    if type(shared_dashboard) is not bool:
+        raise ValueError("shared_dashboard must be a boolean")
     html_path = Path(__file__).parent / "dashboard.html"
 
     def dashboard_html(workspace_id):
@@ -1402,6 +1405,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path.startswith("/api/market-history/"):
                 if not self._auth():
                     return self._json(401, {"error": "authentication required"})
+                if not self._owner():
+                    return self._json(403, {"error": "owner access required to request provider research history"})
                 # Catalog history is deliberately separate from runtime charts:
                 # a returned bar batch carries its full source receipt and can
                 # never silently become Pulse input.
@@ -1537,6 +1542,22 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         return self._json(404, {"detail": "unknown workspace panel"})
                     if not self._auth():
                         return self._json(401, {"detail": "authentication required"})
+                    if parts[5] == "market-data":
+                        query = parse_qs(p.query, keep_blank_values=True)
+                        if (set(query) - {"asset", "resource", "schema", "limit"}
+                                or any(len(values) != 1 for values in query.values())
+                                or not query.get("asset", [""])[0]
+                                or query.get("resource", [""])[0] not in {"capabilities", "ticks", "depth"}):
+                            return self._json(400, {"workspace_id": profile_id, "detail": "explicit asset and cached resource required; unknown or repeated selectors are unavailable"})
+                        try:
+                            return self._json(200, workspace_api.market_data(
+                                profile_id, query["asset"][0], query["resource"][0],
+                                schema=query.get("schema", ["mbp-10"])[0],
+                                limit=int(query.get("limit", ["200"])[0])))
+                        except WorkspaceAPIError as ex:
+                            return self._json(ex.status, ex.as_dict(profile_id))
+                        except ValueError as ex:
+                            return self._json(400, {"workspace_id": profile_id, "detail": str(ex)})
                     return self._json(503, {"detail": "this panel has no selected-workspace runtime adapter",
                                            "workspace_id": profile_id, "panel": parts[5], "available": False,
                                            "reason": "WORKSPACE_PANEL_UNAVAILABLE", "paper_only": True,
@@ -1604,6 +1625,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 target = p.path[len("/dashboards/"):]
                 if target not in workspace_ids and target != "connections":
                     return self._json(404, {"detail": "unknown dashboard"})
+                if shared_dashboard and target in workspace_ids:
+                    return self._send(200, dashboard_html(target), "text/html")
                 return self._send(200, (html_path.parent / "workspace-dashboard.html").read_bytes(), "text/html")
             if p.path == "/paper-pnl-ui.js":
                 return self._send(200, (html_path.parent / "paper-pnl-ui.js").read_bytes(), "text/javascript")
@@ -1621,6 +1644,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "workspace-client.js").read_bytes(), "text/javascript")
             if p.path == "/workspace-ui.js":
                 return self._send(200, (html_path.parent / "workspace-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/workspace-evidence-ui.js":
+                return self._send(200, (html_path.parent / "workspace-evidence-ui.js").read_bytes(), "text/javascript")
             if p.path == "/research-ui.js":
                 return self._send(200, (html_path.parent / "research-ui.js").read_bytes(), "text/javascript")
             if p.path == "/shadow-twin-ui.js":
@@ -1698,6 +1723,17 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except Exception as ex:
                     sys.stderr.write(f"status/public failed: {type(ex).__name__}: {ex}\n")
                     return self._json(500, {"ok": False, "detail": f"{type(ex).__name__}: {ex}", "assets": []})
+            if p.path == "/api/performance":
+                if not self._auth():
+                    return self._json(401, {"detail": "authentication required"})
+                from .workspace_performance import snapshot as performance_snapshot
+                capitals = [getattr(runner.spec, "capital", None) for runner in port.runner_list()]
+                capital = sum(capitals) if capitals and all(type(value) in (int, float)
+                    and math.isfinite(value) and value > 0 for value in capitals) else None
+                if capital is not None and not math.isfinite(capital):
+                    capital = None
+                return self._json(200, {**performance_snapshot(port.journal, capital=capital),
+                                        "workspace_id": "main"})
             if p.path == "/api/ascendancy/capabilities":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -3411,6 +3447,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 super().server_close()
 
     srv = ResearchHTTPServer(("127.0.0.1", http_port), H)
+    srv.shared_dashboard = shared_dashboard
     srv.command_centers = command_centers
     srv.workspace_jobs = workspace_jobs
     srv.account_connections = account_connections

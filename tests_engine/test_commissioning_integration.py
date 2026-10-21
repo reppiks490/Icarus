@@ -26,7 +26,7 @@ def test_commissioning_server_dashboard_and_control_wiring():
     assert "wireCommissioning()" in dashboard
 
     assert "window.commissioningHtml=commissioningHtml" in ui
-    assert "fetch('/api/commissioning'" in ui
+    assert "IcarusClient.request('/api/commissioning'" in ui
     assert "commissioning.capture" in ui
     assert "commissioning.settle_asset" in ui
     assert "commissioning.settle_all" in ui

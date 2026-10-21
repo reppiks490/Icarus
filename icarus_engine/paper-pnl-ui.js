@@ -41,7 +41,8 @@ globalThis.IcarusPaperPnl = (() => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
     try {
-      const response = await fetch(path, {cache: 'no-store', ...options, signal: controller.signal});
+      const transport=globalThis.IcarusClient?globalThis.IcarusClient.request.bind(globalThis.IcarusClient):fetch;
+      const response = await transport(path, {cache: 'no-store', ...options, signal: controller.signal});
       const data = await response.json();
       if (!response.ok) throw new Error('Engine request unavailable (' + response.status + ').');
       return data;

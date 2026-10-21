@@ -99,6 +99,12 @@ class WorkspaceAPI:
                         "history_basis": "Current runner replay and paper trades; persisted paper results are available separately in Performance."}
             raise WorkspaceAPIError(404, "unknown command center resource")
 
+    def market_data(self, profile_id, symbol, resource, *, schema="mbp-10", limit=200):
+        from .workspace_market_data import snapshot
+        with self.manager.configuration_lock(profile_id):
+            profile, _, runner = self._selected(profile_id, symbol)
+            return {**snapshot(runner, resource, schema=schema, limit=limit), **self._identity(profile)}
+
     def chart(self, profile_id, symbol, *, n=240, offset=0):
         with self.manager.configuration_lock(profile_id):
             profile, _, runner = self._selected(profile_id, symbol)

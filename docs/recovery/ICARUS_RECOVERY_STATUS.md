@@ -13,15 +13,13 @@ session `icarus1-20261020-system-recovery`. Icarus 2 registered separately as
 Its first PLAN explicitly preserves Icarus 1's runtime recovery paths and claims
 nonoverlapping federation/integration work. Registration is not completion.
 
-Published checkpoint `68acaec0` passed all six hosted workflows, including the
-unchanged browser visual contract after both responsive settings repairs. The
-common-core/accounting checkpoint passed3,790tests,4skipped,111subtests in304.42s;
-its unchanged cinema contract passed with no page errors or writes. The expanded
-focused selection passed484 and a separate shared-clock regression passed. These
-phases have separate source/log receipts in the evidence inventory. Current-source
-hosted checks are pending; the preceding6green runs do not certify new source.
-CC1–CC4 still use the dedicated renderer until contextual panels and five-route
-acceptance pass. No PC restart or live activation has occurred.
+The published core/accounting checkpoint `91fb8c7` passed all six hosted
+workflows, including Linux/Windows tests and the unchanged visual contract. Its
+full suite passed **3,790 tests, four skipped, 111 subtests**. The common-dashboard
+follow-up now serves the same renderer at main and CC1–CC4, with a server-frozen
+identity and independent selected data/actions. Its fresh source verification and
+hosted receipts are recorded separately below and in the evidence inventory.
+No PC restart or live activation has occurred.
 
 ## Verified starting point
 
@@ -61,12 +59,15 @@ ambiguous. No such installation collision has been observed on the PC yet.
 
    **Limit:** both shipped UIs already consume the strict contract. This repair
    does not establish the cause of the owner's displayed P&L symptom.
-2. **Dashboard parity — not complete.** `/` serves `dashboard.html`; CC1–CC4
-   serve `workspace-dashboard.html`. Their styles, chart surfaces and panels are
-   different. Existing tests establish route/isolation behavior, not identical
-   presentation or feature parity. Share the main trading surface with explicit
-   workspace context, preserve independent ledgers and controls, and verify it
-   in a real browser before calling this complete.
+2. **Common dashboard surface — implemented; operating parity remains open.**
+   Main and CC1–CC4 serve the same trading renderer and modules. The server fixes
+   each page's identity; URL parameters cannot select another runtime. Actual
+   desktop/mobile browser cases exercise distinct same-symbol prices, journals,
+   inputs and navigation. `serve(..., shared_dashboard=False)` preserves the
+   dedicated renderer for rollback. Connections remains a shared inventory.
+   Panels lacking selected-runtime adapters are visibly unavailable, with disabled
+   controls and server rejection. Those adapters and actual PC/release verification
+   remain required; common presentation does not establish subsystem operation.
 3. **Installed restart/configuration parity — unverified.** The Git Bash
    `restart-command-centers.sh` helper explicitly selects file-only/offline mode;
    `start-yahoo.ps1` selects the Yahoo/Coinbase route. `start-plant.sh` is an
@@ -120,8 +121,8 @@ ambiguous. No such installation collision has been observed on the PC yet.
    5,000. The scoped route now forwards the same bounded page size and offset to
    the selected workspace runner. Twelve offline HTTP cases cover distinct
    pages, overlays/fills, history metadata, bounds and parent/sibling isolation;
-   eight failed on the original route before the repair. This does not yet make
-   the four dashboard renderers identical.
+   eight failed on the original route before the repair. This chart-only phase preceded
+   the common-renderer integration recorded below.
 
 10. **Workspace-owned configuration — foundation implemented and reviewed.**
     Schema 2 preserves legacy values and an immutable private original-file backup.
@@ -181,9 +182,9 @@ ambiguous. No such installation collision has been observed on the PC yet.
     **3,736 passed, four skipped,111 subtests**; root native review only. The
     preceding responsive0fbfbd9 passed all six hosted workflows, including the
     previously failing visual contract. Core calls now use typed transport;
-    legacy panel migration and the CC renderer switch remain pending.
+    the later panel migration and CC renderer switch are recorded below.
 
-15. **Common trading core — integrated, renderer switch still pending.**
+15. **Common trading core — integrated into all five routes.**
     Status, chart, trade history, configuration, controls, jobs, comparisons and
     authenticated downloads use the immutable page client. Input drafts retain
     their original configuration revision and remain intact on rejection; fields
@@ -193,7 +194,9 @@ ambiguous. No such installation collision has been observed on the PC yet.
     server. Numeric-leading futures roots are accepted. The unsafe duplicate
     Command Centers configuration writer is removed; ledger cards navigate and
     selected controls stay local. Shadow Twin reads the selected runtime.
-    Browser tests use five distinct fixture sources without enabling CC routes.
+    Browser tests now use the actual five server routes and distinct fixture sources.
+    Explicit discard reloads the latest configuration after conflict; unrelated
+    completed jobs preserve unsaved drafts and their original revision.
 
 16. **Persisted-row accounting provenance — Icarus2 finding reproduced and repaired.**
     SQL SUM/COALESCE had converted NULL/text profit to trusted zero and admitted
@@ -206,12 +209,24 @@ ambiguous. No such installation collision has been observed on the PC yet.
     detail-reader bound now also limits trusted summary rows. An extreme-magnitude
     detail-curve floating-sum discrepancy remains a separate lower-priority finding.
 
-17. **Read-only cached market diagnostics — standalone adapter only.**
+17. **Read-only cached market diagnostics — selected route and UI integrated.**
     A tested adapter reads the concrete Databento owner's existing symbol buffers
     under its lock and returns detached bounded rows. It cannot start sessions,
     request history or claim a complete MBO book. Other providers, including
     Yahoo's unlocked metadata cache, return explicit unavailable diagnostics.
-    This adapter is not yet connected to the common panel routes or UI.
+    The selected panel route holds the configuration lock while choosing its runner.
+    Session metadata without health evidence displays UNOBSERVED. A server-health
+    tile is explicitly shared; it does not certify a selected feed session.
+
+18. **Shared evidence and persisted Performance — preserved in the common surface.**
+    Main and all four workspaces use the same Performance component with their own
+    persisted journals, including removed instruments. Shared corpus receipts show
+    the selected consumer, archived expansion retains exact missing micros, and
+    the 200-identity research catalog preserves qualification and authority checks.
+    Connections stays accessible. Research history requires an explicit owner
+    action and is owner-protected by the server; tests use synthetic responses.
+    Linked modules use explicit workspace transport. Shared evidence has visible
+    provenance; unsupported runtime readers never fall back to main.
 
 ## Conditions for a meaningful restart
 
@@ -220,7 +235,7 @@ All rows must have current evidence before a restart is called ready.
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
 | Installed release and startup | Exact repos/refs, interpreter/module origins, data root, one intended launcher, state backups and reversible rollback | PC not observed |
-| Four-dashboard parity | Same main trading UI/components, charts, panels and configurable inputs; browser evidence for CC1–CC4; mutations isolated to the chosen ledger | Open |
+| Four-dashboard parity | Same main trading UI/components, charts, panels and configurable inputs; browser evidence for CC1–CC4; mutations isolated to the chosen ledger | Common renderer implemented; unavailable runtime adapters, release and PC verification remain |
 | Accounting | Persistent independent journals, known totals, stale/missing/runtime failure cases, partial closures and restart persistence; simulated vs broker basis explicit | Source repair under verification; PC symptom open |
 | Data and consumers | Per-source credential/auth/rights/ingestion/freshness/consumer evidence; no collected-but-unread required source silently treated complete | Audit open; explicit external blockers retained |
 | Subsystems | Current suites and cross-system checks plus actual runtime links/consumer receipts for each required subsystem | Local checks recorded separately; operating links unverified |
@@ -275,6 +290,17 @@ disabled. Resetting or flattening positions is not a panel refresh.
   are covered. Root reviewed the diff; no fresh independent clear is claimed.
   Previous client-bootstrap e9a33b7 passed all six hosted workflows, including
   Linux/Windows tests39598192902. Current replay-head hosted checks are separate.
+- Common renderer and contextual panels: **3,833 passed, four skipped,
+  111 subtests** in429.28s, exit0, with37source/test/workflow hashes frozen.
+  Required browser/JS selection114passed, plus4API/browser cases; the original
+  eight dedicated Performance viewport/workspace cases passed separately using
+  installed Chromium. Unchanged cinema passed with no page errors or writes.
+  The initial full exposed five old test transport assumptions; explicit client
+  mocks/wiring assertions were aligned and53affected-module tests plus86subtests
+  passed before the fresh full. Actual server routes cover main/CC1–CC4 at desktop
+  and mobile sizes, fixed identity and full-page navigation. Source review is root
+  native only. New-head hosted results were pending at source publication; use
+  PR462 and the canonical coordination summary for later exact-head receipts.
 - Divine Providence: hub suite exit 0 (165 collected cases); all **12 subsystem
   suites** passed, totaling **2,179 passed test cases**. All 12 compile checks,
   five ASCENSION adversarial scripts and ten hub connection fixtures passed.
@@ -287,8 +313,8 @@ disabled. Resetting or flattening positions is not a panel refresh.
 
 These Linux/Python 3.12 checks do not certify Windows, required hosted CI, the
 owner's saved configuration, all licensed history, live consumers or a recovered
-accuracy result. Four skipped runtime tests remain unverified here. The main UI
-and CC1–CC4 have not yet been made identical.
+accuracy result. Optional local skips are listed per phase. Main and CC1–CC4 now
+share the renderer; unavailable panels remain explicit unfinished integrations.
 
 ## Next-worker handoff
 

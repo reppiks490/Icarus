@@ -43,7 +43,7 @@ async function loadAutopilot(){
   autopilotLoading=true;autopilotPendingLoad=false;
   try{
     const tok=localStorage.getItem('icarus-engine-token')||'';
-    const r=await fetch('/api/autopilot',{cache:'no-store',headers:{Authorization:'Bearer '+tok}});
+    const r=await IcarusClient.request('/api/autopilot',{cache:'no-store',headers:{Authorization:'Bearer '+tok}});
     const d=await r.json();if(!r.ok)throw new Error(d.detail||('HTTP '+r.status));if(view!=='autopilot')return;
     autopilotLast=d;const cfg=d.config||{},active=d.active||{},cand=active.candidate||null,champion=cand?(d.champions||{})[cand.asset]:null;
     $('#apStatus').innerHTML=(d.running?'<span class="pos">RUNNING</span>':'<span class="muted">STOPPED</span>')+' · cycle '+esc(String(d.cursor||0))+' · '+esc(d.mode||'');

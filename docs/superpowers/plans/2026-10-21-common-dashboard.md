@@ -68,9 +68,9 @@ Market diagnostics may read only existing provider buffers under their owner loc
 
 Extract/reuse dedicated-view corpus/A200 research receipts, connections navigation/inventory and persisted paper performance in the common surface. Shared catalog/history retain original qualification/receipt checks and explicit owner-request semantics; tests use offline fixtures. Main and all CC pages retain these components rather than removing them for parity.
 
-- [ ] Add failing provider-call traps, distinct selected symbol buffers, missing-runtime and unknown-capability tests, plus module/direct-POST isolation cases.
-- [ ] Implement contextual readers/unavailable states and shared labels; migrate every linked data/action consumer, preserving existing main behavior.
-- [ ] Exercise all panel/navigation paths in Chromium, verify unsupported actions never mutate main, and retain shared evidence/performance features.
+- [x] Add failing provider-call traps, distinct selected symbol buffers, missing-runtime and unknown-capability tests, plus module/direct-POST isolation cases.
+- [x] Implement contextual readers/unavailable states and shared labels; migrate every linked data/action consumer, preserving existing main behavior.
+- [x] Exercise all panel/navigation paths in Chromium, verify unsupported actions never mutate main, and retain shared evidence/performance features.
 
 ### Task 4: Common renderer switch and five-route browser acceptance
 
@@ -78,8 +78,8 @@ Extract/reuse dedicated-view corpus/A200 research receipts, connections navigati
 
 **Interfaces:** `serve(..., shared_dashboard=True)` selects common CC rendering only after Tasks1–3 pass. `shared_dashboard=False` preserves dedicated renderer rollback and compatible saved state. The server injects each route's immutable id before the same renderer/modules; query/hash/storage cannot change it. Connections remain explicitly shared/global navigation.
 
-- [ ] Write failing desktop/mobile component-parity and request-capture cases at main/CC1–CC4 with different same-symbol prices/settings/history/journals; cover owner/viewer, downloads, jobs, missing runtimes, expiry and full-page navigation.
-- [ ] Switch CC rendering behind the explicit rollback parameter and require all five browser cases, relevant existing presentation contracts and focused suites to pass.
+- [x] Write failing desktop/mobile component-parity and request-capture cases at main/CC1–CC4 with different same-symbol prices/settings/history/journals; cover owner/viewer, downloads, jobs, missing runtimes, expiry and full-page navigation.
+- [x] Switch CC rendering behind the explicit rollback parameter and require all five browser cases, relevant existing presentation contracts and focused suites to pass.
 - [ ] Run fresh full runtime suite and inspect exact source/CI receipts. Publish engineering evidence without claiming PC repair, accuracy recovery or broker operation.
 
 ## Execution record
@@ -95,8 +95,30 @@ viewer bypass/draft-conflict/admission/pending-job/CSV/historical comparison and
 late-response cache cases. Expanded core/accounting/API/execution selection484
 passed; separate shared-clock1passed. Prior core full3783passed before final
 reservation/accounting changes; fresh combined full3790passed,4skipped,111subtests in304.42s.
-Unchanged cinema passed errors[]/writes[]; current-source hosted checks pending. CC HTML remains
-unswitched. Root native review; independent final clearance remains unavailable.
-Task3 standalone cache reader10passed; routes/modules/evidence/performance and
-five-route acceptance remain pending. Icarus2's persisted-row accounting handoff
+At the Task2 checkpoint, unchanged cinema passed errors[]/writes[] and CC HTML
+remained unswitched. Published91fb subsequently passed all six hosted workflows. Root native review; independent final clearance remains unavailable.
+At the standalone Task3 checkpoint, the cache reader passed10 cases; integration
+and five-route acceptance followed in the record below. Icarus2's persisted-row accounting handoff
 was independently reproduced by root and repaired through shared validation.
+
+
+Task3/4 implementation: actual server routes now select the common renderer by
+ default, preserving shared_dashboard=False rollback. Explicit linked-module
+ transport, cached selected-market diagnostics, shared/unavailable notices and
+ disabled/rejecting unsupported controls are in place. Reusable Performance and
+ corpus/A200/Connections preserve historical provenance and owner-only history.
+ Real five-route desktop/mobile and immutable navigation selection12passed;
+ final browser/JS selection114passed,1optional legacy-cache skip; required API
+ browser4passed; original eight legacy performance cases separately passed with
+ installed Chromium. Unchanged cinema passed errors[]/writes[].
+
+Two editor regressions failed before correction: conflict discard retained stale
+revision, and an unrelated config completion erased an unsaved draft. Both now
+pass. The initial full run completed3828passed,4skipped,111subtests with5failures,
+all stale test transport assumptions. Three Node mocks and two wiring assertions
+now use the explicit page client;53existing tests and86subtests pass unchanged
+behavior assertions. Fresh final full completed3,833passed,4skipped,111subtests in429.28s, exit0,
+against37frozen source/test/workflow hashes. Required hosted results remain
+separate and pending at source publication; exact-head follow-up stays on PR462
+and the canonical coordination summary. Root
+native review only; no fresh independent final clearance. NO_GO remains.

@@ -85,6 +85,25 @@ for(const data of [identity('cc2'),identity('cc1',-1),identity('cc1',1.5),{asset
 """)
 
 
+def test_module_panel_adapters_validate_selected_identity_and_observation_revision():
+    run_js(r"""
+for(const data of [identity('cc2',5),identity('cc1',2)]){
+ const {c,calls}=client('cc1',url=>reply(new URL(url).pathname.endsWith('/status')?identity('cc1',5):data));
+ await c.read('status');
+ await assert.rejects(c.request('/api/brain'),error(data.workspace_id==='cc2'?'INVALID_IDENTITY':'STALE_RESPONSE'));
+ assert.equal(calls.at(-1).path,'/api/command-centers/cc1/panels/brain');
+}
+""")
+
+
+def test_main_persisted_performance_uses_native_journal_reader():
+    run_js(r"""
+const {c,calls}=client('main',()=>reply({workspace_id:'main',schema_version:1,realized_pnl:90}));
+assert.equal((await c.read('performance')).realized_pnl,90);
+assert.equal(calls.length,1);assert.equal(calls[0].path,'/api/performance');
+""")
+
+
 def test_revisions_and_slow_responses_cannot_replace_new_observations():
     run_js(r"""
 const pending=[];const {c}=client('cc1',()=>new Promise(resolve=>pending.push(resolve)));
