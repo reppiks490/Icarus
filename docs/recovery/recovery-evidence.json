@@ -50,6 +50,16 @@
       "workflow_sha256": "a04f2e28bcc8b13e844104f0db18fa1ca28a3049a917744adea292f7f996b0d1"
     }
   },
+  "current_upstream_receipt_drift": {
+    "encrypted_checkpoint": "opaque; not decrypted or printed",
+    "from": "617d3e4baf5bef337e0b1b43ad51bdc67ee420d7",
+    "head": "be46d4b9206001a44772976c98981bbdcf5a7ef3",
+    "merge_pending": false,
+    "merged_on_recovery_branch": "5697e71ecb51bd9102adaf73f32f47a6ab30319e",
+    "paths": 34,
+    "runtime_or_test_changes": false,
+    "source_file_hashes_unchanged": true
+  },
   "desktop_settings_followup": {
     "behavior": "Convert viewport drawer coordinates to fixed containing-header padding-edge coordinates; preserve desktop CSS variables/mobile media geometry.",
     "checks": [
@@ -69,6 +79,18 @@
         "result": "unchanged cinema passed; errors[]; writes[]"
       }
     ],
+    "hosted_verification": {
+      "all_six_success": true,
+      "head": "68acaec0347a644ee09884fd3826dfadf897ee1d",
+      "runs": [
+        39612117366,
+        39612117381,
+        39612117369,
+        39612117418,
+        39612117400,
+        39612117382
+      ]
+    },
     "limits": [
       "Local browser evidence; new hosted visual verification pending.",
       "No original cinema assertions or waits relaxed; no PC restart or live activation."
@@ -916,6 +938,31 @@
     "Exact-head disposition of every relevant open PR/workstream"
   ],
   "owner_pc_runtime_observed": false,
+  "persisted_pnl_validation_followup": {
+    "behavior": [
+      "Raw rows validated before aggregation; NULL/text/future closure makes selected realized PnL unknown with reason.",
+      "Every ledger uses manager shared as-of clock.",
+      "Valid empty ledger stays zero; valid siblings remain independently available."
+    ],
+    "fixture_compatibility": "Execution test now uses positive entry timestamp and consistent runner bar index; original reversal/fill assertions preserved.",
+    "focused": "Included in484expanded tests; malformed policies shared with performance",
+    "handoff": "https://github.com/reppiks490/Icarus/pull/462#issuecomment-6321554762",
+    "limits": [
+      "Synthetic journal reproductions; owner real journals unobserved.",
+      "Existing detail-reader100000row bound applies to summary validation.",
+      "Extreme-magnitude detail-curve floating-sum discrepancy remains open."
+    ],
+    "red": {
+      "local_log": "/workspace/scratch/persisted-pnl-red.log",
+      "log_sha256": "04569c0a487bcf697f8f259efa431587e834aaaa566601062d63e24846243645",
+      "result": "3failed,2passed controls"
+    },
+    "shared_clock": {
+      "local_log": "/workspace/scratch/persisted-pnl-shared-clock.log",
+      "log_sha256": "ea497cc3e55853bce1a6d03bf3c6cc1abe3abe9e9ef08e493e0aeb36b618fd1f",
+      "result": "1passed"
+    }
+  },
   "previous_draft_hosted_checks": {
     "head_sha": "ae38967519725c21588821307f013d936f5050cd",
     "limit": "These receipts qualify the prior draft head; a subsequent source commit requires its own checks.",
@@ -3129,6 +3176,18 @@
       "modules": 70
     }
   },
+  "workspace_cached_market_reader_followup": {
+    "behavior": "Read concrete Databento owner buffers under lock, actual provider symbol, bounded detached rows; no feed methods, subscriptions, requests or complete-book claim.",
+    "focused": {
+      "local_log": "/workspace/scratch/cached-market-green.log",
+      "log_sha256": "43be76faac9efd4be375832f561a486305184383c6b630dc6c8c894fcba83aa1",
+      "result": "10passed"
+    },
+    "limits": [
+      "Standalone module only; no scoped panel route/UI wiring yet.",
+      "Unknown or unlocked providers return unavailable diagnostics without invoking meta."
+    ]
+  },
   "workspace_configuration_followup": {
     "approval": "Owner explicitly approved the shared-dashboard written design and directed continued implementation; coordination event011.",
     "full_suite": {
@@ -3307,6 +3366,82 @@
       "current_source_execution": "pending publication",
       "modules": 72,
       "validation": "YAML parsed, all paths exist/no duplicates"
+    }
+  },
+  "workspace_core_renderer_followup": {
+    "behavior": [
+      "Typed selected status/chart/trades/inputs/control/config/jobs/backtest/compare/CSV/navigation.",
+      "Captured editor revisions and immutable profiles; whole edits preserve unrelated overrides.",
+      "Drafts reserved before admission, retained through failed jobs and conflicts.",
+      "Owner/viewer controls follow authenticated status permissions.",
+      "Failed/stale observations cannot overwrite fresh frames or retain old caches.",
+      "Numeric-leading futures supported; full partial-control receipts retained.",
+      "Duplicate configuration editor removed; ledger cards navigate; Shadow Twin selected."
+    ],
+    "final_full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/core-accounting-full-final.log",
+      "log_sha256": "49ca6db73d44458d704e75b1e5ced1792ea54165c09481d3d7bdaf70630d013e",
+      "result": "3790passed,4skipped,111subtests in304.42s",
+      "status": "completed"
+    },
+    "fixture_corrections": [
+      "Hybrid evidence test invented received_at=fetched_now+1ms; deterministic beginning/end-second clocks and explicit future rejection now preserve the production guard.",
+      "Historical job comparison uses actual authenticated downloaded CSV; job JSON deliberately omits raw csv.",
+      "Test-only common preview awaits explicit startup completion before forcing concurrent refreshes."
+    ],
+    "focused": {
+      "local_log": "/workspace/scratch/core-accounting-focused.log",
+      "log_sha256": "f6e70bbc5dd584abb25c2527fb4c444dc8be9cc2a89d51cc445c433e735abb82",
+      "result": "484passed in148.53s"
+    },
+    "hosted_verification": {
+      "status": "pending publication; prior68acaec all6success stays separate"
+    },
+    "limits": [
+      "Actual CC routes still dedicated; common panel migration and five-route acceptance remain incomplete.",
+      "Root native diff review only; no fresh final independent whole-diff clear.",
+      "No owner-PC observation, provider collection, accuracy proof, restart, deployment or live activation."
+    ],
+    "prior_core_full": {
+      "local_log": "/workspace/scratch/common-core-full-final.log",
+      "log_sha256": "6674bf5da1fcd9003bfa4c2abdfcf39d8d8fba7d1b5dee0738b248a7ae1a798a",
+      "result": "3783passed,4skipped,111subtests in296.68s before final draft reservation/accounting changes"
+    },
+    "source_commits": {
+      "cached_market_reader": "ef30f3ddd82d2ebfae747c145f613f865fe66953",
+      "core": "80c441dc5ba83e846f8b1e67081b12a995c83f84",
+      "persisted_pnl": "485d264a8f875a5299cb90af6ce0ac8dc3372f90",
+      "receipt_only_merge": "5697e71ecb51bd9102adaf73f32f47a6ab30319e"
+    },
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "eb700a122bae82454484fb1a26f1f9defa18b45edf61949d479c0bfafafa078d",
+      "icarus_engine/command-centers-ui.js": "89f09773c28695f7a7a729b61843f2f451c3ea565dcc64dbda8df36d38d2f6c8",
+      "icarus_engine/dashboard.html": "da14dcbac66ebc7834b348c9c555db89ecc3e9732b9b32003c30ab67b6f48240",
+      "icarus_engine/paper_workspaces.py": "5caadde7c617d789a9d3a82254afce598ae4e4f1d95c36f6ab7bdea9186bd196",
+      "icarus_engine/runtime.py": "786f647575d72763e2f659fb6fedcb3a4264662bf341ea677152088c6f8d9958",
+      "icarus_engine/server.py": "610d33ed4fb88de8d0b8b045a344c3b3bd95e51d38ca30f98afe9a8e5c2388e3",
+      "icarus_engine/shadow-twin-ui.js": "1d82b4e936cf52f7b6ea3448e6941706a410fa2974b8ef085d68cdd8af7c1837",
+      "icarus_engine/workspace-client.js": "d9d53dee5671cdbb2949e829d92475daf11ac7cb56ba3fa146d48513cc8a9007",
+      "icarus_engine/workspace-ui.js": "c96de1f7d4b2c8cf387ebb253b9d73df3754eff5d70685ec65223b24d9dc3651",
+      "icarus_engine/workspace_market_data.py": "517c977654ccddca2b85de6da4d76dffda472a2d6842bd7580d9820bbcd49ab8",
+      "icarus_engine/workspace_performance.py": "6178c3c367c5c5f4acd78a37db78f0a6992eae368904241d83e12d9605c37770",
+      "tests_engine/test_dashboard_js.py": "a9cb3972e12ad977884e0e39d77720ee0a04863c8c6d7abdff63de6e06728dd2",
+      "tests_engine/test_execution_controls.py": "59458952921ef5cfeed2bb7412b2621ad9630759c1eab839f7ea5af4c08f1254",
+      "tests_engine/test_market_universe.py": "8afb9920cb02b535a78e093777ac911f1e4c05a016ff0be2004ba2c43187aa89",
+      "tests_engine/test_paper_workspaces.py": "ad2fd3e54417f6bf4ee6eecf0ff042f14d866cfb872001e63965a4f7d156ff91",
+      "tests_engine/test_workspace_client.py": "e8e437a541db9027bdab9223a1d5c14a29d1a7a73891150da4fc29f6d5a6cabc",
+      "tests_engine/test_workspace_dashboard_browser.py": "afe87dbdbd818392fdf9a996c8334586d10763eec85ac7925d8f3f0ef7a98716",
+      "tests_engine/test_workspace_market_data.py": "def76bee889513ae90e4b6e2e67eeca81cb4536714c7a6f3c651b84a423875c1",
+      "tests_engine/test_workspace_performance.py": "c094fc44957e67b9edd7caeb794b1a82a1a9a37130fab1d0b8fc6fae06de9ea2",
+      "tests_engine/test_workspace_ui.py": "afec3ae9fd722b8b4efe8496b64cf225bebf8cd2c479c85771a2ed4474d52684"
+    },
+    "source_parent": "68acaec0347a644ee09884fd3826dfadf897ee1d",
+    "unchanged_cinema": {
+      "local_log": "/workspace/scratch/core-accounting-cinema.log",
+      "log_sha256": "1366c744df7c423339d85c8ad2908c90161c326edcbee33c4e10d7f8163e0b24",
+      "result": "passed;errors[];writes[]"
     }
   },
   "workspace_selected_replay_followup": {

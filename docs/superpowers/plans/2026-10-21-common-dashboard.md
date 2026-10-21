@@ -54,9 +54,9 @@ Inputs capture one consistent configuration/input revision on load and retain it
 
 Replace the Command Center's unsafe duplicate configuration writer with selected-page controls/navigation and the common Inputs surface. Other ledger cards navigate to their pages; no foreign mutation retains the current identity. Shadow comparison uses selected status. Invalidate failed/obsolete chart/trade/status caches and clear displayed values while retaining local draft data/revision.
 
-- [ ] Add failing five-source core/action cases, per-asset versus `*` precedence preservation, draft conflict, job identity, auth/download and navigation cases.
-- [ ] Implement the explicit core calls and action helper; remove raw parent paths from these core flows.
-- [ ] Verify real HTTP/browser owner/viewer controls, file/journal scope, delayed responses and cached observation clearing; parse/check all changed JavaScript.
+- [x] Add failing five-source core/action cases, per-asset versus `*` precedence preservation, draft conflict, job identity, auth/download and navigation cases.
+- [x] Implement the explicit core calls and action helper; remove raw parent paths from these core flows.
+- [x] Verify real HTTP/browser owner/viewer controls, file/journal scope, delayed responses and cached observation clearing; parse/check all changed JavaScript.
 
 ### Task 3: Contextual panels and preserved evidence surfaces
 
@@ -89,3 +89,14 @@ Continue native work under the owner's existing approval and repeated continue i
 Task1 evidence: missing-policy/module/raw-context failures observed; final115client/policy/JS +9HTTP/lifecycle checks green, initial195HTTP/auth/control checks green. Fresh full3736passed,4skipped,111subtests in252.16s. Root reviewed scope classes/route selection. The restored-page client and same-workspace wrong-job/late-decode/null cases were reproduced and repaired before this full run. Native review availability stays explicit.
 
 Task2 preflight: typed HTTP errors currently preserve only their message/status; preserve full partial-flatten receipts before toolbar wiring. Control acknowledgements describe completed events and must not be discarded merely because a newer status revision arrived; current market state still comes from fresh reads. Add the corresponding failing client/action tests before changing those semantics.
+
+Task2 evidence:30typed-client/16helper cases, five-source Chromium core checks,
+viewer bypass/draft-conflict/admission/pending-job/CSV/historical comparison and
+late-response cache cases. Expanded core/accounting/API/execution selection484
+passed; separate shared-clock1passed. Prior core full3783passed before final
+reservation/accounting changes; fresh combined full3790passed,4skipped,111subtests in304.42s.
+Unchanged cinema passed errors[]/writes[]; current-source hosted checks pending. CC HTML remains
+unswitched. Root native review; independent final clearance remains unavailable.
+Task3 standalone cache reader10passed; routes/modules/evidence/performance and
+five-route acceptance remain pending. Icarus2's persisted-row accounting handoff
+was independently reproduced by root and repaired through shared validation.

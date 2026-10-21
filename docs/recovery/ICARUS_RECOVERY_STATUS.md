@@ -13,12 +13,15 @@ session `icarus1-20261020-system-recovery`. Icarus 2 registered separately as
 Its first PLAN explicitly preserves Icarus 1's runtime recovery paths and claims
 nonoverlapping federation/integration work. Registration is not completion.
 
-Current context-guard checkpoint `d3a1720` passed hosted runtime tests and four
-contracts; its browser visual check failed on desktop settings placement. A
-nonzero containing-header origin reproduces the overflow. The coordinate repair
-passes both deterministic desktop/mobile cases and the unchanged cinema contract
-locally. Fresh hosted visual confirmation is pending; common-renderer Tasks2–4
-remain open. Exact phase receipts are in the evidence inventory.
+Published checkpoint `68acaec0` passed all six hosted workflows, including the
+unchanged browser visual contract after both responsive settings repairs. The
+common-core/accounting checkpoint passed3,790tests,4skipped,111subtests in304.42s;
+its unchanged cinema contract passed with no page errors or writes. The expanded
+focused selection passed484 and a separate shared-clock regression passed. These
+phases have separate source/log receipts in the evidence inventory. Current-source
+hosted checks are pending; the preceding6green runs do not certify new source.
+CC1–CC4 still use the dedicated renderer until contextual panels and five-route
+acceptance pass. No PC restart or live activation has occurred.
 
 ## Verified starting point
 
@@ -128,8 +131,9 @@ ambiguous. No such installation collision has been observed on the PC yet.
     cached display values. Parent per-asset writers are explicitly unavailable to
     workspaces. Removing a configured asset requires explicit disposition of its
     override. The owner approved the shared-dashboard design; this foundation
-    does not yet expose the new controls through the common renderer. Existing
-    additions still warm asynchronously after commit; staged warmup rollback for
+    now has typed core controls and revision-preserving editors in the common
+    renderer, verified with a test-only CC preview. The actual CC route switch
+    remains gated on panel integration. Existing additions still warm asynchronously after commit; staged warmup rollback for
     newly added assets is not established by these tests.
 
 11. **Scoped trading API, controls and jobs — implemented and locally verified.**
@@ -140,7 +144,8 @@ ambiguous. No such installation collision has been observed on the PC yet.
     parent job cannot be read through another workspace. Transactions in one
     workspace no longer block siblings; a busy snapshot becomes unavailable.
     Invalid preset costs and local file admission failures now fail safely.
-    These APIs are not yet connected to the shared main dashboard renderer.
+    The common renderer now uses these typed core paths; CC production routes
+    retain the dedicated renderer until panel dependencies pass.
     Jobs remain bounded process-local records. The final independent whole-diff
     review was interrupted by its usage limit after confirming all three reported
     corrections; root inspected the diff and completed the full runtime suite.
@@ -157,16 +162,14 @@ ambiguous. No such installation collision has been observed on the PC yet.
     asset or whole workspace. The flat-workspace guard and exact rollback stay
     enforced. This repair does not explain the reported accuracy decline.
 
-13. **Responsive settings drawer — reproduced and repaired locally.**
-    The fb98ce6 hosted visual workflow failed when desktop inline coordinates
-    remained after a mobile resize. Local Chromium reproduced that state and a
-    deterministic delayed-callback regression failed on the old implementation.
-    Desktop measurements now use variables consumed only by desktop CSS, so the
-    mobile rules apply immediately. Both real-browser regression cases,132
-    presentation checks and the unchanged cinema contract pass (no page errors
-    or write requests). Hosted checks for this repair remain separate. The
-    preceding fb98ce6 runtime Linux/Windows workflow passed; its visual failure
-    stays recorded until new-source verification supersedes it.
+13. **Responsive settings drawer — reproduced and verified in hosted CI.**
+    Desktop variables are consumed only by desktop CSS, so delayed viewport
+    callbacks cannot leave desktop placement active on mobile. A second failure
+    came from a fixed drawer inside a filtered/transformed header with a nonzero
+    origin; measured viewport coordinates are now converted to that padding-edge
+    origin. Both deterministic browser regressions and the unchanged cinema
+    contract pass. Published68acaec0 passed all six hosted workflows. Historical
+    fb98/d3 visual failures remain recorded separately.
 
 14. **Explicit module transport and server context guard — verified foundation.**
     Tagged calls and same-origin CC page requests cannot silently read or mutate
@@ -177,8 +180,38 @@ ambiguous. No such installation collision has been observed on the PC yet.
     immutable client instead of restoring a permanently closed one. Full suite:
     **3,736 passed, four skipped,111 subtests**; root native review only. The
     preceding responsive0fbfbd9 passed all six hosted workflows, including the
-    previously failing visual contract. Main module wiring and CC renderer switch
-    are still pending, so this is not completed dashboard parity.
+    previously failing visual contract. Core calls now use typed transport;
+    legacy panel migration and the CC renderer switch remain pending.
+
+15. **Common trading core — integrated, renderer switch still pending.**
+    Status, chart, trade history, configuration, controls, jobs, comparisons and
+    authenticated downloads use the immutable page client. Input drafts retain
+    their original configuration revision and remain intact on rejection; fields
+    are reserved before HTTP admission and through commit. Whole-workspace edits
+    preserve unrelated overrides. Failed/expired observations clear caches while
+    drafts survive. Owner/viewer permissions are supplied by the authenticated
+    server. Numeric-leading futures roots are accepted. The unsafe duplicate
+    Command Centers configuration writer is removed; ledger cards navigate and
+    selected controls stay local. Shadow Twin reads the selected runtime.
+    Browser tests use five distinct fixture sources without enabling CC routes.
+
+16. **Persisted-row accounting provenance — Icarus2 finding reproduced and repaired.**
+    SQL SUM/COALESCE had converted NULL/text profit to trusted zero and admitted
+    future closures. The journal summary and detailed performance reader now use
+    one raw-row validator before aggregation, with the manager's shared as-of
+    clock. Invalid ledgers return unknown realized P&L and a reason; valid empty
+    ledgers remain zero and healthy sibling amounts remain independent. Root
+    reproduced3failures/2valid controls before repair. Synthetic test journals
+    only; the owner's real journals were not inspected. The inherited100,000-row
+    detail-reader bound now also limits trusted summary rows. An extreme-magnitude
+    detail-curve floating-sum discrepancy remains a separate lower-priority finding.
+
+17. **Read-only cached market diagnostics — standalone adapter only.**
+    A tested adapter reads the concrete Databento owner's existing symbol buffers
+    under its lock and returns detached bounded rows. It cannot start sessions,
+    request history or claim a complete MBO book. Other providers, including
+    Yahoo's unlocked metadata cache, return explicit unavailable diagnostics.
+    This adapter is not yet connected to the common panel routes or UI.
 
 ## Conditions for a meaningful restart
 
@@ -260,13 +293,13 @@ and CC1–CC4 have not yet been made identical.
 ## Next-worker handoff
 
 Icarus 1 retains runtime recovery/release judgment and this evidence record.
-Icarus 2 has registered its separate federation/integration session and should
-consume the pinned recovery evidence through the existing coordination entrypoint.
-A useful split
-is Icarus 1 on the shared dashboard/startup/accounting path and Icarus 2 on
-data-to-subsystem consumption, futures/accounts and matched accuracy evidence,
-with independent cross-review of each other's changes. The detailed assignment
-beyond Icarus 2's published claim remains a proposed split, not a completion claim.
+Icarus2's latest focused handoff is recorded in
+`icarus-owner-actions:coordination/handoffs/icarus2-prime-return-20261021.md`.
+It preserves unpublished renderer work, leaves the accounting repair to this
+session, and reports Engine226/Icarus463/owner-actions51 for exact-head review.
+Those reports are not root review or release approval. Older broad integration
+loops are paused; the permanent Icarus2 identity remains registered. No competing
+runtime edits were made for the persisted-row finding.
 
 Do not merge old PR stacks by title or by a dated “done” note. Compare their exact
 heads with the recorded runtime baseline, preserve required independent research,
