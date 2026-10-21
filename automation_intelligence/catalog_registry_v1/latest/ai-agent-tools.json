@@ -1,26 +1,26 @@
 {
   "catalog_id": "ai-agent-tools",
-  "content_sha256": "92db0b8dc72bfcfbd7e6ffa4aaa4d3d6f15ddb0fd69a7d18266babd00d33b81d",
+  "content_sha256": "47725c57557d77d7830699780d7a7441d2859020c8112dca85fa9885f632f15f",
   "execution_authorized": false,
   "import_summary": {
     "catalog_id": "ai-agent-tools",
-    "duplicate_groups": 8,
+    "duplicate_groups": 9,
     "execution_authorized": false,
-    "imported_entries": 153,
+    "imported_entries": 161,
     "parse_failures": 65,
     "production_decision_authorized": false,
-    "raw_count": 218,
+    "raw_count": 226,
     "rejected": 0,
-    "review_required": 153,
-    "snapshot_id": "04e9f9512faf50ef6061ec22e781aaf8340190cf3b76b2214d9bc912c0a8f505",
-    "unique_candidates": 149
+    "review_required": 161,
+    "snapshot_id": "192a90b42b76356de4239efd9d7a5ab27ee1433344e471f4efe5c7b41782e4b9",
+    "unique_candidates": 157
   },
   "parser_revision": "catalog-registry-v3",
   "production_decision_authorized": false,
-  "retrieved_at": "2026-10-18T09:01:52.634358Z",
-  "snapshot_id": "04e9f9512faf50ef6061ec22e781aaf8340190cf3b76b2214d9bc912c0a8f505",
+  "retrieved_at": "2026-10-21T09:34:05.530191Z",
+  "snapshot_id": "192a90b42b76356de4239efd9d7a5ab27ee1433344e471f4efe5c7b41782e4b9",
   "status": "SUCCESS",
-  "upstream_commit": "fccf5be234183bbf75e0e2eb18169e17f98a0c2b",
+  "upstream_commit": "e7ac56a24f9888db24378fd3d6ccdd33464f2704",
   "upstream_path": "README.md",
   "upstream_repo": "cporter202/ai-agent-tools"
 }
