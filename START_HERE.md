@@ -67,11 +67,13 @@ Feed choice is deliberate:
 
 Do not call the file-fed option a connected live feed. A TradingView subscription does not automatically supply this Python engine. The paid-feed command is an optional operator choice, not a request to purchase access. The startup command omits the order bridge. Inputs and presets are editable in each dashboard; this guide does not retune your strategy or claim an accuracy improvement.
 
+**Windows archive limitation:** the private vault/archive-intake tool requires descriptor-relative no-follow file opens and refuses on Windows. Its credentialed restore/intake workflow runs on Linux. Do not disable that safeguard or treat a skipped archive-admission test as working Windows archive support. Ordinary local CSV history, file mode and the explicit Yahoo paper startup above use a different path.
+
 The default local dashboard token is `icarus`. If you previously chose a custom token, use that same value through your local `ICARUS_TOKEN` environment variable before launching; do not publish it. Use the browser's **Token** control to authenticate. Existing private provider configuration stays in the selected data root; do not copy credentials into GitHub.
 
 ## 4. Save a one-command start for the next 30 days
 
-In the new checkout, after choosing and confirming your root and main assets, create a local shortcut. If `~/icarus-start.sh` already exists, choose another filename instead of overwriting it.
+After checking the first launch, press **Ctrl+C in its owning window and wait for shutdown**. In that same window and new checkout, create a local shortcut using the confirmed root and main assets. If `~/icarus-start.sh` already exists, choose another filename instead of overwriting it. Then relaunch using the saved command below.
 
 ```bash
 if [ ! -e "$HOME/icarus-start.sh" ]; then
@@ -151,11 +153,12 @@ Full built-in syntax and additional commands:
 "$PYTHON" -m icarus_engine.cli --help
 "$PYTHON" -m icarus_engine.cli run --help
 "$PYTHON" -m icarus_engine.workspace_tools --help
-"$PYTHON" -m icarus_agent --help
 "$PYTHON" -m icarus_control --help
 ```
 
 `workspace_tools expand` deliberately changes asset selections; its old `restart` helper forces file mode and a canonical main universe. Neither is the preserve-as-is command above. Earlier [COMMANDS.md](COMMANDS.md), [SETUP.md](SETUP.md) and launcher files remain historical references.
+
+The optional `icarus_agent` module starts a separate local service; it does not implement `--help`. The as-is launcher manages its own sidecar, so do not start another instance from this diagnostics window.
 
 Optional engineering verification, after installing test dependencies (this is not required for ordinary startup):
 

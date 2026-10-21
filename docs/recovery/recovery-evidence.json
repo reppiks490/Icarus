@@ -1150,6 +1150,54 @@
       }
     ]
   },
+  "private_intake_platform_followup": {
+    "boundary": "Descriptor-relative os.open plus O_NOFOLLOW required by existing _snapshot. Windows private vault/archive intake intentionally refuses; ordinary CSV/file/Yahoo startup is a separate operating path.",
+    "change": "Ten capability-dependent acceptance cases retain original assertions; four existing rejection cases plus new unconditional missing-capability/no-output/input-integrity regression remain runnable. New modules move into an early named Windows step with same79unique paths and no duplicates.",
+    "documentation_checks": "11Bashblocks parse; same79unique Windows modules. Internal supporting command check found optional icarus_agent ignores --help and startsservice; removed fromhelp block, owned testprocess stopped. Other sixhelp commands exited0.",
+    "focused": {
+      "local_log": "/workspace/scratch/private-intake-platform-focused.log",
+      "log_sha256": "ff12905cb1d7d77074acb6f475394d9f6f94a7e939624754311238017398eed2",
+      "result": "124passed in13.41s; root intake/core intake/restart persistence/as-is launcher"
+    },
+    "hosted_previous": {
+      "linux_job": 119526607840,
+      "linux_result": "success",
+      "other_workflows": "seven succeeded, including required UI/browser39687883580",
+      "tests_run": 39687883614,
+      "windows_job": 119526608283,
+      "windows_result": "failure: nine root archive-admission expectations on unsupported safe-open platform; POSIX privacy case already skipped"
+    },
+    "limits": [
+      "No Windows archive support added; guard not bypassed.",
+      "No actual owner-PC restart, sustained run, open-position restoration certification, provider acquisition, account arming or live order.",
+      "Previous aggregate3852 and UI122 phases remain separate; no repeated full suite claimed for test-only followup.",
+      "New-head hosted results pending publication; use exact source/CI in canonical summary."
+    ],
+    "missing_capability_green": {
+      "local_log": "/workspace/scratch/private-intake-missing-capability-green.log",
+      "log_sha256": "b8aa52508ccc172244211b47aa53653682a8e8af7aa564ace7975cd07c3eb5ee",
+      "result": "5passed,10skipped in0.12s"
+    },
+    "previous_published_source": "debf6e180eb41db120a139f92a694f60f6994916",
+    "production_source_changed": false,
+    "public_command_docs_commit": "cc4f0a93bf5f48cd9f1072111f63a9c3fdfe2eba",
+    "recorded_at_utc": "2026-10-21T23:05:30.328186+00:00",
+    "red": {
+      "local_log": "/workspace/scratch/private-intake-missing-capability-red.log",
+      "log_sha256": "0af22b67f4db46ac95f653faf254507fb350cc5827bdb7f35068ef5bfac4e671",
+      "result": "10failed,4passed on POSIX with os.supports_dir_fd emptied; includes mode-privacy test already skipped on Windows"
+    },
+    "review": "Root native bounded diff review plus internal command inspection; no new independent clearance claimed.",
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "fe5706ac823083b5fc43ba7175967a16d00c7f2a028a0051e04fbde2e4f0cd29",
+      "START_HERE.md": "5087f636026b1e75ce00a841f090d7760a5e7f530db355466463a11f4027d3e7",
+      "icarus_engine/corpus_intake.py": "93ef6861b88b4b6ab31d55d53e237ed43ce33376c960a3d4e9f03daae839e9d2",
+      "scripts/start-as-is.sh": "2149b13fe47782694ea6c518c70c7591d4bed2e4a1e15a529d2f2f0668f800d2",
+      "tests/test_provider_corpus_intake.py": "bd50d5090bd8272b0be893a7a7f712317a8ac13b5dc99eef960b570e944767e4",
+      "tests_engine/test_restart_persistence.py": "3ef8476a296a839497fac1747eb652f1a1f1f1653f837fce5b2cb09119dd6aa4",
+      "tools/provider_corpus_intake.py": "795aae28825af1bd899c3764a3d7b77a5d0248fd2b67248e546a5da448941e40"
+    }
+  },
   "repositories": [
     {
       "branch": "main",
