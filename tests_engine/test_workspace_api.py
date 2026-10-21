@@ -68,11 +68,12 @@ def workspace_http(tmp_path, monkeypatch):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
-    def request(path, *, body=None, token="api-owner", raw=False):
+    def request(path, *, body=None, token="api-owner", raw=False, extra_headers=None):
         connection = HTTPConnection("127.0.0.1", server.server_port, timeout=5)
         headers = {"Content-Type": "application/json"}
         if token:
             headers["Authorization"] = "Bearer " + token
+        headers.update(extra_headers or {})
         try:
             connection.request("GET" if body is None else "POST", path,
                                body=None if body is None else json.dumps(body), headers=headers)
@@ -685,3 +686,91 @@ def test_settings_resize_uses_mobile_geometry_when_viewport_callbacks_are_delaye
             assert page.locator(".experience-settings").evaluate("el=>el.open")
         finally:
             browser.close()
+
+
+@pytest.mark.parametrize("path,headers,status", [
+    ("/admin/pause", {"X-Icarus-Workspace": "cc1"}, 409),
+    ("/admin/pause", {"Referer": "http://127.0.0.1:PORT/dashboards/cc1"}, 409),
+    ("/admin/command-centers/cc2/pause", {"X-Icarus-Workspace": "cc1"}, 409),
+    ("/admin/pause", {"X-Icarus-Workspace": "main", "Referer": "http://127.0.0.1:PORT/dashboards/cc1"}, 409),
+    ("/admin/pause", {"X-Icarus-Workspace": "invalid"}, 400),
+])
+def test_raw_workspace_context_cannot_mutate_parent_or_foreign_runtime(workspace_http, path, headers, status):
+    server, parent, request = workspace_http
+    headers = {key: value.replace("PORT", str(server.server_port)) for key, value in headers.items()}
+    before = _unaffected_state(server, parent)
+    body = {"paused": True} if "command-centers" in path else {"asset": "NQ"}
+    assert request(path, body=body, extra_headers=headers)[0] == status
+    assert not parent.runners["NQ"].paused
+    assert not server.command_centers.portfolios["cc2"].runners["NQ"].paused
+    assert _unaffected_state(server, parent) == before
+
+
+def test_workspace_context_read_selection_and_auth_remain_explicit(workspace_http):
+    server, parent, request = workspace_http
+    selected = {"X-Icarus-Workspace": "cc1"}
+    assert request("/status/public", extra_headers=selected)[0] == 503
+    assert request("/api/command-centers/cc2/status", extra_headers=selected)[0] == 409
+    code, status, _ = request("/api/command-centers/cc1/status", extra_headers=selected)
+    assert code == 200 and status["workspace_id"] == "cc1"
+    assert request("/api/presets", extra_headers=selected)[0] == 200
+    viewer = request("/admin/access/add", body={"label": "context-reader"})[1]["user"]["token"]
+    assert request("/admin/pause", body={"asset": "NQ"}, token=None, extra_headers=selected)[0] == 401
+    assert request("/admin/pause", body={"asset": "NQ"}, token=viewer, extra_headers=selected)[0] == 403
+    assert not parent.runners["NQ"].paused
+
+
+def test_workspace_guard_rejects_parent_before_interpreting_write_body(workspace_http):
+    server, parent, _ = workspace_http
+    connection = HTTPConnection("127.0.0.1", server.server_port, timeout=5)
+    try:
+        connection.request("POST", "/admin/pause", body="{not-json", headers={
+            "Authorization": "Bearer api-owner", "X-Icarus-Workspace": "cc1", "Content-Type": "application/json"})
+        response = connection.getresponse()
+        assert response.status == 409, response.read()
+        assert json.loads(response.read())["workspace_id"] == "cc1"
+    finally:
+        connection.close()
+    assert not parent.runners["NQ"].paused
+
+
+def test_cached_page_lifecycle_does_not_permanently_close_its_context(workspace_http):
+    playwright = pytest.importorskip("playwright.sync_api")
+    server, _, _ = workspace_http
+    with playwright.sync_playwright() as runtime:
+        try:
+            browser = runtime.chromium.launch(headless=True, executable_path=shutil.which("chromium"))
+        except playwright.Error as error:
+            pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
+        try:
+            page = browser.new_page(reduced_motion="reduce")
+            base = f"http://127.0.0.1:{server.server_port}"
+            page.route("**/*", lambda route: route.continue_() if route.request.url.startswith(base + "/") else route.abort())
+            page.add_init_script("localStorage.setItem('icarus-engine-token','api-owner');sessionStorage.setItem('icarus-intro-seen','1')")
+            page.goto(base + "/", wait_until="load")
+            result = page.evaluate("""async()=>{
+              const original=window.IcarusClient;
+              for(let n=0;n<2;n++){
+                window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}));
+                window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));
+                await original.read('status');
+              }
+              return {same:original===window.IcarusClient,id:original.context.id};
+            }""")
+            assert result == {"same": True, "id": "main"}
+        finally:
+            browser.close()
+
+
+def test_scoped_unavailable_panel_and_action_never_use_parent_service(workspace_http):
+    server, parent, request = workspace_http
+    context = {"X-Icarus-Workspace": "cc1"}
+    before = _unaffected_state(server, parent)
+    code, panel, _ = request("/api/command-centers/cc1/panels/brain", extra_headers=context)
+    assert code == 503 and panel["workspace_id"] == "cc1" and panel["available"] is False
+    code, action, _ = request("/admin/command-centers/cc1/unavailable",
+                               body={"operation": "POST /admin/pause"}, extra_headers=context)
+    assert code == 501 and action["reason"] == "WORKSPACE_ACTION_UNAVAILABLE"
+    assert action["workspace_id"] == "cc1" and action["execution_authorized"] is False
+    assert not server.workspace_jobs._jobs and not parent.runners["NQ"].paused
+    assert _unaffected_state(server, parent) == before

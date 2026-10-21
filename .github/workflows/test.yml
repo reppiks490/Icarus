@@ -113,6 +113,7 @@ jobs:
           tests_engine/test_workspace_api.py
           tests_engine/test_workspace_jobs.py
           tests_engine/test_workspace_client.py
+          tests_engine/test_workspace_context.py
           -q
         env:
           TZ: UTC

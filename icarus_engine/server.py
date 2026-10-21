@@ -72,6 +72,7 @@ from .golive import report as golive_report
 from .agent import report as agent_report
 from .briefing import report as briefing_report
 from .runtime import FlattenUnavailableError, Portfolio, _clean, _read_json, apply_spec_meta, preset_path
+from .workspace_context import WorkspaceContextError, guard_workspace_request
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
 from .research_service import ResearchWorkspace
@@ -1357,6 +1358,18 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         def _owner(self) -> bool:
             return bool(getattr(self, "identity", None) and self.identity.get("role") == "owner")
 
+        def _workspace_context_ok(self, path, method):
+            try:
+                guard_workspace_request(self.headers, path, method, self.server.server_port)
+            except WorkspaceContextError as ex:
+                if method != "GET":
+                    self._drain_body()
+                self._json(ex.status, {"detail": ex.detail, "workspace_id": ex.workspace_id,
+                                      "available": False, "reason": "WORKSPACE_CONTEXT_REQUIRED",
+                                      "execution_authorized": False})
+                return False
+            return True
+
         def _int(self, q: Dict[str, Any], key: str, default: int, lo: int, hi: int) -> int:
             try:
                 return max(lo, min(hi, int(q.get(key, [default])[0])))
@@ -1378,6 +1391,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(403, {"detail": "bad host"})
             p = urlparse(self.path)
             q = parse_qs(p.query)
+            if not self._workspace_context_ok(p.path, "GET"):
+                return
             if p.path == "/api/market-universe":
                 from .market_universe import snapshot as market_universe_snapshot
                 try:
@@ -1517,6 +1532,15 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(404, {"detail": "unknown command center resource"})
                 profile_id = parts[3]
                 resource = parts[4] if len(parts) > 4 else None
+                if resource == "panels":
+                    if len(parts) != 6 or not re.fullmatch(r"[a-z][a-z0-9_-]{0,100}", parts[5]):
+                        return self._json(404, {"detail": "unknown workspace panel"})
+                    if not self._auth():
+                        return self._json(401, {"detail": "authentication required"})
+                    return self._json(503, {"detail": "this panel has no selected-workspace runtime adapter",
+                                           "workspace_id": profile_id, "panel": parts[5], "available": False,
+                                           "reason": "WORKSPACE_PANEL_UNAVAILABLE", "paper_only": True,
+                                           "execution_authorized": False})
                 if resource == "jobs":
                     if len(parts) not in (6, 7) or (len(parts) == 7 and parts[6] != "trades.csv"):
                         return self._json(404, {"detail": "unknown workspace job resource"})
@@ -2217,6 +2241,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             p = urlparse(self.path)
             q = parse_qs(p.query, keep_blank_values=True)
             if p.path == "/research/events":
+                if not self._workspace_context_ok(p.path, "POST"):
+                    return
                 secret = os.environ.get("ICARUS_INGEST_SECRET", "")
                 if not secret:
                     self._drain_body()
@@ -2242,6 +2268,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if not self._owner():
                 self._drain_body()
                 return self._json(403, {"detail": "viewer access cannot change engine state"})
+            if not self._workspace_context_ok(p.path, "POST"):
+                return
             try:
                 n = int(self.headers.get("Content-Length", "0") or 0)
             except ValueError:
@@ -2291,6 +2319,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if action is None:
                     try:
                         if profile_id in workspace_ids:
+                            if len(parts) == 4 and parts[3] == "unavailable":
+                                if (set(body) != {"operation"} or not isinstance(body["operation"], str)
+                                        or not 0 < len(body["operation"]) <= 256):
+                                    return self._json(400, {"detail": "unavailable action requires one operation name"})
+                                return self._json(501, {"detail": "this action has no selected-workspace adapter",
+                                                       "workspace_id": profile_id, "available": False,
+                                                       "reason": "WORKSPACE_ACTION_UNAVAILABLE", "paper_only": True,
+                                                       "execution_authorized": False})
                             if len(parts) == 5 and parts[3:] == ["config", "async"]:
                                 return self._json(202, workspace_jobs.submit_config(profile_id, "*", body))
                             if len(parts) == 7 and parts[3] == "assets" and parts[5:] == ["config", "async"]:

@@ -3206,6 +3206,69 @@
       "yaml_and_paths": "valid/no_duplicates"
     }
   },
+  "workspace_context_guard_followup": {
+    "behavior": [
+      "Header and same-origin CC Referer validate context without choosing runtime implicitly.",
+      "Foreign routes, parent reads and unsupported global writes reject before mutation; owner/viewer auth retained.",
+      "Explicit module Response transport labels shared reads, validates selected responses and uses rejecting scoped endpoints.",
+      "Repeated cached pagehide cancels in-flight generations while preserving immutable restored client; noncached unload closes it.",
+      "Wrong job IDs, stale revisions, null bodies and cancelled late decoding cannot supply observations."
+    ],
+    "focused": [
+      "195HTTP/auth/execution/route tests before final lifecycle follow-up",
+      "115client/policy/JavaScript tests after review fixes",
+      "9HTTP/lifecycle/unsupported-endpoint cases after review fixes"
+    ],
+    "full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/workspace-context-guard-full.log",
+      "log_sha256": "97e23129f92b2bce45cbe1a2c0cab793d448e81eaa8908b5da1b0ac5d929a64f",
+      "result": "3736passed,4skipped,111subtests in252.16s"
+    },
+    "limits": [
+      "Typed core renderer/module migration and CC common HTML switch remain pending.",
+      "Engineering fixtures do not establish accuracy recovery, connected providers/brokers or PC operating readiness.",
+      "No deployment, release merge, provider acquisition, full restart or live activation."
+    ],
+    "observed_red": [
+      "Missing policy module collection error",
+      "2missing module transport cases",
+      "7raw context HTTP failures",
+      "Same-workspace wrong-job and close-during-decode failures",
+      "Persisted-pagehide permanently closed client in real Chromium",
+      "Null job response typed-error failure"
+    ],
+    "previous_responsive_hosted": {
+      "all_six": "completed/success",
+      "commit": "0fbfbd9e31e88b2a36929afcc8990ebfb1eb4157",
+      "configuration": 39603222313,
+      "consumer": 39603222550,
+      "intelligence": 39603222409,
+      "performance": 39603222332,
+      "tests": 39603222401,
+      "visual": 39603222538
+    },
+    "recorded_at_utc": "2026-10-21T13:35:49.212872+00:00",
+    "review": "Native root review; no fresh independent approval invented while specialist is usage-limited.",
+    "scope": "COMMON_RENDERER_TASK1_EXPLICIT_MODULE_TRANSPORT_AND_SERVER_CONTEXT_GUARD; CC renderer unchanged",
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "d215aa55a8715130d7ec837734399ca694be61bc4caac2b98738e9cfe06bbe02",
+      "icarus_engine/dashboard.html": "021fcd0df10c2b7d4d02bd20dc9775f81e7b2a09f7d28c20e4331e213876a03a",
+      "icarus_engine/server.py": "69944a9c5fc0b4c9be21ccb53e3da201b19c1669e891128b2ec2a124403a7278",
+      "icarus_engine/workspace-client.js": "2cf09368d0333878c3811768267d4ed9b36ea94205a24f73dd3f9811ee184ef8",
+      "icarus_engine/workspace_context.py": "6a7bf98f275d135d1b96c1dd72c8cc673d3f1351b05287e54230ac7d9b93fde6",
+      "tests_engine/test_workspace_api.py": "5d3c78bdd1607ea3ecbad5333c4e60eefb25c1e402496358f460a0e4b5ec6271",
+      "tests_engine/test_workspace_client.py": "a306e4adf0f3c829415652106c52a527d0ba2570b489732a828ba10e2679b1c4",
+      "tests_engine/test_workspace_context.py": "47f132ecf1f924993c0451d6004a5198e5d6664e052619712513c6c5a960cc24"
+    },
+    "upstream_receipts_pending_merge": "617d3e4baf5bef337e0b1b43ad51bdc67ee420d7;39automation_intelligence paths; no runtime source changes",
+    "windows_selection": {
+      "current_source_execution": "pending publication",
+      "modules": 72,
+      "validation": "YAML parsed, all paths exist/no duplicates"
+    }
+  },
   "workspace_selected_replay_followup": {
     "behavior": [
       "Per-asset override changes replay only affected retained symbols; whole-default changes replay selected assets.",

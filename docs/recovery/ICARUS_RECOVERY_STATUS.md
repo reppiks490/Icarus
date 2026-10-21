@@ -161,6 +161,18 @@ ambiguous. No such installation collision has been observed on the PC yet.
     preceding fb98ce6 runtime Linux/Windows workflow passed; its visual failure
     stays recorded until new-source verification supersedes it.
 
+14. **Explicit module transport and server context guard — verified foundation.**
+    Tagged calls and same-origin CC page requests cannot silently read or mutate
+    main or another workspace. Authentication stays in place; shared readers are
+    explicit and unsupported actions reject without changes. The browser client
+    preserves native HTTP responses for modules, validates selected identities,
+    and cancels old observations. Cached back-navigation pages retain a usable
+    immutable client instead of restoring a permanently closed one. Full suite:
+    **3,736 passed, four skipped,111 subtests**; root native review only. The
+    preceding responsive0fbfbd9 passed all six hosted workflows, including the
+    previously failing visual contract. Main module wiring and CC renderer switch
+    are still pending, so this is not completed dashboard parity.
+
 ## Conditions for a meaningful restart
 
 All rows must have current evidence before a restart is called ready.

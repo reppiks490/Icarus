@@ -180,7 +180,10 @@ Object.defineProperty(window, 'IcarusClient', {
   writable: false,
   configurable: false,
 });
-window.addEventListener('pagehide', () => window.IcarusClient.close(), {once:true});
+window.addEventListener('pagehide', event => {
+  if (event.persisted) window.IcarusClient.cancelPending();
+  else window.IcarusClient.close();
+});
 </script>
 <script src="/research-ui.js"></script>
 <script src="/sources-ui.js"></script>

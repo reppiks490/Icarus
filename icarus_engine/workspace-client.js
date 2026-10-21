@@ -17,7 +17,10 @@
     ? value : fail('INVALID_IDENTITY','Invalid workspace configuration revision');
   const sharedPaths = new Set(['/api/input-meta','/api/presets','/api/command-centers',
     '/api/market-universe','/api/system/audit','/api/agent','/api/integrity',
-    '/api/research/sources','/api/research/records','/api/research/source-watch']);
+    '/api/research/sources','/api/research/records','/api/research/source-watch',
+    '/api/commands','/api/corpus-consumption','/api/corpus-expansion','/api/account-connections',
+    '/api/prop-firm-catalog','/api/evolution','/api/evidence-lab','/healthz']);
+  const sharedPath = path => sharedPaths.has(path)||path.startsWith('/api/market-history/');
 
   function create(bootstrap, options={}) {
     if (!object(bootstrap)||!['main','cc1','cc2','cc3','cc4'].includes(bootstrap.id))
@@ -31,8 +34,11 @@
     const context=freeze(JSON.parse(JSON.stringify({id:bootstrap.id,capabilities:bootstrap.capabilities||{}})));
     const scoped=context.id!=='main', api=`/api/command-centers/${context.id}`, admin=`/admin/command-centers/${context.id}`;
     const latest=new Map(), jobs=new Map(), active=new Set();
-    let observedRevision=-1, closed=false;
+    let observedRevision=-1, closed=false, lifecycle=0;
     const token=typeof options.token==='function'?options.token:()=>'';
+    function current(generation, signal) {
+      if (closed||generation!==lifecycle||signal?.aborted) fail('CANCELLED','Request cancelled');
+    }
 
     function pathURL(path) {
       if (typeof path!=='string'||!path.startsWith('/')||path.startsWith('//')) fail('INVALID_REQUEST','An explicit same-origin path is required');
@@ -49,8 +55,9 @@
       if (advance&&!historical) observedRevision=Math.max(observedRevision,rev);
       return data;
     }
-    async function network(path, init, consume, channel=null) {
+    async function network(path, init, consume, channel=null, acceptHttpErrors=false) {
       if (closed) fail('CANCELLED','The page client is closed');
+      const generation=lifecycle;
       const url=pathURL(path), controller=new AbortController(), external=init.signal;
       if (external?.aborted) fail('CANCELLED','Request cancelled');
       const sequence=channel?(latest.get(channel)||0)+1:0;
@@ -66,14 +73,14 @@
       const abort=()=>cancel(); active.add(cancel); external?.addEventListener('abort',abort,{once:true});
       try {
         const work=Promise.resolve().then(()=>options.fetch(url.href,{cache:'no-store',...init,headers,signal:controller.signal})).then(async response=>{
-          if (!response.ok) {
+          if (!response.ok&&!acceptHttpErrors) {
             const data=await response.json().catch(()=>({}));
             fail('HTTP_ERROR',data.detail||data.error||`HTTP ${response.status}`,response.status);
           }
           return consume(response);
         });
         const data=await Promise.race([work,cancelled]);
-        if (closed) fail('CANCELLED','The page client is closed');
+        current(generation,external);
         if (channel&&latest.get(channel)!==sequence) fail('STALE_RESPONSE','A newer request replaced this observation');
         return data;
       } catch (error) {
@@ -217,15 +224,67 @@
     }
     async function shared(path) {
       const url=pathURL(path);
-      if (!sharedPaths.has(url.pathname)) fail('UNAVAILABLE','This service has no shared read-only adapter',503);
+      if (!sharedPath(url.pathname)) fail('UNAVAILABLE','This service has no shared read-only adapter',503);
       return json(url.pathname+url.search,{validate:false,channel:'shared:'+url.pathname+url.search});
+    }
+    async function request(path, init={}) {
+      const generation=lifecycle;
+      current(generation,init.signal);
+      const url=pathURL(path), method=String(init.method||'GET').toUpperCase();
+      let selected=false, isShared=false, target=url.pathname+url.search, options={...init,method};
+      if (scoped) {
+        const foreign=/^\/(api|admin)\/command-centers\/([^/]+)/.exec(url.pathname);
+        if (foreign&&foreign[2]!==context.id) fail('INVALID_REQUEST','Another workspace requires full-page navigation',409);
+        selected=url.pathname===api||url.pathname.startsWith(api+'/')||url.pathname===admin||url.pathname.startsWith(admin+'/');
+        isShared=method==='GET'&&sharedPath(url.pathname);
+        if (!selected&&!isShared) {
+          if (method==='GET') {
+            const panel=url.pathname.replace(/^\/api\//,'').replace(/[^A-Za-z0-9_-]+/g,'-').replace(/^-|-$/g,'').toLowerCase();
+            target=`${api}/panels/${panel||'unavailable'}`;
+          } else {
+            target=`${admin}/unavailable`;
+            options={method:'POST',signal:init.signal,headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({operation:method+' '+url.pathname})};
+          }
+        }
+      }
+      const response=await network(target,options,async raw=>{
+        const headers=new Headers(raw.headers);
+        if (isShared) headers.set('X-Icarus-Scope','shared');
+        const body=[204,205,304].includes(raw.status)?null:await raw.arrayBuffer();
+        return new Response(body,{status:raw.status,statusText:raw.statusText,headers});
+      },null,true);
+      current(generation,init.signal);
+      if (scoped&&selected&&response.ok) {
+        let data;
+        try { data=await response.clone().json(); } catch (_) {
+          current(generation,init.signal);
+          fail('INVALID_RESPONSE','Selected module response is not JSON');
+        }
+        current(generation,init.signal);
+        if (url.pathname===api) {
+          identity({workspace_id:data?.profile?.id,config_revision:data?.profile?.config_revision});
+        } else {
+          const jobPath=url.pathname.startsWith(api+'/jobs/')?api+'/jobs/':
+            url.pathname.startsWith(admin+'/jobs/')?admin+'/jobs/':null;
+          const requested=jobPath?url.pathname.slice(jobPath.length).split('/')[0]:null;
+          if (requested&&(jobPath.startsWith(api)?data?.id:data?.job)!==requested)
+            fail('INVALID_IDENTITY','Response belongs to another job');
+          const historical=Boolean(requested)||typeof data?.job==='string';
+          const known=jobs.get(requested||data?.job);
+          identity(data,historical,known?.revision??null);
+          if (data.kind==='backtest'&&data.result) identity(data.result,true,data.config_revision);
+        }
+      }
+      return response;
     }
     function href(asset=null) {
       const path=scoped?`/dashboards/${context.id}`:'/';
       return path+(asset===null?'':'?asset='+symbol(asset));
     }
-    function close() { closed=true; for (const cancel of active) cancel(); }
-    return Object.freeze({context,read,configure,backtest,rewarm,control,job,compare,csv,shared,href,close});
+    function cancelPending() { lifecycle++; latest.clear(); for (const cancel of active) cancel(); }
+    function close() { closed=true; cancelPending(); }
+    return Object.freeze({context,read,configure,backtest,rewarm,control,job,compare,csv,shared,request,href,cancelPending,close});
   }
   globalThis.IcarusWorkspaceClient=Object.freeze({create,WorkspaceClientError});
 })();

@@ -222,3 +222,64 @@ await assert.rejects(c.rewarm('NQ',undefined));assert.equal(calls.length,2);
 const main=client('main',()=>reply({job:'main-rewarm'},202));await main.c.rewarm('NQ');
 assert.equal(main.calls[0].path,'/admin/rewarm/async');assert.deepEqual(main.calls[0].body,{asset:'NQ'});
 """)
+
+
+def test_module_request_preserves_main_http_shape_and_marks_shared_reads():
+    run_js(r"""
+const main=client('main',()=>reply({detail:'owner required'},403));
+const forbidden=await main.c.request('/admin/engine-control',{method:'POST',body:'{}'});
+assert.equal(forbidden.status,403);assert.equal((await forbidden.json()).detail,'owner required');
+assert.equal(main.calls[0].path,'/admin/engine-control');
+const selected=client('cc1',()=>reply([{name:'shared-preset'}]));
+const presets=await selected.c.request('/api/presets');
+assert.equal(presets.headers.get('X-Icarus-Scope'),'shared');
+assert.equal((await presets.json())[0].name,'shared-preset');
+assert.equal(selected.calls[0].path,'/api/presets');
+""")
+
+
+def test_module_request_uses_scoped_unavailable_routes_and_rejects_foreign_identity():
+    run_js(r"""
+const {c,calls}=client('cc3',()=>reply({...identity('cc3'),detail:'workspace adapter unavailable'},503));
+const panel=await c.request('/api/brain');assert.equal(panel.status,503);
+assert.equal(calls[0].path,'/api/command-centers/cc3/panels/brain');
+const action=await c.request('/admin/engine-control',{method:'POST',body:JSON.stringify({command:'arm'})});
+assert.equal(action.status,503);assert.equal(calls[1].path,'/admin/command-centers/cc3/unavailable');
+assert.deepEqual(calls[1].body,{operation:'POST /admin/engine-control'});
+assert(calls.every(x=>x.headers.get('X-Icarus-Workspace')==='cc3'));
+const count=calls.length;
+await assert.rejects(c.request('/api/command-centers/cc2/status'));
+assert.equal(calls.length,count);
+""")
+
+
+@pytest.mark.parametrize("payload", [{"workspace_id": "cc1", "config_revision": 0, "id": "ws-other", "kind": "backtest", "status": "done"}, None])
+def test_module_job_response_cannot_supply_another_job_from_the_same_workspace(payload):
+    run_js("const payload=" + json.dumps(payload) + r""";
+const {c}=client('cc1',()=>reply(payload));
+await assert.rejects(c.request('/api/command-centers/cc1/jobs/ws-requested'),error('INVALID_IDENTITY'));
+""")
+
+
+@pytest.mark.parametrize("operation", ["close", "cancelPending"])
+def test_closing_module_client_during_identity_decode_cancels_observation(operation):
+    run_js("const operation=" + json.dumps(operation) + r""";
+let release, decoding=false;
+const decoded=new Promise(resolve=>release=resolve);
+world.Response=class extends Response {clone(){return {json:()=>{decoding=true;return decoded;}};}};
+const {c}=client('cc1',()=>reply({...identity('cc1'),assets:[]}));
+const pending=c.request('/api/command-centers/cc1/status');
+while(!decoding)await new Promise(resolve=>setTimeout(resolve,0));
+c[operation]();release({...identity('cc1'),assets:[]});
+await assert.rejects(pending,error('CANCELLED'));
+""")
+
+
+def test_cancelling_pending_page_work_keeps_immutable_client_usable_after_restore():
+    run_js(r"""
+let count=0;const {c}=client('cc1',()=>++count===1?new Promise(()=>{}):reply({...identity('cc1',2),assets:[]}));
+const pending=c.read('status');await new Promise(resolve=>setTimeout(resolve,0));
+c.cancelPending();await assert.rejects(pending,error('CANCELLED'));
+assert.equal((await c.read('status')).config_revision,2);
+assert.equal(c.context.id,'cc1');assert(Object.isFrozen(c.context));
+""")
