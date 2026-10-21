@@ -170,6 +170,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
 
 <!-- ICARUS_WORKSPACE_BOOTSTRAP -->
 <script src="/workspace-client.js"></script>
+<script src="/workspace-ui.js"></script>
 <script>
 Object.defineProperty(window, 'IcarusClient', {
   value: IcarusWorkspaceClient.create(window.IcarusWorkspace, {
@@ -179,6 +180,9 @@ Object.defineProperty(window, 'IcarusClient', {
   }),
   writable: false,
   configurable: false,
+});
+Object.defineProperty(window, 'IcarusUI', {
+  value: IcarusWorkspaceUI.create(window.IcarusClient), writable: false, configurable: false,
 });
 window.addEventListener('pagehide', event => {
   if (event.persisted) window.IcarusClient.cancelPending();
@@ -226,6 +230,8 @@ const dtz = t => t ? dtm(t) + ' ' + TZ : '—';
 const age = s => s==null ? 'never' : s<60 ? `${Math.round(s)}s` : s<3600 ? `${Math.round(s/60)}m` : `${(s/3600).toFixed(1)}h`;
 const tip = $('#tip'); const showTip = (h,x,y) => { tip.innerHTML=h; tip.style.display='block'; tip.style.left=(x+14)+'px'; tip.style.top=(y+14)+'px'; }; const hideTip = () => tip.style.display='none';
 let last = null, charts = {}, chartOffsets = {}, seenFills = new Set(), first = true, tradesCache = {}, tradeErrors = {}, META = null, PRESETS = [], COMMANDS = [], REGISTRY = [], catalogRefreshBusy = false, lastWideChartRefresh = 0;
+let statusLoadSeq = 0, lastStatusAt = 0;
+const chartLoadSeq = new Map(), tradeLoadSeq = new Map();
 let accessTokenOnce = null;
 const CATALOG_READY = {presets:false, commands:false, registry:false};
 const params = new URLSearchParams(location.search);
@@ -245,6 +251,7 @@ window.fetch = (input, init={}) => {
   const headers = new Headers(typeof input === 'string' ? undefined : input.headers);
   new Headers(init.headers || {}).forEach((value, key) => headers.set(key, value));
   if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + (localStorage.getItem(tokKey) || ''));
+  headers.set('X-Icarus-Workspace', window.IcarusClient.context.id);
   return nativeFetch(input, {...init, headers});
 };
 $('#btnControls').onclick = () => $('#ctl').classList.add('open'); $('#closeCtl').onclick = () => $('#ctl').classList.remove('open');
@@ -253,7 +260,19 @@ function toast(msg, bad) { let t = $('#toast'); if (!t) { t = document.createEle
   t.dataset.kind = bad ? 'error' : 'ok'; t.setAttribute('role', bad ? 'alert' : 'status'); t.style.background = bad ? 'var(--crit)' : 'var(--s1)'; t.style.color='#fff'; t.textContent = msg; t.style.display='block';
   t.classList.remove('world-toast-active'); void t.offsetWidth; t.classList.add('world-toast-active');
   clearTimeout(t._h); t._h = setTimeout(()=>{t.classList.remove('world-toast-active');t.style.display='none';}, 3500); }
-async function admin(path, body, quiet) {
+function operationMessage(path, receipt, error=null) {
+  const j=receipt||{};
+  if (path.includes('/flatten')) {
+    const censored=Number(j.shadow_censored_positions)||0;
+    if (Array.isArray(j.failed_assets)&&j.failed_assets.length) {
+      const failed=j.failed_assets.map(x=>`${x.asset||'runner'}: ${x.detail||'flatten failed'}`).join('; ');
+      return `${j.partial?'Partial paper flatten: '+(Number(j.flattened_positions)||0)+' position(s) closed.':'Paper flatten stopped.'}${censored?' '+censored+' shadow-only position(s) censored.':''} Failed: ${failed}`;
+    }
+    if (!error) return `Flattened ${Number(j.flattened_positions)||0} simulated position(s).${censored?' Censored '+censored+' shadow-only position(s).':''} Ledger remains paused.`;
+  }
+  return error ? 'request failed: '+(error.message||String(error)) : (j.note||'ok');
+}
+async function admin(path, body, quiet, draft=null) {
   const tok = localStorage.getItem(tokKey) || $('#token').value.trim();
   if (!tok) {
     $('#ctl').classList.add('open');
@@ -261,30 +280,13 @@ async function admin(path, body, quiet) {
     return null;
   }
   try {
-    const r = await fetch(path, {
-      method:'POST',
-      headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
-      body:JSON.stringify(body||{}),
-    });
-    const j = await r.json().catch(()=>({}));
-    let msg = r.ok ? (j.note||'ok') : ('error '+r.status+': '+(j.detail||j.error||'request failed'));
-    if (r.ok && path.includes('/flatten')) {
-      const censored = Number(j.shadow_censored_positions)||0;
-      msg = `Flattened ${Number(j.flattened_positions)||0} simulated position(s).${censored ? ` Censored ${censored} shadow-only position(s).` : ''} Ledger remains paused.`;
-    }
-    if (!r.ok && path.includes('/flatten') && Array.isArray(j.failed_assets) && j.failed_assets.length) {
-      const failed = j.failed_assets.map(x => `${x.asset || 'runner'}: ${x.detail || 'flatten failed'}`).join('; ');
-      const censored = Number(j.shadow_censored_positions)||0;
-      const censorNote = censored ? ` ${censored} shadow-only position(s) censored.` : '';
-      msg = j.partial
-        ? `Partial paper flatten: ${Number(j.flattened_positions)||0} position(s) closed.${censorNote} Failed: ${failed}`
-        : `Paper flatten stopped before any positions closed.${censorNote} Failed: ${failed}`;
-    }
-    if (!quiet) toast(msg, !r.ok);
-    if (r.ok) setTimeout(refresh, 400);
-    return r.ok ? j : null;
+    const j = await IcarusUI.admin(path, body||{}, draft);
+    if (!quiet) toast(operationMessage(path,j), false);
+    setTimeout(refresh, 400);
+    return j;
   } catch (e) {
-    if (!quiet) toast('request failed: '+(e?.message||String(e)), true);
+    if (!quiet) toast(operationMessage(path,e.receipt,e), true);
+    if (e.receipt?.partial) setTimeout(refresh,400);
     return null;
   }
 }
@@ -396,12 +398,13 @@ function assetCard(a) {
   </div>`;
 }
 async function loadChart(sym, n, el, opts, offset=0) {
+  const key=sym+n+':'+offset, sequence=(chartLoadSeq.get(key)||0)+1;
+  chartLoadSeq.set(key,sequence);
   try {
     if (n >= 4000) lastWideChartRefresh = Date.now();
-    const r = await fetch(`/api/chart/${sym}?n=${n}&offset=${offset}`, {cache:'no-store'});
-    const d = await r.json().catch(()=>({}));
-    if (!r.ok) throw new Error(d.detail||d.error||('HTTP '+r.status));
-    charts[sym+n+':'+offset] = d;
+    const d = await IcarusClient.read('chart',{asset:sym,n,offset,channel:'core-chart:'+key});
+    if (chartLoadSeq.get(key)!==sequence) return;
+    charts[key] = d;
     if (offset === 0) charts[sym+n] = d;
     if (el && el.isConnected) candles(el, d, opts);
     if (el && el.id === 'dChart') {
@@ -412,8 +415,17 @@ async function loadChart(sym, n, el, opts, offset=0) {
     }
     window.IcarusExperience?.chart(d, n, el);
   } catch(e) {
+    if (chartLoadSeq.get(key)!==sequence) return;
+    delete charts[key]; if(offset===0) delete charts[sym+n];
     if (el && el.isConnected) el.innerHTML = '<div class="empty">chart unavailable: '+esc(e?.message||String(e))+'</div>';
   }
+}
+async function downloadCSV(args) {
+  try {
+    const data=await IcarusClient.csv(args), url=URL.createObjectURL(data.blob);
+    const link=document.createElement('a');link.href=url;link.download=data.filename;document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  } catch(error) {toast('CSV unavailable: '+(error.message||String(error)),true);}
 }
 
 /* ── views ── */
@@ -650,9 +662,9 @@ function assetHtml(a) {
   <section class="card c5"><h2>Fills · ${a.symbol}</h2><div class="scroll" style="max-height:420px"><table id="dFills"><thead><tr><th>Time</th><th>Side</th><th>Qty</th><th>Price</th><th>Signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>`;
 }
 function inputsHtml(A) {
-  const opts = A.map(a => `<option value="${a.symbol}">${esc(a.continuous_symbol||a.symbol)}</option>`).join('');
+  const opts = A.map(a => `<option value="${a.symbol}" ${inState.asset===a.symbol?'selected':''}>${esc(a.continuous_symbol||a.symbol)}</option>`).join('');
   return `<section class="card c12"><h2>Inputs <span class="sub">every strategy input, grouped like the TradingView dialog · changes re-warm the asset from cached history in seconds</span></h2>
-    <div class="toolbar"><label>Asset <select id="inAsset">${opts}<option value="*">All assets</option></select></label>
+    <div class="toolbar"><label>Asset <select id="inAsset">${opts}<option value="*" ${inState.asset==='*'?'selected':''}>All assets</option></select></label>
       <label>Preset <select id="inPreset"><option value="">(none)</option>${PRESETS.map(p=>`<option value="${esc(p.name)}">${esc(p.name)} — ${p.count} inputs${p.meta&&p.meta.timeframe?' · '+p.meta.timeframe:''}${p.meta&&p.meta.chart_type==='heikin_ashi'?' · HA':''}</option>`).join('')}</select></label><button class="sm" id="inApplyPreset">Apply preset</button>
       <input id="inSearch" type="text" placeholder="filter inputs…" style="width:200px"><span class="small muted" id="inSources"></span>
       <span style="margin-left:auto;display:flex;gap:6px"><button class="sm" id="inRevert">Discard edits</button><button class="sm danger" id="inReset">Remove asset overrides</button><button class="primary" id="inApply">Apply &amp; re-warm</button></span></div>
@@ -668,7 +680,7 @@ function commandsHtml(A) {
     <div>${COMMANDS.map(c => `<div class="cmd"><b>${esc(c.label)}</b><span class="desc">${esc(c.desc)}</span><span>${c.scope!=='all'?`<select data-scope="${c.id}">${scopeOptions(c)}</select>`:''}</span><button class="sm ${c.danger?'danger':''}" data-run="${c.id}">Run</button></div>`).join('')}</div>
     <h2 style="margin-top:18px">Add an asset</h2>
     <div class="row"><input id="addSym" list="addAssetOptions" type="text" placeholder="symbol (MGC, NQ1!, ES1!, BTC…)" autocomplete="off" style="width:170px"><datalist id="addAssetOptions">${assetOptions}</datalist><input id="addTf" list="addTfOptions" type="text" placeholder="tf (20)" autocomplete="off" style="width:80px"><datalist id="addTfOptions">${addTfOptions}</datalist><select id="addPreset"><option value="">preset: engine default</option>${PRESETS.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('')}</select><button class="primary sm" id="addBtn">Add</button></div>
-    <div class="small muted" style="margin-top:6px">Registry: ${REGISTRY.map(r=>`<code>${esc(r.continuous_symbol||r.symbol)}</code>`).join(' ')} — futures are continuous-only; anything else is treated as a Coinbase spot pair.</div></section>
+    <div class="small muted" style="margin-top:6px">Registry: ${REGISTRY.map(r=>`<code>${esc(r.continuous_symbol||r.symbol)}</code>`).join(' ')} — choose an admitted canonical symbol. Futures use continuous contracts; provider and runtime qualification remain required.</div></section>
   <section class="card c4"><h2>Terminal commands</h2><pre class="cli">py -3 -m icarus_engine.cli run --assets NQ,ES,YM,GC,SI,PL,PA,BTCF,BTC --tf 20
 py -3 -m icarus_engine.cli run --assets NQ@10 --preset NQ-10m-original
 py -3 -m icarus_engine.cli backtest --assets NQ --tf 20 --verbose 20
@@ -681,15 +693,13 @@ py -3 -m icarus_engine.cli assets</pre>
 }
 
 /* ── inputs editor ── */
-let inState = {asset:null, effective:{}, base:{}, overrides:{}, edits:{}, chart:{}, chartEdits:{}, capabilities:{}, sources:[]};
+let inState = {asset:null, effective:{}, base:{}, overrides:{}, edits:{}, chart:{}, chartEdits:{}, capabilities:{}, sources:[],revision:null,profile:null,pending:false};
 let inputsLoadSeq = 0;
-async function loadInputsTab(sym) {
+async function loadInputsTab(sym, force=false) {
   const seq = ++inputsLoadSeq;
   try {
     if (!META) {
-      const metaResponse = await fetch('/api/input-meta', {cache:'no-store'});
-      const meta = await metaResponse.json().catch(()=>null);
-      if (!metaResponse.ok) throw new Error((meta&&meta.detail)||('input metadata HTTP '+metaResponse.status));
+      const meta = await IcarusClient.shared('/api/input-meta');
       if (!Array.isArray(meta)) throw new Error('input metadata response is invalid');
       if (seq !== inputsLoadSeq) return;
       META = meta;
@@ -697,18 +707,21 @@ async function loadInputsTab(sym) {
     const sel = $('#inAsset');
     if (!sel || !last) return;
     if (sym) sel.value = sym;
+    if (!force && inState.asset===sel.value && (inState.pending||Object.keys(inState.edits).length||Object.keys(inState.chartEdits).length)) {
+      renderChartConfig();renderInputs();setInputsPending(inState.pending);return;
+    }
     const a = sel.value === '*' ? (last.assets[0]||{}).symbol : sel.value;
     if (!a) return;
-    const response = await fetch(`/api/inputs/${encodeURIComponent(a)}`, {cache:'no-store'});
-    const d = await response.json().catch(()=>({}));
-    if (!response.ok) throw new Error(d.detail||d.error||('inputs HTTP '+response.status));
+    const loaded = await IcarusUI.loadInputs(sel.value,a), d=loaded.input;
     if (seq !== inputsLoadSeq) return;
     inState = {asset: sel.value, effective: d.effective, base: d.base, overrides: d.overrides||{}, edits: {},
-               chart: d.chart||{}, chartEdits: {}, capabilities: d.chart_capabilities||{}, sources: d.sources||[], preset: d.preset};
+               chart: d.chart||{}, chartEdits: {}, capabilities: d.chart_capabilities||{}, sources: d.sources||[], preset: d.preset,
+               profile:loaded.profile,revision:loaded.revision,pending:false};
     $('#inSources').textContent = (sel.value==='*'?'editing ALL assets · showing '+a+' · ':'') + 'sources: ' + inState.sources.join(' → ') + (d.pts_scale && Math.abs(d.pts_scale-1)>1e-6 ? ` · *_pts scaled ×${d.pts_scale.toFixed(3)} at runtime` : '');
     if ($('#inPreset')) $('#inPreset').value = d.preset || '';
     renderChartConfig();
     renderInputs();
+    setInputsPending(false);
   } catch (e) {
     if (seq !== inputsLoadSeq) return;
     const msg = 'inputs unavailable: '+(e?.message||String(e));
@@ -738,6 +751,7 @@ function renderChartConfig() {
   el.querySelectorAll('[data-chart]').forEach(x => x.addEventListener('change', () => {
     inState.chartEdits[x.dataset.chart] = x.value;
   }));
+  setInputsPending(inState.pending);
 }
 function ctrl(e, val) {
   const name = e.name;
@@ -759,6 +773,7 @@ function renderInputs() {
       ${items.map(e => { const v = cur(e.name); const isOver = e.name in inState.overrides, isDirty = e.name in inState.edits; const isDef = JSON.stringify(v) === JSON.stringify(e.default);
         return `<div class="irow ${isDirty?'dirty':''}"><div class="lbl"><span>${esc(e.label)}</span><small>${esc(e.name)}${e.tooltip?' · '+esc(e.tooltip).slice(0,140)+(e.tooltip.length>140?'…':''):''}</small></div><div>${ctrl(e, v)}</div><div class="ov ${isOver?'set':''}">${isDirty?'edited':isOver?'override':isDef?'default':'preset'}</div><div class="small muted">default ${esc(String(e.default))}${e.minval!=null||e.maxval!=null?` · ${e.minval??''}–${e.maxval??''}`:''}</div></div>`; }).join('')}</details>`; }).join('') || '<div class="empty">no input matches</div>';
   $('#inGroups').querySelectorAll('[data-in]').forEach(el => { el.addEventListener('change', () => { const e = META.find(m=>m.name===el.dataset.in); let v = el.type==='checkbox' ? el.checked : el.value; if (e.kind==='int') v = parseInt(v,10); if (e.kind==='float') v = parseFloat(v); inState.edits[e.name] = v; el.closest('.irow').classList.add('dirty'); el.closest('.irow').querySelector('.ov').textContent = 'edited'; }); });
+  setInputsPending(inState.pending);
 }
 async function withBusyButton(button, fn) {
   if (!button || button.disabled) return null;
@@ -767,25 +782,49 @@ async function withBusyButton(button, fn) {
   finally { if (button.isConnected) { button.disabled = false; button.classList.remove('world-busy'); button.removeAttribute('aria-busy'); } }
 }
 const configJobWatchers = new Set();
-async function watchConfigJob(jobId, label='Configuration') {
+function setInputsPending(pending) {
+  for(const el of document.querySelectorAll('#inApply,#inReset,#inApplyPreset,#inRevert,#inAsset,#inPreset,[data-in],[data-chart]')) el.disabled=!!pending;
+  applyWritePermissions();
+}
+async function submitInputOperation(path,body,label) {
+  const draft=inState;
+  if(draft.pending)return;
+  draft.pending=true;setInputsPending(true);
+  try {
+    const receipt=await admin(path,body,false,draft);
+    if(receipt?.job)await watchConfigJob(receipt.job,label,draft);
+    return receipt;
+  } finally {draft.pending=false;if(draft===inState)setInputsPending(false);}
+}
+const writingCommands=new Set(['pause','resume','flatten','rewarm','reset-inputs','remove-asset']);
+function applyWritePermissions() {
+  const canWrite=last?.permissions?.can_write===true;
+  for(const el of document.querySelectorAll('[data-cmd],[data-run],[data-paper-pause],[data-paper-flatten],#inApply,#inReset,#inApplyPreset,#addBtn,#btRun')) {
+    const write=writingCommands.has(el.dataset.cmd||el.dataset.run)||el.hasAttribute('data-paper-pause')||el.hasAttribute('data-paper-flatten')||['inApply','inReset','inApplyPreset','addBtn','btRun'].includes(el.id);
+    if(!write)continue;
+    el.disabled=!canWrite||el.classList.contains('world-busy')||el.dataset.operationPending==='true'||(inState.pending&&['inApply','inReset','inApplyPreset'].includes(el.id));
+    if(!canWrite)el.title='Owner access and a fresh selected runtime are required';
+  }
+}
+async function watchConfigJob(jobId, label='Configuration', draft=null) {
   if (!jobId || configJobWatchers.has(jobId)) return;
   configJobWatchers.add(jobId);
+  if(draft) {draft.pending=true;setInputsPending(true);}
   const deadline = Date.now() + 30 * 60 * 1000;
   let announced = '';
   try {
     while (Date.now() < deadline) {
-      const response = await fetch('/api/config-jobs/' + encodeURIComponent(jobId), {cache:'no-store'});
-      const job = await response.json().catch(()=>({}));
-      if (!response.ok) throw new Error(job.detail||job.error||('HTTP '+response.status));
+      const job = await IcarusClient.job(jobId);
       if (job.status !== announced) {
         announced = job.status;
         if (job.status === 'running') toast(label + ' re-warming in background — UI stays live');
       }
       if (job.status === 'done') {
         toast(label + ' re-warm complete');
+        if(draft===inState) {draft.edits={};draft.chartEdits={};draft.pending=false;}
         await refresh();
-        if (view === 'inputs') await loadInputsTab();
-        return;
+        if (view === 'inputs') await loadInputsTab(null,true);
+        return true;
       }
       if (job.status === 'error') {
         toast(label + ' re-warm failed: ' + (job.error||'unknown error'), true);
@@ -798,6 +837,7 @@ async function watchConfigJob(jobId, label='Configuration') {
     toast(label + ' job status unavailable: ' + (e?.message||String(e)), true);
   } finally {
     configJobWatchers.delete(jobId);
+    if(draft) {draft.pending=false;if(draft===inState)setInputsPending(false);}
   }
 }
 document.addEventListener('input', ev => { if (ev.target.id === 'inSearch') renderInputs(); });
@@ -827,14 +867,15 @@ document.addEventListener('click', async ev => {
   if (b.classList.contains('asset')) { setView('asset:' + b.dataset.sym); return; }
   if (b.dataset.cmd) { await withBusyButton(b, () => runCommand(b.dataset.cmd, b.dataset.a)); return; }
   if (b.dataset.run) { const sel = document.querySelector(`select[data-scope="${b.dataset.run}"]`); await withBusyButton(b, () => runCommand(b.dataset.run, sel ? sel.value : '*')); return; }
-  if (b.id === 'inApply') { const vals = inState.edits, chart = inState.chartEdits; if (!Object.keys(vals).length && !Object.keys(chart).length) return toast('nothing edited'); await withBusyButton(b, async () => { const r = await admin('/admin/inputs/async', {asset: inState.asset, values: vals, chart, persist: true}); if (r) { inState.edits = {}; inState.chartEdits = {}; if (r.job) watchConfigJob(r.job, 'Inputs'); } }); }
+  if (b.id === 'inApply') { const vals = inState.edits, chart = inState.chartEdits; if (!Object.keys(vals).length && !Object.keys(chart).length) return toast('nothing edited'); await withBusyButton(b,()=>submitInputOperation('/admin/inputs/async',{asset:inState.asset,values:{...vals},chart:{...chart},persist:true},'Inputs')); }
   if (b.id === 'inRevert') { inState.edits = {}; inState.chartEdits = {}; renderChartConfig(); renderInputs(); }
-  if (b.id === 'inReset') { if (confirm(`Remove all per-asset overrides for ${inState.asset}?`)) await withBusyButton(b, async () => { const r = await admin('/admin/inputs/reset/async', {asset: inState.asset}); if (r?.job) watchConfigJob(r.job, 'Input reset'); }); }
-  if (b.id === 'inApplyPreset') { await withBusyButton(b, async () => { const r = await admin('/admin/preset/async', {asset: inState.asset, preset: $('#inPreset').value || null}); if (r?.job) watchConfigJob(r.job, 'Preset'); }); }
+  if (b.id === 'inReset') { if (confirm(`Remove all per-asset overrides for ${inState.asset}?`)) await withBusyButton(b,()=>submitInputOperation('/admin/inputs/reset/async',{asset:inState.asset},'Input reset')); }
+  if (b.id === 'inApplyPreset') { await withBusyButton(b,()=>submitInputOperation('/admin/preset/async',{asset:inState.asset,preset:$('#inPreset').value||null},'Preset')); }
   if (b.id === 'addBtn') {
     const s = $('#addSym').value.trim(); if (!s) return;
     await withBusyButton(b, async () => {
       const added = await admin('/admin/assets/add', {symbol: s, tf: $('#addTf').value.trim() || undefined, preset: $('#addPreset').value || undefined});
+      if(added?.job)await watchConfigJob(added.job,'Asset admission');
       if (added && $('#addSym')) $('#addSym').value = '';
     });
   }
@@ -873,14 +914,14 @@ async function runCommand(id, asset) {
     case 'pause': return adminCommand(id, A, '/admin/pause', {asset: A, reason: 'dashboard'});
     case 'resume': return adminCommand(id, A, '/admin/resume', {asset: A});
     case 'flatten': if (confirm(`Close ALL paper positions on ${A||'every asset'} now?`)) return adminCommand(id, A, '/admin/flatten', {confirm: true, asset: A, reason: 'dashboard'}); return;
-    case 'rewarm': return adminCommand(id, A, '/admin/rewarm', {asset: A});
+    case 'rewarm': {const r=await adminCommand(id,A,'/admin/rewarm/async',{asset:A});if(r?.job)await watchConfigJob(r.job,'Replay');return r;}
     case 'inputs': setView('inputs'); setTimeout(()=>loadInputsTab(A), 120); return;
     case 'preset': setView('inputs'); setTimeout(()=>{ loadInputsTab(A); $('#inPreset')?.focus(); }, 120); return;
-    case 'reset-inputs': if (A && confirm(`Remove all per-asset overrides for ${A}?`)) return adminCommand(id, A, '/admin/inputs/reset', {asset: A}); return;
+    case 'reset-inputs': if(A&&confirm(`Remove all per-asset overrides for ${A}?`)){const r=await adminCommand(id,A,'/admin/inputs/reset/async',{asset:A});if(r?.job)await watchConfigJob(r.job,'Input reset');return r;}return;
     case 'add-asset': setView('commands'); setTimeout(()=>$('#addSym')?.focus(), 50); return;
-    case 'remove-asset': if (A && confirm(`Remove ${A} from the engine?`)) return adminCommand(id, A, '/admin/assets/remove', {symbol: A}); return;
-    case 'export': if (A) window.open(`/api/export/${A}.csv`, '_blank'); return;
-    case 'open-tab': if (A) window.open(`/?asset=${A}`, '_blank'); return;
+    case 'remove-asset': if(A&&confirm(`Remove ${A} from the engine?`)){const r=await adminCommand(id,A,'/admin/assets/remove',{symbol:A});if(r?.job)await watchConfigJob(r.job,'Asset removal');return r;}return;
+    case 'export': if(A) await downloadCSV({asset:A});return;
+    case 'open-tab': if(A) window.open(IcarusClient.href(A),'_blank','noopener');return;
     case 'theme': $('#btnTheme').click(); return;
     case 'golive': setView('golive'); return;
     case 'agent': setView('agent'); return;
@@ -954,10 +995,11 @@ async function runBacktest() {
     const btn = $('#btRun');
     if (btn) {
       btn.disabled = !!busy;
+      btn.dataset.operationPending=String(!!busy);
       btn.textContent = label || (busy ? 'Running…' : 'Run backtest');
     }
   };
-  const body = {asset: $('#btAsset').value, preset: $('#btPreset').value || null,
+  const body = {asset: $('#btAsset').value,
                 timeframe: $('#btTf').value || null, chart_type: $('#btChart').value || null,
                 fill_on: $('#btFill').value || null, security_source: $('#btSecurity').value || null,
                 session: $('#btSession').value || null};
@@ -971,6 +1013,7 @@ async function runBacktest() {
     try { body.inputs = JSON.parse($('#btOver').value); }
     catch(e) { setStatus('overrides: invalid JSON'); toast('backtest overrides contain invalid JSON', true); return; }
   }
+  if ($('#btPreset').value) body.preset=$('#btPreset').value;
   BT.asset = body.asset;
   BT.preset = body.preset;
   clearInterval(BT.poll);
@@ -978,13 +1021,8 @@ async function runBacktest() {
   setBusy(true, 'Starting…');
   setStatus('starting…');
   try {
-    const r = await fetch('/admin/backtest', {
-      method:'POST',
-      headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + (localStorage.getItem(tokKey)||'')},
-      body:JSON.stringify(body),
-    });
-    const d = await r.json().catch(()=>({}));
-    if (!r.ok) throw new Error(d.detail||d.error||('HTTP '+r.status));
+    const {asset,...options}=body;
+    const d=await IcarusUI.backtest(asset,options);
     if (!d.job) throw new Error('engine did not return a backtest job id');
     BT.job = d.job;
     BT.res = null;
@@ -992,11 +1030,14 @@ async function runBacktest() {
     setBusy(true, 'Running…');
     setStatus('running…');
 
+    const activeJob=d.job;
+    let polling=false;
     const poll = async () => {
+      if(polling||BT.job!==activeJob)return;
+      polling=true;
       try {
-        const response = await fetch(`/api/backtest/${encodeURIComponent(BT.job)}`, {cache:'no-store'});
-        const j = await response.json().catch(()=>({}));
-        if (!response.ok) throw new Error(j.detail||j.error||('HTTP '+response.status));
+        const j=await IcarusClient.job(activeJob);
+        if(BT.job!==activeJob)return;
         const state = String(j.status||'').toLowerCase();
         if (state === 'running' || state === 'queued') {
           setStatus('running… '+(j.progress == null ? '' : j.progress+' bars'));
@@ -1017,13 +1058,14 @@ async function runBacktest() {
         setStatus('done · '+j.result.bars+' bars'+(Number.isFinite(duration)?' · '+duration.toFixed(1)+' s':''));
         if (view === 'backtest' && $('#btOut')) renderBacktest();
       } catch (e) {
+        if(BT.job!==activeJob)return;
         clearInterval(BT.poll);
         BT.poll = null;
         setBusy(false);
         const msg = 'backtest status failed: '+(e?.message||String(e));
         setStatus(msg);
         toast(msg, true);
-      }
+      } finally {polling=false;}
     };
     BT.poll = setInterval(()=>void poll(), 500);
     void poll();
@@ -1083,9 +1125,10 @@ function renderBacktest() {
   const head = `<section class="card c12"><h2>${esc(res.asset)} · ${cfg.tf}m · ${cfg.chart_type === 'heikin_ashi' ? 'Heikin Ashi chart' : 'real bars'} · fills on ${cfg.fill_on === 'chart' ? 'HA bars (TradingView mode)' : 'real prices'} · HTF/LTF ${cfg.security_source === 'standard' ? 'standard OHLC' : 'selected chart source'} · slip ${cfg.slippage_ticks}t · &#36;${cfg.commission}/contract · ${cfg.session} <span class="sub">preset ${esc(cfg.preset || 'none')}${Object.keys(cfg.overrides || {}).length ? ' + ' + Object.keys(cfg.overrides).length + ' override(s)' : ''} · ${res.bars} bars · ${dtz(res.range.start)} → ${dtz(res.range.end)}${cfg.pts_scale && Math.abs(cfg.pts_scale - 1) > 1e-6 ? ` · NQ-pts ×${cfg.pts_scale.toFixed(3)}` : ''}</span></h2>
     <div class="tiles">${tiles.map(t => `<div class="tile"><div class="k">${t[0]}</div><div class="v ${t[2] || ''}">${t[1]}</div></div>`).join('')}</div>
     <div class="row" style="margin-top:12px">${['overview', 'performance', 'trades', 'risk', 'list', 'compare'].map(sub).join('')}
-      <a class="tab" style="margin-left:auto;border:1px solid var(--ring);border-radius:8px;padding:4px 9px" href="/api/backtest/${BT.job}/trades.csv" download>Export CSV (TradingView layout)</a></div>
+      <button class="tab" id="btExport" style="margin-left:auto;border:1px solid var(--ring);border-radius:8px;padding:4px 9px">Export CSV (TradingView layout)</button></div>
     <div id="btBody" style="margin-top:10px"></div></section>`;
   $('#btOut').innerHTML = head;
+  $('#btExport').onclick=()=>downloadCSV({job:BT.job});
   $('#btOut').querySelectorAll('[data-bt]').forEach(el => el.addEventListener('click', () => { BT.sub = el.dataset.bt; renderBacktest(); }));
   const body = $('#btBody');
   if (BT.sub === 'overview') { body.innerHTML = `<div id="btEq"></div>`; equityChart($('#btEq'), res.equity, res.buy_hold, res.drawdown, cfg.capital); }
@@ -1107,13 +1150,7 @@ function renderBacktest() {
       try {
         const text = await f.text();
         if (status) status.textContent = 'comparing…';
-        const r = await fetch('/admin/backtest/compare', {
-          method:'POST',
-          headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + (localStorage.getItem(tokKey)||'')},
-          body:JSON.stringify({job:BT.job,csv:text}),
-        });
-        const d = await r.json().catch(()=>({}));
-        if (!r.ok) throw new Error(d.detail||d.error||('HTTP '+r.status));
+        const d=await IcarusClient.compare(BT.job,text);
         if (!d.report) throw new Error('comparison response did not contain a report');
         BT.compare = d.report;
         if (status) status.textContent = 'done';
@@ -1218,6 +1255,7 @@ function render(d) {
   else if (view === 'agent') { if (rebuild) $('#view').innerHTML = agentCard(window.ICARUS_AGENT); }
   else if (view === 'log') { if (rebuild) $('#view').innerHTML = `<section class="card c12"><h2>Engine log</h2><div class="log" id="log2" style="max-height:80vh"></div></section>`; $('#log2').innerHTML = (d.log||[]).slice().reverse().map(l => `<div class="${l.level}">${tms(l.ts)} ${l.level.padEnd(5)} ${esc(l.msg)}</div>`).join(''); }
   lastView = view; first = false;
+  applyWritePermissions();
   window.IcarusExperience?.update(d, view);
   window.IcarusWorldImmersion?.view(view);
 }
@@ -1229,19 +1267,28 @@ async function refreshFills() {
     return `<tr class="${nw?'new':''}"><td class="tnum">${dtz(f.ts)}</td><td><b>${f.symbol}</b> <span class="tag ${f.live?'live':''}">${f.live?'LIVE':'hist'}</span></td><td class="side ${f.side}">${f.side}</td><td class="tnum">${f.qty}</td><td class="tnum">${px(f.price)}</td><td>${f.kind}</td><td>${esc(f.comment)}</td><td class="tnum ${f.profit==null?'':f.profit>=0?'pos':'neg'}">${f.profit!=null?sgn$(f.profit):''}</td><td class="tnum">${f.pos>0?'+':''}${f.pos}</td></tr>`; }).join('') || '<tr><td colspan=9 class="empty">no paper fills yet</td></tr>';
   const fs = $('#fillsSub'); if (fs) fs.textContent = all.length ? `${all.length} in the chart windows` : '';
 }
+function expireCoreObservations(reason='Current runtime observations unavailable') {
+  last=null;charts={};tradesCache={};tradeErrors={};lastStatusAt=0;
+  for(const [key,value] of chartLoadSeq) chartLoadSeq.set(key,value+1);
+  for(const [key,value] of tradeLoadSeq) tradeLoadSeq.set(key,value+1);
+  $('#beat').className='dot dead';$('#armed').textContent='UNAVAILABLE';$('#armed').className='badge paused';
+  $('#phase').textContent='UNAVAILABLE';$('#phase').className='badge paused';$('#meta').textContent=reason;
+  for(const el of document.querySelectorAll('.node'))el.className='node';
+  applyWritePermissions();
+  if(view!=='inputs') {$('#view').innerHTML='<section class="card c12"><p class="empty">'+esc(reason)+'</p></section>';lastView=null;}
+}
+window.addEventListener('pageshow',event=>{if(event.persisted){expireCoreObservations('Restored page — waiting for fresh selected runtime');void refresh();}});
+setInterval(()=>{if(last&&Date.now()-lastStatusAt>10000)expireCoreObservations('Selected runtime observation expired');},1000);
 async function refresh() {
+  const sequence=++statusLoadSeq;
   try {
-    const r = await fetch('/status/public', {cache:'no-store'});
-    const d = await r.json();
-    if (!d || !Array.isArray(d.assets)) {
-      $('#beat').className = 'dot dead';
-      $('#armed').textContent = (d && d.detail) ? String(d.detail).slice(0, 48) : 'ENGINE UNREACHABLE';
-      $('#armed').className = 'badge paused';
-      return;
-    }
+    const d=await IcarusClient.read('status',{channel:'core-status'});
+    if(sequence!==statusLoadSeq)return;
+    if (!d || !Array.isArray(d.assets)) throw new Error(d?.detail||'Invalid selected runtime status');
+    lastStatusAt=Date.now();
     render(d);
   } catch (e) {
-    $('#beat').className = 'dot dead'; $('#armed').textContent = 'ENGINE UNREACHABLE'; $('#armed').className = 'badge paused';
+    if(sequence===statusLoadSeq)expireCoreObservations('Selected runtime unavailable: '+(e.message||String(e)));
   }
 }
 async function refreshCombinedPaperPnl() {
@@ -1337,15 +1384,17 @@ async function refreshTrades(only) {
   if (!last) return;
   for (const a of (last.assets||[])) {
     if (only && a.symbol !== only) continue;
+    const sequence=(tradeLoadSeq.get(a.symbol)||0)+1;tradeLoadSeq.set(a.symbol,sequence);
     try {
       const limit = (only === a.symbol || view === `asset:${a.symbol}`) ? 2000 : 80;
-      const r = await fetch(`/api/trades/${encodeURIComponent(a.symbol)}?limit=${limit}`, {cache:'no-store'});
-      const data = await r.json().catch(()=>null);
-      if (!r.ok) throw new Error((data&&data.detail)||(data&&data.error)||('HTTP '+r.status));
+      const data=await IcarusClient.read('trades',{asset:a.symbol,limit,channel:'core-trades:'+a.symbol});
+      if(tradeLoadSeq.get(a.symbol)!==sequence)return;
       if (!Array.isArray(data)) throw new Error('invalid trade-history response');
       tradesCache[a.symbol] = data;
       delete tradeErrors[a.symbol];
     } catch(e) {
+      if(tradeLoadSeq.get(a.symbol)!==sequence)return;
+      delete tradesCache[a.symbol];
       tradeErrors[a.symbol] = e?.message||String(e);
     }
   }
@@ -1353,14 +1402,8 @@ async function refreshTrades(only) {
 async function refreshUiCatalogs() {
   if (catalogRefreshBusy) return;
   catalogRefreshBusy = true;
-  const get = async path => {
-    const response = await fetch(path, {cache:'no-store'});
-    const data = await response.json().catch(()=>null);
-    if (!response.ok) throw new Error((data&&data.detail)||(data&&data.error)||('HTTP '+response.status));
-    return data;
-  };
   try {
-    const results = await Promise.allSettled([get('/api/presets'), get('/api/commands'), get('/api/assets')]);
+    const results = await Promise.allSettled([IcarusClient.shared('/api/presets'), IcarusClient.shared('/api/commands'), IcarusClient.read('assets')]);
     let changed = false;
     if (results[0].status === 'fulfilled' && Array.isArray(results[0].value)) {
       const next = results[0].value;
@@ -1389,7 +1432,7 @@ async function refreshUiCatalogs() {
     catalogRefreshBusy = false;
   }
 }
-(async () => {
+const dashboardReady = (async () => {
   await refreshUiCatalogs();
   await refreshCombinedPaperPnl();
   await refreshAudit(); await refreshCommandCenter(); await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last);

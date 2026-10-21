@@ -21,6 +21,7 @@ NODE = shutil.which("node")
     [
         "icarus_engine/dashboard.html",
         "icarus_engine/workspace-client.js",
+        "icarus_engine/workspace-ui.js",
         "icarus_bridge/dashboard.html",
         "icarus_engine/research-ui.js",
         "icarus_engine/shadow-twin-ui.js",
@@ -206,7 +207,8 @@ def test_asset_adder_uses_registry_and_timeframe_suggestions_and_single_flight_s
     assert "button.disabled = true; button.classList.add('world-busy')" in src
     assert "await withBusyButton(b, async () => {" in src
     assert "await admin('/admin/assets/add'" in src
-    assert "j.detail||j.error||'request failed'" in src
+    assert "operationMessage(path,e.receipt,e)" in src
+    assert "await IcarusUI.admin(path, body||{}, draft)" in src
 
 
 def test_engine_dashboard_surfaces_repository_mcp_audit():
@@ -738,7 +740,7 @@ def test_command_palette_and_scheduler_mutations_are_single_flight():
 def test_dashboard_catalogs_recover_after_transient_startup_failures():
     dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
     assert "async function refreshUiCatalogs()" in dashboard
-    assert "Promise.allSettled([get('/api/presets'), get('/api/commands'), get('/api/assets')])" in dashboard
+    assert "Promise.allSettled([IcarusClient.shared('/api/presets'), IcarusClient.shared('/api/commands'), IcarusClient.read('assets')])" in dashboard
     assert "const CATALOG_READY = {presets:false, commands:false, registry:false};" in dashboard
     assert "CATALOG_READY.presets = true;" in dashboard
     assert "CATALOG_READY.commands = true;" in dashboard

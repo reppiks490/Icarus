@@ -2,14 +2,17 @@
 'use strict';
 (() => {
   class WorkspaceClientError extends Error {
-    constructor(code, detail, status=0) {
+    constructor(code, detail, status=0, receipt=undefined) {
       super(detail); this.name='WorkspaceClientError'; this.code=code; this.status=status;
+      if (receipt!==undefined) Object.defineProperty(this,'receipt',{
+        value:freeze(JSON.parse(JSON.stringify(receipt))),enumerable:true
+      });
     }
   }
-  const fail = (code, message, status=0) => { throw new WorkspaceClientError(code,message,status); };
+  const fail = (code, message, status=0, receipt=undefined) => { throw new WorkspaceClientError(code,message,status,receipt); };
   const object = value => value !== null && typeof value==='object' && !Array.isArray(value);
   const freeze = value => { if (object(value)||Array.isArray(value)) { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
-  const symbol = value => typeof value==='string' && /^[A-Z][A-Z0-9]{0,15}$/.test(value)
+  const symbol = value => typeof value==='string' && /^[A-Z0-9]{1,16}$/.test(value)
     ? value : fail('INVALID_REQUEST','An explicit canonical asset symbol is required');
   const jobId = value => typeof value==='string' && /^[A-Za-z0-9_-]{1,100}$/.test(value)
     ? value : fail('INVALID_REQUEST','An explicit job identifier is required');
@@ -74,8 +77,15 @@
       try {
         const work=Promise.resolve().then(()=>options.fetch(url.href,{cache:'no-store',...init,headers,signal:controller.signal})).then(async response=>{
           if (!response.ok&&!acceptHttpErrors) {
-            const data=await response.json().catch(()=>({}));
-            fail('HTTP_ERROR',data.detail||data.error||`HTTP ${response.status}`,response.status);
+            const data=await response.json().catch(()=>null);
+            if (object(data)&&'workspace_id' in data) {
+              if (data.workspace_id!==context.id||scoped&&(data.execution_authorized===true||data.paper_only===false))
+                fail('INVALID_IDENTITY','Error receipt does not belong to the selected paper workspace');
+              if ('config_revision' in data) revision(data.config_revision);
+            }
+            const detail=typeof data?.detail==='string'?data.detail:
+              typeof data?.error==='string'?data.error:`HTTP ${response.status}`;
+            fail('HTTP_ERROR',detail,response.status,object(data)?data:undefined);
           }
           return consume(response);
         });
@@ -183,7 +193,12 @@
       if (asset!==null) symbol(asset);
       if (!scoped) return json('/admin/'+action,{body:action==='flatten'?{asset,confirm:true}:{asset}});
       const path=asset===null?admin:`${admin}/assets/${asset}`;
-      return json(path+(action==='flatten'?'/flatten':'/pause'),{body:action==='flatten'?{confirm:true}:{paused:action==='pause'}});
+      const receipt=await json(path+(action==='flatten'?'/flatten':'/pause'),{
+        body:action==='flatten'?{confirm:true}:{paused:action==='pause'},historical:true
+      });
+      // Completed actions retain their receipt while the live observation floor only advances.
+      observedRevision=Math.max(observedRevision,receipt.config_revision);
+      return receipt;
     }
     async function job(id, args={}) {
       jobId(id);fields(args,['full','channel','signal']);

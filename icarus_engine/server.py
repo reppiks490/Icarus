@@ -1581,8 +1581,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                 "X-Icarus-Workspace": profile_id,
                                 "X-Icarus-Config-Revision": str(identity["config_revision"]),
                             })
-                        return self._json(200, workspace_api.read(profile_id, resource, symbol,
-                                          limit=self._int(q, "limit", 100, 1, 2000)))
+                        result = workspace_api.read(profile_id, resource, symbol,
+                                                    limit=self._int(q, "limit", 100, 1, 2000))
+                        if resource == "status":
+                            result = {**result, "permissions": {"can_write": self._owner()}}
+                        return self._json(200, result)
                     except WorkspaceAPIError as ex:
                         return self._json(ex.status, ex.as_dict(profile_id))
                 if len(parts) == 4:
@@ -1616,6 +1619,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, dashboard_html("main"), "text/html")
             if p.path == "/workspace-client.js":
                 return self._send(200, (html_path.parent / "workspace-client.js").read_bytes(), "text/javascript")
+            if p.path == "/workspace-ui.js":
+                return self._send(200, (html_path.parent / "workspace-ui.js").read_bytes(), "text/javascript")
             if p.path == "/research-ui.js":
                 return self._send(200, (html_path.parent / "research-ui.js").read_bytes(), "text/javascript")
             if p.path == "/shadow-twin-ui.js":
@@ -1688,7 +1693,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 try:
-                    return self._json(200, port.status(nonblocking=True))
+                    return self._json(200, {**port.status(nonblocking=True),
+                                            "permissions": {"can_write": self._owner()}})
                 except Exception as ex:
                     sys.stderr.write(f"status/public failed: {type(ex).__name__}: {ex}\n")
                     return self._json(500, {"ok": False, "detail": f"{type(ex).__name__}: {ex}", "assets": []})

@@ -283,3 +283,86 @@ c.cancelPending();await assert.rejects(pending,error('CANCELLED'));
 assert.equal((await c.read('status')).config_revision,2);
 assert.equal(c.context.id,'cc1');assert(Object.isFrozen(c.context));
 """)
+
+
+@pytest.mark.parametrize("scope", ["main", "cc1"])
+def test_numeric_leading_futures_use_canonical_asset_routes(scope):
+    run_js("const scope=" + json.dumps(scope) + r""";
+let number=0;
+const {c,calls}=client(scope,(url,init)=>{
+ const path=new URL(url).pathname, own=identity(scope,2);
+ if(path.endsWith('.csv'))return new Response('qualified-future',{headers:{'X-Icarus-Workspace':scope,'X-Icarus-Config-Revision':'2'}});
+ if(init.method==='POST'&&(path.endsWith('/backtest')||path.endsWith('/async')))
+   return reply({...own,job:'future-job-'+(++number)},202);
+ return reply({...own,effective:{tp1_pts:10}});
+});
+for(const asset of ['6E','6J','6B','6A']){
+ const start=calls.length;
+ assert.equal((await c.read('inputs',{asset})).effective.tp1_pts,10);
+ await c.configure(asset,{inputs:{tp1_pts:10}},2);
+ await c.backtest(asset,{},2);
+ await c.rewarm(asset,2);
+ await c.control('pause',asset);
+ assert.equal(await (await c.csv({asset})).blob.text(),'qualified-future');
+ assert.equal(c.href(asset),(scope==='main'?'/':'/dashboards/'+scope)+'?asset='+asset);
+ assert.equal(calls[start].path,(scope==='main'?'/api':'/api/command-centers/'+scope)+'/inputs/'+asset);
+ if(scope!=='main')assert(calls.slice(start).every(call=>call.path.includes('/'+asset)));
+ else assert(calls.slice(start+1,start+5).every(call=>call.body.asset===asset));
+}
+const count=calls.length;
+for(const asset of ['6e','6E/ES','6E?workspace=main','6E%2FES','6E\n','6E\r','6E ']){
+ await assert.rejects(c.read('inputs',{asset}),error('INVALID_REQUEST'));
+ assert.throws(()=>c.href(asset),error('INVALID_REQUEST'));
+}
+assert.equal(calls.length,count);
+""")
+
+
+def test_partial_operation_errors_preserve_frozen_json_receipts():
+    run_js(r"""
+const partial={...identity('cc1',2),error:'flatten_unavailable',detail:'closed before journal failed',
+ flattened_positions:1,partial:true,positions_remain_open:false,paper_only:true,execution_authorized:false,
+ results:[{symbol:'NQ',closed:1}]};
+const {c}=client('cc1',(url)=>new URL(url).pathname.endsWith('/status')?reply(identity('cc1',3)):reply(partial,409));
+await c.read('status');
+let failure;try{await c.control('flatten','NQ');}catch(e){failure=e;}
+assert(failure);assert.equal(failure.code,'HTTP_ERROR');assert.equal(failure.status,409);
+assert.equal(failure.message,partial.detail);assert(failure.receipt,'The full partial-operation receipt must survive an HTTP error');
+assert.deepEqual(JSON.parse(JSON.stringify(failure.receipt)),partial);
+assert(Object.isFrozen(failure.receipt)&&Object.isFrozen(failure.receipt.results)&&Object.isFrozen(failure.receipt.results[0]));
+failure.receipt.results[0].closed=99;assert.equal(failure.receipt.results[0].closed,1);
+const main=client('main',()=>reply({error:'flatten_unavailable',flattened_positions:2,partial:true},409));
+await assert.rejects(main.c.control('flatten'),e=>e.code==='HTTP_ERROR'&&e.receipt.flattened_positions===2);
+const missing=client('cc1',()=>reply({detail:'selected runtime unavailable'},503));
+await assert.rejects(missing.c.read('status'),e=>e.code==='HTTP_ERROR'&&e.status===503&&e.receipt.detail==='selected runtime unavailable');
+""")
+
+
+def test_foreign_operation_error_receipts_are_rejected_before_exposing_payload():
+    run_js(r"""
+for(const scope of ['main','cc1']){
+ const payloads=[identity('cc2',2),{workspace_id:null,detail:'invalid owner'}];
+ if(scope!=='main')payloads.push({...identity(scope,2),execution_authorized:true},{...identity(scope,2),paper_only:false});
+ for(const payload of payloads){
+  const {c}=client(scope,()=>reply({...payload,flattened_positions:1,partial:true},409));
+  await assert.rejects(c.control('flatten'),e=>error('INVALID_IDENTITY')(e)&&e.receipt===undefined);
+ }
+}
+""")
+
+
+def test_control_acknowledgements_survive_newer_observations_without_lowering_revision_floor():
+    run_js(r"""
+let release;const pending=new Promise(resolve=>release=resolve);let readRevision=4;
+const {c}=client('cc1',(url,init)=>init.method==='POST'?pending:reply(identity('cc1',readRevision)));
+const operation=c.control('flatten','NQ');await new Promise(resolve=>setTimeout(resolve,0));
+await c.read('status');
+release(reply({...identity('cc1',3),flattened_positions:1,positions_remain_open:false}));
+assert.equal((await operation).flattened_positions,1);
+readRevision=3;await assert.rejects(c.read('inputs',{asset:'NQ'}),error('STALE_RESPONSE'));
+const advanced=client('cc1',(url,init)=>reply(identity('cc1',init.method==='POST'?6:5)));
+assert.equal((await advanced.c.control('pause')).config_revision,6);
+await assert.rejects(advanced.c.read('status'),error('STALE_RESPONSE'));
+const foreign=client('cc1',()=>reply(identity('cc2',3)));
+await assert.rejects(foreign.c.control('pause'),error('INVALID_IDENTITY'));
+""")

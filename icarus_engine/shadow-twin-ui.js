@@ -14,6 +14,8 @@
 
   function start() {
     if (!document.body || document.getElementById('rt01-open')) return;
+    const client=globalThis.IcarusClient;
+    const scope=client?.context?.id||globalThis.IcarusWorkspace?.id||'main';
     const style = document.createElement('style');
     style.textContent = `
       #rt01-open{position:fixed;right:16px;bottom:16px;z-index:900;white-space:nowrap;box-shadow:0 5px 24px #0008}
@@ -42,7 +44,7 @@
     document.body.append(button);
     const shade = document.createElement('div'); shade.id = 'rt01-shade';
     shade.innerHTML = `<section id="rt01-panel" role="dialog" aria-modal="true" aria-labelledby="rt01-title">
-      <div class="rt01-head"><h2 id="rt01-title">Real-price shadow twin</h2><button id="rt01-close" class="icon-btn" type="button">Close</button></div>
+      <div class="rt01-head"><h2 id="rt01-title">Real-price shadow twin · ${esc(scope.toUpperCase())}</h2><button id="rt01-close" class="icon-btn" type="button">Close</button></div>
       <p class="rt01-note">Research evidence only. The shadow twin is default-off and cannot authorize orders. Standard real-bar emulator results are compared with primary Icarus fills. Drawdown is marked at bar closes and can understate intrabar risk.</p>
       <div id="rt01-content" aria-live="polite">Loading shadow evidence…</div>
       <p class="rt01-note" id="rt01-updated"></p>
@@ -97,28 +99,48 @@
       <h3>Per-asset evidence and provenance</h3>${assetTable(portfolio.assets, data.assets)}
       <p class="rt01-note">READY describes historical comparison evidence integrity, not current feed freshness. Last bar time, observed bar age, and provider health are shown separately for each asset. Ages are not normalized across trading sessions. Closed MFE and MAE sum emulator-observed high/low excursions through exit fills, quantity weighted and entry-commission adjusted. Only complete closed episodes are counted; matched deltas require the same mirrored entry intent. Portfolio drawdown: ${esc(portfolio.drawdown_aggregation || 'not reported')}. Values marked — have no valid denominator or no published measurement; they are not zeroes.</p>`;
     };
-    let interval = null, loading = false;
-    const refresh = async () => {
-      if (loading || !shade.classList.contains('open')) return;
-      loading = true;
-      try {
-        const response = await fetch('/status/public', {cache: 'no-store'});
-        if (!response.ok) throw new Error(`Status request failed (${response.status})`);
-        render(await response.json());
-        document.getElementById('rt01-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
-      } catch (error) {
-        document.getElementById('rt01-content').innerHTML = `<div class="rt01-error">${esc(error?.message || 'Unable to load status.')}</div>`;
-      } finally { loading = false; }
+    let interval = null, pending = null, generation = 0;
+    const clearEvidence = (message, unavailable=false) => {
+      document.getElementById('rt01-content').innerHTML=`<div class="${unavailable?'rt01-error':'rt01-note'}">${esc(message)}</div>`;
+      document.getElementById('rt01-updated').textContent=unavailable?`${scope.toUpperCase()} evidence unavailable`:'';
     };
-    const close = () => { shade.classList.remove('open'); if (interval) clearInterval(interval); interval = null; button.focus(); };
+    const refresh = async () => {
+      if (pending || !shade.classList.contains('open')) return;
+      const controller=new AbortController(),attempt=generation;
+      pending=controller;
+      try {
+        let data;
+        if(client) data=await client.read('status',{channel:'shadow-twin:status',signal:controller.signal});
+        else {
+          if(scope!=='main')throw new Error('Selected workspace client unavailable');
+          const response = await fetch('/status/public', {cache: 'no-store',signal:controller.signal});
+          if (!response.ok) throw new Error(`Status request failed (${response.status})`);
+          data=await response.json();
+        }
+        if(attempt!==generation||controller.signal.aborted||!shade.classList.contains('open'))return;
+        render(data);
+        document.getElementById('rt01-updated').textContent = `${scope.toUpperCase()} · Updated ${new Date().toLocaleTimeString()}`;
+      } catch (error) {
+        if(attempt===generation&&!controller.signal.aborted&&shade.classList.contains('open'))
+          clearEvidence(error?.message||'Unable to load selected status.',true);
+      } finally { if(pending===controller)pending=null; }
+    };
+    const close = (restoreFocus=true) => {
+      generation++;pending?.abort();pending=null;
+      shade.classList.remove('open');if(interval)clearInterval(interval);interval=null;
+      clearEvidence('Shadow evidence not loaded.');
+      if(restoreFocus)button.focus();
+    };
     button.addEventListener('click', () => {
+      clearEvidence('Loading selected shadow evidence…');
       shade.classList.add('open'); refresh();
       if (!interval) interval = setInterval(refresh, 10000);
       document.getElementById('rt01-close').focus();
     });
-    document.getElementById('rt01-close').addEventListener('click', close);
+    document.getElementById('rt01-close').addEventListener('click',()=>close());
     shade.addEventListener('click', event => { if (event.target === shade) close(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && shade.classList.contains('open')) close(); });
+    globalThis.addEventListener?.('pagehide',()=>close(false));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once: true});
   else start();
