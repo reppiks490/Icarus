@@ -1,26 +1,26 @@
 {
   "catalog_id": "scraping-apis-for-devs",
-  "content_sha256": "68ee5d4edd52f678d5260cb16e8aecab037adfbcd8a6e596b25e0d5e5375ed7d",
+  "content_sha256": "b28cf62a90e0912e209be14753645102ccb27095b37080fa15d8d1bbedbe1b80",
   "execution_authorized": false,
   "import_summary": {
     "catalog_id": "scraping-apis-for-devs",
-    "duplicate_groups": 559,
+    "duplicate_groups": 560,
     "execution_authorized": false,
-    "imported_entries": 4131,
+    "imported_entries": 4145,
     "parse_failures": 25,
     "production_decision_authorized": false,
-    "raw_count": 4156,
+    "raw_count": 4170,
     "rejected": 0,
-    "review_required": 4131,
-    "snapshot_id": "e134c14754c6ebf1bbad3647d12d9ab5346ded32e24d1e42efd13960dc4954d3",
-    "unique_candidates": 2591
+    "review_required": 4145,
+    "snapshot_id": "0ce421459227e374eaa49515d0ad8bce43201bec7d770178c4e8a6f20034a68a",
+    "unique_candidates": 2605
   },
   "parser_revision": "catalog-registry-v3",
   "production_decision_authorized": false,
-  "retrieved_at": "2026-10-18T09:01:52.634358Z",
-  "snapshot_id": "e134c14754c6ebf1bbad3647d12d9ab5346ded32e24d1e42efd13960dc4954d3",
+  "retrieved_at": "2026-10-21T09:34:05.530191Z",
+  "snapshot_id": "0ce421459227e374eaa49515d0ad8bce43201bec7d770178c4e8a6f20034a68a",
   "status": "SUCCESS",
-  "upstream_commit": "19982446de328067f49293d9aed43b93a8776e71",
+  "upstream_commit": "d08356163af843cc816b27c6b5a3bcdf3f31b052",
   "upstream_path": "README.md",
   "upstream_repo": "cporter202/scraping-apis-for-devs"
 }
