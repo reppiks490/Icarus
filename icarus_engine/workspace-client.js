@@ -1,0 +1,221 @@
+/* Explicit page-owned transport. No mutable scope selection or parent fallback. */
+'use strict';
+(() => {
+  class WorkspaceClientError extends Error {
+    constructor(code, detail, status=0) {
+      super(detail); this.name='WorkspaceClientError'; this.code=code; this.status=status;
+    }
+  }
+  const fail = (code, message, status=0) => { throw new WorkspaceClientError(code,message,status); };
+  const object = value => value !== null && typeof value==='object' && !Array.isArray(value);
+  const freeze = value => { if (object(value)||Array.isArray(value)) { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
+  const symbol = value => typeof value==='string' && /^[A-Z][A-Z0-9]{0,15}$/.test(value)
+    ? value : fail('INVALID_REQUEST','An explicit canonical asset symbol is required');
+  const jobId = value => typeof value==='string' && /^[A-Za-z0-9_-]{1,100}$/.test(value)
+    ? value : fail('INVALID_REQUEST','An explicit job identifier is required');
+  const revision = value => Number.isSafeInteger(value) && value>=0
+    ? value : fail('INVALID_IDENTITY','Invalid workspace configuration revision');
+  const sharedPaths = new Set(['/api/input-meta','/api/presets','/api/command-centers',
+    '/api/market-universe','/api/system/audit','/api/agent','/api/integrity',
+    '/api/research/sources','/api/research/records','/api/research/source-watch']);
+
+  function create(bootstrap, options={}) {
+    if (!object(bootstrap)||!['main','cc1','cc2','cc3','cc4'].includes(bootstrap.id))
+      fail('INVALID_CONTEXT','A valid server-provided workspace identity is required');
+    if (typeof options.fetch!=='function') fail('INVALID_CONTEXT','An explicit fetch transport is required');
+    let origin;
+    try { origin=new URL(options.origin); } catch (_) { fail('INVALID_CONTEXT','A same-origin HTTP location is required'); }
+    if (!['http:','https:'].includes(origin.protocol)) fail('INVALID_CONTEXT','An HTTP origin is required');
+    const timeout=options.timeoutMs??10000;
+    if (!Number.isFinite(timeout)||timeout<=0||timeout>120000) fail('INVALID_CONTEXT','Invalid request deadline');
+    const context=freeze(JSON.parse(JSON.stringify({id:bootstrap.id,capabilities:bootstrap.capabilities||{}})));
+    const scoped=context.id!=='main', api=`/api/command-centers/${context.id}`, admin=`/admin/command-centers/${context.id}`;
+    const latest=new Map(), jobs=new Map(), active=new Set();
+    let observedRevision=-1, closed=false;
+    const token=typeof options.token==='function'?options.token:()=>'';
+
+    function pathURL(path) {
+      if (typeof path!=='string'||!path.startsWith('/')||path.startsWith('//')) fail('INVALID_REQUEST','An explicit same-origin path is required');
+      const url=new URL(path,origin.origin);
+      if (url.origin!==origin.origin) fail('INVALID_REQUEST','Cross-origin requests are unavailable');
+      return url;
+    }
+    function identity(data, historical=false, expected=null, advance=true) {
+      if (!object(data)||data.workspace_id!==context.id||data.execution_authorized===true||data.paper_only===false)
+        fail('INVALID_IDENTITY','Response does not belong to the selected paper workspace');
+      const rev=revision(data.config_revision);
+      if (expected!==null&&rev!==expected) fail('INVALID_IDENTITY','Job source revision changed');
+      if (!historical&&rev<observedRevision) fail('STALE_RESPONSE','Workspace configuration changed before this response arrived');
+      if (advance&&!historical) observedRevision=Math.max(observedRevision,rev);
+      return data;
+    }
+    async function network(path, init, consume, channel=null) {
+      if (closed) fail('CANCELLED','The page client is closed');
+      const url=pathURL(path), controller=new AbortController(), external=init.signal;
+      if (external?.aborted) fail('CANCELLED','Request cancelled');
+      const sequence=channel?(latest.get(channel)||0)+1:0;
+      if (channel) latest.set(channel,sequence);
+      const headers=new Headers(init.headers||{}), bearer=token();
+      if (bearer&&!headers.has('Authorization')) headers.set('Authorization','Bearer '+bearer);
+      headers.set('X-Icarus-Workspace',context.id);
+      let timer, cancel;
+      const cancelled=new Promise((_,reject)=>{
+        cancel=(code='CANCELLED')=>{controller.abort();reject(new WorkspaceClientError(code,code==='TIMEOUT'?'Request deadline exceeded':'Request cancelled'));};
+        timer=setTimeout(()=>cancel('TIMEOUT'),timeout);
+      });
+      const abort=()=>cancel(); active.add(cancel); external?.addEventListener('abort',abort,{once:true});
+      try {
+        const work=Promise.resolve().then(()=>options.fetch(url.href,{cache:'no-store',...init,headers,signal:controller.signal})).then(async response=>{
+          if (!response.ok) {
+            const data=await response.json().catch(()=>({}));
+            fail('HTTP_ERROR',data.detail||data.error||`HTTP ${response.status}`,response.status);
+          }
+          return consume(response);
+        });
+        const data=await Promise.race([work,cancelled]);
+        if (closed) fail('CANCELLED','The page client is closed');
+        if (channel&&latest.get(channel)!==sequence) fail('STALE_RESPONSE','A newer request replaced this observation');
+        return data;
+      } catch (error) {
+        if (error instanceof WorkspaceClientError) throw error;
+        fail('TRANSPORT_ERROR','Request failed: '+(error?.message||String(error)));
+      } finally {
+        clearTimeout(timer); active.delete(cancel); external?.removeEventListener('abort',abort);
+      }
+    }
+    async function json(path, {body,signal,channel=null,historical=false,expected=null,validate=true}={}) {
+      const init={method:body===undefined?'GET':'POST',signal};
+      if (body!==undefined) { init.headers={'Content-Type':'application/json'}; init.body=JSON.stringify(body); }
+      const data=await network(path,init,async response=>{
+        try { return await response.json(); } catch (_) { fail('INVALID_RESPONSE','Response is not valid JSON'); }
+      },channel);
+      return scoped&&validate?identity(data,historical,expected):data;
+    }
+    function fields(value, allowed) {
+      if (!object(value)||Object.keys(value).some(key=>!allowed.includes(key))) fail('INVALID_REQUEST','Unknown fields or conflicting scope selectors');
+    }
+    function bound(value, fallback, low, high) {
+      value=value??fallback;
+      if (!Number.isSafeInteger(value)||value<low||value>high) fail('INVALID_REQUEST',`Expected an integer from ${low} to ${high}`);
+      return value;
+    }
+    async function read(resource, args={}) {
+      const withAsset=['inputs','chart','trades'].includes(resource);
+      const allowed={status:[],assets:[],inputs:['asset'],chart:['asset','n','offset'],trades:['asset','limit'],performance:[],configuration:[]}[resource];
+      if (!allowed) fail('UNAVAILABLE','This runtime reader is unavailable',503);
+      fields(args,[...allowed,'channel','signal']);
+      const asset=withAsset?symbol(args.asset):null;
+      let path;
+      if (scoped) {
+        path=resource==='configuration'?api:`${api}/${resource}${asset?'/'+asset:''}`;
+      } else {
+        if (['performance','configuration'].includes(resource)) fail('UNAVAILABLE','This reader is workspace-specific',503);
+        path=resource==='status'?'/status/public':`/api/${resource}${asset?'/'+asset:''}`;
+      }
+      if (resource==='chart') path+=`?n=${bound(args.n,240,20,5000)}&offset=${bound(args.offset,0,0,50000)}`;
+      if (resource==='trades') path+=`?limit=${bound(args.limit,100,1,2000)}`;
+      const data=await json(path,{signal:args.signal,channel:args.channel||`read:${path}`,validate:resource!=='configuration'});
+      if (resource==='configuration') {
+        const profile=data?.profile;
+        if (!object(profile)) fail('INVALID_RESPONSE','Selected workspace configuration is unavailable');
+        identity({workspace_id:profile.id,config_revision:profile.config_revision});
+        return profile;
+      }
+      if (resource==='trades') {
+        const rows=scoped?data.trades:data;
+        if (!Array.isArray(rows)) fail('INVALID_RESPONSE','Selected trades are unavailable');
+        return rows;
+      }
+      return data;
+    }
+    function accepted(receipt, kind) {
+      const id=jobId(receipt?.job);
+      jobs.set(id,{revision:scoped?revision(receipt.config_revision):null,kind});
+      return receipt;
+    }
+    async function configure(asset, changes, expectedRevision) {
+      const whole=asset==='*'; if (!whole) symbol(asset);
+      fields(changes,scoped&&whole?['assets','inputs','chart','asset_overrides']:['inputs','chart','preset','reset']);
+      if (!Object.keys(changes).length) fail('INVALID_REQUEST','Configuration changes are required');
+      let path, body;
+      if (scoped) {
+        revision(expectedRevision);
+        path=whole?`${admin}/config/async`:`${admin}/assets/${asset}/config/async`;
+        body={...changes,expected_revision:expectedRevision};
+      } else if ('preset' in changes&&Object.keys(changes).length===1) {
+        path='/admin/preset/async';body={asset,preset:changes.preset};
+      } else if (changes.reset===true&&Object.keys(changes).length===1) {
+        path='/admin/inputs/reset/async';body={asset};
+      } else {
+        fields(changes,['inputs','chart']);path='/admin/inputs/async';
+        body={asset,values:changes.inputs||{},chart:changes.chart||{},persist:true};
+      }
+      return accepted(await json(path,{body,historical:true,expected:scoped?expectedRevision:null}),'config');
+    }
+    async function backtest(asset, params={}, expectedRevision) {
+      symbol(asset);
+      fields(params,['preset','inputs','fill_on','chart_type','timeframe','security_source','slippage_ticks',
+        'commission','capital','session','window_start','window_end','leverage']);
+      const body={...params};
+      if (scoped) { revision(expectedRevision);body.expected_revision=expectedRevision; } else body.asset=asset;
+      return accepted(await json(scoped?`${admin}/assets/${asset}/backtest`:'/admin/backtest',
+        {body,historical:true,expected:scoped?expectedRevision:null}),'backtest');
+    }
+    async function control(action, asset=null) {
+      if (!['pause','resume','flatten'].includes(action)) fail('UNAVAILABLE','This control is unavailable',503);
+      if (asset!==null) symbol(asset);
+      if (!scoped) return json('/admin/'+action,{body:action==='flatten'?{asset,confirm:true}:{asset}});
+      const path=asset===null?admin:`${admin}/assets/${asset}`;
+      return json(path+(action==='flatten'?'/flatten':'/pause'),{body:action==='flatten'?{confirm:true}:{paused:action==='pause'}});
+    }
+    async function job(id, args={}) {
+      jobId(id);fields(args,['full','channel','signal']);
+      const known=jobs.get(id), path=scoped?`${api}/jobs/${id}`:known?.kind==='config'?`/api/config-jobs/${id}`:`/api/backtest/${id}`;
+      const data=await json(path+(args.full===false?'?full=0':''),{signal:args.signal,channel:args.channel||`job:${id}`,historical:true,expected:known?.revision??null});
+      if (data.id!==id) fail('INVALID_IDENTITY','Response belongs to another job');
+      if (scoped&&data.kind==='backtest'&&data.result) identity(data.result,true,data.config_revision);
+      if (!known) jobs.set(id,{revision:scoped?data.config_revision:null,kind:data.kind||'backtest'});
+      return data;
+    }
+    async function compare(id, csvText, tolerance=1) {
+      jobId(id);
+      const data=await json(scoped?`${admin}/jobs/${id}/compare`:'/admin/backtest/compare',{
+        body:scoped?{csv:csvText,tol:tolerance}:{job:id,csv:csvText,tol:tolerance},historical:true,expected:jobs.get(id)?.revision??null});
+      if (scoped&&data.job!==id) fail('INVALID_IDENTITY','Comparison belongs to another job');
+      return data;
+    }
+    async function csv(selection) {
+      fields(selection,['asset','job']);
+      if (('asset' in selection)===('job' in selection)) fail('INVALID_REQUEST','Select exactly one asset or historical job');
+      const historical='job' in selection, id=historical?jobId(selection.job):symbol(selection.asset);
+      if (historical&&!jobs.has(id)) await job(id);
+      const expected=historical?jobs.get(id).revision:null;
+      const path=historical?(scoped?`${api}/jobs/${id}/trades.csv`:`/api/backtest/${id}/trades.csv`):
+        (scoped?`${api}/export/${id}.csv`:`/api/export/${id}.csv`);
+      const data=await network(path,{method:'GET'},async response=>{
+        let rev=null;
+        if (scoped) {
+          const raw=response.headers.get('X-Icarus-Config-Revision');
+          if (typeof raw!=='string'||!/^(0|[1-9][0-9]*)$/.test(raw)) fail('INVALID_IDENTITY','CSV lacks a valid workspace revision');
+          rev=Number(raw);
+          identity({workspace_id:response.headers.get('X-Icarus-Workspace'),config_revision:rev},historical,expected,false);
+        }
+        return {blob:await response.blob(),revision:rev};
+      });
+      if (scoped) identity({workspace_id:context.id,config_revision:data.revision},historical,expected);
+      return {blob:data.blob,filename:`${context.id}_${id}_trades.csv`};
+    }
+    async function shared(path) {
+      const url=pathURL(path);
+      if (!sharedPaths.has(url.pathname)) fail('UNAVAILABLE','This service has no shared read-only adapter',503);
+      return json(url.pathname+url.search,{validate:false,channel:'shared:'+url.pathname+url.search});
+    }
+    function href(asset=null) {
+      const path=scoped?`/dashboards/${context.id}`:'/';
+      return path+(asset===null?'':'?asset='+symbol(asset));
+    }
+    function close() { closed=true; for (const cancel of active) cancel(); }
+    return Object.freeze({context,read,configure,backtest,control,job,compare,csv,shared,href,close});
+  }
+  globalThis.IcarusWorkspaceClient=Object.freeze({create,WorkspaceClientError});
+})();

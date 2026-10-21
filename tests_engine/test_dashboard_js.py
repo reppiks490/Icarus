@@ -20,6 +20,7 @@ NODE = shutil.which("node")
     "rel",
     [
         "icarus_engine/dashboard.html",
+        "icarus_engine/workspace-client.js",
         "icarus_bridge/dashboard.html",
         "icarus_engine/research-ui.js",
         "icarus_engine/shadow-twin-ui.js",
