@@ -150,6 +150,17 @@ ambiguous. No such installation collision has been observed on the PC yet.
     asset or whole workspace. The flat-workspace guard and exact rollback stay
     enforced. This repair does not explain the reported accuracy decline.
 
+13. **Responsive settings drawer — reproduced and repaired locally.**
+    The fb98ce6 hosted visual workflow failed when desktop inline coordinates
+    remained after a mobile resize. Local Chromium reproduced that state and a
+    deterministic delayed-callback regression failed on the old implementation.
+    Desktop measurements now use variables consumed only by desktop CSS, so the
+    mobile rules apply immediately. Both real-browser regression cases,132
+    presentation checks and the unchanged cinema contract pass (no page errors
+    or write requests). Hosted checks for this repair remain separate. The
+    preceding fb98ce6 runtime Linux/Windows workflow passed; its visual failure
+    stays recorded until new-source verification supersedes it.
+
 ## Conditions for a meaningful restart
 
 All rows must have current evidence before a restart is called ready.

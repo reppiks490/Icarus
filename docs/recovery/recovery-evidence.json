@@ -1823,6 +1823,44 @@
       ]
     }
   ],
+  "responsive_settings_followup": {
+    "hosted_reproduction": {
+      "commit": "fb98ce65aaeaa3c5a6d13d3c407976911804e0d8",
+      "failure": "browser_cinema.cjs:181 mobile settings retained desktop inline geometry after800to390 resize",
+      "job": 119223003324,
+      "other_checks": "tests39600359927 plus4contracts completed/success; visual failed",
+      "visual_run": 39600359929
+    },
+    "limits": [
+      "Visual-focused verification; prior full3699suite belongs to preceding replay source. Fresh hosted checks remain separate.",
+      "No renderer switch, provider requests, new execution authority or full system restart.",
+      "Native root review only; no unavailable independent review approval invented."
+    ],
+    "local_log_sha256": {
+      "settings-cinema-browser.log": "1366c744df7c423339d85c8ad2908c90161c326edcbee33c4e10d7f8163e0b24",
+      "settings-presentation-focused.log": "faab599d44a2e4effd6712ecaf7a80c4fde3277bd3ebade6233dbf11d50de9d1",
+      "settings-responsive-green.log": "7be8fd2dbe59bd41eeab62553be11b660eda9dad0eca8ea7408632ba2d1cd22d",
+      "settings-responsive-red.log": "124ebb23fe3fbe4d363dbcf3804287da8108e433c9e352aabf08fde38567e5b1"
+    },
+    "local_reproduction": [
+      "One stale-placement occurrence in8two-page resize probes with openTrue/mediaTrue at390px",
+      "No reproduction in25single-page cycles; timing dependence retained",
+      "Deterministic browser test holds viewport placement callbacks; original code fails inline-geometry assertion"
+    ],
+    "recorded_at_utc": "2026-10-21T12:53:03.727044+00:00",
+    "repair": "Desktop coordinates are CSS variables consumed only above760px; mobile media rules apply immediately without waiting for JS callbacks. Existing browser_cinema assertions unchanged.",
+    "scope": "BOUNDED_RESPONSIVE_SETTINGS_REPAIR; common renderer remains pending",
+    "source_file_sha256": {
+      "icarus_engine/experience-ui.css": "4dc1cad8fb7da96d5c590f2102e663fa308841e0ec6a071fdcfdddb71fa12f0a",
+      "icarus_engine/experience-ui.js": "b84a5d8e31bec9e4fb04330f63fe16288ff349902810dfab090f0f27e69ebc98",
+      "tests_engine/test_workspace_api.py": "93da8b52b0eb380a7487e99599a9c8dff128abae55c96f2a2b7e147fdf1c10ca"
+    },
+    "verification": [
+      "2real Chromium cases passed in14.61s (main context plus delayed resize)",
+      "132presentation invariants passed in8.02s",
+      "Unchanged browser_cinema.cjs passed with errors:[] and writes:[]"
+    ]
+  },
   "restart_decision": "NO_GO",
   "schema_version": "icarus.recovery-audit.v1",
   "session_id": "icarus1-20261020-system-recovery",

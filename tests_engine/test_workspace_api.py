@@ -648,3 +648,40 @@ def test_workspace_rewarm_refuses_invalid_revision_or_body_scope(workspace_http,
     before = _unaffected_state(server, parent)
     assert request("/admin/command-centers/cc1/assets/NQ/rewarm/async", body=body)[0] == status
     assert not server.workspace_jobs._jobs and _unaffected_state(server, parent) == before
+
+
+def test_settings_resize_uses_mobile_geometry_when_viewport_callbacks_are_delayed(workspace_http):
+    playwright = pytest.importorskip("playwright.sync_api")
+    server, _, _ = workspace_http
+    with playwright.sync_playwright() as runtime:
+        try:
+            browser = runtime.chromium.launch(headless=True, executable_path=shutil.which("chromium"))
+        except playwright.Error as error:
+            pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
+        try:
+            page = browser.new_page(viewport={"width": 800, "height": 600}, reduced_motion="reduce")
+            base = f"http://127.0.0.1:{server.server_port}"
+            page.route("**/*", lambda route: route.continue_() if route.request.url.startswith(base + "/") else route.abort())
+            page.add_init_script("""localStorage.setItem('icarus-engine-token','api-owner');
+              sessionStorage.setItem('icarus-intro-seen','1');window.holdPlacementEvents=false;
+              const add=window.addEventListener.bind(window);
+              window.addEventListener=(type,listener,options)=>add(type,
+                ['resize','scroll'].includes(type)&&listener.name==='placeSettingsPanel'
+                ? function(event){if(!window.holdPlacementEvents)listener.call(this,event);} : listener,options);
+            """)
+            page.goto(base + "/", wait_until="load")
+            page.locator(".experience-settings summary").click()
+            page.wait_for_function("""()=>{const s=document.querySelector('.experience-settings > div').style;
+              return Boolean(s.left||s.getPropertyValue('--settings-left'));}""")
+            page.evaluate("window.holdPlacementEvents=true")
+            page.set_viewport_size({"width": 390, "height": 844})
+            geometry = page.locator(".experience-settings > div").evaluate("""el=>{
+              const r=el.getBoundingClientRect();return {x:r.x,right:r.right,y:r.y,bottom:r.bottom,
+              left:el.style.left,top:el.style.top,maxHeight:el.style.maxHeight};}""")
+            assert geometry["x"] >= 12 and geometry["right"] <= 390, geometry
+            assert geometry["y"] >= 0 and geometry["bottom"] <= 844, geometry
+            assert geometry["left"] == geometry["top"] == geometry["maxHeight"] == "", geometry
+            page.evaluate("window.holdPlacementEvents=false;window.dispatchEvent(new Event('resize'))")
+            assert page.locator(".experience-settings").evaluate("el=>el.open")
+        finally:
+            browser.close()

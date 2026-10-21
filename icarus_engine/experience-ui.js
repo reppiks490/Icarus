@@ -200,10 +200,7 @@
     const placeSettingsPanel = () => {
       if (!settings.open) return;
       if (window.matchMedia('(max-width:760px)').matches) {
-        settingsPanel.style.removeProperty('left');
-        settingsPanel.style.removeProperty('right');
-        settingsPanel.style.removeProperty('top');
-        settingsPanel.style.removeProperty('max-height');
+        for (const name of ['left','right','top','max-height']) settingsPanel.style.removeProperty('--settings-'+name);
         return;
       }
       const anchor = settingsSummary.getBoundingClientRect();
@@ -212,15 +209,15 @@
       const above = anchor.top - 20;
       const placeAbove = below < 180 && above > below;
       const available = Math.max(0, Math.min(window.innerHeight - 24, placeAbove ? above : below));
-      settingsPanel.style.maxHeight = `${available}px`;
+      settingsPanel.style.setProperty('--settings-max-height', `${available}px`);
       const height = settingsPanel.offsetHeight;
       const left = Math.max(12, Math.min(anchor.right - width, window.innerWidth - width - 12));
       const top = placeAbove
         ? Math.max(12, anchor.top - height - 8)
         : Math.max(12, Math.min(anchor.bottom + 8, window.innerHeight - height - 12));
-      settingsPanel.style.left = `${left}px`;
-      settingsPanel.style.right = 'auto';
-      settingsPanel.style.top = `${top}px`;
+      settingsPanel.style.setProperty('--settings-left', `${left}px`);
+      settingsPanel.style.setProperty('--settings-right', 'auto');
+      settingsPanel.style.setProperty('--settings-top', `${top}px`);
     };
     settings.addEventListener('toggle', () => {
       if (settings.open) requestAnimationFrame(() => requestAnimationFrame(placeSettingsPanel));
