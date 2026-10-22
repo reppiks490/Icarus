@@ -31,6 +31,39 @@ def test_requires_explicit_feed_and_assets(tmp_path):
     assert '--feed' in result.stderr and '--assets' in result.stderr
 
 
+@pytest.mark.parametrize('asset_args', [
+    ['--assets', ''],
+    ['--assets', ' \t '],
+    ['--assets', ', ,\t,,'],
+    ['--assets='],
+    ['--assets= , \t,'],
+    ['--assets', 'NQ', '--assets', ''],
+])
+@pytest.mark.parametrize('setup', [False, True])
+def test_empty_assets_refuse_before_python_or_private_state_changes(tmp_path, asset_args, setup):
+    repo, script = launcher(tmp_path)
+    capture = tmp_path / 'python-invocations'
+    python = repo / '.venv/bin/python'
+    python.write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$@" >> "$ICARUS_CAPTURE"\n')
+    # A prepared venv avoids bootstrapping an actual interpreter in --setup.
+    (repo / '.venv/pyvenv.cfg').write_text('')
+    state = tmp_path / 'private state'
+    state.mkdir()
+    saved = state / 'saved-workspaces'
+    saved.write_bytes(b'keep existing settings')
+    command = ['bash', str(script), '--feed', 'file', *asset_args, '--root', str(state)]
+    if setup:
+        command.append('--setup')
+    result = subprocess.run(command, env={**os.environ, 'ICARUS_PYTHON': str(python),
+                                         'ICARUS_CAPTURE': str(capture)},
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert '--assets' in result.stderr and 'non-empty' in result.stderr
+    assert not capture.exists(), 'invalid startup must not invoke Python, pip, or plant'
+    assert list(state.iterdir()) == [saved]
+    assert saved.read_bytes() == b'keep existing settings'
+
+
 def test_uses_checkout_venv_and_preserves_argument_boundaries(tmp_path):
     repo, script = launcher(tmp_path)
     capture = tmp_path / 'capture'
