@@ -6,9 +6,16 @@ The tested launcher preserves a chosen existing private root and requires explic
 feed/assets; this cloud session cannot start the owner’s PC.
 
 **Full recovery restart decision: NO-GO.** This is the current recovery record for Icarus 1 and
-Icarus 2. A full restart has not been performed. Source inspection,
+Icarus 2. A fully qualified system restart has not been performed. Source inspection,
 engineering tests, hosted automation and the owner's PC runtime are separate
 evidence levels. No source-only result establishes that the PC is repaired.
+
+**Latest panel delivery:** [per-panel completion and Git Bash restarts](ICARUS_PANEL_RESTARTS.md)
+documents Possibility, Chronofold, Commissioning and Engine Control for all four
+selected workspaces. The other eleven subsystem adapters remain open. Icarus 2's
+owner-assisted receipt026 records the earlier `38d5328` paper application starting
+on the PC with successful main health probes; this is separate from installing
+the new panel source or proving sustained operation.
 
 The owner's current two-worker direction supersedes the old five-name selection
 board for this workstream. Claims and updates remain on the existing
@@ -24,7 +31,8 @@ full suite passed **3,790 tests, four skipped, 111 subtests**. The common-dashbo
 follow-up now serves the same renderer at main and CC1–CC4, with a server-frozen
 identity and independent selected data/actions. Its fresh source verification and
 hosted receipts are recorded separately below and in the evidence inventory.
-No PC restart or live activation has occurred.
+That earlier source checkpoint did not include an observed PC restart. Subsequent
+owner-assisted paper startup is recorded separately; no live activation occurred.
 
 ## Verified starting point
 
@@ -343,6 +351,26 @@ recovery certificate. No broker was armed. See the evidence inventory for source
 and log hashes, prior canceled visual result and separate Icarus2 browser proof.
 
 ## Next-worker handoff
+
+The current four-panel batch and its verification/restart limits are tracked in
+[ICARUS_PANEL_RESTARTS.md](ICARUS_PANEL_RESTARTS.md) and the
+`workspace_first_four_panels_followup` entry in the evidence inventory. New
+services use each selected runtime and its own subsystem state; their analytics
+read cached market buffers without opening provider sessions. Source remains on
+the recovery branch. This batch does not close the other eleven adapters. The final
+full runtime suite, including required Chromium cases, passed **3,895 tests, four
+skipped, 111 subtests** in462.60s, exit0, with the eight changed code/test files
+frozen at `2c1b627`. Earlier248 component,92 routing/context and37 final panel
+checks remain separate receipts. Windows selection includes the new module;
+new-head hosted results are recorded separately.
+
+Icarus 2's events026–031 add owner-assisted startup evidence and the distinct
+animation candidate PR466. Its runtime run39720172498 passed, but visual
+run39720172573 failed the later DOM-churn pointer assertion at
+`tests_engine/browser_depth.cjs:217`. That source has not been integrated into
+this panel batch. Preserve its existing patch and Brain claim while diagnosing
+the exact failing fixture and sustained observation expiry; do not overwrite or
+label the candidate all-green.
 
 Icarus 1 retains runtime recovery/release judgment and this evidence record.
 Icarus2's latest focused handoff is recorded in

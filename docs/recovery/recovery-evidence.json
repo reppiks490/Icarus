@@ -1097,8 +1097,17 @@
     "Required hosted checks on proposed release refs and fresh results for previously rejected workflow attempts",
     "Exact-head disposition of every relevant open PR/workstream"
   ],
-  "operator_pc_runtime_restarted": false,
-  "owner_pc_runtime_observed": false,
+  "operator_pc_runtime_restarted": true,
+  "owner_assisted_pc_paper_startup": {
+    "boolean_scope": "operator_pc_runtime_restarted denotes owner-executed paper application restart only; no PC reboot or fully qualified system restart certified",
+    "evidence": "reppiks490/icarus-owner-actions:coordination/events/2026/10/22/icarus2-20261020-federation-integration/026-owner-assisted-paper-startup-observed.json",
+    "new_panel_batch_installed": false,
+    "observed": "Paper application relaunch, health200 ok=true warm=true for six main assets, dashboard200, four saved profile files and main journal present",
+    "provenance": "Icarus2 report of owner-supplied terminal screenshots, not Icarus1 direct PC access",
+    "source_commit": "38d53283608d0134274a88b62db9a949280010c2",
+    "sustained_operation_verified": false
+  },
+  "owner_pc_runtime_observed": true,
   "persisted_pnl_validation_followup": {
     "behavior": [
       "Raw rows validated before aggregation; NULL/text/future closure makes selected realized PnL unknown with reason.",
@@ -3861,6 +3870,123 @@
       "log_sha256": "1366c744df7c423339d85c8ad2908c90161c326edcbee33c4e10d7f8163e0b24",
       "result": "passed;errors[];writes[]"
     }
+  },
+  "workspace_first_four_panels_followup": {
+    "actions": "Thirteen registered selected-paper actions. Owner/revision/confirmation gates remain; stale mutation409 and viewer403. sync.all reads cached selected diagnostics only. Unused args/duplicate JSON keys rejected.",
+    "browser": "Actual common-page readers and Commissioning cycle verified. Viewer async controls disabled without DOM observer feedback. Required Chromium tests included in full runtime.",
+    "cached_only": "PanelRunner/PanelPortfolio use cached feed adapters. Trapped provider trades/depth_events/meta/capabilities calls remain unused for all four readers. One source owner retains provider collection.",
+    "completed_panels": [
+      "possibility",
+      "chronofold",
+      "commissioning",
+      "engine-control"
+    ],
+    "final_panel_lifecycle": {
+      "command": "python -m pytest tests_engine/test_workspace_panels.py -q -o addopts= --tb=short",
+      "log_bytes": 100,
+      "log_local_path": "/workspace/scratch/workspace-panels-lifecycle.log",
+      "log_sha256": "7ed353cb9943d1d90a14b7f7777f1a28a2551e99eb365c2d5fe63611246abd91",
+      "summary": "37 passed in 19.77s"
+    },
+    "focused": {
+      "command": "python -m pytest tests_engine/test_workspace_panels.py tests_engine/test_workspace_client.py tests_engine/test_workspace_market_data.py tests_engine/test_workspace_context.py -q -o addopts= --tb=short",
+      "log_bytes": 180,
+      "log_local_path": "/workspace/scratch/workspace-panels-routing-green.log",
+      "log_sha256": "75329b6c444e59ac9128188119c97ff0aef92045c62a81c0335409151d60243f",
+      "summary": "92 passed in 17.81s"
+    },
+    "full_runtime": {
+      "command": "ICARUS_REQUIRE_WORKSPACE_BROWSER=1 python -m pytest tests_engine tests/test_provider_corpus_intake.py -q -o addopts= --tb=short",
+      "log_bytes": 4418,
+      "log_local_path": "/workspace/scratch/workspace-panels-batch1-full.log",
+      "log_sha256": "2d36c80a1b4796cc4e9c47c21c350ba025410dca91c1f12825cd92d4b14b6b83",
+      "summary": "3895 passed, 4 skipped, 111 subtests passed in 462.60s (0:07:42)"
+    },
+    "full_system_readiness": "NO_GO",
+    "initial_adapter_red": {
+      "command": "python -m pytest tests_engine/test_workspace_panels.py -q -o addopts= --tb=short",
+      "log_bytes": 11762,
+      "log_local_path": "/workspace/scratch/workspace-panels-initial-red.log",
+      "log_sha256": "f3004bd0ce6b1226925fbb88298a35a6c39239384cef142d3bed08d98cd59217",
+      "summary": "22 failed, 1 passed in 11.96s"
+    },
+    "limits": [
+      "Cloud fixture/browser evidence is not owner-PC installation of this batch",
+      "Earlier owner-assisted PC startup does not establish all-CC warmup, sustained freshness or open-position recovery",
+      "Remaining eleven adapters, futures/prop-firm operation, full data-to-consumer qualification, accuracy recovery and long stability run remain open"
+    ],
+    "live_broker_arming": false,
+    "operator_guide": "docs/recovery/ICARUS_PANEL_RESTARTS.md",
+    "peer_layout_candidate": {
+      "failing_assertion": "tests_engine/browser_depth.cjs:217 DOM-churn fixture must keep the real pointer over a topology panel",
+      "head": "1c818c272e910dda35ad10d0fc4dffb114bad434",
+      "integrated": false,
+      "pr": 466,
+      "runtime_conclusion": "success",
+      "runtime_run": 39720172498,
+      "visual_conclusion": "failure",
+      "visual_run": 39720172573
+    },
+    "persisted_state": {
+      "chronofold": "In-memory observation/model caches warm again; no durable all-observation recovery claimed",
+      "commissioning": "ROOT/command_centers/{workspace}/subsystems/audit/commissioning/{predictions,outcomes}.jsonl",
+      "engine_control": "Existing system audit below ROOT/command_centers/{workspace}/subsystems",
+      "possibility": "ROOT/command_centers/{workspace}/subsystems/research/psi_evidence.sqlite3"
+    },
+    "preceding_components": {
+      "command": "ICARUS_REQUIRE_WORKSPACE_BROWSER=1 python -m pytest tests_engine/test_workspace_panels.py tests_engine/test_workspace_client.py tests_engine/test_workspace_context.py tests_engine/test_workspace_ui.py tests_engine/test_workspace_dashboard_browser.py tests_engine/test_possibility.py tests_engine/test_chronofold.py tests_engine/test_chronofold_integration.py tests_engine/test_commissioning.py tests_engine/test_commissioning_integration.py tests_engine/test_engine_control.py -q -o addopts= --tb=short",
+      "log_bytes": 352,
+      "log_local_path": "/workspace/scratch/workspace-panels-batch1-components.log",
+      "log_sha256": "7a34b689902e2f75ce763b7227d7afb9e3d5f8d3f7bc24d7b35bd2413f98143e",
+      "summary": "248 passed in 198.50s (0:03:18)"
+    },
+    "recorded_at_utc": "2026-10-22T07:21:03.059102Z",
+    "remaining_panels": [
+      "access",
+      "brain",
+      "research",
+      "parallax",
+      "pantheon",
+      "sibyl",
+      "apex",
+      "ascendancy",
+      "learning",
+      "autopilot",
+      "golive"
+    ],
+    "review": "Root native review plus fresh regressions; earlier independent checkpoint preserved, no new independent whole-branch clearance claimed",
+    "routing_red": {
+      "command": "python -m pytest tests_engine/test_workspace_panels.py -k 'nested_market or duplicate_json or unused_arguments or client_preserves' -q -o addopts= --tb=short",
+      "log_bytes": 2386,
+      "log_local_path": "/workspace/scratch/workspace-panels-routing-red.log",
+      "log_sha256": "2e3a7c3956ca4f3f050600a0782edda950eb14bdbd7d903265aa193195185c85",
+      "summary": "4 failed, 25 deselected in 1.81s"
+    },
+    "source_commit": "2c1b6270eda685f5de2733ff4dbb9478ec98bd05",
+    "source_file_sha256": {
+      "icarus_engine/dashboard.html": "a309eca7907084b205fd904baa7be7e22ab332de6bf8342447f06fde6e6b0908",
+      "icarus_engine/engine-control-ui.js": "5a2ca9559cd3998abe468c5ab4179ca76a12bba7a874266a26ce6b8a3ff50924",
+      "icarus_engine/server.py": "3a384d5a538c62d1d0d763d24236dd33a401569659444533a3398a72a72e2ab3",
+      "icarus_engine/workspace-client.js": "b64101eb11d9e713847b8c4df5bb3052566475626acbc2b71287894d09bb060d",
+      "icarus_engine/workspace_panels.py": "eccf9735e91b8b4a99fb56213d297aac086531911ab44a6d2af57e41901f9c47",
+      "tests_engine/test_workspace_client.py": "fb82373ff57f402d82fc0d4293dfd2a11f76454226803cbe41f4a7ea6383ea02",
+      "tests_engine/test_workspace_dashboard_browser.py": "874424b307b676a127317c483a49a3f6e1e5b81212d70c977d297ba0338656e6",
+      "tests_engine/test_workspace_panels.py": "e62ccafb7ff24f3bf6230c6e53702e8dcc35d7ecdaf76b0204374343f8b2ec6e"
+    },
+    "source_parent": "38d53283608d0134274a88b62db9a949280010c2",
+    "windows_selection": {
+      "all_paths_exist": true,
+      "distinct_overall_modules": 80,
+      "hosted_status": "Pending new published head; a local selection check is not a Windows pass",
+      "main_modules": 78,
+      "new_module": "tests_engine/test_workspace_panels.py"
+    },
+    "workspaces": [
+      "cc1",
+      "cc2",
+      "cc3",
+      "cc4"
+    ]
   },
   "workspace_selected_replay_followup": {
     "behavior": [
