@@ -1,4 +1,5 @@
 """Regression coverage for dashboard status expiry and selected-workspace reads."""
+
 from pathlib import Path
 import re
 
@@ -6,20 +7,23 @@ from tests_engine.test_workspace_api import workspace_http  # noqa: F401
 
 
 def test_periodic_status_poll_is_single_flight():
-    """The automatic 3s cadence must not replace an unresolved status read."""
+    """The automatic 3s cadence must not overlap an unresolved status read."""
     source = Path("icarus_engine/dashboard.html").read_text(encoding="utf-8")
 
     assert "setInterval(refresh, 3000)" not in source
-    assert re.search(r"setInterval\([^;]*pollStatus[^;]*3000\)", source)
     poll = re.search(
         r"async function pollStatus\(\)\s*\{(?P<body>[\s\S]*?)\n\}",
         source,
     )
-    assert poll, "dashboard needs a dedicated single-flight periodic status poll"
+    assert poll, "dashboard needs a dedicated periodic status poll"
     body = poll.group("body")
     assert re.search(r"if\s*\(statusPollBusy\)\s*return", body)
-    assert "statusPollBusy = true" in body or "statusPollBusy=true" in body
+    assert re.search(r"statusPollBusy\s*=\s*true", body)
     assert re.search(r"finally\s*\{\s*statusPollBusy\s*=\s*false", body)
+    assert re.search(
+        r"setInterval\((?:\(\)=>void\s+)?pollStatus(?:\(\))?\s*,\s*3000\)",
+        source,
+    )
 
 
 def test_selected_status_snapshots_only_selected_workspace(workspace_http, monkeypatch):
