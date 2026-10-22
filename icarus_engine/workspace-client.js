@@ -36,7 +36,7 @@
     if (!Number.isFinite(timeout)||timeout<=0||timeout>120000) fail('INVALID_CONTEXT','Invalid request deadline');
     const context=freeze(JSON.parse(JSON.stringify({id:bootstrap.id,capabilities:bootstrap.capabilities||{}})));
     const scoped=context.id!=='main', api=`/api/command-centers/${context.id}`, admin=`/admin/command-centers/${context.id}`;
-    const latest=new Map(), jobs=new Map(), active=new Set(), inflight=new Map();
+    const latest=new Map(), jobs=new Map(), active=new Set();
     let observedRevision=-1, closed=false, lifecycle=0;
     const token=typeof options.token==='function'?options.token:()=>'';
     function current(generation, signal) {
@@ -131,31 +131,19 @@
       }
       if (resource==='chart') path+=`?n=${bound(args.n,240,20,5000)}&offset=${bound(args.offset,0,0,50000)}`;
       if (resource==='trades') path+=`?limit=${bound(args.limit,100,1,2000)}`;
-      const channel=args.channel||`read:${path}`;
-      const execute=async()=>{
-        const data=await json(path,{signal:args.signal,channel,validate:resource!=='configuration'});
-        if (resource==='configuration') {
-          const profile=data?.profile;
-          if (!object(profile)) fail('INVALID_RESPONSE','Selected workspace configuration is unavailable');
-          identity({workspace_id:profile.id,config_revision:profile.config_revision});
-          return profile;
-        }
-        if (resource==='trades') {
-          const rows=scoped?data.trades:data;
-          if (!Array.isArray(rows)) fail('INVALID_RESPONSE','Selected trades are unavailable');
-          return rows;
-        }
-        return data;
-      };
-      if (resource==='status'&&channel==='core-status'&&!args.signal) {
-        const pending=inflight.get(channel);
-        if (pending) return pending;
-        const work=execute();
-        inflight.set(channel,work);
-        try { return await work; }
-        finally { if (inflight.get(channel)===work) inflight.delete(channel); }
+      const data=await json(path,{signal:args.signal,channel:args.channel||`read:${path}`,validate:resource!=='configuration'});
+      if (resource==='configuration') {
+        const profile=data?.profile;
+        if (!object(profile)) fail('INVALID_RESPONSE','Selected workspace configuration is unavailable');
+        identity({workspace_id:profile.id,config_revision:profile.config_revision});
+        return profile;
       }
-      return execute();
+      if (resource==='trades') {
+        const rows=scoped?data.trades:data;
+        if (!Array.isArray(rows)) fail('INVALID_RESPONSE','Selected trades are unavailable');
+        return rows;
+      }
+      return data;
     }
     function accepted(receipt, kind) {
       const id=jobId(receipt?.job);
@@ -208,6 +196,7 @@
       const receipt=await json(path+(action==='flatten'?'/flatten':'/pause'),{
         body:action==='flatten'?{confirm:true}:{paused:action==='pause'},historical:true
       });
+      // Completed actions retain their receipt while the live observation floor only advances.
       observedRevision=Math.max(observedRevision,receipt.config_revision);
       return receipt;
     }
@@ -316,7 +305,7 @@
       const path=scoped?`/dashboards/${context.id}`:'/';
       return path+(asset===null?'':'?asset='+symbol(asset));
     }
-    function cancelPending() { lifecycle++; latest.clear(); inflight.clear(); for (const cancel of active) cancel(); }
+    function cancelPending() { lifecycle++; latest.clear(); for (const cancel of active) cancel(); }
     function close() { closed=true; cancelPending(); }
     return Object.freeze({context,read,configure,backtest,rewarm,control,job,compare,csv,shared,request,href,cancelPending,close});
   }
