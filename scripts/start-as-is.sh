@@ -58,6 +58,10 @@ print("Source:", repo, "\nPython:", sys.executable, "\nPrivate state:", Path(a.r
 if "--help" not in rest and "-h" not in rest:
     if not 1 <= a.engine_port <= 65535: raise SystemExit("Port must be 1..65535")
     with socket.socket() as probe:
+        # Match the POSIX HTTP server: closed connections in TIME_WAIT are not
+        # an active listener. Windows retains its exclusive default bind check;
+        # SO_REUSEADDR there can admit a port owned by another running process.
+        if os.name != "nt": probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try: probe.bind(("127.0.0.1", a.engine_port))
         except OSError: raise SystemExit("Port occupied. Stop the existing owner window with Ctrl+C, or choose --engine-port. No process was killed.")
     root = Path(a.root).expanduser().resolve()

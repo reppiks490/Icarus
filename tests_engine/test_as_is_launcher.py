@@ -63,3 +63,35 @@ def test_occupied_port_refuses_without_mutating_state(tmp_path):
                                 env={**os.environ,'ICARUS_PYTHON':sys.executable},capture_output=True,text=True)
     assert result.returncode != 0 and 'occupied' in result.stderr.lower(), result.stdout + result.stderr
     assert not state.exists()
+
+
+def test_closed_http_connection_does_not_block_immediate_restart(tmp_path):
+    # The real HTTP server reuses addresses. An accepted connection can outlive
+    # its listener as TIME_WAIT without any running engine owning the port.
+    with socket.socket() as listener:
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listener.bind(('127.0.0.1', 0))
+        listener.listen()
+        port = listener.getsockname()[1]
+        with socket.create_connection(('127.0.0.1', port)) as client:
+            accepted, _ = listener.accept()
+            accepted.close()  # The server closes first, retaining TIME_WAIT.
+            assert client.recv(1) == b''
+    with socket.socket() as probe:
+        probe.settimeout(.5)
+        assert probe.connect_ex(('127.0.0.1', port)) != 0
+
+    state = tmp_path / 'private state'
+    state.mkdir()
+    capture = tmp_path / 'invocation'
+    wrapper = tmp_path / 'preflight-python'
+    wrapper.write_text('#!/usr/bin/env bash\n'
+        'if [[ "$1" == "-c" ]]; then exec "$ICARUS_PREFLIGHT_PYTHON" "$@"; fi\n'
+        'printf "%s\\n" "$@" > "$ICARUS_CAPTURE"\n')
+    wrapper.chmod(0o755)
+    result = subprocess.run(['bash', str(SCRIPT), '--feed', 'file', '--assets', 'NQ',
+                             '--root', str(state), '--engine-port', str(port), '--no-browser'],
+        env={**os.environ, 'ICARUS_PYTHON':str(wrapper), 'ICARUS_PREFLIGHT_PYTHON':sys.executable,
+             'ICARUS_CAPTURE':str(capture)}, capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert capture.read_text().splitlines()[:3] == ['-m', 'icarus_plant', 'start']
