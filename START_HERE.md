@@ -4,6 +4,8 @@
 
 The local Python engine and dashboards do not require an active ChatGPT subscription. Keep the PC awake and the launcher window open. External data services and optional model APIs retain their own availability, entitlement and credit requirements. Missing runtime adapters remain visibly unavailable.
 
+**Panel updates and individual restart commands:** [Possibility, Chronofold, Commissioning and Engine Control](https://github.com/reppiks490/Icarus/blob/icarus1/restart-readiness-20261020/docs/recovery/ICARUS_PANEL_RESTARTS.md). The first four selected-workspace adapters now have source implementations and local verification; the guide states saved-state limits and the remaining eleven adapters. One normal engine restart installs the batch.
+
 ## 1. Stop your existing instance and preserve its data
 
 Before stopping, inspect and privately record any open paper positions in the existing dashboards. Closed-journal/configuration persistence is tested; restoration of every open in-memory position is not certified. Do not flatten positions merely to make a restart look successful.
@@ -11,6 +13,8 @@ Before stopping, inspect and privately record any open paper positions in the ex
 On your PC, press **Ctrl+C in the Git Bash/terminal window that currently runs ICARUS**. Let it finish. Do not kill arbitrary Python processes, delete PID files, flatten positions, reset settings or erase databases to refresh a panel.
 
 Open Git Bash **inside your existing Icarus checkout**. These commands retain its data root and make a private backup outside it. `ICARUS_HOME`, if already set, must point to the actual existing data directory. Verify the printed path before continuing.
+
+“Checkout” means your local GitHub code folder. `git rev-parse --show-toplevel` prints it from that folder. Icarus 2's owner-assisted receipt recorded the original PC folder as `%USERPROFILE%/Icarus` and the separate updated source as `%USERPROFILE%/Icarus-as-is` (usually `$HOME/Icarus` and `$HOME/Icarus-as-is` in Git Bash). `/workspace/Icarus` is the cloud worker's copy. Keep the actual root printed by your existing launcher authoritative.
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
