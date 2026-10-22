@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import copy
 import math
+import time
 
 from .assets import chart_capabilities
+from .paper_pnl import validate_paper_pnl
 from .paper_workspaces import _available_assets
 from .runtime import FlattenUnavailableError
 from .workspace_config import WorkspaceRevisionConflict
@@ -45,18 +47,37 @@ class WorkspaceAPI:
         return {"workspace_id": profile["id"], "config_revision": profile["config_revision"],
                 "paper_only": True, "execution_authorized": False}
 
+    def _selected_snapshot(self, profile_id):
+        """Validate one workspace without reading sibling runtime/journal state."""
+        now = int(time.time())
+        selected, ledger = self.manager._profile_snapshot(profile_id, now)
+        ledgers = []
+        for candidate_id in self.manager.profiles:
+            if candidate_id == profile_id:
+                ledgers.append(ledger)
+            else:
+                ledgers.append({"id": candidate_id, "currency": "USD", "runtime_available": False,
+                                "snapshot_ts": now, "realized_pnl": 0.0, "open_pnl": 0.0,
+                                "open_positions": 0, "oldest_open_mark_ts": None})
+        accounting = validate_paper_pnl(ledgers, as_of_ts=now)
+        validated = next(row for row in accounting["profiles"] if row["id"] == profile_id)
+        for field in ("realized_pnl", "open_pnl", "total_pnl"):
+            selected["pnl"][field] = validated[field]
+        selected["pnl"]["paper_pnl"] = validated["realized_pnl"]
+        selected["status"]["paper_pnl"] = validated["realized_pnl"]
+        selected["valuation_complete"] = validated["accounting_complete"]
+        return selected, validated
+
     def _status(self, profile_id):
         self._selected(profile_id)
         try:
-            state = self.manager.snapshot()
+            selected, accounting = self._selected_snapshot(profile_id)
         except RuntimeError as ex:
             raise WorkspaceAPIError(503, "paper snapshot is not ready", "SNAPSHOT_UNAVAILABLE") from ex
-        selected = next(row for row in state["profiles"] if row["id"] == profile_id)
         if not selected["runtime_available"]:
             raise WorkspaceAPIError(503, "selected paper runtime is unavailable")
         if selected["status"].get("snapshot_unavailable"):
             raise WorkspaceAPIError(503, "paper snapshot is not ready", "SNAPSHOT_UNAVAILABLE")
-        accounting = next(row for row in state["paper_pnl"]["profiles"] if row["id"] == profile_id)
         return {**selected["status"], **self._identity(selected), "accounting": accounting,
                 "pnl_basis": selected["pnl"]["basis"]}
 
