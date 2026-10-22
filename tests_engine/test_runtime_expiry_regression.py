@@ -1,25 +1,23 @@
 """Regression coverage for dashboard status expiry and selected-workspace reads."""
-from pathlib import Path
-import re
 
 from tests_engine.test_workspace_api import workspace_http  # noqa: F401
+from tests_engine.test_workspace_client import run_js
 
 
-def test_periodic_status_poll_is_single_flight():
-    """The automatic 3s cadence must not replace an unresolved status read."""
-    source = Path("icarus_engine/dashboard.html").read_text(encoding="utf-8")
-
-    assert "setInterval(refresh, 3000)" not in source
-    assert re.search(r"setInterval\([^;]*pollStatus[^;]*3000\)", source)
-    poll = re.search(
-        r"async function pollStatus\(\)\s*\{(?P<body>[\s\S]*?)\n\}",
-        source,
-    )
-    assert poll, "dashboard needs a dedicated single-flight periodic status poll"
-    body = poll.group("body")
-    assert re.search(r"if\s*\(statusPollBusy\)\s*return", body)
-    assert "statusPollBusy = true" in body or "statusPollBusy=true" in body
-    assert re.search(r"finally\s*\{\s*statusPollBusy\s*=\s*false", body)
+def test_core_status_reads_are_single_flight():
+    """The 3s dashboard cadence must join an unresolved core-status read."""
+    run_js(r"""
+let release;
+const pending = new Promise(resolve => { release = resolve; });
+const {c,calls}=client('cc1',()=>pending);
+const first=c.read('status',{channel:'core-status'});
+const second=c.read('status',{channel:'core-status'});
+await new Promise(resolve=>setTimeout(resolve,0));
+assert.equal(calls.length,1);
+release(reply({...identity('cc1',4),assets:[{price:400}]}));
+assert.equal((await first).assets[0].price,400);
+assert.equal((await second).assets[0].price,400);
+""")
 
 
 def test_selected_status_snapshots_only_selected_workspace(workspace_http, monkeypatch):
