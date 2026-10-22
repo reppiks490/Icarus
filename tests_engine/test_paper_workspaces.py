@@ -1,6 +1,7 @@
 import copy
 import sqlite3
 import threading
+import time
 from types import SimpleNamespace
 from http.server import ThreadingHTTPServer
 
@@ -11,6 +12,57 @@ from icarus_engine.assets import REGISTRY as ASSET_REGISTRY
 from icarus_engine.pine.timeframe import Bar
 from icarus_engine.runtime import Inputs, Journal, Portfolio
 from icarus_engine.server import serve
+
+
+@pytest.mark.parametrize('fault',['valid','empty','null_profit','text_profit','future_close'])
+def test_invalid_persisted_closure_cannot_become_complete_combined_pnl(tmp_path,monkeypatch,fault):
+    from icarus_engine.workspace_performance import snapshot as performance
+    manager=_manager(tmp_path,monkeypatch);manager.start()
+    try:
+        now=int(time.time());journal=manager.portfolios['cc1'].journal
+        if fault!='empty':
+            profit=None if fault=='null_profit' else 'unknown' if fault=='text_profit' else 10.0
+            exit_ts=now+86400 if fault=='future_close' else now-1
+            with journal._lock:
+                journal.con.execute('INSERT INTO trades(symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,profit,live) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                                    ('NQ','persisted-boundary',1,1,100.0,now-60,101.0,exit_ts,profit,1))
+                journal.con.commit()
+        state=manager.snapshot();aggregate=state['paper_pnl']['aggregate']
+        detail=performance(journal,as_of_ts=now)
+        if fault in ['valid','empty']:
+            expected=10.0 if fault=='valid' else 0.0
+            assert aggregate['accounting_complete'] and aggregate['realized_pnl']==expected
+            assert detail['available'] and detail['realized_pnl']==expected
+        else:
+            assert not detail['available'] and detail['reason']=='INVALID_PERSISTED_TRADE'
+            assert not aggregate['accounting_complete'] and aggregate['realized_pnl'] is None,aggregate
+            row=next(p for p in state['profiles'] if p['id']=='cc1')
+            assert row['pnl']['reason']=='INVALID_PERSISTED_TRADE'
+            assert all(p['realized_pnl']==0 for p in state['paper_pnl']['profiles'] if p['id']!='cc1')
+    finally:
+        manager.stop()
+
+
+def test_persisted_closures_use_shared_snapshot_clock_when_wall_time_advances(tmp_path,monkeypatch):
+    manager=_manager(tmp_path,monkeypatch);manager.start()
+    try:
+        now=1_790_000_000
+        journal=manager.portfolios['cc1'].journal
+        with journal._lock:
+            journal.con.execute('INSERT INTO trades(symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,profit,live) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                                ('NQ','after-snapshot',1,1,100.0,now-60,101.0,now+1,10.0,1))
+            journal.con.commit()
+        calls=[]
+        def clock():
+            calls.append(True)
+            return now if len(calls)==1 else now+1000
+        monkeypatch.setattr(paper_workspaces.time,'time',clock)
+        state=manager.snapshot()
+        assert state['paper_pnl']['as_of_ts']==now
+        assert state['paper_pnl']['aggregate']['realized_pnl'] is None
+        assert not state['paper_pnl']['aggregate']['accounting_complete']
+    finally:
+        manager.stop()
 
 
 class _Parent:
@@ -71,8 +123,10 @@ class _WorkspacePortfolio:
     def status(self, *, nonblocking=False):
         return getattr(self, "status_data", {"assets": [], "all_warm": self.started, "net": 0.0})
 
-    def reconfigure(self, candidate):
+    def reconfigure(self, candidate, *, persist=None):
         self.reconfigure_calls.append(copy.deepcopy(candidate))
+        if persist is not None:
+            persist()
         return {"ok": True, "id": candidate["id"]}
 
 
@@ -454,7 +508,8 @@ def test_snapshot_tallies_distinct_paper_ledgers_without_replay_profit(tmp_path,
         for idx, portfolio in enumerate(manager.portfolios.values()):
             portfolio.status_data = {
                 "assets": [{"symbol": "NQ", "feed_provider": "yahoo", "warm": True,
-                            "poll_age": 4.0, "market": {"open": True}, "feed_delay": 600.0}],
+                            "poll_age": 4.0, "market": {"open": True}, "feed_delay": 600.0,
+                            "position": 1, "price": 105.0, "price_age": 5.0}],
                 "all_warm": True, "capital": 1000.0, "equity": 1000.0 + idx,
                 "net": float(idx), "open_profit": 2.0, "positions": 1,
             }
@@ -857,6 +912,9 @@ def test_open_position_without_mark_or_stale_view_makes_aggregate_incomplete(tmp
         assert snapshot["aggregate"]["accounting_complete"] is False
         assert snapshot["aggregate"]["valuation_status"] == "PAPER_VALUATION_INCOMPLETE"
         runner.last_price = 101.0
+        # A numeric price alone does not establish a current open-position mark.
+        assert manager.snapshot()["aggregate"]["accounting_complete"] is False
+        runner.last_price_ts = paper_workspaces.time.time()
         assert manager.snapshot()["aggregate"]["accounting_complete"] is True
         original_status = portfolio.status
         monkeypatch.setattr(portfolio, "status", lambda **kwargs: {**original_status(**kwargs), "view_stale": True})
@@ -931,4 +989,64 @@ def test_strict_pnl_cached_flat_view_cannot_prove_current_flat_valuation(tmp_pat
         assert strict['aggregate']['open_pnl'] is None
         assert strict['aggregate']['total_pnl'] is None
     finally:
+        manager.stop()
+
+
+@pytest.mark.parametrize("condition", ["fresh", "stale", "missing_mark", "missing_runtime", "cached_flat"])
+def test_snapshot_aggregate_uses_the_same_validated_four_ledger_accounting(
+    tmp_path, monkeypatch, condition
+):
+    manager = _manager(tmp_path, monkeypatch)
+    manager.start()
+    missing = None
+    try:
+        journal = manager.portfolios["cc1"].journal
+        journal.con.execute(
+            "INSERT INTO trades (symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,profit,live) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            ("NQ", "closed", 1, 1, 100, 1000, 101, 1060, "test", 125, 1),
+        )
+        journal.con.commit()
+        manager.portfolios["cc1"].status_data = {
+            "assets": [{"symbol": "NQ", "position": 1, "price": 105.0,
+                        "price_age": 600.0 if condition == "stale" else 5.0}],
+            "positions": 1, "open_profit": 5.0,
+        }
+        if condition == "missing_mark":
+            manager.portfolios["cc1"].status_data["assets"][0].pop("price_age")
+        if condition == "missing_runtime":
+            missing = manager.portfolios.pop("cc4")
+        if condition == "cached_flat":
+            manager.portfolios["cc1"].status_data = {
+                "assets": [], "positions": 0, "open_profit": 0.0, "view_stale": True,
+                "capital": 1000.0, "equity": 1000.0, "net": 0.0,
+            }
+        snapshot = manager.snapshot()
+        aggregate = snapshot["aggregate"]
+        accounting = snapshot["paper_pnl"]["aggregate"]
+        assert aggregate["accounting_complete"] is (condition == "fresh")
+        assert accounting["accounting_complete"] is (condition == "fresh")
+        assert aggregate["realized_pnl"] == accounting["realized_pnl"]
+        assert aggregate["open_pnl"] == accounting["open_pnl"]
+        assert aggregate["total_pnl"] == accounting["total_pnl"]
+        assert aggregate["currency"] == accounting["currency"] == "USD"
+        assert aggregate["paper_pnl"] == accounting["realized_pnl"]
+        if condition != "fresh":
+            assert all(aggregate[field] is None for field in ("capital", "equity", "net"))
+        for profile in snapshot["profiles"]:
+            validated = next(row for row in snapshot["paper_pnl"]["profiles"] if row["id"] == profile["id"])
+            assert profile["valuation_complete"] is validated["accounting_complete"]
+            for field in ("realized_pnl", "open_pnl", "total_pnl"):
+                assert profile["pnl"][field] == validated[field]
+            assert profile["status"]["paper_pnl"] == validated["realized_pnl"]
+        if condition == "fresh":
+            assert aggregate["total_pnl"] == 130.0
+        elif condition == "missing_runtime":
+            assert aggregate["realized_pnl"] is None
+        else:
+            assert aggregate["realized_pnl"] == 125.0
+            assert aggregate["open_pnl"] is None
+    finally:
+        if missing is not None:
+            manager.portfolios["cc4"] = missing
         manager.stop()

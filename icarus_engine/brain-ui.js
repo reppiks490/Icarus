@@ -212,7 +212,7 @@
     if (!el) return;
     try {
       const tok = localStorage.getItem('icarus-engine-token') || 'icarus';
-      const r = await fetch('/api/brain', {cache:'no-store', headers:{'Authorization':'Bearer '+tok}});
+      const r = await IcarusClient.request('/api/brain', {cache:'no-store', headers:{'Authorization':'Bearer '+tok}});
       const b = await r.json();
       if (!r.ok) throw new Error(b.detail || ('HTTP '+r.status));
       renderBrain(b);

@@ -56,7 +56,16 @@ function marketDataChip(label,cls){
 async function marketDataFetch(path){
   try{
     const token=localStorage.getItem('icarus-engine-token')||'';
-    const r=await fetch(path,{cache:'no-store',headers:{'Authorization':'Bearer '+token}});
+    const client=globalThis.IcarusClient;
+    let target=path;
+    if(client&&client.context.id!=='main'&&path.startsWith('/api/market-data/')){
+      const url=new URL(path,location.origin),parts=url.pathname.slice('/api/market-data/'.length).split('/');
+      if(parts.length!==2)throw new Error('Explicit selected asset and cached resource required');
+      const query=new URLSearchParams(url.search);
+      query.set('asset',parts[0]);query.set('resource',parts[1]);
+      target='/api/command-centers/'+client.context.id+'/panels/market-data?'+query.toString();
+    }
+    const r=await (client?client.request(target,{cache:'no-store'}):fetch(target,{cache:'no-store',headers:{'Authorization':'Bearer '+token}}));
     const data=await r.json().catch(function(){return {};});
     if(!r.ok) return {ok:false,error:String(data.detail||data.error||('HTTP '+r.status)),status:r.status};
     return {ok:true,data:data};
@@ -67,7 +76,8 @@ async function marketDataFetch(path){
 
 async function marketDataAdminPost(path,body){
   const token=localStorage.getItem('icarus-engine-token')||'';
-  const r=await fetch(path,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body||{})});
+  const init={method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body||{})};
+  const r=await (globalThis.IcarusClient?IcarusClient.request(path,init):fetch(path,init));
   const data=await r.json().catch(function(){return {};});
   if(!r.ok) throw new Error(String(data.detail||data.error||('HTTP '+r.status)));
   return data;
@@ -119,20 +129,22 @@ function marketDataRender(capResult,tickResult,depthResult,healthResult){
   const assetState=(typeof last!=='undefined'&&last&&Array.isArray(last.assets))?last.assets.find(function(a){return String(a.symbol||'').toUpperCase()===asset;}):null;
   const marketOpen=!(assetState&&assetState.market&&assetState.market.open===false);
   const liveError=String(m.live_error||m.depth_error||'');
-  const coreOk=m.core_session_ok!==false&&!m.live_error;
+  const coreKnown=typeof m.core_session_ok==='boolean'||Boolean(m.live_error),coreOk=m.core_session_ok===true&&!m.live_error;
   const depthHealth=m.depth_schema_health||{};
-  const selectedDepthOk=depthHealth[marketDataState.schema]!==false&&!m.depth_error;
+  const selectedDepthError=m.depth_errors?.[marketDataState.schema]||(!m.depth_errors?m.depth_error:'');
+  const depthKnown=typeof depthHealth[marketDataState.schema]==='boolean'||Boolean(selectedDepthError);
+  const selectedDepthOk=depthHealth[marketDataState.schema]===true&&!selectedDepthError;
   let freshness='NO EVENTS',freshClass='w';
-  if(!marketOpen){ freshness='MARKET CLOSED'; freshnessClass=''; }
-  else if(ageSec!=null&&ageSec<=20){ freshness='LIVE '+Math.round(ageSec)+'s'; freshnessClass='b'; }
-  else if(ageSec!=null){ freshness='STALE '+Math.round(ageSec)+'s'; freshnessClass='r'; }
+  if(!marketOpen){ freshness='MARKET CLOSED'; freshClass=''; }
+  else if(ageSec!=null&&ageSec<=20){ freshness='LIVE '+Math.round(ageSec)+'s'; freshClass='b'; }
+  else if(ageSec!=null){ freshness='STALE '+Math.round(ageSec)+'s'; freshClass='r'; }
 
   const tiles=[
-    ['Engine',health.ok===true?'HEALTHY':'UNKNOWN',health.ok===true?'b':'w'],
+    ['Server (shared)',health.ok===true?'HEALTHY':'UNKNOWN',health.ok===true?'b':'w'],
     ['Provider',caps.provider||c.provider||'—',String(caps.provider||c.provider||'').toLowerCase().includes('databento')?'b':''],
     ['Dataset',c.dataset||m.dataset||'—',''],
-    ['Core session',coreOk?'OK':'DEGRADED',coreOk?'b':'r'],
-    ['Depth '+marketDataState.schema,selectedDepthOk?'OK':'DEGRADED',selectedDepthOk?'b':'r'],
+    ['Core session',coreKnown?(coreOk?'OK':'DEGRADED'):'UNOBSERVED',coreKnown?(coreOk?'b':'r'):'w'],
+    ['Depth '+marketDataState.schema,depthKnown?(selectedDepthOk?'OK':'DEGRADED'):'UNOBSERVED',depthKnown?(selectedDepthOk?'b':'r'):'w'],
     ['Freshness',freshness,freshClass],
     ['Continuous',m.continuous_symbol||'—',m.continuous_symbol?'b':''],
     ['Resolved contract',m.resolved_raw_symbol||'—',m.resolved_raw_symbol?'b':'w'],
@@ -149,6 +161,8 @@ function marketDataRender(capResult,tickResult,depthResult,healthResult){
     if(!capResult.ok) errs.push('capabilities: '+capResult.error);
     if(!tickResult.ok) errs.push('ticks: '+tickResult.error);
     if(!depthResult.ok) errs.push('depth: '+depthResult.error);
+    if(caps.cached_only) errs.push('Selected runner cache only; no acquisition or subscription requested. '+(caps.available===false?caps.reason||'Cache unavailable.':''));
+    if(!coreKnown||!depthKnown) errs.push('Session health unobserved; missing metadata is not a healthy session.');
     if(liveError) errs.push(liveError);
     if(m.depth_error_codes) errs.push('depth codes '+JSON.stringify(m.depth_error_codes));
     if(m.core_error_code!=null) errs.push('core error code '+m.core_error_code);

@@ -1,6 +1,6 @@
 from copy import deepcopy
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -428,10 +428,19 @@ def test_default_hybrid_probe_fails_closed_if_yahoo_is_not_in_catalog(monkeypatc
                          out=tmp_path / "fmp-only-catalog.json", pause_seconds=0)
 
 
-def test_hybrid_probe_ledger_validates_mappings_and_reports_provider_states(monkeypatch, tmp_path):
+@pytest.mark.parametrize('clock_microsecond', [0, 999500])
+def test_hybrid_probe_ledger_validates_mappings_and_reports_provider_states(monkeypatch, tmp_path, clock_microsecond):
     catalog = snapshot()
     row = catalog["instruments"][0]
-    now_dt = datetime.now(timezone.utc)
+    observed_now = datetime.now(timezone.utc).replace(microsecond=clock_microsecond)
+    class ObservedClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return observed_now
+    monkeypatch.setattr(market_universe, 'datetime', ObservedClock)
+    # The receipt is fully received before observation. Adding artificial
+    # latency to wall-clock "now" made the fixture intermittently future-dated.
+    now_dt = observed_now.replace(microsecond=0) - timedelta(seconds=1)
     now = now_dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
     fetched_ns = int(now_dt.timestamp() * 1_000_000_000)
     results = [
@@ -507,6 +516,8 @@ def test_hybrid_probe_ledger_validates_mappings_and_reports_provider_states(monk
     assert save_mutation(lambda item: item["results"][0].update(row_count=10))["status"] == "INVALID"
     assert save_mutation(lambda item: item["results"][0].update(received_end_ts=86460))["status"] == "INVALID"
     assert save_mutation(lambda item: item["results"][0].update(historical_bars_qualified=True))["status"] == "INVALID"
+    assert save_mutation(lambda item: item["results"][0].update(
+        received_at_ns=int(observed_now.timestamp() * 1_000_000_000) + 1))["status"] == "INVALID"
     assert save_mutation(lambda item: item.update(authority={"pulse_enabled": True,
                                                              "strategy_qualified": False,
                                                              "execution_authorized": False}))["status"] == "INVALID"

@@ -15,6 +15,7 @@ from .assets import REGISTRY, apply_chart_config, validate_chart_config
 from .workspace_universe import dashboard_assets
 from .futures_catalog import FUTURES_PRODUCTS
 from .paper_pnl import validate_paper_pnl
+from .workspace_config import WorkspaceRevisionConflict, normalize_workspace
 from .runtime import (
     AssetRunner,
     FlattenUnavailableError,
@@ -24,6 +25,7 @@ from .runtime import (
     apply_spec_meta,
     resolve_inputs,
     validate_values,
+    preset_path,
 )
 
 
@@ -210,26 +212,49 @@ class WorkspacePortfolio(Portfolio):
 
     def _resolved(self, spec, workspace=None):
         workspace = self.workspace if workspace is None else workspace
-        chart = validate_chart_config(workspace["chart"])
+        override = workspace.get("asset_overrides", {}).get(spec.symbol, {})
+        chart = validate_chart_config({**workspace["chart"], **override.get("chart", {})})
+        values = {**workspace["inputs"], **override.get("inputs", {})}
+        preset = override.get("preset", self.preset)
+        if override.get("preset") and not Path(preset_path(self.base_dir, preset)).is_file():
+            raise ValueError(f"workspace preset {preset!r} not found")
         spec = apply_chart_config(spec, chart, pin=True)
         inputs, meta, sources = resolve_inputs(
-            spec, self.base_dir, self.profile, self.preset, workspace["inputs"],
+            spec, self.base_dir, self.profile, preset, values,
             skip_asset_overrides=True, extra_label=f"command-center:{workspace['id']}"
         )
+        # Validate raw effective metadata before apply_spec_meta can truncate a
+        # fractional tick count. Startup-pinned properties retain precedence.
+        from .backtest import validate_backtest_params
+        costs = ("commission", "capital", "slippage_ticks")
+        pins = set(getattr(spec, "config_pins", ()) or ())
+        validate_backtest_params({key: meta[key] for key in costs if key in meta and key not in pins})
         spec = apply_spec_meta(spec, meta)
         spec = apply_chart_config(spec, chart, pin=True)
+        validate_backtest_params({key: getattr(spec, key) for key in costs})
         return spec, inputs, sources
 
     def make_runner(self, spec, *, workspace=None):
-        spec, inputs, sources = self._resolved(spec, workspace)
         base_spec = copy.deepcopy(spec)
+        spec, inputs, sources = self._resolved(spec, workspace)
+        selected = self.workspace if workspace is None else workspace
+        preset = selected.get("asset_overrides", {}).get(spec.symbol, {}).get("preset", self.preset)
         scale = self._ref_price() if spec.symbol != self.pts_ref_symbol else 0.0
         cfg = RunnerConfig(spec=spec, inputs=inputs, warmup_bars=self.warmup_bars,
-                           sources=sources, profile=self.profile, preset=self.preset or spec.preset,
+                           sources=sources, profile=self.profile, preset=preset or spec.preset,
                            pts_ref_price=scale, base_dir=self.base_dir, base_spec=base_spec)
         runner = AssetRunner(cfg, self.journal, self.feeds)
         runner.latency_telemetry = self.latency_telemetry
         return runner
+
+    def rewarm_asset(self, *_args, **_kwargs):
+        raise ValueError("workspace settings require the revisioned workspace configuration transaction")
+
+    def preset_for(self, runner):
+        override = self.workspace.get("asset_overrides", {}).get(runner.symbol, {})
+        if "preset" in override:
+            return override["preset"]
+        return super().preset_for(runner)
 
     def _refresh_continuous_feeds(self, now=None):
         if self.workspace["id"] != "cc1":
@@ -248,17 +273,26 @@ class WorkspacePortfolio(Portfolio):
                 return
         return super()._run(runner)
 
-    def reconfigure(self, candidate: Dict[str, Any]) -> Dict[str, Any]:
+    def reconfigure(self, candidate: Dict[str, Any], *, persist=None, force_symbols=None) -> Dict[str, Any]:
         requested = _validate_assets(candidate["assets"])
         chart = validate_chart_config(candidate["chart"])
         values = dict(candidate["inputs"])
         validate_values(values)
-        configuration_changed = chart != self.workspace["chart"] or values != self.workspace["inputs"]
+        configuration_changed = any(candidate.get(key) != self.workspace.get(key)
+                                    for key in ("chart", "inputs", "asset_overrides"))
         with self._lock, ExitStack() as locks:
             if self._stop.is_set():
                 raise ValueError("command center paper runtime is stopped")
             previous = dict(self.runners)
             previous_order = list(self.order)
+            forced = set(force_symbols or ())
+            if not forced <= set(previous) & set(requested):
+                raise ValueError("rewarm requires admitted running assets")
+            defaults_changed = any(candidate.get(key) != self.workspace.get(key) for key in ("chart", "inputs"))
+            changed_symbols = (set(requested) if defaults_changed else {
+                symbol for symbol in requested
+                if candidate.get("asset_overrides", {}).get(symbol, {}) != self.workspace.get("asset_overrides", {}).get(symbol, {})
+            }) | forced
             removed = [runner for symbol, runner in previous.items() if symbol not in requested]
             # Stage construction and provider preparation without publishing maps.
             additions = []
@@ -289,11 +323,14 @@ class WorkspacePortfolio(Portfolio):
                     if runner.em.open or runner.em._pending_entries or runner.em._pending_closes:
                         raise ValueError(f"{runner.symbol}: flatten open positions and cancel pending orders before removing the asset")
                     runner.ensure_configurable()
-                if configuration_changed:
+                if configuration_changed or forced:
                     snapshots = [(r, r.configuration_snapshot(), copy.deepcopy(r.cfg.base_spec))
-                                 for r in previous.values()]
-                    # Existing transactional replay also validates all old runners.
-                    self._reconfigure_existing(candidate)
+                                 for r in previous.values() if r.symbol in changed_symbols]
+                    # Retain the flat-workspace guard while replaying only the
+                    # explicitly changed/forced retained runners.
+                    self._reconfigure_existing(candidate, symbols=changed_symbols)
+                if persist is not None:
+                    persist()
                 if started:
                     for runner in additions:
                         self._spawn(runner)
@@ -309,7 +346,7 @@ class WorkspacePortfolio(Portfolio):
                 staged = {runner.symbol: runner for runner in additions}
                 self.runners = {symbol: previous.get(symbol, staged.get(symbol)) for symbol in requested}
                 self.order = requested
-                self.workspace.update({"assets": requested, "chart": chart, "inputs": values})
+                self.workspace = copy.deepcopy(candidate)
             except Exception:
                 for runner in additions:
                     runner._removed = True
@@ -323,14 +360,14 @@ class WorkspacePortfolio(Portfolio):
                 for runner, snapshot, base_spec in reversed(snapshots):
                     runner.restore_configuration_snapshot(snapshot)
                     runner.cfg.base_spec = base_spec
-                self.workspace.clear()
-                self.workspace.update(old_workspace)
+                self.workspace = old_workspace
                 raise
             gate.set()
         return {"ok": True, "id": self.workspace["id"], "assets": requested,
+                "rewarmed_assets": [symbol for symbol in requested if symbol in previous and symbol in changed_symbols],
                 "chart": chart, "inputs": values, "paper_only": True, "execution_authorized": False}
 
-    def _reconfigure_existing(self, candidate: Dict[str, Any]) -> Dict[str, Any]:
+    def _reconfigure_existing(self, candidate: Dict[str, Any], *, symbols=None) -> Dict[str, Any]:
         chart = validate_chart_config(candidate["chart"])
         values = dict(candidate["inputs"])
         validate_values(values)
@@ -338,13 +375,10 @@ class WorkspacePortfolio(Portfolio):
         plans = []
         for runner in runners:
             runner.ensure_configurable()
-            spec = apply_chart_config(copy.deepcopy(runner.cfg.base_spec or runner.spec), chart, pin=True)
-            inputs, meta, sources = resolve_inputs(
-                spec, self.base_dir, self.profile, self.preset, values,
-                skip_asset_overrides=True, extra_label=f"command-center:{self.workspace['id']}"
-            )
-            spec = apply_spec_meta(spec, meta)
-            spec = apply_chart_config(spec, chart, pin=True)
+            if symbols is not None and runner.symbol not in symbols:
+                continue
+            spec, inputs, sources = self._resolved(
+                copy.deepcopy(runner.cfg.base_spec or runner.spec), candidate)
             runner.ensure_cached_timeframes(inputs)
             spec.chart_tf = runner.ensure_cached_chart_timeframe(spec.chart_tf)
             plans.append((runner, spec, inputs, sources))
@@ -356,18 +390,20 @@ class WorkspacePortfolio(Portfolio):
                 runner.ensure_configurable()
             snapshots = [(runner, runner.configuration_snapshot(), copy.deepcopy(runner.cfg.base_spec)) for runner, *_ in plans]
             try:
+                for runner, *_ in plans:
+                    runner.publish_read_views()
                 for runner, spec, inputs, sources in plans:
                     runner.spec = spec
                     runner.cfg.spec = spec
-                    runner.cfg.base_spec = copy.deepcopy(spec)
                     runner.cfg.sources = list(sources)
-                    runner.rewarm(inputs, sources, reset_live_boundary=True)
+                    override = candidate.get("asset_overrides", {}).get(runner.symbol, {})
+                    runner.cfg.preset = override.get("preset", self.preset) or spec.preset
+                    runner.rewarm(inputs, sources, reset_live_boundary=True, _publish_views=False)
             except Exception:
                 for runner, snapshot, base_spec in reversed(snapshots):
                     runner.restore_configuration_snapshot(snapshot)
                     runner.cfg.base_spec = base_spec
                 raise
-        self.workspace.update({"chart": chart, "inputs": values})
         return {"ok": True, "id": self.workspace["id"], "assets": [r.symbol for r in runners],
                 "chart": chart, "inputs": values, "paper_only": True, "execution_authorized": False}
 
@@ -379,11 +415,17 @@ class PaperWorkspaceManager:
         self.root = Path(parent.base_dir or os.getcwd()) / "command_centers"
         self.root.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
+        self._configuration_locks = {profile_id: threading.RLock() for profile_id in _IDS}
         self._closing_journals: set[int] = set()
         self._feeds = {name: SharedFeed(feed) for name, feed in parent.feeds.items()}
         self.profiles: Dict[str, Dict[str, Any]] = {}
         self.portfolios: Dict[str, WorkspacePortfolio] = {}
         self._load_profiles()
+
+    def configuration_lock(self, profile_id):
+        if profile_id not in self.profiles:
+            raise ValueError("unknown command center profile")
+        return self._configuration_locks[profile_id]
 
     def _path(self, profile_id):
         if profile_id not in _IDS:
@@ -399,19 +441,29 @@ class PaperWorkspaceManager:
                     saved = json.load(fh)
                 if not isinstance(saved, dict) or saved.get("id") != default["id"]:
                     raise ValueError(f"invalid command center profile: {path.name}")
-                profile.update({k: saved[k] for k in ("name", "description", "assets", "chart", "inputs") if k in saved})
+                profile.update(saved)
             if path.exists() and "assets" in saved:
                 profile["assets"] = _validate_assets(saved["assets"])
-            profile["chart"] = validate_chart_config(profile["chart"])
-            values = dict(profile["inputs"])
-            validate_values(values)
-            profile["inputs"] = values
+            profile = normalize_workspace(profile)
             self.profiles[profile["id"]] = profile
             if not path.exists():
                 self._save(profile)
 
     def _save(self, profile):
         path = self._path(profile["id"])
+        if path.exists():
+            original = path.read_bytes()
+            saved = json.loads(original)
+            if saved.get("schema_version", 1) == 1:
+                backup = path.with_name(f"{profile['id']}.pre-v2.json")
+                try:
+                    with backup.open("xb") as fh:
+                        fh.write(original)
+                        fh.flush()
+                        os.fsync(fh.fileno())
+                except FileExistsError:
+                    if backup.read_bytes() != original:
+                        raise ValueError("workspace migration backup conflicts with the original record")
         tmp = path.with_suffix(".json.tmp")
         with tmp.open("w", encoding="utf-8") as fh:
             json.dump(profile, fh, indent=2, sort_keys=True)
@@ -617,16 +669,27 @@ class PaperWorkspaceManager:
         ]
         return {"feeds": feeds, "adapters": adapters, "execution_authorized": False}
 
-    def snapshot(self):
-        now = int(time.time())
-        rows = []
-        ledgers = []
-        for profile_id, profile in self.profiles.items():
+    def _profile_snapshot(self, profile_id, now):
+        # Never wait behind another workspace's replay. A busy record exposes
+        # committed settings and explicit unavailable valuation, no candidate inputs.
+        lock = self.configuration_lock(profile_id)
+        acquired = lock.acquire(blocking=False)
+        try:
+            profile = copy.deepcopy(self.profiles[profile_id])
             portfolio = self.portfolios.get(profile_id)
-            status = portfolio.status(nonblocking=True) if portfolio else {"assets": [], "all_warm": False}
-            runners = portfolio.runner_list() if portfolio else []
+            try:
+                if portfolio is not None and not acquired:
+                    raise RuntimeError("workspace configuration is changing")
+                status = portfolio.status(nonblocking=True) if portfolio else {"assets": [], "all_warm": False}
+            except RuntimeError:
+                # One initial/busy runner must not disconnect every workspace's
+                # overview or turn missing open marks into known zeroes.
+                status = {"assets": [], "all_warm": False, "view_stale": True,
+                          "snapshot_unavailable": True}
+            readable = portfolio if acquired and not status.get("snapshot_unavailable") else None
+            runners = readable.runner_list() if readable else []
             effective = runners[0].inputs_base.to_dict() if runners else {}
-            closed = portfolio.journal.closed_paper_profit() if portfolio else {"realized_pnl": 0.0, "closed_pieces": 0, "last_close_ts": None}
+            closed = portfolio.journal.closed_paper_profit(as_of_ts=now) if portfolio else {"realized_pnl": 0.0, "closed_pieces": 0, "last_close_ts": None}
             missing_marks = []
             for asset in status.get("assets", []):
                 if asset.get("position"):
@@ -650,38 +713,64 @@ class PaperWorkspaceManager:
                 marks.append(now - int(math.ceil(age)))
             marks_complete = (len(marks) == len(open_assets) == position_count
                               and not status.get("view_stale", False))
-            ledgers.append({"id": profile_id, "currency": "USD", "runtime_available": portfolio is not None,
+            ledger = {"id": profile_id, "currency": "USD", "runtime_available": portfolio is not None,
                             "snapshot_ts": now, "realized_pnl": closed["realized_pnl"] if portfolio else None,
                             "open_pnl": status.get("open_profit", 0.0) if portfolio and not status.get("view_stale", False) else None,
                             "open_positions": position_count,
-                            "oldest_open_mark_ts": min(marks) if marks and marks_complete else None})
+                      "oldest_open_mark_ts": min(marks) if marks and marks_complete else None}
             pnl = {**closed, "open_pnl": open_pnl, "paper_pnl": closed["realized_pnl"],
                    "replay_inclusive_net": float(status.get("net") or 0.0),
                    "basis": "persisted closures after paper cutover; open mark and replay-inclusive net shown separately"}
             status["paper_pnl"] = pnl["paper_pnl"]
-            rows.append({**copy.deepcopy(profile), "status": status, "effective_inputs": effective, "paper_only": True,
+            row = {**copy.deepcopy(profile), "status": status, "effective_inputs": effective, "paper_only": True,
                          "execution_authorized": False, "runtime_available": portfolio is not None,
                          "valuation_complete": valuation_complete, "missing_mark_symbols": missing_marks,
-                         "pnl": pnl, "feed": self._feed_summary(status, portfolio)})
+                   "pnl": pnl, "feed": self._feed_summary(status, readable)}
+            return row, ledger
+        finally:
+            if acquired:
+                lock.release()
+
+    def snapshot(self):
+        return self._snapshot()
+
+    def _snapshot(self):
+        now = int(time.time())
+        rows = []
+        ledgers = []
+        for profile_id in self.profiles:
+            row, ledger = self._profile_snapshot(profile_id, now)
+            rows.append(row)
+            ledgers.append(ledger)
+        accounting = validate_paper_pnl(ledgers, as_of_ts=now)
+        for row, validated in zip(rows, accounting["profiles"]):
+            for field in ("realized_pnl", "open_pnl", "total_pnl"):
+                row["pnl"][field] = validated[field]
+            row["pnl"]["paper_pnl"] = validated["realized_pnl"]
+            row["status"]["paper_pnl"] = validated["realized_pnl"]
+            row["valuation_complete"] = validated["accounting_complete"]
         aggregate = {"workspace_count": len(rows), "capital": sum(float(row["status"].get("capital") or 0.0) for row in rows),
                      "equity": sum(float(row["status"].get("equity") or 0.0) for row in rows),
                      "net": sum(float(row["status"].get("net") or 0.0) for row in rows),
-                     "realized_pnl": sum(row["pnl"]["realized_pnl"] for row in rows),
-                     "open_pnl": sum(row["pnl"]["open_pnl"] for row in rows),
                      "open_positions": sum(int(row["status"].get("positions") or 0) for row in rows),
                      "all_warm": all(bool(row["status"].get("all_warm")) for row in rows),
                      "pnl_basis": "persisted closures after paper cutover; open mark and replay-inclusive synthetic equity are separate"}
+        # Every API consumer must receive the same four-ledger valuation. The
+        # legacy projection must not claim completeness for stale/missing marks
+        # or substitute partial sums when one of the runtimes is unavailable.
+        aggregate.update(accounting["aggregate"])
         aggregate["paper_pnl"] = aggregate["realized_pnl"]
         aggregate["runtime_count"] = sum(row["runtime_available"] for row in rows)
         aggregate["missing_runtime_ids"] = [row["id"] for row in rows if not row["runtime_available"]]
-        aggregate["accounting_complete"] = (len(rows) == 4 and not aggregate["missing_runtime_ids"]
-                                            and all(row["valuation_complete"] for row in rows))
+        if not aggregate["accounting_complete"]:
+            for field in ("capital", "equity", "net"):
+                aggregate[field] = None
         aggregate["fees_status"] = "SIMULATOR_CONFIGURED_NOT_BROKER_RECONCILED"
-        aggregate["valuation_status"] = ("PAPER_MARKS_UNVERIFIED_FRESHNESS" if aggregate["accounting_complete"]
+        aggregate["valuation_status"] = ("PAPER_VALUATION_COMPLETE" if aggregate["accounting_complete"]
                                          else "PAPER_VALUATION_INCOMPLETE")
         aggregate["reconciliation_status"] = "NO_BROKER_RECONCILIATION"
         return {"mode": "concurrent_paper", "paper_only": True, "profiles": rows, "aggregate": aggregate,
-                "paper_pnl": validate_paper_pnl(ledgers, as_of_ts=now),
+                "paper_pnl": accounting,
                 "connections": self._connections(rows), "available_assets": _available_assets(),
                 "runtime_feed_mode": getattr(self.parent, "feed_mode", "unknown"),
                 "requested_futures": requested_futures_metadata(),
@@ -690,15 +779,26 @@ class PaperWorkspaceManager:
     def update(self, profile_id: str, body: Dict[str, Any]):
         if profile_id not in self.profiles:
             raise ValueError("unknown command center profile")
-        with self._lock:
+        with self.configuration_lock(profile_id):
             old = self.profiles[profile_id]
             candidate = copy.deepcopy(old)
             if not isinstance(body, dict):
                 raise ValueError("workspace update must be an object")
+            if set(body) - {"assets", "chart", "inputs", "asset_overrides", "expected_revision"}:
+                raise ValueError("unknown workspace update fields or conflicting asset selector")
+            if "expected_revision" not in body:
+                if old.get("asset_overrides") or "asset_overrides" in body:
+                    raise ValueError("expected_revision is required for per-asset workspace settings")
+            else:
+                expected = body["expected_revision"]
+                if type(expected) is not int or expected < 0:
+                    raise ValueError("expected_revision must be a nonnegative integer")
+                if expected != old["config_revision"]:
+                    raise WorkspaceRevisionConflict("workspace configuration revision changed; reload before editing")
             if "assets" in body:
                 candidate["assets"] = _validate_assets(body["assets"])
             if "chart" in body:
-                candidate["chart"] = validate_chart_config(body["chart"])
+                candidate["chart"] = {**old["chart"], **validate_chart_config(body["chart"])}
             if "inputs" in body:
                 if not isinstance(body["inputs"], dict):
                     raise ValueError("inputs must be an object")
@@ -706,32 +806,110 @@ class PaperWorkspaceManager:
                 values.update(body["inputs"])
                 validate_values(values)
                 candidate["inputs"] = values
+            if "asset_overrides" in body:
+                candidate["asset_overrides"] = copy.deepcopy(body["asset_overrides"])
+            candidate = normalize_workspace(candidate)
+            for override in candidate["asset_overrides"].values():
+                if override.get("preset") and not Path(preset_path(self.parent.base_dir, override["preset"])).is_file():
+                    raise ValueError("workspace preset not found")
+            return self._commit_candidate(profile_id, candidate)
+
+    def _commit_candidate(self, profile_id, candidate, *, force_symbols=None):
+        # Caller holds the selected configuration lock and validated its revision.
+        candidate["config_revision"] = self.profiles[profile_id]["config_revision"] + 1
+        portfolio = self.portfolios.get(profile_id)
+        if portfolio is None:
+            raise ValueError("command center paper runtime is not running")
+        old_bytes = self._path(profile_id).read_bytes()
+        kwargs = {"persist": lambda: self._save(candidate)}
+        if force_symbols is not None:
+            kwargs["force_symbols"] = force_symbols
+        try:
+            result = portfolio.reconfigure(candidate, **kwargs)
+        except Exception:
+            path = self._path(profile_id)
+            if not path.exists() or path.read_bytes() != old_bytes:
+                tmp = path.with_suffix(".json.rollback.tmp")
+                with tmp.open("wb") as fh:
+                    fh.write(old_bytes)
+                    fh.flush()
+                    os.fsync(fh.fileno())
+                os.replace(tmp, path)
+            raise
+        self.profiles[profile_id] = candidate
+        portfolio.workspace = candidate
+        result.update(schema_version=candidate["schema_version"], config_revision=candidate["config_revision"])
+        return result
+
+    def rewarm(self, profile_id, symbol, body):
+        if not isinstance(body, dict) or set(body) != {"expected_revision"}:
+            raise ValueError("rewarm accepts only expected_revision; scope belongs in the route")
+        expected = body["expected_revision"]
+        if type(expected) is not int or expected < 0:
+            raise ValueError("expected_revision must be a nonnegative integer")
+        with self.configuration_lock(profile_id):
+            profile = self.profiles[profile_id]
+            if expected != profile["config_revision"]:
+                raise WorkspaceRevisionConflict("workspace configuration revision changed; reload before rewarming")
             portfolio = self.portfolios.get(profile_id)
-            if portfolio is None:
-                raise ValueError("command center paper runtime is not running")
-            old_profile = copy.deepcopy(old)
-            self._save(candidate)
-            # reconfigure all runners while holding one workspace boundary; each runtime
-            # replays its cached bars and restores exact state if any replay fails.
-            try:
-                result = portfolio.reconfigure(candidate)
-            except Exception:
-                self._save(old_profile)
-                raise
-            self.profiles[profile_id] = candidate
-            portfolio.workspace = candidate
+            selected = profile["assets"] if symbol is None else [symbol]
+            if portfolio is None or any(asset not in profile["assets"] or asset not in portfolio.runners for asset in selected):
+                raise ValueError("selected workspace asset is unavailable")
+            return self._commit_candidate(profile_id, copy.deepcopy(profile), force_symbols=set(selected))
+
+    def update_asset(self, profile_id: str, symbol: str, body: Dict[str, Any]):
+        """Apply a revisioned edit to one admitted asset, never a parent writer."""
+        if not isinstance(body, dict) or set(body) - {"expected_revision", "inputs", "chart", "preset", "reset"}:
+            raise ValueError("unknown asset configuration fields or conflicting asset selector")
+        if "expected_revision" not in body:
+            raise ValueError("expected_revision is required for asset configuration")
+        if "reset" in body and type(body["reset"]) is not bool:
+            raise ValueError("reset must be true or false")
+        if body.get("reset") and set(body) - {"expected_revision", "reset"}:
+            raise ValueError("reset cannot be combined with other asset settings")
+        if not body.get("reset") and not set(body) & {"inputs", "chart", "preset"}:
+            raise ValueError("asset configuration needs inputs, chart, preset or reset")
+        with self.configuration_lock(profile_id):
+            profile = self.profiles.get(profile_id)
+            portfolio = self.portfolios.get(profile_id)
+            if (profile is None or portfolio is None or symbol not in profile["assets"]
+                    or symbol not in portfolio.runners):
+                raise ValueError("selected workspace asset is unavailable")
+            overrides = copy.deepcopy(profile["asset_overrides"])
+            if body.get("reset"):
+                overrides.pop(symbol, None)
+            else:
+                entry = overrides.setdefault(symbol, {})
+                for key in ("inputs", "chart"):
+                    if key in body:
+                        if not isinstance(body[key], dict):
+                            raise ValueError(f"asset {key} must be an object")
+                        entry[key] = {**entry.get(key, {}), **body[key]}
+                if "preset" in body:
+                    entry["preset"] = body["preset"]
+            result = self.update(profile_id, {"expected_revision": body["expected_revision"],
+                                              "asset_overrides": overrides})
+            result["asset"] = symbol
             return result
 
-    def pause(self, profile_id: str, paused: bool):
+    @staticmethod
+    def _control_targets(portfolio, asset):
+        if asset is None:
+            return portfolio.runner_list()
+        if asset not in portfolio.workspace["assets"] or asset not in portfolio.runners:
+            raise ValueError("asset is not running in this workspace")
+        return [portfolio.runners[asset]]
+
+    def pause(self, profile_id: str, paused: bool, *, asset=None):
         if profile_id not in self.portfolios:
             raise ValueError("unknown command center profile")
         portfolio = self.portfolios[profile_id]
-        with portfolio._lock:
+        with self.configuration_lock(profile_id), portfolio._lock:
             previous = portfolio.paused
             cancelled = 0
             changed = []
             try:
-                for runner in portfolio.runner_list():
+                for runner in self._control_targets(portfolio, asset):
                     old = runner.paused
                     cancelled += runner.set_paused(bool(paused))
                     changed.append((runner, old))
@@ -740,17 +918,19 @@ class PaperWorkspaceManager:
                     runner.set_paused(old)
                 portfolio.paused = previous
                 raise
-            portfolio.paused = bool(paused)
+            if asset is None:
+                portfolio.paused = bool(paused)
         return {"ok": True, "id": profile_id, "paused": bool(paused),
                 "cancelled_pending_entries": cancelled, "paper_only": True}
 
-    def flatten(self, profile_id: str):
+    def flatten(self, profile_id: str, *, asset=None):
         if profile_id not in self.portfolios:
             raise ValueError("unknown command center profile")
         portfolio = self.portfolios[profile_id]
-        with portfolio._lock:
-            runners = portfolio.runner_list()
-            portfolio.paused = True
+        with self.configuration_lock(profile_id), portfolio._lock:
+            runners = self._control_targets(portfolio, asset)
+            if asset is None:
+                portfolio.paused = True
             pause_errors = []
             for runner in runners:
                 try:

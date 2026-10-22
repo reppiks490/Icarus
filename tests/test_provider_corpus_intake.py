@@ -10,6 +10,12 @@ from pathlib import Path
 import pytest
 
 
+requires_private_intake = pytest.mark.skipif(
+    os.open not in os.supports_dir_fd or not hasattr(os, "O_NOFOLLOW"),
+    reason="private corpus admission requires descriptor-relative no-follow opens",
+)
+
+
 def _bundle(tmp_path, *, corrupt=False, contracts=False, filename="databento_mnq_5m.csv.gz"):
     restored = tmp_path / "restored"
     restored.mkdir()
@@ -35,6 +41,7 @@ def _bundle(tmp_path, *, corrupt=False, contracts=False, filename="databento_mnq
     return args, report, private, payload
 
 
+@requires_private_intake
 def test_actual_corpus_reaches_all_four_icarus_workspaces(tmp_path, monkeypatch):
     from tools.provider_corpus_intake import main
 
@@ -69,6 +76,7 @@ def test_actual_corpus_reaches_all_four_icarus_workspaces(tmp_path, monkeypatch)
     assert (private / "history" / "MNQ_5m.csv").is_file()
 
 
+@requires_private_intake
 def test_public_receipt_contains_no_prices_secrets_or_private_paths(tmp_path, monkeypatch, capsys):
     from tools.provider_corpus_intake import main
 
@@ -88,6 +96,7 @@ def test_public_receipt_contains_no_prices_secrets_or_private_paths(tmp_path, mo
     check(json.loads(report.read_text()))
 
 
+@requires_private_intake
 def test_tampered_corpus_never_reaches_runtime(tmp_path):
     from tools.provider_corpus_intake import main
 
@@ -99,6 +108,7 @@ def test_tampered_corpus_never_reaches_runtime(tmp_path):
     assert not private.exists()
 
 
+@requires_private_intake
 def test_runtime_uses_only_latest_contract_segment_without_adjusting_prices(tmp_path):
     from tools.provider_corpus_intake import main
 
@@ -114,6 +124,7 @@ def test_runtime_uses_only_latest_contract_segment_without_adjusting_prices(tmp_
 
 
 @pytest.mark.skipif(os.name != "posix", reason="mode privacy is a POSIX contract")
+@requires_private_intake
 def test_private_runtime_files_are_private_even_under_permissive_umask(tmp_path):
     from tools.provider_corpus_intake import main
 
@@ -174,6 +185,7 @@ def test_deep_manifest_rejected_without_traceback_or_runtime(tmp_path):
     assert not private.exists() and not report.exists()
 
 
+@requires_private_intake
 def test_non_workspace_corpus_has_real_coverage_consumption_without_paper_claim(tmp_path):
     from tools.provider_corpus_intake import main
 
@@ -188,6 +200,7 @@ def test_non_workspace_corpus_has_real_coverage_consumption_without_paper_claim(
                for row in result["read_receipts"])
 
 
+@requires_private_intake
 def test_historical_filename_is_used_when_no_canonical_snapshot_exists(tmp_path):
     from tools.provider_corpus_intake import main
 
@@ -198,6 +211,7 @@ def test_historical_filename_is_used_when_no_canonical_snapshot_exists(tmp_path)
     assert result["corpus_used"] is True
 
 
+@requires_private_intake
 def test_autodiscovery_prefers_canonical_snapshot_without_stitching_history(tmp_path):
     from tools.provider_corpus_intake import main
 
@@ -236,6 +250,7 @@ def _requested_bundle(tmp_path):
     return args, report, private, roots
 
 
+@requires_private_intake
 def test_opt_in_requested_families_warm_exact_full_and_micro_corpora_on_all_four(tmp_path, monkeypatch):
     import copy
     import urllib.request
@@ -278,9 +293,16 @@ def test_opt_in_requested_families_warm_exact_full_and_micro_corpora_on_all_four
     assert report["market_validation"] is report["execution_authorized"] is False
 
 
-def test_default_corpus_receipt_preserves_original_schema_and_unexpanded_profiles(tmp_path):
-    from icarus_engine.paper_workspaces import _PROFILE_DEFAULTS
-    from tools.provider_corpus_intake import main
+@requires_private_intake
+def test_default_corpus_receipt_preserves_original_schema_and_unexpanded_profiles(tmp_path, monkeypatch):
+    import copy
+    from tools import provider_corpus_intake as intake
+    # Keep CL outside this fixture's baseline even when operator defaults expand.
+    baseline = copy.deepcopy(intake._PROFILE_DEFAULTS)
+    for profile in baseline:
+        profile["assets"] = ["NQ"]
+    monkeypatch.setattr(intake, "_PROFILE_DEFAULTS", baseline)
+    main = intake.main
     args, report, _, _ = _bundle(tmp_path, filename="databento_cl_5m.csv.gz")
     assert main(args) == 0
     result = json.loads(report.read_text())
@@ -289,6 +311,24 @@ def test_default_corpus_receipt_preserves_original_schema_and_unexpanded_profile
         "consumption_purposes", "execution_authorized", "production_decision_authorized", "market_validation",
         "raw_payloads_included"}
     assert not result["paper_warmup_used"]
-    for workspace, default in zip(result["workspaces"], _PROFILE_DEFAULTS):
+    for workspace, default in zip(result["workspaces"], baseline):
         assert workspace["assets"] == []
         assert set(workspace["unavailable_assets"]) == set(default["assets"])
+
+
+def test_missing_no_follow_capability_refuses_before_runtime_or_receipt(tmp_path, monkeypatch):
+    from icarus_engine.corpus_intake import MAX_MANIFEST_BYTES, _snapshot
+    from tools.provider_corpus_intake import main
+
+    args, report, private, payload = _bundle(tmp_path)
+    manifest = Path(args[args.index("--vault-manifest") + 1])
+    original_manifest = manifest.read_bytes()
+    restored = Path(args[args.index("--restored-dir") + 1])
+    monkeypatch.setattr(os, "supports_dir_fd", set())
+
+    with pytest.raises(ValueError, match="no-follow directory opens"):
+        _snapshot(manifest, MAX_MANIFEST_BYTES)
+    assert main(args) == 2
+    assert not private.exists() and not report.exists()
+    assert manifest.read_bytes() == original_manifest
+    assert [path.read_bytes() for path in restored.iterdir()] == [payload]

@@ -33,13 +33,13 @@
     return headers;
   }
   async function getJson(path) {
-    const r = await fetch(path, {cache:'no-store', headers:authHeaders(false)});
+    const r = await IcarusClient.request(path, {cache:'no-store', headers:authHeaders(false)});
     const j = await r.json();
     if (!r.ok) throw new Error(j.detail || ('HTTP ' + r.status));
     return j;
   }
   async function postJson(path, body) {
-    const r = await fetch(path, {method:'POST', headers:authHeaders(true), body:JSON.stringify(body || {})});
+    const r = await IcarusClient.request(path, {method:'POST', headers:authHeaders(true), body:JSON.stringify(body || {})});
     const j = await r.json();
     if (!r.ok) throw new Error(j.detail || ('HTTP ' + r.status));
     return j;

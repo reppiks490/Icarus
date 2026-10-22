@@ -1,5 +1,7 @@
 # Commands — dummy list (Grok / xAI 2026-09-20)
 
+**Current PC / Git Bash startup and complete command guide: [START_HERE.md](START_HERE.md).** Use the recovery branch for the updated five-dashboard version.
+
 You are away from the PC. This is every command that was given. Do them **on the Windows PC**, in **PowerShell**. Not on the phone. Not in this Grok chat.
 
 Folder: `C:\Users\tripl\Icarus`

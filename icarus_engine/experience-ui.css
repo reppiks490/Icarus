@@ -4829,3 +4829,27 @@ body:has(.world-intro) #view > :is(.card,.asset) {animation-play-state:paused!im
 html {overflow-x:clip}
 .paper-deck {scroll-margin-top:210px}
 @media (max-width:760px) {.paper-deck {scroll-margin-top:195px}}
+
+/* Desktop measurements must not override mobile geometry while a viewport
+   callback is pending. Only the desktop media rule consumes these variables. */
+@media (max-width:760px) {
+  /* A filtered or transformed header contains fixed descendants. Release that
+     containing block on mobile so the bottom-docked drawer uses the viewport,
+     even before a delayed resize/scroll callback can run. */
+  :root .top {
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+    filter:none!important;
+    transform:none!important;
+  }
+}
+@media (width > 760px) {
+  :root .experience-settings > div,
+  :root[data-world]:not([data-world=""]) .experience-settings > div {
+    position:fixed;
+    left:var(--settings-left,auto);
+    right:var(--settings-right,12px);
+    top:var(--settings-top,90px);
+    max-height:var(--settings-max-height,min(70dvh,620px));
+  }
+}

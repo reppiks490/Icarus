@@ -149,7 +149,7 @@
     const el=document.querySelector('#pantheonPanel'); if(!el) return;
     try{
       const tok=localStorage.getItem('icarus-engine-token')||'icarus';
-      const r=await fetch('/api/pantheon',{cache:'no-store',headers:{'Authorization':'Bearer '+tok}});
+      const r=await IcarusClient.request('/api/pantheon',{cache:'no-store',headers:{'Authorization':'Bearer '+tok}});
       const state=await r.json();
       if(!r.ok) throw new Error(state.detail||('HTTP '+r.status));
       render(state);

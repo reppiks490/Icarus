@@ -878,7 +878,7 @@
   }
 
   async function fetchJson(url, token) {
-    const response = await fetch(url, {
+    const response = await IcarusClient.request(url, {
       cache:'no-store',
       headers:{'Authorization':'Bearer ' + token}
     });

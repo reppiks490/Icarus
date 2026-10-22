@@ -166,7 +166,7 @@
       const input = document.querySelector('#apexAsset');
       if (input && input.value.trim()) selectedAsset = input.value.trim().toUpperCase();
       const qs = selectedAsset ? '?asset=' + encodeURIComponent(selectedAsset) : '';
-      const response = await fetch('/api/apex' + qs, {cache:'no-store', headers:{'Authorization':'Bearer ' + token}});
+      const response = await IcarusClient.request('/api/apex' + qs, {cache:'no-store', headers:{'Authorization':'Bearer ' + token}});
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || ('APEX HTTP ' + response.status));
       if (seq !== loadSeq) return;
