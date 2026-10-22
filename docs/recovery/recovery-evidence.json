@@ -3903,6 +3903,60 @@
       "summary": "3895 passed, 4 skipped, 111 subtests passed in 462.60s (0:07:42)"
     },
     "full_system_readiness": "NO_GO",
+    "immediate_restart_followup": {
+      "actual_first_and_second": {
+        "forecast_counts_each": {
+          "cc1": 1,
+          "cc2": 1,
+          "cc3": 1,
+          "cc4": 1
+        },
+        "owned_exit_codes": [
+          0,
+          0
+        ],
+        "panel_endpoints_each_start": 16,
+        "selected_psi_digest_recovered": true,
+        "sibling_evidence_isolated": true,
+        "workspaces": 4
+      },
+      "actual_fixed_sequence": {
+        "bytes": 634,
+        "local_path": "/workspace/scratch/panel-batch1-actual-restart-fixed.log",
+        "sha256": "4d0f8a52ffbc317d26e350bc734f3889d442a6940581923b55e07bfb24005557",
+        "summary": "owned_launcher_exit 0"
+      },
+      "actual_sequence_helper_sha256": "66c9b299706fd3623014b4343235a0e892f87c6e03c953ada4f3a1cac623e735",
+      "actual_sequence_source": "Launcher reported basebf3b558 while the exact fixed script blob subsequently committede0980d8 was in its working tree. Other production source stayed unchanged.",
+      "boundaries": "Synthetic file history and temporary root only; external socket/DNS access and credential-file reads forbidden by inherited audit hook. No provider acquisition, owner-PC command or live trading.",
+      "committed_source": "e0980d84804d736aeede81b8f1f0cd2cd47f73ea",
+      "first_actual_sequence": {
+        "bytes": 831,
+        "local_path": "/workspace/scratch/panel-batch1-actual-restart.log",
+        "sha256": "58875debd0039e88fb6abca91036e95cdda16fb32abd236eb0730b50da3fc742",
+        "summary": "AssertionError"
+      },
+      "full_suite_scope": "3895/4skip/111subtests is the unchanged panel runtime checkpoint2c1b627. This subsequent launcher-only production change has42focusedpasses and the actual two-start proof; no second full-suite claim.",
+      "green": {
+        "bytes": 100,
+        "local_path": "/workspace/scratch/panel-immediate-restart-green.log",
+        "sha256": "1376819d677060417f7d2fe4db4b269f3b0cfeae7d85c8ad6e8d1812a902afc9",
+        "summary": "42 passed in 19.69s"
+      },
+      "platform": "POSIX probe matches HTTP SO_REUSEADDR behavior; Windows port probe unchanged to avoid allowing active-port reuse. No actual Windows immediate-restart sequence certified.",
+      "reason": "An actual immediate second launch refused occupied port after owned first shutdown. Controlled accepted-HTTP-connection test reproduced TIME_WAIT false refusal without any listening engine.",
+      "recorded_at_utc": "2026-10-22T07:30:34.299553Z",
+      "red": {
+        "bytes": 1314,
+        "local_path": "/workspace/scratch/panel-immediate-restart-red.log",
+        "sha256": "ca2a1b6b9d41e0671573dfb6d75250160784535985c1313c44041b175e5d1124",
+        "summary": "1 failed, 4 deselected in 0.11s"
+      },
+      "source_file_sha256": {
+        "scripts/start-as-is.sh": "4335a4d1c5e1f97744dd5de076972f7811d801bc7a003ca1756a807b14072635",
+        "tests_engine/test_as_is_launcher.py": "1484f9f22badc2cd9a02cbd232d0c4b878051dc910984f751de6ea2a3a96190f"
+      }
+    },
     "initial_adapter_red": {
       "command": "python -m pytest tests_engine/test_workspace_panels.py -q -o addopts= --tb=short",
       "log_bytes": 11762,

@@ -362,7 +362,15 @@ full runtime suite, including required Chromium cases, passed **3,895 tests, fou
 skipped, 111 subtests** in462.60s, exit0, with the eight changed code/test files
 frozen at `2c1b627`. Earlier248 component,92 routing/context and37 final panel
 checks remain separate receipts. Windows selection includes the new module;
-new-head hosted results are recorded separately.
+new-head hosted results are recorded separately. The contained actual launcher
+check then exposed a POSIX TIME_WAIT false occupied-port refusal on immediate
+restart. A controlled socket regression failed first; the bounded launcher fix
+retains active-listener refusal and leaves Windows checks unchanged. Forty-two
+launcher/panel cases pass. Actual shell→plant→engine→owned shutdown→same-root
+restart serves all sixteen selected panel endpoints on both starts, preserves
+forecasts and the selected evidence digest, and exits0 twice. This synthetic
+file-only Linux fixture blocks external network/credential-file access and does
+not certify a repeat Windows PC restart.
 
 Icarus 2's events026–031 add owner-assisted startup evidence and the distinct
 animation candidate PR466. Its runtime run39720172498 passed, but visual

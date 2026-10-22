@@ -9,6 +9,8 @@ Paper execution only. Broker arming remains disabled.
 Panel code checkpoint:
 [`2c1b6270eda685f5de2733ff4dbb9478ec98bd05`](https://github.com/reppiks490/Icarus/commit/2c1b6270eda685f5de2733ff4dbb9478ec98bd05)
 on **`icarus1/restart-readiness-20261020`**, [PR #462](https://github.com/reppiks490/Icarus/pull/462).
+The immediate-restart launcher follow-up is
+[`e0980d84804d736aeede81b8f1f0cd2cd47f73ea`](https://github.com/reppiks490/Icarus/commit/e0980d84804d736aeede81b8f1f0cd2cd47f73ea).
 Use the latest documentation commit on that branch when installing. Pulling only
 `main` does not install the panel code. Verification receipts and limits appear
 below and in [recovery-evidence.json](recovery-evidence.json).
@@ -193,6 +195,16 @@ the parent portfolio.
 - Broader component/browser suites before final routing hardening: **248 passed**.
 - Final routing/client/context/cached-market suite: **92 passed**.
 - Expanded final panel/lifecycle suite: **37 passed**.
+- Immediate-restart follow-up: **42 launcher/panel checks passed** after a
+  controlled closed-HTTP-connection regression failed first. Existing active-port
+  refusal still passes. The change affects POSIX only; Windows retains its
+  existing strict port check.
+- Actual isolated shell → plant → engine → normal shutdown → same-root restart
+  passed. Both launches served all four panels in all four workspaces, retained
+  forecast counts and the selected evidence digest, and exited 0 on owned
+  shutdown. The fixture used synthetic file history, blocked external network
+  access and forbade credential-file reads. This proves the contained Linux
+  sequence, not a second observed restart on the owner PC.
 - Full runtime with required Chromium checks: **3,895 passed, four skipped,
   111 subtests passed** in 462.60 seconds, exit 0. Production/test source stayed
   identical to checkpoint `2c1b627` throughout. Exact source/log hashes are in
