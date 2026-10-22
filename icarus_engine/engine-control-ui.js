@@ -207,6 +207,9 @@ async function ecRun(actionId){
 }
 
 function wireEngineControl(){
+  const scoped=IcarusClient.context?.id!=='main';
+  const syncLabel=document.querySelector('#ecSyncAll');
+  if(scoped&&syncLabel)syncLabel.textContent='Refresh workspace diagnostics';
   const refresh=document.querySelector('#ecRefresh');
   if(refresh) refresh.onclick=loadEngineControl;
   const sync=document.querySelector('#ecSyncAll');

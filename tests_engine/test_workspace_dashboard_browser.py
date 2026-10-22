@@ -250,33 +250,62 @@ def test_common_linked_panels_never_request_parent_runtime_readers(workspace_htt
         assert not parent,parent
 
 
-def test_common_commissioning_direct_post_uses_rejecting_selected_endpoint(workspace_http):
-    server,parent,_=workspace_http
+def test_common_commissioning_direct_post_uses_real_selected_endpoint(workspace_http):
+    server,parent,request=workspace_http
     with common_page(workspace_http) as (page,_):
         held=[]
         page.route(re.compile(r'.*/(?:api/commissioning|api/command-centers/cc1/panels/commissioning).*'),lambda route:held.append(route))
         page.on('dialog',lambda dialog:dialog.dismiss())
         page.evaluate("setView('commissioning')")
-        # Exercise the module's direct action handler even when the normal
-        # unsupported-panel UI disables it. The server must still refuse it.
-        with page.expect_request(lambda req:req.method=='POST') as submitted:
+        with page.expect_response(lambda res:res.request.method=='POST') as submitted:
             page.evaluate("()=>document.querySelector('#scTick').onclick()")
-        assert urlparse(submitted.value.url).path=='/admin/command-centers/cc1/unavailable'
+        assert urlparse(submitted.value.url).path=='/admin/command-centers/cc1/panels/engine-control'
+        assert submitted.value.status==200
+        assert submitted.value.json()['workspace_id']=='cc1'
+        assert submitted.value.json()['execution_authorized'] is False
+        code,data,_=request('/api/command-centers/cc1/panels/commissioning')
+        assert code==200 and data['ledger']['predictions']>=1
         assert not parent.runners['NQ'].paused
         assert not server.command_centers.portfolios['cc1'].runners['NQ'].paused
 
 
-def test_common_unavailable_panel_controls_and_shared_evidence_are_labeled(workspace_http):
+def test_common_selected_panel_controls_and_shared_evidence_are_labeled(workspace_http):
     with common_page(workspace_http) as (page,base):
         held=[]
         page.route(base+'/api/command-centers/cc1/panels/engine-control',lambda route:held.append(route))
         page.evaluate("setView('engine-control')")
         assert 'CC1' in page.locator('[data-workspace-scope-note]').inner_text()
-        assert page.locator('#view button:not(:disabled)').count()==0
+        assert page.locator('#ecRefresh').is_enabled()
+        assert page.locator('#ecSyncAll').is_enabled()
+        assert page.locator('#ecSyncAll').inner_text()=='Refresh workspace diagnostics'
         for route in held:
             route.fulfill(status=503,content_type='application/json',body='{"workspace_id":"cc1","detail":"unavailable"}')
         page.evaluate("setView('system')")
         assert 'Shared' in page.locator('[data-workspace-scope-note]').inner_text()
+
+
+@pytest.mark.parametrize('panel,selector',[('possibility','#possibilityPanel'),('chronofold','#chronofoldPanel'),
+    ('commissioning','#commissioningPanel'),('engine-control','#ecSummary')])
+def test_completed_subsystem_panels_render_real_selected_responses(workspace_http,panel,selector):
+    with common_page(workspace_http) as (page,_):
+        with page.expect_response(lambda res:urlparse(res.url).path=='/api/command-centers/cc1/panels/'+panel) as response:
+            page.evaluate('panel=>setView(panel)',panel)
+        assert response.value.status==200
+        assert response.value.json()['workspace_id']=='cc1'
+        page.locator(selector).wait_for(state='visible')
+        assert 'CC1' in page.locator('[data-workspace-scope-note]').inner_text()
+        assert not page.icarus_errors
+
+
+def test_completed_panel_controls_stay_read_only_for_viewer(workspace_http):
+    _,_,request=workspace_http
+    viewer=request('/admin/access/add',body={'label':'panel-viewer'})[1]['user']['token']
+    with common_page(workspace_http,token=viewer) as (page,_):
+        page.evaluate("setView('commissioning')")
+        page.wait_for_function("()=>document.querySelector('#scTick')?.disabled===true")
+        assert page.locator('#scRefresh').is_enabled()
+    assert request('/admin/command-centers/cc1/panels/engine-control',token=viewer,
+        body={'action':'commissioning.tick'},extra_headers={'X-Icarus-Config-Revision':'0'})[0]==403
 
 
 @pytest.mark.parametrize('scope,profit',[('main',90),('cc1',10),('cc2',20),('cc3',30),('cc4',40)])

@@ -817,7 +817,8 @@ function applyWritePermissions() {
     if(!canWrite)el.title='Owner access and a fresh selected runtime are required';
   }
 }
-const unavailableWorkspacePanels=new Set(['access','brain','research','parallax','possibility','pantheon','sibyl','apex','ascendancy','learning','chronofold','commissioning','engine-control','autopilot','golive']);
+const unavailableWorkspacePanels=new Set(['access','brain','research','parallax','pantheon','sibyl','apex','ascendancy','learning','autopilot','golive']);
+const selectedRuntimePanels=new Set(['possibility','chronofold','commissioning','engine-control']);
 const sharedEvidencePanels=new Set(['sources','evolution','integrity','system','agent','evidence']);
 function applyPanelScope() {
   const host=$('#view');if(!host)return;
@@ -825,7 +826,8 @@ function applyPanelScope() {
   const unavailable=scoped&&unavailableWorkspacePanels.has(view),shared=sharedEvidencePanels.has(view);
   const message=unavailable?`${id.toUpperCase()}: this panel is unavailable for this paper workspace. Its controls are disabled.`:
     shared?'Shared federation evidence. This view does not establish operation of the selected paper workspace.':
-    scoped&&view==='market-data'?`${id.toUpperCase()}: existing selected-runner caches only. This view does not acquire data or start subscriptions.`:'';
+    scoped&&view==='market-data'?`${id.toUpperCase()}: existing selected-runner caches only. This view does not acquire data or start subscriptions.`:
+    scoped&&selectedRuntimePanels.has(view)?`${id.toUpperCase()}: selected paper-workspace subsystem. State and controls stay isolated; broker execution is disabled.`:'';
   let note=host.querySelector('[data-workspace-scope-note]');
   if(message){
     if(!note){note=document.createElement('p');note.className='card c12 small';note.dataset.workspaceScopeNote='';note.setAttribute('role','status');host.prepend(note);}
@@ -839,10 +841,21 @@ function applyPanelScope() {
       if(!el.disabled)el.disabled=true;el.title='Shared configuration changes are unavailable from a paper workspace';
     }
   }
+  if(selectedRuntimePanels.has(view)&&last?.permissions?.can_write!==true){
+    const reads=new Set(['ecRefresh','scRefresh','scAsset','psiRefresh','psiAsset','cfRefresh','cfAsset']);
+    for(const el of host.querySelectorAll('button,input,select,textarea')){
+      if(reads.has(el.id)||el.hasAttribute('data-ec-view'))continue;
+      if(!el.disabled)el.disabled=true;
+      if(el.title!=='Owner access and a fresh selected runtime are required')el.title='Owner access and a fresh selected runtime are required';
+    }
+  }
   if(scoped&&view==='market-data'){
     const snapshot=$('#mdSnapshot');if(snapshot){if(!snapshot.disabled)snapshot.disabled=true;snapshot.title='A complete MBO snapshot is unavailable from cached paper-workspace diagnostics';}
   }
 }
+new MutationObserver(()=>{
+  if(selectedRuntimePanels.has(view)&&last?.permissions?.can_write!==true)applyPanelScope();
+}).observe($('#view'),{childList:true,subtree:true});
 async function watchConfigJob(jobId, label='Configuration', draft=null) {
   if (!jobId || configJobWatchers.has(jobId)) return;
   configJobWatchers.add(jobId);

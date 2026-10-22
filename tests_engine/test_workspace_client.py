@@ -262,9 +262,9 @@ def test_module_request_uses_scoped_unavailable_routes_and_rejects_foreign_ident
 const {c,calls}=client('cc3',()=>reply({...identity('cc3'),detail:'workspace adapter unavailable'},503));
 const panel=await c.request('/api/brain');assert.equal(panel.status,503);
 assert.equal(calls[0].path,'/api/command-centers/cc3/panels/brain');
-const action=await c.request('/admin/engine-control',{method:'POST',body:JSON.stringify({command:'arm'})});
+const action=await c.request('/admin/no-workspace-adapter',{method:'POST',body:JSON.stringify({command:'arm'})});
 assert.equal(action.status,503);assert.equal(calls[1].path,'/admin/command-centers/cc3/unavailable');
-assert.deepEqual(calls[1].body,{operation:'POST /admin/engine-control'});
+assert.deepEqual(calls[1].body,{operation:'POST /admin/no-workspace-adapter'});
 assert(calls.every(x=>x.headers.get('X-Icarus-Workspace')==='cc3'));
 const count=calls.length;
 await assert.rejects(c.request('/api/command-centers/cc2/status'));

@@ -267,6 +267,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     command_centers = PaperWorkspaceManager(port)
     from .workspace_api import WorkspaceAPI, WorkspaceAPIError
     workspace_api = WorkspaceAPI(command_centers)
+    from .workspace_panels import WorkspacePanels
+    workspace_panels = WorkspacePanels(command_centers, workspace_api)
     from .workspace_jobs import ScopedWorkspaceJobs, WorkspaceJobError
     workspace_jobs = ScopedWorkspaceJobs(command_centers)
     if start:
@@ -1533,16 +1535,18 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                             "execution_authorized": False})
             if p.path.startswith("/api/command-centers/"):
                 parts = p.path.split("/")
-                if len(parts) not in (4, 5, 6, 7) or parts[3] not in workspace_ids:
+                if len(parts) < 4 or parts[3] not in workspace_ids:
                     return self._json(404, {"detail": "unknown command center resource"})
                 profile_id = parts[3]
                 resource = parts[4] if len(parts) > 4 else None
                 if resource == "panels":
-                    if len(parts) != 6 or not re.fullmatch(r"[a-z][a-z0-9_-]{0,100}", parts[5]):
+                    if len(parts) < 6 or any(not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,100}", part) for part in parts[5:]):
                         return self._json(404, {"detail": "unknown workspace panel"})
                     if not self._auth():
                         return self._json(401, {"detail": "authentication required"})
                     if parts[5] == "market-data":
+                        if len(parts) != 6:
+                            return self._json(404, {"detail": "unknown cached market-data resource"})
                         query = parse_qs(p.query, keep_blank_values=True)
                         if (set(query) - {"asset", "resource", "schema", "limit"}
                                 or any(len(values) != 1 for values in query.values())
@@ -1558,10 +1562,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                             return self._json(ex.status, ex.as_dict(profile_id))
                         except ValueError as ex:
                             return self._json(400, {"workspace_id": profile_id, "detail": str(ex)})
-                    return self._json(503, {"detail": "this panel has no selected-workspace runtime adapter",
-                                           "workspace_id": profile_id, "panel": parts[5], "available": False,
-                                           "reason": "WORKSPACE_PANEL_UNAVAILABLE", "paper_only": True,
-                                           "execution_authorized": False})
+                    try:
+                        return self._json(200, workspace_panels.read(profile_id, "/".join(parts[5:]),
+                            parse_qs(p.query, keep_blank_values=True)))
+                    except WorkspaceAPIError as ex:
+                        return self._json(ex.status, ex.as_dict(profile_id))
                 if resource == "jobs":
                     if len(parts) not in (6, 7) or (len(parts) == 7 and parts[6] != "trades.csv"):
                         return self._json(404, {"detail": "unknown workspace job resource"})
@@ -2320,7 +2325,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(413, {"detail": "body too large"})
             raw = self.rfile.read(n) if n else b""
             try:
-                body = strict_json(raw) if p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/", "/admin/ascendancy/", "/admin/execution-cost/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                panel_action = p.path.startswith("/admin/command-centers/") and "/panels/" in p.path
+                body = strict_json(raw) if panel_action or p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/", "/admin/ascendancy/", "/admin/execution-cost/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -2361,6 +2367,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if action is None:
                     try:
                         if profile_id in workspace_ids:
+                            if len(parts) >= 5 and parts[3] == "panels":
+                                if p.query:
+                                    return self._json(400, {"detail": "panel actions do not accept query selectors"})
+                                return self._json(200, workspace_panels.mutate(profile_id, "/".join(parts[4:]), body,
+                                    self.headers.get("X-Icarus-Config-Revision")))
                             if len(parts) == 4 and parts[3] == "unavailable":
                                 if (set(body) != {"operation"} or not isinstance(body["operation"], str)
                                         or not 0 < len(body["operation"]) <= 256):
@@ -2385,6 +2396,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                 return self._json(200, workspace_jobs.compare(profile_id, parts[4],
                                                           body.get("csv"), body.get("tol", 1)))
                         return self._json(404, {"detail": "unknown command center control"})
+                    except WorkspaceAPIError as ex:
+                        return self._json(ex.status, ex.as_dict(profile_id))
                     except WorkspaceJobError as ex:
                         return self._json(ex.status, {"detail": ex.detail, "workspace_id": profile_id,
                                                       "paper_only": True, "execution_authorized": False})
@@ -3397,6 +3410,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     class ResearchHTTPServer(ThreadingHTTPServer):
         def _close_background_services(self):
             closers = (
+                workspace_panels.close,
                 command_centers.stop,
                 lambda: autopilot.close(),
                 lambda: ascendancy_autopilot.close(),
@@ -3424,6 +3438,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         def serve_forever(self, poll_interval=.5):
             background = bool(getattr(self, "background_workers_enabled", True))
             if background:
+                workspace_panels.start()
                 research.start_background()
                 autopilot.start_background()
                 loop_intelligence_sync.start()
@@ -3458,6 +3473,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.evolution_remote_sync = evolution_remote_sync
     srv.evidence_lab_sync = evidence_lab_sync
     srv.possibility = possibility
+    srv.workspace_panels = workspace_panels
     srv.performance_proof = performance_proof
     srv.latency_telemetry = latency_telemetry
     srv.source_reliability = source_reliability

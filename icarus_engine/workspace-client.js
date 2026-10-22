@@ -254,9 +254,16 @@
         isShared=method==='GET'&&sharedPath(url.pathname);
         if (!selected&&!isShared) {
           if (method==='GET') {
-            const panel=url.pathname.replace(/^\/api\//,'').replace(/[^A-Za-z0-9_-]+/g,'-').replace(/^-|-$/g,'').toLowerCase();
-            target=`${api}/panels/${panel||'unavailable'}`;
+            const panel=url.pathname.startsWith('/api/')?url.pathname.slice(5):'unavailable';
+            target=`${api}/panels/${panel}${url.search}`;
             selected=true;
+          } else if (method==='POST'&&url.pathname.startsWith('/admin/')&&
+                     ['engine-control','possibility/evidence'].includes(url.pathname.slice(7))) {
+            if (observedRevision<0) fail('INVALID_IDENTITY','Observe the selected workspace before running a panel action');
+            target=`${admin}/panels/${url.pathname.slice(7)}${url.search}`;
+            const headers=new Headers(options.headers||{});
+            headers.set('X-Icarus-Config-Revision',String(observedRevision));
+            options={...options,headers};selected=true;
           } else {
             target=`${admin}/unavailable`;
             options={method:'POST',signal:init.signal,headers:{'Content-Type':'application/json'},
