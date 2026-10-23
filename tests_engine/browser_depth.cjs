@@ -98,7 +98,7 @@ assert.equal(familyFixture.kind,'research');
 assert.match(familyFixture.animation,/world-family-research-enter|world-surface-sigil-breathe/);
 const valueMotion=await page.evaluate(async()=>{
  const el=document.createElement('section');el.className='card c3';el.id='worldValueFixture';
- el.innerHTML='<h2>Value Motion Fixture</h2><div class="tile"><div class="k">Observed metric</div><div class="v tnum">10</div></div>';
+ el.innerHTML='<h2>Value Motion Fixture</h2>'+Array.from({length:8},(_,i)=>`<div class="tile"><div class="k">Observed metric ${i}</div><div class="v tnum">${10+i}</div></div>`).join('');
  document.querySelector('#view').appendChild(el);window.IcarusWorldImmersion.refresh();
  const deadline=performance.now()+2200;
  while(performance.now()<deadline){
@@ -107,7 +107,15 @@ const valueMotion=await page.evaluate(async()=>{
   await new Promise(r=>setTimeout(r,24));
  }
  const nodeId=el.dataset.worldTopologyNode;
- const v=el.querySelector('.v');v.textContent='12';window.IcarusWorldImmersion.refresh();
+ const values=[...el.querySelectorAll('.v')];
+ const layoutProto=(()=>{let proto=HTMLElement.prototype;while(proto&&!Object.getOwnPropertyDescriptor(proto,'offsetWidth'))proto=Object.getPrototypeOf(proto);return proto;})();
+ const offsetWidth=Object.getOwnPropertyDescriptor(layoutProto,'offsetWidth'),getRect=Element.prototype.getBoundingClientRect;
+ let panelLayoutReads=0,topologyLayoutReads=0,rootLayoutReads=0;
+ Object.defineProperty(layoutProto,'offsetWidth',{...offsetWidth,get(){if(this===el)panelLayoutReads++;if(this===document.documentElement)rootLayoutReads++;return offsetWidth.get.call(this);}});
+ Element.prototype.getBoundingClientRect=function(...args){if(this.classList?.contains('world-topology'))topologyLayoutReads++;return getRect.apply(this,args);};
+ values.forEach((value,index)=>value.textContent=String(12+index));window.IcarusWorldImmersion.refresh();
+ const synchronousLayoutReads={panel:panelLayoutReads,topology:topologyLayoutReads,root:rootLayoutReads};
+ Object.defineProperty(layoutProto,'offsetWidth',offsetWidth);Element.prototype.getBoundingClientRect=getRect;
  // Topology/radar activity is delivered through bounded animation frames. Wait
  // for that observable state instead of assuming 48 ms is enough on every CI
  // runner; keep the deadline short enough to catch a genuinely missing signal.
@@ -119,12 +127,15 @@ const valueMotion=await page.evaluate(async()=>{
   if(graphActivity&&radarActivity)break;
   await new Promise(resolve=>setTimeout(resolve,24));
  }
- const rise=v.classList.contains('world-value-increase'),active=el.classList.contains('world-data-activity');
- v.textContent='8';window.IcarusWorldImmersion.refresh();
- const fall=v.classList.contains('world-value-decrease');
- el.remove();return {rise,fall,active,graphActivity,radarActivity};
+ const rise=values[0].classList.contains('world-value-increase'),active=el.classList.contains('world-data-activity');
+ values[0].textContent='8';window.IcarusWorldImmersion.refresh();
+ const fall=values[0].classList.contains('world-value-decrease');
+ el.remove();return {rise,fall,active,graphActivity,radarActivity,synchronousLayoutReads};
 });
-assert.deepEqual(valueMotion,{rise:true,fall:true,active:true,graphActivity:true,radarActivity:true});
+assert.deepEqual(valueMotion,{rise:true,fall:true,active:true,graphActivity:true,radarActivity:true,synchronousLayoutReads:{panel:0,topology:0,root:1}});
+if(process.env.ICARUS_READOUT_LAYOUT_ONLY==='1'){
+ await context.close();await browser.close();console.log('readout layout browser contract passed');return;
+}
 // Dashboard polling may replace a live panel, so drive the real pointer onto a
 // keyed panel and read its current replacement after the event settles.
 const panelTarget=await page.evaluate(()=>{
@@ -196,19 +207,41 @@ await page.waitForFunction(point=>{
 // Removing decorative children can emit a null-relatedTarget pointerout while
 // the cursor remains inside the card. Wait past the reconciliation frame so a
 // delayed callback cannot make this assertion pass before it actually runs.
+// Dashboard polling can replace/reflow panels after the initial topology
+// setup. Reacquire the current panel geometry immediately before the churn
+// event so this test measures pointer reconciliation, not stale coordinates.
+const churnPointer=await page.evaluate(()=>{
+ const panel=[...document.querySelectorAll('#view > .card[data-world-topology-node]')].find(el=>{
+  const r=el.getBoundingClientRect();return r.width>40&&r.height>28&&r.bottom>0&&r.top<window.innerHeight;
+ });
+ if(!panel)return null;
+ const heading=panel.querySelector('h2')||panel;
+ heading.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+ const r=heading.getBoundingClientRect();
+ return r.width>0&&r.height>0?{x:r.left+r.width*.38,y:r.top+r.height*.5,key:panel.dataset.worldPanelKey}:null;
+});
+assert.ok(churnPointer,'A visible topology panel must be available for the DOM-churn fixture');
+await page.mouse.move(4,4);
+await page.mouse.move(churnPointer.x,churnPointer.y);
+await page.waitForFunction(point=>{
+ const panel=document.elementFromPoint(point.x,point.y)?.closest('[data-world-topology-node]');
+ return !!panel&&document.querySelectorAll('.world-topology path.active').length>0;
+},churnPointer);
 const churnReconciliation=await page.evaluate(async point=>{
  const panel=document.elementFromPoint(point.x,point.y)?.closest('[data-world-topology-node]');
  if(!panel)return {physicalPanel:false,active:false};
  panel.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse',relatedTarget:null}));
- await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+ // The handler reconciles on the next animation frame. A second frame lets
+ // unrelated dashboard polling run and can invalidate the sampled coordinates.
+ await new Promise(resolve=>requestAnimationFrame(resolve));
  return {physicalPanel:!!document.elementFromPoint(point.x,point.y)?.closest('[data-world-topology-node]'),active:document.querySelectorAll('.world-topology path.active').length>0};
-},topologyPointer);
+},churnPointer);
 assert.equal(churnReconciliation.physicalPanel,true,'DOM-churn fixture must keep the real pointer over a topology panel');
 assert.equal(churnReconciliation.active,true,'DOM-churn pointerout must reconcile to the physical pointer target');
 // Conversely, actually leaving every panel must clear the previous resonance.
 await page.mouse.move(4,4);
 await page.waitForFunction(()=>document.querySelectorAll('.world-topology path.active').length===0);
-await page.mouse.move(topologyPointer.x,topologyPointer.y);
+await page.mouse.move(churnPointer.x,churnPointer.y);
 await page.waitForFunction(()=>document.querySelectorAll('.world-topology path.active').length>0);
 // A layout/DOM refresh may rebuild decorative SVG geometry, but must not erase
 // the pointer/focus resonance attached to the instrument the user is inspecting.
