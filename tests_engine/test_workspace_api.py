@@ -975,6 +975,108 @@ def test_unrelated_response_io_failure_remains_visible(workspace_http):
         handler._json(200, {"ok": True})
 
 
+class _RequestInputSocket:
+    """Deterministic native request-stream faults, including an idle keepalive."""
+    def __init__(self, error=None, stage="request_line"):
+        import io
+        lines = ([b"GET /healthz HTTP/1.1\r\n", b"Host: 127.0.0.1\r\n", b"Expect: 100-continue\r\n"]
+                 if stage == "headers_expect" else
+                 [b"GET /healthz HTTP/1.1\r\n"] if stage == "headers" else
+                 [b"GET /healthz HTTP/1.1\r\n", b"Host: 127.0.0.1\r\n", b"\r\n"]
+                 if stage == "keepalive" else [])
+        self.sent = []
+        class Input(io.BytesIO):
+            def readline(self, *args):
+                if lines:
+                    return lines.pop(0)
+                if error is not None:
+                    raise error("request stream fault")
+                return b""
+        self.input = Input()
+
+    def makefile(self, *_args):
+        return self.input
+
+    def settimeout(self, *_args):
+        pass
+
+    def sendall(self, value):
+        self.sent.append(value)
+
+
+@pytest.mark.parametrize("exception", [ConnectionAbortedError, ConnectionResetError, BrokenPipeError])
+@pytest.mark.parametrize("stage", ["request_line", "headers", "headers_expect", "keepalive"])
+def test_disconnected_request_stream_is_eof_and_server_remains_available(workspace_http, monkeypatch, exception, stage):
+    server, _, request = workspace_http
+    dispatched = []
+    original = server.RequestHandlerClass.do_GET
+    def respond(handler):
+        dispatched.append(True)
+        handler._send(200, b"ok")
+    monkeypatch.setattr(server.RequestHandlerClass, "do_GET", respond)
+    transport = _RequestInputSocket(exception, stage)
+    handler = server.RequestHandlerClass(transport, ("127.0.0.1", 0), server)
+    assert handler.close_connection is True
+    assert len(dispatched) == (1 if stage == "keepalive" else 0)
+    assert bool(transport.sent) == (stage == "keepalive")
+    monkeypatch.setattr(server.RequestHandlerClass, "do_GET", original)
+    assert request('/healthz')[0] == 200
+
+
+@pytest.mark.parametrize("exception", [ConnectionAbortedError, ConnectionResetError, BrokenPipeError])
+def test_request_disconnect_guard_does_not_hide_application_transport_errors(workspace_http, monkeypatch, exception):
+    server, _, _ = workspace_http
+    def fail(_handler):
+        raise exception("upstream application fault")
+    monkeypatch.setattr(server.RequestHandlerClass, "do_GET", fail)
+    with pytest.raises(exception, match="upstream application fault"):
+        server.RequestHandlerClass(_RequestInputSocket(stage="keepalive"), ("127.0.0.1", 0), server)
+
+
+def test_unrelated_request_stream_failure_remains_visible(workspace_http):
+    server, _, _ = workspace_http
+    with pytest.raises(OSError, match="request stream fault"):
+        server.RequestHandlerClass(_RequestInputSocket(OSError), ("127.0.0.1", 0), server)
+
+
+def test_real_keepalive_tcp_reset_closes_only_its_request_thread(workspace_http, monkeypatch):
+    import socket
+    import struct
+    import sys
+    server, _, request = workspace_http
+    finished = threading.Event()
+    errors = []
+    disconnected = []
+    original_finish = server.RequestHandlerClass.finish
+    connection = HTTPConnection('127.0.0.1', server.server_port, timeout=3)
+    connection.connect()
+    client_port = connection.sock.getsockname()[1]
+
+    def finish(handler):
+        try:
+            return original_finish(handler)
+        finally:
+            if handler.client_address[1] == client_port:
+                disconnected.append(handler.rfile.disconnected)
+                finished.set()
+
+    monkeypatch.setattr(server.RequestHandlerClass, 'finish', finish)
+    monkeypatch.setattr(server, 'handle_error', lambda *_args: errors.append(True))
+    try:
+        connection.request('GET', '/healthz', headers={'Host': '127.0.0.1'})
+        response = connection.getresponse()
+        assert response.status == 200
+        response.read()
+        linger_format = 'hh' if sys.platform == 'win32' else 'ii'
+        connection.sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack(linger_format, 1, 0))
+    finally:
+        connection.close()
+    assert finished.wait(3), 'reset must release its idle request thread promptly'
+    assert disconnected == [True]
+    assert errors == [], 'known client reset must not reach the unhandled-request logger'
+    assert request('/healthz')[0] == 200
+
+
 def test_stopping_selected_reads_and_jobs_return_without_waiting_for_drain(workspace_http):
     server, _, request = workspace_http
     with server.command_centers.configuration_lock('cc1'):

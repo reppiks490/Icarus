@@ -1329,11 +1329,42 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         with config_jobs_lock:
             return dict(row), True, False
 
+    class ClientRequestDisconnected(Exception):
+        """Private signal emitted only by the owned client request stream."""
+
+    class RequestInput:
+        """Identify disconnected client line reads without catching route errors."""
+        def __init__(self, stream):
+            self.stream = stream
+            self.disconnected = False
+
+        def __getattr__(self, name):
+            return getattr(self.stream, name)
+
+        def readline(self, *args):
+            try:
+                return self.stream.readline(*args)
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                self.disconnected = True
+                raise ClientRequestDisconnected() from None
+
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
         sys_version = ""
         protocol_version = "HTTP/1.1"
         timeout = 30                                              # idle connections must not hold a thread forever
+
+        def setup(self):
+            super().setup()
+            self.rfile = RequestInput(self.rfile)
+
+        def handle(self):
+            try:
+                return super().handle()
+            except ClientRequestDisconnected:
+                # Stop before partial headers can dispatch or send 100 Continue.
+                # Only our input stream emits this; upstream errors stay visible.
+                self.close_connection = True
 
         def log_message(self, *a: Any) -> None:  # quiet
             pass
