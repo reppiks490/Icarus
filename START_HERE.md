@@ -1,9 +1,10 @@
 # Current ICARUS restart
 
-Use the **[current restart guide](docs/recovery/PRIME_AS_IS_RESTART.md)** for the complete backup, exact-version update, launch, dashboard URLs, diagnostics and rollback procedure.
+Use the **[current restart guide](docs/recovery/PRIME_AS_IS_RESTART.md)** for backup, exact-version verification, Windows setup, the expanded Main asset list, independent CC1–CC4 paper worker switches, dashboard URLs, diagnostics and rollback.
 
-Reviewed runtime: `402722b4b708fc0ea6e2b2ede62252e75ccdd4a0` ([PR #471](https://github.com/reppiks490/Icarus/pull/471)). All eight newest-head hosted workflow runs passed. Runtime code is on the reviewed restart branch, not merged into main. Follow the pinned checkout command in the guide.
+Install **`0560627e7522e85eb97a5f906800e376508a4cd6`** from `prime/as-is-restart-20261022` ([PR #471](https://github.com/reppiks490/Icarus/pull/471)). Runtime code is on the restart branch; a documentation update on main does not install it. Fetch and verify the pinned revision before switching.
 
-This is the current as-is paper build; live execution remains disabled. Owner-PC operation must be verified after the local launch. Current Prime is on standby following delivery.
+This as-is paper build retains each CC's saved configuration and journals. Full-system readiness remains NO_GO; live execution stays disabled and `execution_authorized=false`. Owner-PC operation and the reported fault's cause require local verification after launch.
 
-[Old instructions, archived with source identities](docs/recovery/archive/2026-10-23/INDEX.md).
+Fresh final verification: **4,066 local tests and 111 subtests passed, with separately exercised Chromium controls; see the guide and immutable delivery receipt for exact boundaries and hosted outcomes**. Earlier test counts belong to [archived instructions](docs/recovery/archive/2026-10-23/INDEX.md).
+
