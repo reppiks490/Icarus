@@ -207,19 +207,41 @@ await page.waitForFunction(point=>{
 // Removing decorative children can emit a null-relatedTarget pointerout while
 // the cursor remains inside the card. Wait past the reconciliation frame so a
 // delayed callback cannot make this assertion pass before it actually runs.
+// Dashboard polling can replace/reflow panels after the initial topology
+// setup. Reacquire current panel geometry immediately before the churn event
+// so this test measures pointer reconciliation, not stale coordinates.
+const churnPointer=await page.evaluate(()=>{
+ const panel=[...document.querySelectorAll('#view > .card[data-world-topology-node]')].find(el=>{
+  const r=el.getBoundingClientRect();return r.width>40&&r.height>28&&r.bottom>0&&r.top<window.innerHeight;
+ });
+ if(!panel)return null;
+ const heading=panel.querySelector('h2')||panel;
+ heading.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+ const r=heading.getBoundingClientRect();
+ return r.width>0&&r.height>0?{x:r.left+r.width*.38,y:r.top+r.height*.5,key:panel.dataset.worldPanelKey}:null;
+});
+assert.ok(churnPointer,'A visible topology panel must be available for the DOM-churn fixture');
+await page.mouse.move(4,4);
+await page.mouse.move(churnPointer.x,churnPointer.y);
+await page.waitForFunction(point=>{
+ const panel=document.elementFromPoint(point.x,point.y)?.closest('[data-world-topology-node]');
+ return !!panel&&document.querySelectorAll('.world-topology path.active').length>0;
+},churnPointer);
 const churnReconciliation=await page.evaluate(async point=>{
  const panel=document.elementFromPoint(point.x,point.y)?.closest('[data-world-topology-node]');
  if(!panel)return {physicalPanel:false,active:false};
  panel.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse',relatedTarget:null}));
- await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+ // The handler reconciles on the next animation frame. A second frame lets
+ // unrelated dashboard polling run and can invalidate the sampled coordinates.
+ await new Promise(resolve=>requestAnimationFrame(resolve));
  return {physicalPanel:!!document.elementFromPoint(point.x,point.y)?.closest('[data-world-topology-node]'),active:document.querySelectorAll('.world-topology path.active').length>0};
-},topologyPointer);
+},churnPointer);
 assert.equal(churnReconciliation.physicalPanel,true,'DOM-churn fixture must keep the real pointer over a topology panel');
 assert.equal(churnReconciliation.active,true,'DOM-churn pointerout must reconcile to the physical pointer target');
 // Conversely, actually leaving every panel must clear the previous resonance.
 await page.mouse.move(4,4);
 await page.waitForFunction(()=>document.querySelectorAll('.world-topology path.active').length===0);
-await page.mouse.move(topologyPointer.x,topologyPointer.y);
+await page.mouse.move(churnPointer.x,churnPointer.y);
 await page.waitForFunction(()=>document.querySelectorAll('.world-topology path.active').length>0);
 // A layout/DOM refresh may rebuild decorative SVG geometry, but must not erase
 // the pointer/focus resonance attached to the instrument the user is inspecting.
