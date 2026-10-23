@@ -118,6 +118,8 @@ tail -n 80 'C:/Users/tripl/Icarus/logs/engine.log'
 
 Set your custom token locally in this second window if applicable. Use the actual state root for logs. The native status route is **`/status/public`**; **`/api/status` is not this engine's route**. HTTP 200 alone is insufficient: inspect nonempty assets, price/bar age, warmup and rendered views. Keep logs private and redact tokens/account details before sharing. A browser connection-aborted message alone does not establish that the process died.
 
+**HTTP 000 with connection refusal means the client did not reach a listener at the sampled address and port.** Run the foreground launcher from step 3 and read its new source-revision/startup output. `logs/engine.log` appends historical entries, so a traceback in its tail may predate the current launch. A per-request disconnect traceback alone does not prove it terminated the engine. Preserve your custom token locally; do not post process command lines or unredacted startup logs.
+
 Shared Access refreshes when opened, on Refresh or after an access action. Connections inventory does not prove an account is connected. Native read-only research panels can honestly report zero or unavailable private evidence; unavailable adapters remain visible. UI paper strategy states such as LIVE/ARMED are not broker authorization.
 
 ## Verification and limits
@@ -131,7 +133,7 @@ Runtime `7aa3900282213c4e690436098702300a0447cb8d`, tree `d6020c33e6a7c7d72946a2
 - Packaging regression passed using actual Python **3.10.22** and **3.12** metadata builds. The original pip/setuptools collision was reproduced before repair. Owner-PC Windows setup still requires the local command's readback.
 - Actual Bash launcher and same-root second launch restored three enabled workspaces and retained saved-OFF CC4, preserved configuration bytes, warmed synthetic NQ and exited cleanly. A separate **35-symbol synthetic file-data** launcher rehearsal warmed all 35 Main symbols and exited cleanly. These are synthetic engineering checks, not current exchange data or profitability evidence.
 - Strict rehearsal result remains **NOT_FULLY_READY**: containment denied 11 external research/subprocess attempts per NQ launch and 13 for the 35-symbol launch. No paid requests were allowed. This limitation was preserved rather than turned into a successful federation-health claim.
-- Exact-head hosted checks were automatically triggered and are tracked on [PR #471](https://github.com/reppiks490/Icarus/pull/471). Their final outcomes belong to the immutable [delivery receipt](https://github.com/reppiks490/icarus-owner-actions/blob/main/coordination/handoffs/prime-installer-expanded-restart-20261023.json); older-head CI results are not evidence for this revision.
+- All **10 automatic workflows for exact head `7aa3900282213c4e690436098702300a0447cb8d` passed**, including both Windows/Linux test runs and the visual contracts. The immutable [hosted verification receipt](https://github.com/reppiks490/icarus-owner-actions/blob/main/coordination/events/2026/10/23/icarus2-20261020-federation-integration/054-hosted-verified-pc-launch.json) supplements the earlier [delivery receipt](https://github.com/reppiks490/icarus-owner-actions/blob/main/coordination/handoffs/prime-installer-expanded-restart-20261023.json), which accurately recorded Windows as pending at its observation. These passes do not certify the owner's PC.
 
 Earlier 4,009/177 test counts and eight hosted-run receipts describe the archived build.
 
