@@ -2,7 +2,7 @@
 
 This is the authoritative operator restart guide. It replaces older restart commands, including [the pre-installer-repair guide](archive/2026-10-23/pre-installer-repair-PRIME_AS_IS_RESTART.md). [Earlier notes remain archived](archive/2026-10-23/INDEX.md); use this procedure by itself.
 
-**Install exactly `0560627e7522e85eb97a5f906800e376508a4cd6`**, branch `prime/as-is-restart-20261022`, [PR #471](https://github.com/reppiks490/Icarus/pull/471). Runtime code remains on that branch; a documentation update on main does not install it. The final verification receipt below must identify this exact revision.
+**Install exactly `7aa3900282213c4e690436098702300a0447cb8d`**, branch `prime/as-is-restart-20261022`, [PR #471](https://github.com/reppiks490/Icarus/pull/471). Runtime code remains on that branch; a documentation update on main does not install it. The final verification receipt below must identify this exact revision.
 
 This update repairs Windows setup, expands Main to the canonical 35 paper assets, distinguishes reported errors from historical counts, and adds independent CC1–CC4 paper worker switches. This is an observable as-is paper build. **Full-system readiness remains NO_GO; `execution_authorized=false`.** This cloud session cannot access or restart the owner's PC, and the cause of its reported feed/runtime fault remains unverified.
 
@@ -34,9 +34,9 @@ cd "$HOME/Icarus-as-is" &&
 git status --short &&
 git rev-parse HEAD &&
 git fetch origin prime/as-is-restart-20261022 &&
-test "$(git rev-parse FETCH_HEAD)" = '0560627e7522e85eb97a5f906800e376508a4cd6' &&
-git switch --detach 0560627e7522e85eb97a5f906800e376508a4cd6 &&
-test "$(git rev-parse HEAD)" = '0560627e7522e85eb97a5f906800e376508a4cd6'
+test "$(git rev-parse FETCH_HEAD)" = '7aa3900282213c4e690436098702300a0447cb8d' &&
+git switch --detach 7aa3900282213c4e690436098702300a0447cb8d &&
+test "$(git rev-parse HEAD)" = '7aa3900282213c4e690436098702300a0447cb8d'
 ```
 
 Continue only after the block succeeds. If the fetched branch has a different SHA, stop and check the current delivery receipt; do not substitute an unverified head. Git refuses conflicting changes; preserve them instead of forcing a switch.
@@ -45,9 +45,9 @@ If this source folder is absent, locate your existing Icarus checkout first. Fro
 
 ```bash
 git fetch origin prime/as-is-restart-20261022 &&
-test "$(git rev-parse FETCH_HEAD)" = '0560627e7522e85eb97a5f906800e376508a4cd6' &&
+test "$(git rev-parse FETCH_HEAD)" = '7aa3900282213c4e690436098702300a0447cb8d' &&
 test ! -e "$HOME/Icarus-as-is" &&
-git worktree add --detach "$HOME/Icarus-as-is" 0560627e7522e85eb97a5f906800e376508a4cd6
+git worktree add --detach "$HOME/Icarus-as-is" 7aa3900282213c4e690436098702300a0447cb8d
 ```
 
 Do not create a fresh private state root. Return to `$HOME/Icarus-as-is` for installation.
@@ -102,7 +102,7 @@ The switches isolate CC worker lifecycle and selected polling. The application s
 
 ## 5. Verify actual state and diagnose problems
 
-Check the launcher printed `0560627e7522e85eb97a5f906800e376508a4cd6` (its first 12 characters) and the existing private state root. Check each URL's workspace badge, saved Inputs and selected Performance journal. On Main, inspect the expanded asset list; on every running CC inspect actual prices, warmup and freshness.
+Check the launcher printed `7aa3900282213c4e690436098702300a0447cb8d` (its first 12 characters) and the existing private state root. Check each URL's workspace badge, saved Inputs and selected Performance journal. On Main, inspect the expanded asset list; on every running CC inspect actual prices, warmup and freshness.
 
 Asset cards distinguish a **reported error** from **past errors** counted since launch and show **bar age**. A past-error count alone does not prove a current fault; no reported error alone does not establish fresh prices or a healthy feed. The owner-PC cause must be established from its current status/logs after launch.
 
@@ -122,10 +122,12 @@ Shared Access refreshes when opened, on Refresh or after an access action. Conne
 
 ## Verification and limits
 
-Runtime `0560627e7522e85eb97a5f906800e376508a4cd6`, tree `73690475a40ce2b5a308f544fe2a34328266f824`, is byte/tree-equivalent to the frozen local tested build. Independent final review is CLEAR.
+Runtime `7aa3900282213c4e690436098702300a0447cb8d`, tree `d6020c33e6a7c7d72946a2faaae52ca8189bae40`, is byte/tree-equivalent to the frozen local tested build. Independent final review is CLEAR.
 
-- Full local suite: **4,066 passed, 89 skipped, 111 subtests passed**, exit 0, after two legacy browser fixture failures were reproduced and repaired. Command: `ICARUS_SETUP_TEST_PYTHON=/workspace/scratch/prime-setup-python310/bin/python PYTHONPATH=$PWD /workspace/Icarus/.venv/bin/python -m pytest tests_engine tests/test_provider_corpus_intake.py -q -o addopts='' --durations=3 -rs`. Source files stayed frozen throughout.
+- Full local suite: **4,083 passed, 89 skipped, 111 subtests passed**, exit 0 in 403.30 seconds, including the 17 new disconnect regressions. Earlier legacy browser fixture failures were reproduced and repaired. Command: `ICARUS_SETUP_TEST_PYTHON=/workspace/scratch/prime-setup-python310/bin/python PYTHONPATH=$PWD /workspace/Icarus/.venv/bin/python -m pytest tests_engine tests/test_provider_corpus_intake.py -q -o addopts='' --durations=3 -rs`. Source files stayed frozen throughout.
 - Real Chromium power controls: **16 passed**. Broader UI/Node suite: **71 passed, 1 skipped**; its skipped performance assertions separately passed using system Chromium. Four additional real-browser API/settings/page-lifecycle checks passed. Optional browser imports and three Windows-only cases explain the local full-suite skips; these are not invented passes.
+- Hosted checks of the preceding `0560627e7522e85eb97a5f906800e376508a4cd6` found three Windows test-fixture encoding failures and a world-view pointer fixture below/behind navigation. The intermediate `0bc3a110d7e4c8dd26e079501698bdda2a297377` changes only those two test files: explicit UTF-8 decoding, a visible real pointer target, and restored scroll setup. All original world assertions remain; actual WebGL depth, shadow, cinema and world checks passed with no browser errors or writes. These earlier execution failures remain in the delivery receipt. Runtime source was unchanged by that test-only follow-up.
+- The final runtime repair also handles expected client resets while reading initial requests, partial headers (including Expect: 100-continue), or idle keepalive requests. It closes only that client connection; unrelated input I/O failures and upstream application errors remain visible. The initial regression had nine failures; independent review exposed three additional header-side-effect failures. All 17 new cases then passed, including a real TCP reset, and the full API file passed 137 checks with four optional browser cases exercised separately.
 - Packaging regression passed using actual Python **3.10.22** and **3.12** metadata builds. The original pip/setuptools collision was reproduced before repair. Owner-PC Windows setup still requires the local command's readback.
 - Actual Bash launcher and same-root second launch restored three enabled workspaces and retained saved-OFF CC4, preserved configuration bytes, warmed synthetic NQ and exited cleanly. A separate **35-symbol synthetic file-data** launcher rehearsal warmed all 35 Main symbols and exited cleanly. These are synthetic engineering checks, not current exchange data or profitability evidence.
 - Strict rehearsal result remains **NOT_FULLY_READY**: containment denied 11 external research/subprocess attempts per NQ launch and 13 for the 35-symbol launch. No paid requests were allowed. This limitation was preserved rather than turned into a successful federation-health claim.
