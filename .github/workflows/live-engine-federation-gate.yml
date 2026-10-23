@@ -205,6 +205,25 @@ jobs:
                       "url": url,
                   }
 
+          inventory_api = "https://api.github.com/repos/reppiks490/Icarus-engine"
+          inventory_root = "automation_intelligence/mcp_interface/events"
+          inventory_revision = os.environ["ENGINE_SHA"]
+          inventory_tree_sha = subprocess.check_output(
+              ["git", "-C", str(peer), "rev-parse", f"{inventory_revision}:{inventory_root}"],
+              text=True,
+          ).strip()
+          inventory_tree = []
+          for row in subprocess.check_output(
+              ["git", "-C", str(peer), "ls-tree", "-z", inventory_tree_sha]
+          ).split(b"\0"):
+              if not row:
+                  continue
+              metadata, name = row.split(b"\t", 1)
+              mode, kind, sha = metadata.decode("ascii").split()
+              inventory_tree.append({
+                  "path": name.decode("utf-8"), "mode": mode, "type": kind, "sha": sha,
+              })
+
           listing = []
           for path in sorted(event_dir.glob("*.json")):
               item = meta_for(path, "event/" + path.name)
@@ -213,6 +232,7 @@ jobs:
                   "path": "automation_intelligence/mcp_interface/events/" + path.name,
               })
               listing.append(item)
+              virtual[inventory_api + "/git/blobs/" + item["sha"]] = virtual[item["url"]]
 
           def fetch_json(url):
               if url == _REMOTE_CONSUMER_CONTRACT_API:
@@ -242,7 +262,13 @@ jobs:
                       "merge_base_commit": {"sha": source},
                   }
               if url == _REMOTE_API:
-                  return listing
+                  return listing[:1000]  # Match GitHub Contents' real directory cap.
+              if url == inventory_api + "/commits/main":
+                  return {"sha": inventory_revision}
+              if url == _remote_contents_api(inventory_root.rsplit("/", 1)[0], ref=inventory_revision):
+                  return [{"type": "dir", "path": inventory_root, "sha": inventory_tree_sha}]
+              if url == inventory_api + "/git/trees/" + inventory_tree_sha:
+                  return {"sha": inventory_tree_sha, "truncated": False, "tree": inventory_tree}
               if url in historical_meta:
                   return historical_meta[url]
               if url in packet_historical_meta:
@@ -263,7 +289,11 @@ jobs:
                   fetch_json=fetch_json,
                   fetch_bytes=fetch_bytes,
               )
-              state = sync.sync_once()
+              # Drain the immutable snapshot within the consumer's per-poll budget.
+              # Real errors still fail the unchanged green/freshness assertions.
+              polls = max(1, (len({item["sha"] for item in listing}) + 999) // 1000)
+              for _ in range(polls):
+                  state = sync.sync_once()
 
           assert state["status"] == "green", state
           truth = state["truth_contract"]

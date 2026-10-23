@@ -1423,6 +1423,53 @@ class BrainRemoteSync:
     def _default_fetch_bytes(self, url: str) -> bytes:
         return self._request(url, "application/vnd.github.raw+json")
 
+    def _event_listing(self) -> list[Any]:
+        listing = self._fetch_json(_REMOTE_API)
+        if not isinstance(listing, list):
+            raise ValueError("GitHub event directory response is not a list")
+        if len(listing) < 1000:
+            return listing
+
+        # Contents silently caps directories at 1,000 entries. Resolve a fresh
+        # immutable snapshot, then enumerate its nonrecursive directory tree.
+        api = f"https://api.github.com/repos/{REMOTE_REPOSITORY}"
+        commit = self._fetch_json(f"{api}/commits/{REMOTE_REF}")
+        revision = commit.get("sha") if isinstance(commit, Mapping) else None
+        if not _is_sha(revision):
+            raise ValueError("GitHub event inventory commit SHA is invalid")
+        parent = self._fetch_json(
+            _remote_contents_api(REMOTE_ROOT.rsplit("/", 1)[0], ref=revision)
+        )
+        if not isinstance(parent, list):
+            raise ValueError("GitHub event inventory parent is not a directory listing")
+        directories = [item for item in parent if isinstance(item, Mapping)
+                       and item.get("type") == "dir" and item.get("path") == REMOTE_ROOT]
+        if len(directories) != 1 or not _is_sha(directories[0].get("sha")):
+            raise ValueError("GitHub event inventory directory SHA is missing or invalid")
+        tree_sha = directories[0]["sha"]
+        tree = self._fetch_json(f"{api}/git/trees/{tree_sha}")
+        if (not isinstance(tree, Mapping) or tree.get("sha") != tree_sha
+                or tree.get("truncated") is not False or not isinstance(tree.get("tree"), list)):
+            raise ValueError("GitHub event inventory tree is truncated, mismatched or malformed")
+        entries = []
+        names = set()
+        for item in tree["tree"]:
+            if not isinstance(item, Mapping):
+                raise ValueError("GitHub event inventory tree entry is malformed")
+            name = item.get("path")
+            if (not isinstance(name, str) or not name or name in {".", ".."}
+                    or "/" in name or "\\" in name or "\0" in name or name in names):
+                raise ValueError("GitHub event inventory contains an unsafe or duplicate path")
+            names.add(name)
+            if item.get("type") != "blob" or not name.endswith(".json"):
+                continue
+            sha = item.get("sha")
+            if item.get("mode") not in {"100644", "100755"} or not _is_sha(sha):
+                raise ValueError("GitHub event inventory file mode or blob SHA is invalid")
+            entries.append({"name": name, "path": f"{REMOTE_ROOT}/{name}",
+                            "type": "file", "sha": sha, "url": f"{api}/git/blobs/{sha}"})
+        return entries
+
     def status(self) -> dict[str, Any]:
         state = _read_state(self.base_dir, self.interval_seconds)
         was_fresh = state.get("peer_packet_fresh") is True
@@ -2268,9 +2315,7 @@ class BrainRemoteSync:
                     })
                     peer_error = f"{type(ex).__name__}: {ex}"[:1000]
 
-                listing = self._fetch_json(_REMOTE_API)
-                if not isinstance(listing, list):
-                    raise ValueError("GitHub event directory response is not a list")
+                listing = self._event_listing()
             except Exception as ex:
                 state["status"] = "degraded"
                 state["last_error"] = f"{type(ex).__name__}: {ex}"[:1000]
@@ -2283,7 +2328,7 @@ class BrainRemoteSync:
                 if _is_sha(x)
             }
             entries = []
-            for item in listing[:1000]:
+            for item in listing:
                 if not isinstance(item, Mapping):
                     continue
                 name = item.get("name")
@@ -2300,9 +2345,16 @@ class BrainRemoteSync:
                     entries.append((name, path, sha, str(item.get("url") or "")))
             entries.sort(key=lambda x: x[0])
 
+            attempted = set()
             for _name, path, blob_sha, url in entries:
-                if blob_sha in processed:
+                if blob_sha in processed or blob_sha in attempted:
                     continue
+                if len(attempted) >= 1000:
+                    deferred = {entry[2] for entry in entries} - processed - attempted
+                    if deferred:
+                        errors.append(f"event ingest deferred: {len(deferred)} unseen blobs await the next poll")
+                    break
+                attempted.add(blob_sha)
                 if not url:
                     errors.append(f"{path}: missing GitHub contents URL")
                     continue

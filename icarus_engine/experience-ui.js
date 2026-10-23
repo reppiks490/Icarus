@@ -229,8 +229,26 @@
     settings.addEventListener('toggle', () => {
       if (settings.open) requestAnimationFrame(() => requestAnimationFrame(placeSettingsPanel));
     });
+    let settingsPlacementFrame = 0;
+    const scheduleSettingsPlacement = () => {
+      if (!settings.open || settingsPlacementFrame) return;
+      settingsPlacementFrame = requestAnimationFrame(() => {
+        settingsPlacementFrame = 0;
+        placeSettingsPanel();
+      });
+    };
+    settings.addEventListener('change', scheduleSettingsPlacement);
+    new MutationObserver(scheduleSettingsPlacement).observe(root, {attributes:true,
+      attributeFilter:['data-world','data-theme','data-experience','data-visual-detail','data-visual-resolved']});
     window.addEventListener('resize', placeSettingsPanel, {passive:true});
     window.addEventListener('scroll', placeSettingsPanel, {passive:true, capture:true});
+    // Wrapped status text and theme/detail changes can move the anchor without
+    // a window resize. Keep the open drawer attached to the current header.
+    if ('ResizeObserver' in window) {
+      const settingsLayoutObserver = new ResizeObserver(placeSettingsPanel);
+      settingsLayoutObserver.observe(controls.parentElement, {box: 'border-box'});
+      settingsLayoutObserver.observe(controls, {box: 'border-box'});
+    }
     const select = document.getElementById('experienceTheme');
     for (const [id, label] of themes) { const option = document.createElement('option'); option.value = id; option.textContent = label; select.appendChild(option); }
     select.value = root.dataset.theme;

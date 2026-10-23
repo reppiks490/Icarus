@@ -437,3 +437,75 @@ def test_actual_query_state_and_full_navigation_cannot_reselect_workspace(worksp
         page.evaluate('async()=>{await dashboardReady}')
         assert page.evaluate('IcarusClient.context.id')=='cc3'
         assert page.evaluate("last.assets.find(a=>a.symbol==='NQ').price")==300
+
+
+@pytest.mark.parametrize("scope", ["main", "cc1"])
+def test_automatic_poll_does_not_discard_inflight_manual_status(workspace_http, scope):
+    # The former guard tracked only automatic polls, so a tick could obsolete
+    # a still-valid explicit refresh even while its response was in flight.
+    with common_page(workspace_http, scope) as (page, base):
+        page.evaluate("async()=>{await refresh()}")
+        path = "/status/public" if scope == "main" else "/api/command-centers/cc1/status"
+        held = []
+        page.route(base + path, lambda route: held.append(route))
+        page.evaluate("()=>{window.explicitStatus=refresh();return null}")
+        page.wait_for_timeout(150)
+        assert len(held) == 1
+        page.evaluate("()=>{void pollStatus();return null}")
+        page.wait_for_timeout(150)
+        assert len(held) == 1, "automatic poll replaced an unresolved explicit refresh"
+        held[0].continue_()
+        page.evaluate("async()=>{await window.explicitStatus}")
+        assert page.evaluate("last?.assets.find(a=>a.symbol==='NQ')?.price") == (900 if scope == "main" else 100)
+        assert page.icarus_errors == []
+
+
+def test_status_deadline_clears_then_later_success_restores_observation(workspace_http):
+    with common_page(workspace_http) as (page, base):
+        page.evaluate("async()=>{await refresh();await refreshTrades('NQ');await loadChart('NQ',80,null)}")
+        held = []
+        path = base + "/api/command-centers/cc1/status"
+        page.route(path, lambda route: held.append(route))
+        page.evaluate("()=>{window.expiredStatus=refresh();return null}")
+        page.wait_for_function("()=>last===null", timeout=15000)
+        page.evaluate("async()=>{await window.expiredStatus}")
+        assert page.evaluate("Object.keys(charts).length===0 && Object.keys(tradesCache).length===0")
+        page.unroute(path)
+        page.evaluate("async()=>{await refresh()}")
+        assert page.evaluate("last?.assets[0]?.price") == 100
+        assert page.icarus_errors == []
+
+
+def test_shared_access_keeps_typing_across_runtime_polls_and_reloads_explicitly(workspace_http):
+    with common_page(workspace_http) as (page, _):
+        page.evaluate("setView('access')")
+        page.wait_for_selector('#accessLabel')
+        assert page.locator('#accessLabel').is_enabled()
+        page.locator('#accessLabel').fill('owner-local-viewer-draft')
+        page.evaluate("async()=>{window.savedAccessInput=document.querySelector('#accessLabel');await refresh();await refresh()}")
+        assert page.locator('#accessLabel').input_value() == 'owner-local-viewer-draft'
+        assert page.evaluate("document.querySelector('#accessLabel')===window.savedAccessInput")
+        assert 'shared' in page.locator('[data-workspace-scope-note]').inner_text().lower()
+        page.locator('#accessRefresh').click()
+        page.wait_for_function("()=>document.querySelector('#accessLabel')!==window.savedAccessInput")
+        assert page.locator('#accessLabel').input_value() == ''
+        assert page.icarus_errors == []
+
+
+@pytest.mark.parametrize("panel,selector", [
+    ("parallax", "#parallaxPanel"), ("pantheon", "#pantheonPanel"),
+    ("sibyl", "#sibylPanel"), ("apex", "#apexPanel"),
+    ("brain", "#brainPanel"), ("research", "#researchStatus"),
+    ("learning", "#learningPanel"), ("autopilot", "#apStatus"),
+    ("ascendancy", "#ascendancyBody"), ("golive", "#goliveCard"),
+])
+def test_native_read_only_panels_render_without_arming_actions(workspace_http, panel, selector):
+    with common_page(workspace_http) as (page, _):
+        page.evaluate("panel=>setView(panel)", panel)
+        page.wait_for_selector(selector)
+        page.wait_for_function("selector=>{const el=document.querySelector(selector);return el&& !/loading[.\u2026]|Loading|waiting for.*state/i.test(el.innerText)}", arg=selector)
+        assert 'read-only' in page.locator('[data-workspace-scope-note]').inner_text()
+        for action in ['#apStart','#apStep','#learningScan','#learningTick','#learningToggle','#rsRun','#rsAnalyse']:
+            if page.locator(action).count():
+                assert page.locator(action).is_disabled()
+        assert page.icarus_errors == []

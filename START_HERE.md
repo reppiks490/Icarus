@@ -1,10 +1,10 @@
 # START HERE — current ICARUS paper startup and all operator commands
 
-**Use this page for the current recovery version.** The updated main and CC1–CC4 dashboards are on branch **`icarus1/restart-readiness-20261020`**, [PR #462](https://github.com/reppiks490/Icarus/pull/462). Pulling an older `main` does not install this work. This is a usable **as-is paper launch**, not certification that every subsystem, account or the reported accuracy regression is repaired. Live broker execution remains disabled.
+**Use this page for the current recovery version.** The updated main and CC1–CC4 dashboards are on branch **`prime/as-is-restart-20261022`**, the current Prime restart candidate. Pulling an older `main` does not install this work. This is a usable **as-is paper launch**, not certification that every subsystem, account or the reported accuracy regression is repaired. Live broker execution remains disabled.
 
 The local Python engine and dashboards do not require an active ChatGPT subscription. Keep the PC awake and the launcher window open. External data services and optional model APIs retain their own availability, entitlement and credit requirements. Missing runtime adapters remain visibly unavailable.
 
-**Panel updates and individual restart commands:** [Possibility, Chronofold, Commissioning and Engine Control](https://github.com/reppiks490/Icarus/blob/icarus1/restart-readiness-20261020/docs/recovery/ICARUS_PANEL_RESTARTS.md). The first four selected-workspace adapters now have source implementations and local verification; the guide states saved-state limits and the remaining eleven adapters. One normal engine restart installs the batch.
+**Current Prime takeover and delivery:** [as-is restart handoff](docs/recovery/PRIME_AS_IS_RESTART.md). This candidate adds status recovery, shared Access, layout repairs and native read-only diagnostic panels to the four selected subsystem action adapters. Its final PR/coordination receipt supplies the exact tested revision and limitations.
 
 ## 1. Stop your existing instance and preserve its data
 
@@ -32,7 +32,7 @@ Wait for the copy to finish. It includes saved inputs, private settings, journal
 
 ```bash
 git fetch origin
-git worktree add --detach ../Icarus-as-is origin/icarus1/restart-readiness-20261020
+git worktree add --detach ../Icarus-as-is origin/prime/as-is-restart-20261022
 cd ../Icarus-as-is
 git rev-parse HEAD
 ```
@@ -43,7 +43,7 @@ If `Icarus-as-is` already exists, use its existing checkout; do not delete it or
 cd ../Icarus-as-is
 git status --short
 git fetch origin
-git switch --detach origin/icarus1/restart-readiness-20261020
+git switch --detach origin/prime/as-is-restart-20261022
 ```
 
 Git refuses conflicting local edits; preserve them. Do not use `git reset --hard`, `git clean`, or overwrite saved data. The original source checkout and backup remain available for rollback.
@@ -180,6 +180,9 @@ Optional engineering verification, after installing test dependencies (this is n
 - **Stale input revision:** preserve/review your draft; **Discard edits** explicitly reloads current settings before making a new edit. It discards the local draft.
 - **Rollback:** Ctrl+C in the new owning window. Keep the current state for investigation. Use the untouched original source with a **separate copy of the stopped-state backup**, following that version's launcher. Do not overwrite the current journals with older files while a process is running. Backups of legacy profiles also remain private; do not hand-edit schema versions.
 
-Icarus 1's [recovery record](https://github.com/reppiks490/Icarus/blob/icarus1/restart-readiness-20261020/docs/recovery/ICARUS_RECOVERY_STATUS.md) and [coordination bus](https://github.com/reppiks490/icarus-owner-actions/blob/main/coordination/START_HERE.md) retain exact source/test receipts. Icarus 2's stable session is `icarus2-20261020-federation-integration`; its [restart verification and continuation handoff](https://github.com/reppiks490/icarus-owner-actions/blob/main/coordination/handoffs/icarus2-restart-verification-20261021.md) preserves independent work. It should continue from the final published recovery head, preserve private state, and prioritize missing operating adapters, Brain event coverage, freshness and the matched accuracy investigation. It must not overwrite this branch from an old PR or enable live orders.
+Icarus 1's [recovery record](https://github.com/reppiks490/Icarus/blob/prime/as-is-restart-20261022/docs/recovery/ICARUS_RECOVERY_STATUS.md) and [coordination bus](https://github.com/reppiks490/icarus-owner-actions/blob/main/coordination/START_HERE.md) retain exact source/test receipts. Icarus 2's stable session is `icarus2-20261020-federation-integration`; its [restart verification and continuation handoff](https://github.com/reppiks490/icarus-owner-actions/blob/main/coordination/handoffs/icarus2-restart-verification-20261021.md) preserves independent work. That backlog is future owner-requested work; current Prime only finishes this bounded as-is restart and then stands by. It must not overwrite this branch from an old PR or enable live orders.
 
 **Full-system readiness remains NO_GO.** This runbook delivers an as-is paper startup path. Owner-PC execution, all provider consumers, real futures/prop-firm operation, accuracy recovery, long-running stability and every subsystem's operating connection remain unverified. The cloud session cannot execute commands on your PC; the commands above are the PC handoff.
+
+
+Current Prime completes only this bounded as-is restart delivery, then stands by for the owner. The recurring federation loop remains cancelled. The continuation backlog requires a new owner request.

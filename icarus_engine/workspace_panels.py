@@ -12,6 +12,9 @@ from .possibility import PossibilityEngine
 from .runtime import AssetRunner, Portfolio
 from .workspace_api import WorkspaceAPIError
 from .workspace_market_data import snapshot as cached_market_snapshot
+from .workspace_research_engines import WorkspaceResearchEngines
+from .workspace_intelligence_panels import WorkspaceIntelligencePanels
+from .workspace_golive import snapshot as selected_golive_snapshot
 
 
 class CachedPanelFeed:
@@ -66,7 +69,10 @@ class PanelPortfolio:
         return getattr(self._portfolio, name)
 
     def status(self, **kwargs):
-        return Portfolio.status(self, nonblocking=True)
+        try:
+            return Portfolio.status(self, nonblocking=True)
+        except RuntimeError as ex:
+            raise WorkspaceAPIError(503, "selected subsystem snapshot is not ready", "SNAPSHOT_UNAVAILABLE") from ex
 
     @property
     def runners(self):
@@ -97,6 +103,16 @@ class RuntimePanels:
     @cached_property
     def commissioning(self):
         return CommissioningEngine(self.root, self.port, self.chronofold)
+
+    @cached_property
+    def research_engines(self):
+        readers = WorkspaceResearchEngines(self)
+        readers.learning_snapshot = lambda: self.intelligence.learning.snapshot()
+        return readers
+
+    @cached_property
+    def intelligence(self):
+        return WorkspaceIntelligencePanels(self, self.research_engines)
 
     def _control(self, action, target=None, **body):
         return self.api.control(self.workspace_id, target, action, body)
@@ -140,6 +156,12 @@ class RuntimePanels:
 
     def read(self, path, query):
         asset = query.get("asset", [""])[0]
+        if path in WorkspaceResearchEngines.READ_SELECTORS:
+            return self.research_engines.read(path, query)
+        if path in WorkspaceIntelligencePanels.READ_SELECTORS:
+            return self.intelligence.read(path, query)
+        if path == "golive":
+            return selected_golive_snapshot(self.port)
         if path == "possibility":
             return self.possibility.snapshot(asset)
         if path == "possibility/evidence":
@@ -167,12 +189,23 @@ class RuntimePanels:
         raise WorkspaceAPIError(501, "this action has no selected-workspace adapter", "WORKSPACE_ACTION_UNAVAILABLE")
 
     def close(self):
+        if "intelligence" in self.__dict__:
+            self.intelligence.close()
+        if "research_engines" in self.__dict__:
+            self.research_engines.close()
         if "commissioning" in self.__dict__:
             self.commissioning.close()
 
 
 class WorkspacePanels:
-    READS = frozenset(("possibility", "possibility/evidence", "chronofold", "commissioning", "engine-control"))
+    READ_SELECTORS = {
+        "possibility": frozenset(("asset",)),
+        "possibility/evidence": frozenset(("asset", "limit", "include_expired", "as_of")),
+        "chronofold": frozenset(("asset",)), "commissioning": frozenset(("asset",)),
+        "engine-control": frozenset(("asset",)), "golive": frozenset(("asset",)),
+        **WorkspaceResearchEngines.READ_SELECTORS, **WorkspaceIntelligencePanels.READ_SELECTORS,
+    }
+    READS = frozenset(READ_SELECTORS)
     WRITES = frozenset(("engine-control", "possibility/evidence"))
 
     def __init__(self, manager, api):
@@ -196,7 +229,7 @@ class WorkspacePanels:
     def read(self, profile_id, path, query):
         if path not in self.READS:
             raise WorkspaceAPIError(503, "this panel has no selected-workspace runtime adapter", "WORKSPACE_PANEL_UNAVAILABLE")
-        allowed = {"asset", "limit", "include_expired", "as_of"} if path == "possibility/evidence" else {"asset"}
+        allowed = self.READ_SELECTORS[path]
         if set(query) - allowed or any(len(values) != 1 for values in query.values()):
             raise WorkspaceAPIError(400, "unknown or repeated panel selectors")
         with self.manager.configuration_lock(profile_id):

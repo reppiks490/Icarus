@@ -1330,18 +1330,23 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             pass
 
         def _send(self, code: int, body: bytes, ctype: str = "application/json", extra: Dict[str, str] | None = None) -> None:
-            self.send_response(code)
-            self.send_header("Content-Type", ctype + ("; charset=utf-8" if ctype.startswith("text") else ""))
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("X-Frame-Options", "DENY")
-            self.send_header("X-Content-Type-Options", "nosniff")
-            self.send_header("Referrer-Policy", "no-referrer")
-            self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-src https://www.youtube-nocookie.com; frame-ancestors 'none'")
-            for k, v in (extra or {}).items():
-                self.send_header(k, v)
-            self.end_headers()
-            self.wfile.write(body)
+            try:
+                self.send_response(code)
+                self.send_header("Content-Type", ctype + ("; charset=utf-8" if ctype.startswith("text") else ""))
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Frame-Options", "DENY")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("Referrer-Policy", "no-referrer")
+                self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-src https://www.youtube-nocookie.com; frame-ancestors 'none'")
+                for k, v in (extra or {}).items():
+                    self.send_header(k, v)
+                self.end_headers()
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                # The response consumer is gone. A second HTTP error response
+                # cannot reach it; close this connection, not the runtime.
+                self.close_connection = True
 
         def _json(self, code: int, obj: Any) -> None:
             self._send(code, dumps_safe(obj))
@@ -1365,7 +1370,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
         def _workspace_context_ok(self, path, method):
             try:
-                guard_workspace_request(self.headers, path, method, self.server.server_port)
+                guard_workspace_request(self.headers, self.path, method, self.server.server_port)
             except WorkspaceContextError as ex:
                 if method != "GET":
                     self._drain_body()
@@ -2410,6 +2415,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                             "execution_authorized": False})
             if p.path == "/admin/access/add":
                 try:
+                    if set(body) - {"label"}:
+                        raise ValueError("access creation accepts only a label")
                     user = access_registry.add(body.get("label", ""))
                     return self._json(201, {"ok": True, "user": user, "note": "Copy this access token now; it is shown only once."})
                 except (ValueError, TypeError) as ex:
@@ -2418,6 +2425,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(409, {"detail": f"could not add user: {type(ex).__name__}"})
             if p.path == "/admin/access/kick":
                 try:
+                    if set(body) - {"id"}:
+                        raise ValueError("access revocation accepts only an id")
                     kicked = access_registry.kick(str(body.get("id", "")))
                     return self._json(200 if kicked else 404, {"ok": kicked, "detail": "access revoked" if kicked else "user not found"})
                 except ValueError as ex:

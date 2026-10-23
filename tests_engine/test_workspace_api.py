@@ -862,7 +862,7 @@ def test_scoped_unavailable_panel_and_action_never_use_parent_service(workspace_
     server, parent, request = workspace_http
     context = {"X-Icarus-Workspace": "cc1"}
     before = _unaffected_state(server, parent)
-    code, panel, _ = request("/api/command-centers/cc1/panels/brain", extra_headers=context)
+    code, panel, _ = request("/api/command-centers/cc1/panels/unimplemented-panel", extra_headers=context)
     assert code == 503 and panel["workspace_id"] == "cc1" and panel["available"] is False
     code, action, _ = request("/admin/command-centers/cc1/unavailable",
                                body={"operation": "POST /admin/pause"}, extra_headers=context)
@@ -870,3 +870,41 @@ def test_scoped_unavailable_panel_and_action_never_use_parent_service(workspace_
     assert action["workspace_id"] == "cc1" and action["execution_authorized"] is False
     assert not server.workspace_jobs._jobs and not parent.runners["NQ"].paused
     assert _unaffected_state(server, parent) == before
+
+
+@pytest.mark.parametrize("exception", [ConnectionAbortedError, ConnectionResetError, BrokenPipeError])
+@pytest.mark.parametrize("failed_write", [1, 2])
+def test_disconnected_response_closes_transport_without_second_error_response(workspace_http, exception, failed_write):
+    server, _, request = workspace_http
+    handler = object.__new__(server.RequestHandlerClass)
+    handler.request_version = "HTTP/1.1"
+    handler.requestline = "GET / HTTP/1.1"
+    handler.command = "GET"
+    handler.close_connection = False
+    writes = []
+
+    class DisconnectedWriter:
+        def write(self, value):
+            writes.append(value)
+            if len(writes) == failed_write:
+                raise exception("client disconnected")
+
+    handler.wfile = DisconnectedWriter()
+    handler._json(200, {"ok": True})
+    assert handler.close_connection is True
+    assert len(writes) == failed_write
+    assert request('/api/command-centers/cc1/status')[0] == 200
+
+
+def test_unrelated_response_io_failure_remains_visible(workspace_http):
+    server, _, _ = workspace_http
+    handler = object.__new__(server.RequestHandlerClass)
+    handler.request_version = "HTTP/1.1"
+    handler.requestline = "GET / HTTP/1.1"
+    handler.command = "GET"
+    class FailedWriter:
+        def write(self, value):
+            raise OSError("unrelated I/O error")
+    handler.wfile = FailedWriter()
+    with pytest.raises(OSError, match="unrelated I/O error"):
+        handler._json(200, {"ok": True})

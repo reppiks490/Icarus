@@ -1,5 +1,7 @@
 # Icarus recovery status
 
+**Current bounded takeover:** the owner appointed this chat current Prime while the original Prime is stopped. The [Prime as-is restart handoff](PRIME_AS_IS_RESTART.md) records the combined candidate, preserved state, installation and observation boundary. Historical checkpoints below retain their original scope and test counts. Full-system NO_GO remains.
+
 **Current operator commands: [START_HERE.md](../../START_HERE.md).** The owner has
 requested a limited as-is paper launch despite remaining full-readiness gaps.
 The tested launcher preserves a chosen existing private root and requires explicit

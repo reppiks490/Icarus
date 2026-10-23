@@ -233,11 +233,11 @@ const dtz = t => t ? dtm(t) + ' ' + TZ : '—';
 const age = s => s==null ? 'never' : s<60 ? `${Math.round(s)}s` : s<3600 ? `${Math.round(s/60)}m` : `${(s/3600).toFixed(1)}h`;
 const tip = $('#tip'); const showTip = (h,x,y) => { tip.innerHTML=h; tip.style.display='block'; tip.style.left=(x+14)+'px'; tip.style.top=(y+14)+'px'; }; const hideTip = () => tip.style.display='none';
 let last = null, charts = {}, chartOffsets = {}, seenFills = new Set(), first = true, tradesCache = {}, tradeErrors = {}, META = null, PRESETS = [], COMMANDS = [], REGISTRY = [], catalogRefreshBusy = false, lastWideChartRefresh = 0;
-let statusLoadSeq = 0, lastStatusAt = 0, statusPollBusy = false;
+let statusLoadSeq = 0, lastStatusAt = 0, statusPollBusy = false, statusRefreshes = 0;
 let workspaceViewController = null;
 function disposeWorkspaceView(){workspaceViewController?.dispose();workspaceViewController=null;}
 const chartLoadSeq = new Map(), tradeLoadSeq = new Map();
-let accessTokenOnce = null;
+let accessTokenOnce = null, accessLoadSeq = 0;
 const CATALOG_READY = {presets:false, commands:false, registry:false};
 const params = new URLSearchParams(location.search);
 const solo = !!params.get('asset');
@@ -464,10 +464,12 @@ function systemLoopClass(status) {
 function systemLoopOk(status) { return systemLoopClass(status) === 'b'; }
 async function loadAccess() {
   const target = $('#accessBody'); if (!target) return;
+  const sequence=++accessLoadSeq;
   const tok = localStorage.getItem(tokKey) || '';
   try {
     const r = await IcarusClient.request('/api/access', {headers:{'Authorization':'Bearer '+tok},cache:'no-store'});
     const d = await r.json(); if (!r.ok) throw new Error(d.detail||('HTTP '+r.status));
+    if(sequence!==accessLoadSeq || $('#accessBody')!==target)return;
     const owner = d.me?.role === 'owner';
     const users = (d.users||[]).map(u => `<tr><td>${esc(u.label)}</td><td><span class="tag">${esc(u.role)}</span></td><td>${u.active?'Active':'Revoked'}</td><td>${u.last_seen?dtz(u.last_seen):'Never'}</td><td class="tnum">${u.request_count||0}</td><td>${owner&&u.role!=='owner'&&u.active?`<button class="sm danger" data-kick-user="${esc(u.id)}">Kick</button>`:'—'}</td></tr>`).join('');
     const events = (d.events||[]).map(e => `<tr><td>${dtz(e.at)}</td><td>${esc(e.kind)}</td><td>${esc(e.detail)}</td></tr>`).join('');
@@ -475,9 +477,9 @@ async function loadAccess() {
       ${owner?'<div class="row"><input id="accessLabel" maxlength="80" placeholder="Person or device label"><button id="accessAdd">Add viewer</button><span class="small muted">New token appears once; share it privately.</span></div>':''}<div id="accessToken" class="callout" style="display:${accessTokenOnce?'flex':'none'};margin-top:10px">${accessTokenOnce?`<div><b>Copy this token now. It will not be shown again.</b><br><code>${esc(accessTokenOnce)}</code></div><button id="accessTokenDismiss">Dismiss</button>`:''}</div>
       <h3>Accounts</h3><div class="scroll"><table><thead><tr><th>Identity</th><th>Role</th><th>Status</th><th>Last authenticated</th><th>Requests</th><th></th></tr></thead><tbody>${users||'<tr><td colspan="6" class="empty">No accounts recorded.</td></tr>'}</tbody></table></div>
       <h3>Recent security activity</h3><p class="small muted">${esc(d.privacy_note||'')}</p><div class="scroll" style="max-height:360px"><table><thead><tr><th>Time</th><th>Event</th><th>Detail</th></tr></thead><tbody>${events||'<tr><td colspan="3" class="empty">No events recorded.</td></tr>'}</tbody></table></div>`;
-  } catch(e) { target.innerHTML = `<div class="empty neg">Access analyzer unavailable: ${esc(e.message||String(e))}. Save a valid access token in ⚙︎ Token.</div>`; }
+  } catch(e) { if(sequence!==accessLoadSeq || $('#accessBody')!==target)return; target.innerHTML = `<div class="empty neg">Access analyzer unavailable: ${esc(e.message||String(e))}. Save a valid access token in ⚙︎ Token.</div>`; }
 }
-function accessHtml() { return `<section class="card c12"><h2>Icarus access analyzer <span class="sub">individual access, recent activity, and revocation</span></h2><div id="accessBody"><div class="empty">Loading access registry…</div></div></section>`; }
+function accessHtml() { return `<section class="card c12"><h2>Icarus access analyzer <span class="sub">shared security registry · individual access, recent activity, and revocation</span></h2><button id="accessRefresh">Refresh access</button><div id="accessBody"><div class="empty">Loading access registry…</div></div></section>`; }
 function repositoryAuditCard(a, compact=false) {
   if (!a) return `<section class="card c12" id="repoAuditCard"><h2>System Intelligence</h2><div class="empty">loading local repository, loop, and MCP snapshot…</div></section>`;
   const s = a.summary || {}, m = a.main || {}, issue = a.issue || {}, sync = a.loop_sync || {};
@@ -817,14 +819,17 @@ function applyWritePermissions() {
     if(!canWrite)el.title='Owner access and a fresh selected runtime are required';
   }
 }
-const unavailableWorkspacePanels=new Set(['access','brain','research','parallax','pantheon','sibyl','apex','ascendancy','learning','autopilot','golive']);
+const unavailableWorkspacePanels=new Set();
+const readOnlyWorkspacePanels=new Set(['brain','research','parallax','pantheon','sibyl','apex','ascendancy','learning','autopilot','golive']);
+const workspacePanelReads=new Set(['sibylAsset','sibylLoad','apexAsset','apexLoad','ascendancyReload','learningRefresh','apRefresh','rsAsset']);
 const selectedRuntimePanels=new Set(['possibility','chronofold','commissioning','engine-control']);
 const sharedEvidencePanels=new Set(['sources','evolution','integrity','system','agent','evidence']);
 function applyPanelScope() {
   const host=$('#view');if(!host)return;
   const id=IcarusClient.context.id,scoped=id!=='main';
   const unavailable=scoped&&unavailableWorkspacePanels.has(view),shared=sharedEvidencePanels.has(view);
-  const message=unavailable?`${id.toUpperCase()}: this panel is unavailable for this paper workspace. Its controls are disabled.`:
+  const message=view==='access'?'Shared security registry for Main and all four paper workspaces. Owner authentication controls access changes.':unavailable?`${id.toUpperCase()}: this panel is unavailable for this paper workspace. Its controls are disabled.`:
+    scoped&&readOnlyWorkspacePanels.has(view)?`${id.toUpperCase()}: read-only native subsystem state in this paper workspace. Collection, training, activation and autonomous controls remain unavailable.`:
     shared?'Shared federation evidence. This view does not establish operation of the selected paper workspace.':
     scoped&&view==='market-data'?`${id.toUpperCase()}: existing selected-runner caches only. This view does not acquire data or start subscriptions.`:
     scoped&&selectedRuntimePanels.has(view)?`${id.toUpperCase()}: selected paper-workspace subsystem. State and controls stay isolated; broker execution is disabled.`:'';
@@ -839,6 +844,13 @@ function applyPanelScope() {
     for(const el of host.querySelectorAll('button,textarea')){
       if(el.tagName==='BUTTON'&&(el.dataset.workspaceReadOnly==='true'||/(Refresh|Reload|Read|View|Filter|Search|Copy|Export|Download|Show|Open)/i.test(el.id)))continue;
       if(!el.disabled)el.disabled=true;el.title='Shared configuration changes are unavailable from a paper workspace';
+    }
+  }
+  if(scoped&&readOnlyWorkspacePanels.has(view)){
+    for(const el of host.querySelectorAll('button,input,select,textarea')){
+      if(workspacePanelReads.has(el.id))continue;
+      if(!el.disabled)el.disabled=true;
+      if(el.title!=='This selected-workspace panel is read-only')el.title='This selected-workspace panel is read-only';
     }
   }
   if(selectedRuntimePanels.has(view)&&last?.permissions?.can_write!==true){
@@ -906,6 +918,7 @@ document.addEventListener('click', async ev => {
     return;
   }
   if (b.dataset.v) { if (b.dataset.v === 'add') { setView('commands'); setTimeout(()=>$('#addSym')?.focus(), 50); } else setView(b.dataset.v); return; }
+  if (b.id === 'accessRefresh') { await loadAccess(); return; }
   if (b.id === 'accessAdd') {
     const label = $('#accessLabel')?.value.trim(); if (!label) return toast('enter a label for this person or device', true);
     const result = await admin('/admin/access/add', {label}, true); if (!result?.user?.token) return;
@@ -1307,7 +1320,7 @@ function render(d) {
   else if (view === 'integrity') { if(typeof integrityHtml!=='function') $('#view').innerHTML='<section class="card c12">Data Integrity requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = integrityHtml(); wireIntegrity(); } else loadIntegrity(); }
   else if (view === 'engine-control') { if(typeof engineControlHtml!=='function') $('#view').innerHTML='<section class="card c12">Engine Control requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = engineControlHtml(); wireEngineControl(); } else loadEngineControl(); }
   else if (view === 'system') { if (rebuild) $('#view').innerHTML = repositoryAuditCard(window.ICARUS_AUDIT, false); }
-  else if (view === 'access') { if (rebuild) $('#view').innerHTML = accessHtml(); loadAccess(); }
+  else if (view === 'access') { if (rebuild) { $('#view').innerHTML = accessHtml(); loadAccess(); } }
   else if (view === 'golive') { if (rebuild) $('#view').innerHTML = goliveCard(window.ICARUS_GOLIVE); else { const nu = document.createElement('div'); nu.innerHTML = goliveCard(window.ICARUS_GOLIVE); const cur = $('#goliveCard'); if (nu.firstElementChild && cur) cur.replaceWith(nu.firstElementChild); } }
   else if (view === 'agent') { if (rebuild) $('#view').innerHTML = agentCard(window.ICARUS_AGENT); }
   else if (view === 'log') { if (rebuild) $('#view').innerHTML = `<section class="card c12"><h2>Engine log</h2><div class="log" id="log2" style="max-height:80vh"></div></section>`; $('#log2').innerHTML = (d.log||[]).slice().reverse().map(l => `<div class="${l.level}">${tms(l.ts)} ${l.level.padEnd(5)} ${esc(l.msg)}</div>`).join(''); }
@@ -1333,12 +1346,13 @@ function expireCoreObservations(reason='Current runtime observations unavailable
   $('#phase').textContent='UNAVAILABLE';$('#phase').className='badge paused';$('#meta').textContent=reason;
   for(const el of document.querySelectorAll('.node'))el.className='node';
   applyWritePermissions();
-  if(view!=='inputs') {disposeWorkspaceView();$('#view').innerHTML='<section class="card c12"><p class="empty">'+esc(reason)+'</p></section>';lastView=null;}
+  if(!['inputs','access'].includes(view)) {disposeWorkspaceView();$('#view').innerHTML='<section class="card c12"><p class="empty">'+esc(reason)+'</p></section>';lastView=null;}
 }
 window.addEventListener('pageshow',event=>{if(event.persisted){expireCoreObservations('Restored page — waiting for fresh selected runtime');void refresh();}});
 setInterval(()=>{if(last&&Date.now()-lastStatusAt>10000)expireCoreObservations('Selected runtime observation expired');},1000);
 async function refresh() {
   const sequence=++statusLoadSeq;
+  statusRefreshes++;
   try {
     const d=await IcarusClient.read('status',{channel:'core-status'});
     if(sequence!==statusLoadSeq)return;
@@ -1347,10 +1361,11 @@ async function refresh() {
     render(d);
   } catch (e) {
     if(sequence===statusLoadSeq)expireCoreObservations('Selected runtime unavailable: '+(e.message||String(e)));
-  }
+  } finally { statusRefreshes--; }
 }
 async function pollStatus() {
   if (statusPollBusy) return;
+  if (statusRefreshes) return;
   statusPollBusy = true;
   try { await refresh(); }
   finally { statusPollBusy = false; }

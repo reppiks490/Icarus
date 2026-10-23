@@ -7,8 +7,9 @@ SHARED_READS = frozenset((
     "/api/market-universe", "/api/system/audit", "/api/agent", "/api/integrity",
     "/api/research/sources", "/api/research/records", "/api/research/source-watch",
     "/api/corpus-consumption", "/api/corpus-expansion", "/api/account-connections",
-    "/api/prop-firm-catalog", "/api/evolution", "/api/evidence-lab", "/healthz",
+    "/api/prop-firm-catalog", "/api/evolution", "/api/evidence-lab", "/api/access", "/healthz",
 ))
+SHARED_ACTIONS = frozenset(("/admin/access/add", "/admin/access/kick"))
 
 
 class WorkspaceContextError(ValueError):
@@ -41,7 +42,16 @@ def guard_workspace_request(headers, path, method, server_port):
     if declared is not None and referer_scope and declared != referer_scope:
         raise WorkspaceContextError(409, "request context differs from its workspace page", referer_scope)
     context = declared or referer_scope
+    target = path
+    request = urlparse(target)
+    path = request.path
+    access = path == "/api/access" or path in SHARED_ACTIONS
+    if access and target != path:
+        raise WorkspaceContextError(400, "shared Access requires an exact path without selectors", context)
     if context not in WORKSPACES:
+        return context
+    if method == "POST" and path in SHARED_ACTIONS:
+        # Page context is retained; native authentication/owner checks still apply.
         return context
     api = f"/api/command-centers/{context}"
     admin = f"/admin/command-centers/{context}"
@@ -55,6 +65,8 @@ def guard_workspace_request(headers, path, method, server_port):
             return context
         if path.startswith("/api/") or path == "/status/public":
             raise WorkspaceContextError(503, "this main-runtime reader has no selected-workspace adapter", context)
+        if path.startswith("/admin/access"):
+            raise WorkspaceContextError(409, "this shared Access operation is unavailable", context)
         # Static resources and explicit navigation do not choose a runtime.
         return context
     raise WorkspaceContextError(409, "this action requires an explicit selected-workspace route", context)

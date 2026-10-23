@@ -119,6 +119,10 @@ jobs:
           tests_engine/test_workspace_client.py
           tests_engine/test_workspace_context.py
           tests_engine/test_workspace_panels.py
+          tests_engine/test_workspace_access.py
+          tests_engine/test_workspace_research_panels.py
+          tests_engine/test_workspace_intelligence_panels.py
+          tests_engine/test_workspace_golive.py
           tests_engine/test_workspace_ui.py
           tests_engine/test_workspace_dashboard_browser.py
           tests_engine/test_workspace_performance.py
