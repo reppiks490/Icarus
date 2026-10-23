@@ -12,6 +12,34 @@ import pytest
 from tests_engine.test_workspace_api import _job_tape, workspace_http  # noqa: F401
 
 
+@pytest.mark.skipif(not shutil.which('node'), reason='optional Node unavailable')
+@pytest.mark.parametrize('count,message,kind', [
+    (3, '', 'historical'),
+    (3, 'HTTP 429 Too Many Requests', 'active'),
+    (0, '<img src=x onerror=alert(1)> feed failed', 'active'),
+])
+def test_asset_card_distinguishes_past_error_counts_from_current_faults(count, message, kind):
+    import subprocess
+    source = (Path(__file__).resolve().parents[1] / 'icarus_engine/dashboard.html').read_text()
+    implementation = source.split('/* ── asset card ── */', 1)[1].split('async function loadChart', 1)[0]
+    escaping = next(line for line in source.splitlines() if line.startswith('const esc = '))
+    driver = (escaping + '\nconst px=String, age=String, sgn$=String;\n' + implementation +
+              '\nprocess.stdout.write(assetCard(JSON.parse(process.argv[1])));')
+    asset = {'symbol': 'NQ', 'errors': count, 'last_error': message, 'warm': True,
+             'bar_age': 27, 'price': 100, 'tf': 10, 'state': {}}
+    result = subprocess.run([shutil.which('node'), '-e', driver, json.dumps(asset)],
+                            capture_output=True, text=True, timeout=10, check=True)
+    assert f'data-asset-error="{kind}"' in result.stdout
+    assert 'bar 27' in result.stdout, 'past errors must not hide current bar age'
+    if kind == 'historical':
+        assert '3 past errors' in result.stdout
+        assert 'data-asset-error-detail' not in result.stdout
+    else:
+        assert 'data-asset-error-detail' in result.stdout
+        assert ('&lt;img' if message.startswith('<img') else message) in result.stdout
+        assert '<img' not in result.stdout
+
+
 @contextmanager
 def common_page(workspace_http, scope="cc1", token="api-owner", *, viewport=None):
     playwright = pytest.importorskip("playwright.sync_api")

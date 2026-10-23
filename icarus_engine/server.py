@@ -227,7 +227,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         raise ValueError("shared_dashboard must be a boolean")
     html_path = Path(__file__).parent / "dashboard.html"
 
-    def dashboard_html(workspace_id):
+    def workspace_bootstrap(workspace_id):
         if workspace_id not in {"main", "cc1", "cc2", "cc3", "cc4"}:
             raise ValueError("unknown dashboard context")
         capabilities = {"paper_only": workspace_id != "main", "execution_authorized": False,
@@ -239,11 +239,18 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                      f'const icContext={encoded};Object.freeze(icContext.capabilities);Object.freeze(icContext);'
                      'Object.defineProperty(window,"IcarusWorkspace",{value:icContext,writable:false,configurable:false});'
                      '</script>')
+        return bootstrap.encode("utf-8")
+
+    def dashboard_html(workspace_id):
         html = html_path.read_bytes()
         marker = b"<!-- ICARUS_WORKSPACE_BOOTSTRAP -->"
         if html.count(marker) != 1:
             raise RuntimeError("dashboard context bootstrap marker is unavailable")
-        return brand.render(html.replace(marker, bootstrap.encode("utf-8")))
+        return brand.render(html.replace(marker, workspace_bootstrap(workspace_id)))
+
+    def legacy_dashboard_html(workspace_id="main"):
+        html = (html_path.parent / "workspace-dashboard.html").read_bytes()
+        return html.replace(b"<head>", b"<head>" + workspace_bootstrap(workspace_id), 1)
 
     access_registry = AccessRegistry(port.base_dir or os.getcwd(), token)
     meta = load_meta()
@@ -271,8 +278,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     workspace_panels = WorkspacePanels(command_centers, workspace_api)
     from .workspace_jobs import ScopedWorkspaceJobs, WorkspaceJobError
     workspace_jobs = ScopedWorkspaceJobs(command_centers)
-    if start:
-        command_centers.start()
+    from .workspace_power import WorkspacePowerControls, WorkspacePowerError
+    workspace_power = WorkspacePowerControls(command_centers, on_disabled=workspace_panels.suspend, on_enabled=workspace_panels.activate,
+                                            busy=workspace_jobs.has_active)
+    command_centers.runtime_power = workspace_power
 
     try:
         from .account_connections import ConnectionManager
@@ -1403,6 +1412,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             q = parse_qs(p.query)
             if not self._workspace_context_ok(p.path, "GET"):
                 return
+            if p.path == "/api/workspace-runtime":
+                if p.query:
+                    return self._json(400, {"detail": "runtime power metadata accepts no selectors"})
+                if not self._auth():
+                    return self._json(401, {"detail": "authentication required"})
+                return self._json(200, workspace_power.snapshot())
+            if p.path == "/workspace_power_ui.js":
+                return self._send(200, (html_path.parent / "workspace_power_ui.js").read_bytes(), "text/javascript")
             if p.path == "/api/market-universe":
                 from .market_universe import snapshot as market_universe_snapshot
                 try:
@@ -1519,7 +1536,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except (OSError, ValueError, TypeError):
                     return self._json(503, {"detail": "account connection unavailable", "execution_authorized": False})
             if p.path == "/connections":
-                return self._send(200, (html_path.parent / "workspace-dashboard.html").read_bytes(), "text/html")
+                return self._send(200, legacy_dashboard_html(), "text/html")
             if p.path == "/connections-ui.js":
                 script = html_path.parent / "connections-ui.js"
                 if not script.is_file():
@@ -1637,7 +1654,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(404, {"detail": "unknown dashboard"})
                 if shared_dashboard and target in workspace_ids:
                     return self._send(200, dashboard_html(target), "text/html")
-                return self._send(200, (html_path.parent / "workspace-dashboard.html").read_bytes(), "text/html")
+                return self._send(200, legacy_dashboard_html(target if target in workspace_ids else "main"), "text/html")
             if p.path == "/paper-pnl-ui.js":
                 return self._send(200, (html_path.parent / "paper-pnl-ui.js").read_bytes(), "text/javascript")
             if p.path == "/workspace-performance-ui.js":
@@ -2331,11 +2348,19 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             raw = self.rfile.read(n) if n else b""
             try:
                 panel_action = p.path.startswith("/admin/command-centers/") and "/panels/" in p.path
-                body = strict_json(raw) if panel_action or p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/", "/admin/ascendancy/", "/admin/execution-cost/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                runtime_power_action = bool(re.fullmatch(r"/admin/command-centers/cc[1-4]/runtime", p.path))
+                body = strict_json(raw) if panel_action or runtime_power_action or p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/", "/admin/ascendancy/", "/admin/execution-cost/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            if runtime_power_action:
+                if p.query:
+                    return self._json(400, {"detail": "runtime power uses only its canonical workspace route"})
+                try:
+                    return self._json(202, workspace_power.request(p.path.split('/')[3], body))
+                except WorkspacePowerError as ex:
+                    return self._json(ex.status, {"detail": str(ex), "execution_authorized": False})
             if p.path == "/admin/account-connections" or p.path.startswith("/admin/account-connections/"):
                 if account_connections is None:
                     return self._json(503, {"detail": "account connections module unavailable", "execution_authorized": False})
@@ -3419,8 +3444,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     class ResearchHTTPServer(ThreadingHTTPServer):
         def _close_background_services(self):
             closers = (
+                workspace_power.close,
                 workspace_panels.close,
-                command_centers.stop,
                 lambda: autopilot.close(),
                 lambda: ascendancy_autopilot.close(),
                 lambda: ascendancy_native_validation.close(),
@@ -3448,6 +3473,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             background = bool(getattr(self, "background_workers_enabled", True))
             if background:
                 workspace_panels.start()
+                workspace_power.start()
                 research.start_background()
                 autopilot.start_background()
                 loop_intelligence_sync.start()
@@ -3474,6 +3500,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.shared_dashboard = shared_dashboard
     srv.command_centers = command_centers
     srv.workspace_jobs = workspace_jobs
+    srv.workspace_power = workspace_power
     srv.account_connections = account_connections
     srv.research = research
     srv.loop_intelligence_sync = loop_intelligence_sync

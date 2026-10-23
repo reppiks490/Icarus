@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+from contextlib import contextmanager
 import json
 import time
 import uuid
@@ -47,15 +48,38 @@ class ScopedWorkspaceJobs:
         self._lock = RLock()
         self._jobs = {}
 
+    @contextmanager
     def _configuration_lock(self, workspace_id):
         if workspace_id not in self.manager.profiles:
             raise WorkspaceJobError(404, "unknown workspace")
-        return self.manager.configuration_lock(workspace_id)
+        power = getattr(self.manager, 'runtime_power', None)
+        if power is not None and not power.is_on(workspace_id):
+            raise WorkspaceJobError(503, "selected dashboard runtime is off or changing state")
+        lock = self.manager.configuration_lock(workspace_id)
+        if not lock.acquire(blocking=False):
+            raise WorkspaceJobError(409, "selected workspace is busy; retry after its current operation")
+        try:
+            yield
+        finally:
+            lock.release()
+
+    def has_active(self, workspace_id):
+        """Inspect accepted work without waiting for its configuration transaction."""
+        if not self._lock.acquire(blocking=False):
+            return True
+        try:
+            return any(row['workspace_id'] == workspace_id and row['status'] == 'running'
+                       for row in self._jobs.values())
+        finally:
+            self._lock.release()
 
     def _source(self, workspace_id, symbol, *, whole=False):
         profile = self.manager.profiles.get(workspace_id)
         if profile is None:
             raise WorkspaceJobError(404, "unknown workspace")
+        power = getattr(self.manager, 'runtime_power', None)
+        if power is not None and not power.is_on(workspace_id):
+            raise WorkspaceJobError(503, "selected dashboard runtime is off or changing state")
         if not isinstance(symbol, str) or symbol != symbol.strip().upper() or (symbol == "*" and not whole):
             raise WorkspaceJobError(400, "asset must be a canonical symbol")
         if symbol != "*" and (symbol not in REGISTRY or symbol not in profile["assets"]):

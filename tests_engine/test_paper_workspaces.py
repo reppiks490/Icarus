@@ -481,7 +481,7 @@ def test_server_close_attempts_all_services_and_closes_socket_after_workspace_er
         closed_services.append("http-server")
         return base_server_close(instance)
 
-    monkeypatch.setattr(type(server.command_centers), "stop", fail_workspace_stop)
+    monkeypatch.setattr(type(server.workspace_power), "close", fail_workspace_stop)
     monkeypatch.setattr(type(server.autopilot), "close", record_autopilot_close)
     monkeypatch.setattr(ThreadingHTTPServer, "server_close", record_base_server_close)
 

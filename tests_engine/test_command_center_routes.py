@@ -285,6 +285,7 @@ let browser;
  await page.locator('#a200-history').click();
  assert.equal(historyCalls.length,0,'no owner token means no request');
  await page.locator('#owner-token').fill('owner-test');
+ await page.evaluate(async()=>{await IcarusWorkspacePower.refresh();});
  await page.locator('#a200-history').click();
  await page.waitForFunction(()=>document.querySelector('#a200-history-note').textContent.includes('2 observed bars'));
  assert.equal(historyCalls.length,1);
@@ -296,7 +297,8 @@ let browser;
  assert.equal(Number(url.searchParams.get('end_ts'))-Number(url.searchParams.get('start_ts')),5*86400);
  assert.match(await page.locator('#a200-receipt').textContent(),/UNKNOWN/);
  assert.equal(await page.locator('#all-total').textContent(),before,'research cannot change P&L');
- assert.match(await page.locator('#chart-note').textContent(),/No selected workspace/);
+ assert.match(await page.locator('#chart-note').textContent(),/No current workspace observations/);
+ assert.equal(await page.locator('[data-power-row="cc4"] [data-state]').textContent(),'OFF');
  await page.locator('#a200-instrument').selectOption({index:1});
  assert.match(await page.locator('#a200-history-note').textContent(),/No history requested/);
  assert.equal(historyCalls.length,1,'selection cannot acquire another dataset');
@@ -398,6 +400,12 @@ const payloads=JSON.parse(process.argv[3]);let browser;
  browser=await chromium.launch({executablePath:process.argv[2],headless:true,args:['--no-sandbox']});
  const page=await browser.newPage({viewport:{width:1280,height:900}});page.setDefaultTimeout(8000);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ // This presentation fixture already supplies four synthetic running ledgers.
+ // Supply their matching lifecycle metadata so OFF suppression remains real.
+ await page.route('**/api/workspace-runtime',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+  schema_version:'icarus.workspace-power.v1',paper_only:true,execution_authorized:false,
+  workspaces:['cc1','cc2','cc3','cc4'].map(id=>({id,desired_enabled:true,runtime_state:'ON',revision:0,error:null}))
+ })}));
  await page.route('**/api/command-centers/cc*',async route=>{
   const key=new URL(route.request().url()).pathname.split('/').at(-1);
   if(payloads[key])await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(payloads[key])});else await route.continue();

@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 from functools import cached_property
 import threading
+import time
 
 from .chronofold import ChronofoldEngine
 from .commissioning import CommissioningEngine
@@ -189,12 +190,22 @@ class RuntimePanels:
         raise WorkspaceAPIError(501, "this action has no selected-workspace adapter", "WORKSPACE_ACTION_UNAVAILABLE")
 
     def close(self):
-        if "intelligence" in self.__dict__:
-            self.intelligence.close()
-        if "research_engines" in self.__dict__:
-            self.research_engines.close()
-        if "commissioning" in self.__dict__:
-            self.commissioning.close()
+        errors = []
+        for name in ("intelligence", "research_engines", "commissioning"):
+            service = self.__dict__.get(name)
+            if service is not None:
+                try:
+                    service.close()
+                except Exception as error:
+                    errors.append(error)
+        service = self.__dict__.get('commissioning')
+        if service is not None:
+            service._stop.set()
+            thread = service._thread
+            if thread is not None and thread is not threading.current_thread():
+                thread.join()
+        if errors:
+            raise RuntimeError("selected panel service failed to close") from errors[0]
 
 
 class WorkspacePanels:
@@ -213,18 +224,51 @@ class WorkspacePanels:
         self._lock = threading.RLock()
         self._runtimes = {}
         self._background = False
+        self._closed = False
+        self._bundle_locks = {key: threading.RLock() for key in manager.profiles}
 
     def _bundle(self, profile_id, portfolio):
-        with self._lock:
-            current = self._runtimes.get(profile_id)
+        # Constructors and first commissioning ticks may be slow. They belong
+        # only to this workspace; the shared registry lock protects bookkeeping.
+        with self._bundle_locks[profile_id]:
+            power = getattr(self.manager, 'runtime_power', None)
+            with self._lock:
+                if (self._closed or self.manager.portfolios.get(profile_id) is not portfolio
+                        or (power is not None and not power.is_on(profile_id))):
+                    raise WorkspaceAPIError(503, "selected dashboard runtime is off or changing state")
+                current = self._runtimes.get(profile_id)
+                background = self._background
             if current is None or current.port._portfolio is not portfolio:
                 if current is not None:
                     current.close()
                 current = RuntimePanels(self.manager, self.api, profile_id, portfolio)
-                self._runtimes[profile_id] = current
-                if self._background:
-                    current.commissioning.start_background()
+                with self._lock:
+                    cancelled = (self._closed or self.manager.portfolios.get(profile_id) is not portfolio
+                                 or (power is not None and not power.is_on(profile_id)))
+                if cancelled:
+                    current.close()
+                    raise WorkspaceAPIError(503, "selected dashboard runtime changed during panel startup")
+                with self._lock:
+                    self._runtimes[profile_id] = current
+            if background:
+                current.commissioning.start_background()
             return current
+
+    def activate(self, profile_id, portfolio):
+        """Initialize one published runtime without delaying HTTP or siblings."""
+        def initialize():
+            try:
+                with self._lock:
+                    if self._closed or not self._background:
+                        return
+                if self.manager.portfolios.get(profile_id) is portfolio:
+                    self._bundle(profile_id, portfolio)
+            except Exception:
+                # A selected diagnostic failure does not stop its paper workers.
+                # A later explicit panel read reports/retries the local failure.
+                return
+        threading.Thread(target=initialize, daemon=True,
+                         name=f"workspace-panels-{profile_id}").start()
 
     def read(self, profile_id, path, query):
         if path not in self.READS:
@@ -232,7 +276,7 @@ class WorkspacePanels:
         allowed = self.READ_SELECTORS[path]
         if set(query) - allowed or any(len(values) != 1 for values in query.values()):
             raise WorkspaceAPIError(400, "unknown or repeated panel selectors")
-        with self.manager.configuration_lock(profile_id):
+        with self.api.runtime_lock(profile_id):
             profile, portfolio, _ = self.api._selected(profile_id, query.get("asset", [None])[0] or None)
             try:
                 data = self._bundle(profile_id, portfolio).read(path, query)
@@ -249,7 +293,7 @@ class WorkspacePanels:
             raise WorkspaceAPIError(400, "a captured workspace configuration revision is required")
         if not isinstance(body, dict):
             raise WorkspaceAPIError(400, "panel action must be an object")
-        with self.manager.configuration_lock(profile_id):
+        with self.api.runtime_lock(profile_id):
             profile, portfolio, _ = self.api._selected(profile_id)
             if int(expected_revision) != profile["config_revision"]:
                 raise WorkspaceAPIError(409, "workspace configuration changed", "REVISION_CONFLICT")
@@ -270,12 +314,33 @@ class WorkspacePanels:
 
     def start(self):
         with self._lock:
+            if self._closed:
+                return
             self._background = True
         for profile_id, portfolio in list(self.manager.portfolios.items()):
-            self._bundle(profile_id, portfolio)
+            self.activate(profile_id, portfolio)
 
     def close(self):
         with self._lock:
             self._background = False
-            for bundle in self._runtimes.values():
+            self._closed = True
+        # Never wait for one blocked sampler on the HTTP shutdown thread.
+        workers = [threading.Thread(target=self.suspend, args=(key,), daemon=True)
+                   for key in self._bundle_locks]
+        for worker in workers:
+            worker.start()
+        deadline = time.monotonic() + .1
+        for worker in workers:
+            worker.join(max(0, deadline - time.monotonic()))
+
+    def suspend(self, profile_id):
+        """Drain one dashboard before its lifecycle worker retires the journal."""
+        with self._bundle_locks[profile_id]:
+            with self._lock:
+                bundle = self._runtimes.pop(profile_id, None)
+            if bundle is not None:
                 bundle.close()
+                service = bundle.__dict__.get('commissioning')
+                thread = getattr(service, '_thread', None)
+                if thread is not None and thread is not threading.current_thread():
+                    thread.join()

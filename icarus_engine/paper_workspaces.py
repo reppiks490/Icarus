@@ -208,6 +208,7 @@ class SharedFeed:
 class WorkspacePortfolio(Portfolio):
     def __init__(self, *args, workspace: Dict[str, Any], **kwargs):
         self.workspace = workspace
+        self._workspace_power_activation_lock = threading.Lock()
         super().__init__(*args, **kwargs)
 
     def _resolved(self, spec, workspace=None):
@@ -262,6 +263,13 @@ class WorkspacePortfolio(Portfolio):
         return super()._refresh_continuous_feeds(now)
 
     def _run(self, runner):
+        power_gate = getattr(self, "_workspace_power_gate", None)
+        if power_gate is not None:
+            while not power_gate.wait(0.05):
+                if self._stop.is_set():
+                    return
+            if self._stop.is_set():
+                return
         # Transaction-created workers may exist before every sibling thread has
         # started. They cannot warm up, poll or write the ledger until committed.
         gate = getattr(runner, "_workspace_start_gate", None)
@@ -271,7 +279,69 @@ class WorkspacePortfolio(Portfolio):
                     return
             if runner._removed or self._stop.is_set():
                 return
-        return super()._run(runner)
+        if not self._warmup_with_retry(runner):
+            return
+        # OFF and startup overlay admission share a dedicated lock. The native
+        # loader must retain its durable-writer -> portfolio -> runner order;
+        # pre-locking runners here would deadlock concurrent startup overlays.
+        with self._workspace_power_activation_lock:
+            if self._stop.is_set() or runner._removed:
+                return
+            try:
+                from .activation_runtime import load_startup_overlay
+                load_startup_overlay(self, runner)
+            except Exception as error:
+                runner.errors += 1
+                runner.last_error = f"startup overlay failed: {type(error).__name__}: {error}"
+                runner.runtime_error = runner.last_error
+                self.journal.log("ERROR", f"[{runner.symbol}] {runner.last_error}")
+        interval = self.poll_sec if runner.spec.feed == "coinbase" else max(self.poll_sec, 15.0)
+        while not self._stop.is_set() and not runner._removed:
+            try:
+                if not runner.rewarming:
+                    runner.poll()
+            except Exception as error:
+                runner.errors += 1
+                runner.last_error = f"{type(error).__name__}: {error}"
+                runner.runtime_error = runner.last_error
+                self.journal.log("ERROR", f"[{runner.symbol}] poll: {runner.last_error}")
+            self._stop.wait(interval)
+
+    def _sampler(self):
+        gate = getattr(self, "_workspace_power_gate", None)
+        if gate is not None:
+            while not gate.wait(0.05):
+                if self._stop.is_set():
+                    return
+            if self._stop.is_set():
+                return
+        return super()._sampler()
+
+    def start(self):
+        if not hasattr(self, "_workspace_power_gate"):
+            return super().start()
+        # Provider preparation may block. Cancellation is checked after every
+        # call; no workers can poll or sample until the controller publishes.
+        groups = {}
+        for runner in self.runner_list():
+            if runner.spec.kind == "futures" and callable(getattr(runner.feed, "prepare_live", None)):
+                group = groups.setdefault(id(runner.feed), (runner.feed, []))
+                group[1].append(runner.spec.ticker)
+        for feed, tickers in groups.values():
+            if self._stop.is_set():
+                return
+            feed.prepare_live(tickers)
+            if self._stop.is_set():
+                return
+            self._prepare_depth_context(feed, tickers)
+        with self._lock:
+            if self._stop.is_set():
+                return
+            for symbol in list(self.order):
+                self._spawn(self.runners[symbol])
+            self._sampler_thread = threading.Thread(target=self._sampler, daemon=True,
+                                                     name=f"equity-sampler-{self.workspace['id']}")
+            self._sampler_thread.start()
 
     def reconfigure(self, candidate: Dict[str, Any], *, persist=None, force_symbols=None) -> Dict[str, Any]:
         requested = _validate_assets(candidate["assets"])
@@ -471,28 +541,46 @@ class PaperWorkspaceManager:
             os.fsync(fh.fileno())
         os.replace(tmp, path)
 
+    def create_portfolio(self, profile_id, *, cancelled=None, created=None):
+        """Build one unpublished runtime; the caller owns startup and cleanup."""
+        cancelled = cancelled or (lambda: False)
+        # Retain the canonical profile identity used by legacy callers and
+        # replay preset selection; release the selected lock before any I/O.
+        with self.configuration_lock(profile_id):
+            profile = self.profiles[profile_id]
+        if cancelled():
+            raise InterruptedError("workspace startup cancelled")
+        journal = Journal(str(self.root / f"{profile_id}.sqlite3"))
+        portfolio = None
+        try:
+            if cancelled():
+                raise InterruptedError("workspace startup cancelled")
+            portfolio = WorkspacePortfolio(
+                journal, str(self.parent.base_dir), poll_sec=self.parent.poll_sec,
+                profile=self.parent.profile, preset=self.parent.preset,
+                warmup_bars=self.parent.warmup_bars, pts_ref_symbol=self.parent.pts_ref_symbol,
+                feeds=self._feeds, workspace=profile,
+            )
+            portfolio.pts_ref_price = self.parent.pts_ref_price
+            if created is not None:
+                created(portfolio)
+            for symbol in profile["assets"]:
+                if cancelled():
+                    raise InterruptedError("workspace startup cancelled")
+                portfolio.add_asset(copy.deepcopy(REGISTRY[symbol]), start=False)
+            if cancelled():
+                raise InterruptedError("workspace startup cancelled")
+            return portfolio
+        except Exception:
+            if portfolio is None or created is None:
+                journal.close()
+            raise
+
     def start(self):
         try:
-            for profile_id, profile in self.profiles.items():
-                journal = Journal(str(self.root / f"{profile_id}.sqlite3"))
-                try:
-                    portfolio = WorkspacePortfolio(
-                        journal, str(self.parent.base_dir), poll_sec=self.parent.poll_sec,
-                        profile=self.parent.profile, preset=self.parent.preset,
-                        warmup_bars=self.parent.warmup_bars, pts_ref_symbol=self.parent.pts_ref_symbol,
-                        feeds=self._feeds, workspace=profile,
-                    )
-                except Exception as constructor_error:
-                    try:
-                        journal.close()
-                    except Exception as cleanup_error:
-                        raise constructor_error from cleanup_error
-                    raise
-                portfolio.pts_ref_price = self.parent.pts_ref_price
+            for profile_id in self.profiles:
+                portfolio = self.create_portfolio(profile_id)
                 self.portfolios[profile_id] = portfolio
-                for symbol in profile["assets"]:
-                    spec = copy.deepcopy(REGISTRY[symbol])
-                    portfolio.add_asset(spec, start=False)
                 portfolio.start()
         except Exception as start_error:
             try:
@@ -689,7 +777,11 @@ class PaperWorkspaceManager:
             readable = portfolio if acquired and not status.get("snapshot_unavailable") else None
             runners = readable.runner_list() if readable else []
             effective = runners[0].inputs_base.to_dict() if runners else {}
-            closed = portfolio.journal.closed_paper_profit(as_of_ts=now) if portfolio else {"realized_pnl": 0.0, "closed_pieces": 0, "last_close_ts": None}
+            # Lifecycle retirement closes the journal under this same selected
+            # configuration lock. Busy snapshots must not retain a closing DB.
+            closed = (portfolio.journal.closed_paper_profit(as_of_ts=now)
+                      if portfolio and acquired else
+                      {"realized_pnl": None, "closed_pieces": None, "last_close_ts": None})
             missing_marks = []
             for asset in status.get("assets", []):
                 if asset.get("position"):

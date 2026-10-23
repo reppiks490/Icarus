@@ -48,7 +48,15 @@ if ! $setup && [[ -n "${ICARUS_PYTHON:-}" ]]; then python_command=("$ICARUS_PYTH
 elif [[ -x .venv/Scripts/python.exe ]]; then python_command=(.venv/Scripts/python.exe)
 elif [[ -x .venv/bin/python ]]; then python_command=(.venv/bin/python)
 else echo 'Run this command again with --setup to create the checkout .venv.' >&2; exit 1; fi
-if $setup; then "${python_command[@]}" -m pip install -e '.[bridge,ml,databento]' 'cryptography>=44,<47'; fi
+if $setup; then
+  # On Python 3.10/3.11 pip selects stdlib distutils. Importing setuptools
+  # afterwards can assert while trying to replace that same module. Keep the
+  # matching build tools in this venv and scope the workaround to setup only.
+  # Python 3.12+ has no stdlib distutils and must use setuptools' local copy.
+  setup_distutils="$("${python_command[@]}" -c 'import sys; print("stdlib" if sys.version_info < (3,12) else "local")')"
+  SETUPTOOLS_USE_DISTUTILS="$setup_distutils" "${python_command[@]}" -m pip install --upgrade pip 'setuptools>=68' wheel
+  SETUPTOOLS_USE_DISTUTILS="$setup_distutils" "${python_command[@]}" -m pip install --no-build-isolation -e '.[bridge,ml,databento]' 'cryptography>=44,<47'
+fi
 
 "${python_command[@]}" -c '
 import argparse, os, socket, sys

@@ -190,6 +190,7 @@ window.addEventListener('pagehide', event => {
   else window.IcarusClient.close();
 });
 </script>
+<script src="/workspace_power_ui.js"></script>
 <script src="/workspace-performance-ui.js"></script>
 <script src="/workspace-evidence-ui.js"></script>
 <script src="/research-ui.js"></script>
@@ -389,11 +390,17 @@ function assetCard(a) {
   const posHtml = ot.length ? ot.map(t => `<span><b class="${t.dir>0?'pos':'neg'}">${t.dir>0?'LONG':'SHORT'} ${t.qty}</b> <span class="muted">${esc(t.id)} @ ${px(t.entry)}</span></span>`).join(' ') + ` <span class="${upl>=0?'pos':'neg'} tnum">${sgn$(upl)}</span>` + (st.runner_tag?` <span class="chip">${esc(st.runner_tag)}${st.rate_be_armed?' ✓':''}</span>`:'')
     : `<span class="muted">flat</span>` + (st.armed_long?` <span class="chip b">ARMED LONG</span>`:'') + (st.armed_short?` <span class="chip r">ARMED SHORT</span>`:'');
   const warm = a.warm ? (a.rewarming ? `<span class="chip w">re-warming</span>` : '') : `<span class="chip w">warming ${a.bar_index>=0?a.bar_index+1+' bars':''}</span>`;
+  const recordedErrors = Number.isInteger(a.errors) && a.errors > 0 ? a.errors : 0;
+  const currentError = typeof a.last_error === 'string' ? a.last_error.trim() : '';
+  const errorBadge = currentError
+    ? `<span class="neg" data-asset-error="active" title="${esc(currentError)}">reported error${recordedErrors ? ' · '+recordedErrors+' recorded' : ''}</span>`
+    : recordedErrors ? `<span class="muted" data-asset-error="historical" title="Recorded since launch; no current error is reported. Check price and bar age separately.">${recordedErrors} past errors</span>` : '';
   return `<div class="asset ${side}" data-sym="${a.symbol}">
     <div class="ah"><span class="sym" title="ICARUS key ${esc(a.symbol)}">${esc(a.continuous_symbol||a.symbol)}</span><span class="px tnum">${px(a.price)}</span>
       <span class="dir ${st.rate_uptrend?'up':'dn'}" title="RATE SuperTrend direction">${st.rate_uptrend==null?'':st.rate_uptrend?'▲':'▼'}</span>
       <span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'—')} ${st.rate_regime!=null?(st.rate_regime*100).toFixed(0)+'%':''}</span>${marketChip(a)}${warm}${a.view_stale?'<span class="chip w" title="The engine is rebuilding; this is the last complete snapshot">snapshot · engine busy</span>':''}${a.paused?'<span class="chip r">paused</span>':''}
-      <span class="muted small" style="margin-left:auto" title="Calculation basis">${a.tf}m · ${a.chart_type==='heikin_ashi'?'HA':'OHLC'} · fill ${a.fill_on==='chart'?'chart':'real'} · MTF ${a.security_source==='standard'?'standard':'chart'} · ${a.errors?`<span class="neg">${a.errors} err</span>`:'bar '+age(a.bar_age)}</span></div>
+      <span class="muted small" style="margin-left:auto" title="Calculation basis">${a.tf}m · ${a.chart_type==='heikin_ashi'?'HA':'OHLC'} · fill ${a.fill_on==='chart'?'chart':'real'} · MTF ${a.security_source==='standard'?'standard':'chart'} · bar ${age(a.bar_age)}${errorBadge ? ' · '+errorBadge : ''}</span></div>
+    ${currentError ? `<div class="small neg" data-asset-error-detail role="status" style="overflow-wrap:anywhere">${esc(currentError)}</div>` : ''}
     <div id="ch-${a.symbol}" style="margin-top:6px"></div>
     <div class="pulse"><span>Pulse</span><div class="segs">${pulseSegs(pulse, st.pulse_state)}</div><span>${esc(st.pulse_state||'—')} ${pside} ${(pulse*100).toFixed(0)}%</span><span style="margin-left:auto">${st.po3||''} · fam ${Math.max(st.families_l||0, st.families_s||0)}/5</span></div>
     <div class="votes">${votes}</div>
@@ -1349,8 +1356,25 @@ function expireCoreObservations(reason='Current runtime observations unavailable
   if(!['inputs','access'].includes(view)) {disposeWorkspaceView();$('#view').innerHTML='<section class="card c12"><p class="empty">'+esc(reason)+'</p></section>';lastView=null;}
 }
 window.addEventListener('pageshow',event=>{if(event.persisted){expireCoreObservations('Restored page — waiting for fresh selected runtime');void refresh();}});
-setInterval(()=>{if(last&&Date.now()-lastStatusAt>10000)expireCoreObservations('Selected runtime observation expired');},1000);
+function selectedWorkspacePoweredOff() {
+  return IcarusClient.context.id !== 'main' && !!window.IcarusWorkspacePower?.isOff(IcarusClient.context.id);
+}
+let selectedPowerWasOff = false;
+window.addEventListener('icarus:workspace-power', () => {
+  if (IcarusClient.context.id === 'main') return;
+  const off = selectedWorkspacePoweredOff();
+  if (off) {
+    statusLoadSeq++;
+    IcarusClient.cancelPending();
+    expireCoreObservations(IcarusClient.context.id.toUpperCase() + ' runtime is off or changing state; use its power switch.');
+  } else if (selectedPowerWasOff) {
+    void (async()=>{await refreshUiCatalogs();await refresh();await refreshCharts();await refreshTrades();})();
+  }
+  selectedPowerWasOff = off;
+});
+setInterval(()=>{if(!selectedWorkspacePoweredOff()&&last&&Date.now()-lastStatusAt>10000)expireCoreObservations('Selected runtime observation expired');},1000);
 async function refresh() {
+  if (selectedWorkspacePoweredOff()) return;
   const sequence=++statusLoadSeq;
   statusRefreshes++;
   try {
@@ -1371,9 +1395,11 @@ async function pollStatus() {
   finally { statusPollBusy = false; }
 }
 async function refreshCombinedPaperPnl() {
+  if (selectedWorkspacePoweredOff()) return;
   await loadPaperWorkspaces();
 }
 async function refreshGolive() {
+  if (selectedWorkspacePoweredOff()) return;
   try {
     const response = await IcarusClient.request('/api/golive', {cache:'no-store'});
     const data = await response.json().catch(()=>({}));
@@ -1397,6 +1423,7 @@ async function refreshGolive() {
   }
 }
 async function refreshAgent() {
+  if (selectedWorkspacePoweredOff()) return;
   try {
     const response = await IcarusClient.request('/api/agent', {cache:'no-store'});
     const data = await response.json().catch(()=>({}));
@@ -1422,6 +1449,7 @@ async function refreshAgent() {
   }
 }
 async function refreshAudit() {
+  if (selectedWorkspacePoweredOff()) return;
   try {
     const r = await IcarusClient.request('/api/system/audit', {cache:'no-store'});
     if (!r.ok) throw new Error('audit '+r.status);
@@ -1432,6 +1460,7 @@ async function refreshAudit() {
   if (last) render(last);
 }
 async function refreshCommandCenter() {
+  if (selectedWorkspacePoweredOff()) return;
   try {
     const r = await IcarusClient.request('/api/overview/command-center', {cache:'no-store'});
     const data = await r.json().catch(()=>({}));
@@ -1455,11 +1484,13 @@ async function refreshCommandCenter() {
   }
 }
 async function refreshCharts() {
+  if (selectedWorkspacePoweredOff()) return;
   if (!last) return;
   if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); }
   if (view.startsWith('asset:') && Date.now()-lastWideChartRefresh >= 20000) { const s=view.slice(6); await loadChart(s, 4000, $('#dChart'), {height:360, compact:false}, chartOffsets[s]||0); }
 }
 async function refreshTrades(only) {
+  if (selectedWorkspacePoweredOff()) return;
   if (!last) return;
   for (const a of (last.assets||[])) {
     if (only && a.symbol !== only) continue;
@@ -1479,6 +1510,7 @@ async function refreshTrades(only) {
   }
 }
 async function refreshUiCatalogs() {
+  if (selectedWorkspacePoweredOff()) return;
   if (catalogRefreshBusy) return;
   catalogRefreshBusy = true;
   try {
@@ -1512,6 +1544,10 @@ async function refreshUiCatalogs() {
   }
 }
 const dashboardReady = (async () => {
+  if (IcarusClient.context.id !== 'main') {
+    if (document.readyState === 'loading') await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
+    await window.IcarusWorkspacePower?.ready;
+  }
   await refreshUiCatalogs();
   await refreshCombinedPaperPnl();
   await refreshAudit(); await refreshCommandCenter(); await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last);

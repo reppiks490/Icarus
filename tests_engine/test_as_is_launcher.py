@@ -85,6 +85,54 @@ def test_bridge_is_not_admitted_by_paper_launcher(tmp_path):
     assert result.returncode != 0 and 'bridge' in result.stderr.lower()
 
 
+def test_setup_builds_metadata_without_distutils_collision_or_runtime_env_leak(tmp_path):
+    """Catch pip-before-setuptools assertion using a real opted-in interpreter.
+
+    Package downloads/upgrades and engine startup are the external boundaries;
+    the Python version probe, pip import and setuptools editable metadata are real.
+    Set ICARUS_SETUP_TEST_PYTHON to exercise Python 3.10/3.11 or 3.12+ offline.
+    """
+    real_python = os.environ.get('ICARUS_SETUP_TEST_PYTHON')
+    if not real_python:
+        pytest.skip('opt-in real packaging interpreter; no package downloads in unit suite')
+    repo, script = launcher(tmp_path)
+    (repo / '.venv/pyvenv.cfg').write_text('')
+    (repo / 'pyproject.toml').write_text(
+        '[build-system]\nrequires = ["setuptools>=68"]\nbuild-backend = "setuptools.build_meta"\n'
+        '[project]\nname = "icarus-setup-regression"\nversion = "0.0.0"\n')
+    metadata = tmp_path / 'metadata'
+    metadata.mkdir()
+    capture = tmp_path / 'runtime-environment'
+    python = repo / '.venv/bin/python'
+    python.write_text(
+        '#!/usr/bin/env bash\nset -eu\n'
+        'if [[ "$1" == "-m" && "$2" == "pip" ]]; then\n'
+        '  for arg in "$@"; do if [[ "$arg" == "--upgrade" ]]; then exit 0; fi; done\n'
+        '  exec "$ICARUS_SETUP_TEST_PYTHON" -c '\
+        "'import os, pip; from setuptools.build_meta import prepare_metadata_for_build_editable; "
+        'prepare_metadata_for_build_editable(os.environ["ICARUS_METADATA"])' + "'\n"
+        'fi\n'
+        'if [[ "$1" == "-c" ]]; then\n'
+        '  if [[ "$2" == *"import icarus_engine"* ]]; then exit 0; fi\n'
+        '  exec "$ICARUS_SETUP_TEST_PYTHON" "$@"\n'
+        'fi\n'
+        'printf "%s\\n" "${SETUPTOOLS_USE_DISTUTILS-unset}" "$@" > "$ICARUS_CAPTURE"\n')
+    state = tmp_path / 'private state'
+    state.mkdir()
+    saved = state / 'saved-inputs'
+    saved.write_bytes(b'preserve owner settings')
+    result = subprocess.run(
+        ['bash', str(script), '--setup', '--feed', 'file', '--assets', 'NQ', '--root', str(state)],
+        env={**os.environ, 'SETUPTOOLS_USE_DISTUTILS': 'local',
+             'ICARUS_METADATA': str(metadata), 'ICARUS_CAPTURE': str(capture)},
+        capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert list(metadata.glob('*.dist-info/METADATA')), 'real editable metadata must be produced'
+    assert capture.read_text().splitlines()[:4] == ['local', '-m', 'icarus_plant', 'start']
+    assert list(state.iterdir()) == [saved]
+    assert saved.read_bytes() == b'preserve owner settings'
+
+
 def test_occupied_port_refuses_without_mutating_state(tmp_path):
     # Use the actual checkout/interpreter for the preflight; never start a service.
     with socket.socket() as occupied:

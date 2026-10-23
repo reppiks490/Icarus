@@ -6,7 +6,7 @@ SHARED_READS = frozenset((
     "/api/input-meta", "/api/presets", "/api/commands", "/api/command-centers",
     "/api/market-universe", "/api/system/audit", "/api/agent", "/api/integrity",
     "/api/research/sources", "/api/research/records", "/api/research/source-watch",
-    "/api/corpus-consumption", "/api/corpus-expansion", "/api/account-connections",
+    "/api/corpus-consumption", "/api/corpus-expansion", "/api/account-connections", "/api/workspace-runtime",
     "/api/prop-firm-catalog", "/api/evolution", "/api/evidence-lab", "/api/access", "/healthz",
 ))
 SHARED_ACTIONS = frozenset(("/admin/access/add", "/admin/access/kick"))

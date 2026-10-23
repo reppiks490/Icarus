@@ -27,6 +27,71 @@ class _NoNetwork:
         raise AssertionError("workspace HTTP tests must not fetch history")
 
 
+def test_runtime_power_metadata_and_main_stay_responsive_under_workspace_lock(workspace_http):
+    server, _, request = workspace_http
+    with server.command_centers.configuration_lock('cc1'):
+        started = time.monotonic()
+        code, data, _ = request('/api/workspace-runtime')
+        assert code == 200
+        assert data['schema_version'] == 'icarus.workspace-power.v1'
+        assert {row['id'] for row in data['workspaces']} == {'cc1', 'cc2', 'cc3', 'cc4'}
+        assert data['execution_authorized'] is False
+        assert request('/status/public')[0] == 200
+        assert time.monotonic() - started < 1.5, 'a busy sibling must not block power metadata or Main'
+
+
+def test_runtime_off_is_selected_preserves_settings_and_does_not_stop_main(workspace_http):
+    server, parent, request = workspace_http
+    manager = server.command_centers
+    settings = {key: manager._path(key).read_bytes() for key in ('cc1', 'cc2', 'cc3', 'cc4')}
+    siblings = {key: manager.portfolios[key] for key in ('cc2', 'cc3', 'cc4')}
+    selected = manager.portfolios['cc1']
+    code, metadata, _ = request('/api/workspace-runtime')
+    assert code == 200
+    revision = next(row['revision'] for row in metadata['workspaces'] if row['id'] == 'cc1')
+    code, _, _ = request('/admin/command-centers/cc1/runtime', body={'enabled': False, 'expected_revision': revision})
+    assert code == 202
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        _, metadata, _ = request('/api/workspace-runtime')
+        row = next(row for row in metadata['workspaces'] if row['id'] == 'cc1')
+        if row['runtime_state'] == 'OFF':
+            break
+        time.sleep(.01)
+    assert row['runtime_state'] == 'OFF'
+    assert row['desired_enabled'] is False
+    assert selected._stop.is_set()
+    assert all(not thread.is_alive() for thread in selected._threads.values())
+    assert {key: manager._path(key).read_bytes() for key in settings} == settings
+    assert all(manager.portfolios[key] is port for key, port in siblings.items())
+    assert not parent._stop.is_set()
+    assert request('/status/public')[0] == 200
+    assert request('/api/command-centers/cc1/status')[0] == 503
+
+
+@pytest.mark.parametrize('body', [
+    {'enabled': 'false', 'expected_revision': 0},
+    {'enabled': False, 'expected_revision': True},
+    {'enabled': False},
+    {'enabled': False, 'expected_revision': 0, 'workspace': 'cc2'},
+])
+def test_runtime_power_rejects_ambiguous_or_untyped_mutations(workspace_http, body):
+    server, _, request = workspace_http
+    original = dict(server.command_centers.portfolios)
+    assert request('/admin/command-centers/cc1/runtime', body=body)[0] == 400
+    assert server.command_centers.portfolios == original
+
+
+def test_runtime_power_keeps_owner_and_canonical_scope_guards(workspace_http):
+    _, _, request = workspace_http
+    body = {'enabled': False, 'expected_revision': 0}
+    assert request('/admin/command-centers/cc1/runtime', body=body, token=None)[0] == 401
+    assert request('/admin/command-centers/cc1/runtime', body=body,
+                   extra_headers={'X-Icarus-Workspace': 'cc2'})[0] == 409
+    assert request('/admin/command-centers/cc1/runtime?profile=cc2', body=body)[0] == 400
+    assert request('/admin/command-centers/cc1/runtime/extra', body=body)[0] == 404
+
+
 def _seed(runner, price, label):
     runner._init_strategy(price)
     runner.warm = True
@@ -908,3 +973,38 @@ def test_unrelated_response_io_failure_remains_visible(workspace_http):
     handler.wfile = FailedWriter()
     with pytest.raises(OSError, match="unrelated I/O error"):
         handler._json(200, {"ok": True})
+
+
+def test_stopping_selected_reads_and_jobs_return_without_waiting_for_drain(workspace_http):
+    server, _, request = workspace_http
+    with server.command_centers.configuration_lock('cc1'):
+        server.workspace_power.request('cc1', {'enabled': False, 'expected_revision': 0})
+        began = time.monotonic()
+        for path in ('/api/command-centers/cc1/status', '/api/command-centers/cc1/performance',
+                     '/api/command-centers/cc1/chart/NQ', '/api/command-centers/cc1/panels/commissioning'):
+            assert request(path)[0] == 503
+        assert request('/admin/command-centers/cc1/assets/NQ/config',
+                       body={'expected_revision': 0, 'inputs': {'tp1_pts': 10}})[0] == 503
+        assert time.monotonic() - began < 1.5
+        assert request('/status/public')[0] == 200
+
+
+def test_busy_selected_read_is_bounded_without_affecting_main(workspace_http):
+    server, _, request = workspace_http
+    with server.command_centers.configuration_lock('cc1'):
+        began = time.monotonic()
+        assert request('/api/command-centers/cc1/performance')[0] == 409
+        assert request('/api/command-centers/cc1/panels/commissioning')[0] == 409
+        assert request('/status/public')[0] == 200
+        assert time.monotonic() - began < 1.5
+
+
+def test_off_refuses_contended_job_registry_without_blocking_main(workspace_http):
+    server, _, request = workspace_http
+    with server.workspace_jobs._lock:
+        began = time.monotonic()
+        assert request('/admin/command-centers/cc1/runtime',
+                       body={'enabled': False, 'expected_revision': 0})[0] == 409
+        assert request('/api/workspace-runtime')[0] == 200
+        assert request('/status/public')[0] == 200
+        assert time.monotonic()-began < 1.5

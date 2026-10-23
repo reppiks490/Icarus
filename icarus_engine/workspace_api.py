@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+from contextlib import contextmanager
 import math
 import time
 
@@ -32,6 +33,9 @@ class WorkspaceAPI:
         profile = self.manager.profiles.get(profile_id)
         if profile is None:
             raise WorkspaceAPIError(404, "unknown command center")
+        power = getattr(self.manager, 'runtime_power', None)
+        if power is not None and not power.is_on(profile_id):
+            raise WorkspaceAPIError(503, "selected dashboard runtime is off or changing state", "WORKSPACE_RUNTIME_OFF")
         portfolio = self.manager.portfolios.get(profile_id)
         if portfolio is None:
             raise WorkspaceAPIError(503, "selected paper runtime is unavailable")
@@ -41,6 +45,18 @@ class WorkspaceAPI:
                 raise WorkspaceAPIError(404, "asset is not running in this workspace")
             runner = portfolio.runners[symbol]
         return profile, portfolio, runner
+
+    @contextmanager
+    def runtime_lock(self, profile_id):
+        self._selected(profile_id)
+        lock = self.manager.configuration_lock(profile_id)
+        if not lock.acquire(blocking=False):
+            raise WorkspaceAPIError(409, "selected workspace is busy; retry after its current operation")
+        try:
+            self._selected(profile_id)
+            yield
+        finally:
+            lock.release()
 
     @staticmethod
     def _identity(profile):
@@ -84,7 +100,7 @@ class WorkspaceAPI:
     def read(self, profile_id, resource, symbol=None, *, limit=100):
         if resource == "status" and symbol is None:
             return self._status(profile_id)
-        with self.manager.configuration_lock(profile_id):
+        with self.runtime_lock(profile_id):
             profile, portfolio, runner = self._selected(profile_id, symbol)
             identity = self._identity(profile)
             if resource == "performance" and symbol is None:
@@ -122,12 +138,12 @@ class WorkspaceAPI:
 
     def market_data(self, profile_id, symbol, resource, *, schema="mbp-10", limit=200):
         from .workspace_market_data import snapshot
-        with self.manager.configuration_lock(profile_id):
+        with self.runtime_lock(profile_id):
             profile, _, runner = self._selected(profile_id, symbol)
             return {**snapshot(runner, resource, schema=schema, limit=limit), **self._identity(profile)}
 
     def chart(self, profile_id, symbol, *, n=240, offset=0):
-        with self.manager.configuration_lock(profile_id):
+        with self.runtime_lock(profile_id):
             profile, _, runner = self._selected(profile_id, symbol)
             try:
                 chart = runner.chart(n, offset=offset, nonblocking=True)
@@ -136,12 +152,12 @@ class WorkspaceAPI:
             return {**chart, **self._identity(profile)}
 
     def export(self, profile_id, symbol):
-        with self.manager.configuration_lock(profile_id):
+        with self.runtime_lock(profile_id):
             profile, _, runner = self._selected(profile_id, symbol)
             return runner.export_csv(), self._identity(profile)
 
     def control(self, profile_id, symbol, action, body):
-        with self.manager.configuration_lock(profile_id):
+        with self.runtime_lock(profile_id):
             _, portfolio, runner = self._selected(profile_id, symbol)
             scope = "workspace" if symbol is None else "asset"
             try:
