@@ -20,7 +20,7 @@ from tests_engine.test_workspace_api import _job_tape, workspace_http  # noqa: F
 ])
 def test_asset_card_distinguishes_past_error_counts_from_current_faults(count, message, kind):
     import subprocess
-    source = (Path(__file__).resolve().parents[1] / 'icarus_engine/dashboard.html').read_text()
+    source = (Path(__file__).resolve().parents[1] / 'icarus_engine/dashboard.html').read_text(encoding='utf-8')
     implementation = source.split('/* ── asset card ── */', 1)[1].split('async function loadChart', 1)[0]
     escaping = next(line for line in source.splitlines() if line.startswith('const esc = '))
     driver = (escaping + '\nconst px=String, age=String, sgn$=String;\n' + implementation +
@@ -28,7 +28,7 @@ def test_asset_card_distinguishes_past_error_counts_from_current_faults(count, m
     asset = {'symbol': 'NQ', 'errors': count, 'last_error': message, 'warm': True,
              'bar_age': 27, 'price': 100, 'tf': 10, 'state': {}}
     result = subprocess.run([shutil.which('node'), '-e', driver, json.dumps(asset)],
-                            capture_output=True, text=True, timeout=10, check=True)
+                            capture_output=True, text=True, encoding='utf-8', timeout=10, check=True)
     assert f'data-asset-error="{kind}"' in result.stdout
     assert 'bar 27' in result.stdout, 'past errors must not hide current bar age'
     if kind == 'historical':

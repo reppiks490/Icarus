@@ -65,7 +65,13 @@ await page.locator('.experience-settings summary').click();
 const card=page.locator('#view > .card:visible').first();
 await card.waitFor({state:'visible'});
 await page.waitForFunction(()=>[...document.querySelectorAll('#view > .card')].some(el=>{const r=el.getBoundingClientRect();return r.width>40&&r.height>28;}));
-const cardTarget=await page.evaluate(()=>{const el=[...document.querySelectorAll('#view > .card')].find(node=>{const r=node.getBoundingClientRect();return r.width>40&&r.height>28});if(!el)return null;const r=el.getBoundingClientRect();return {key:el.dataset.worldPanelKey,x:r.left+r.width*.38,y:r.top+Math.min(36,r.height*.28)}});
+const cardTarget=await page.evaluate(()=>{const el=[...document.querySelectorAll('#view > .card')].find(node=>{const r=node.getBoundingClientRect();return r.width>40&&r.height>28});if(!el)return null;
+ // Power controls can push the panel below the viewport. Center its heading,
+ // rather than the tall card, so the sticky navigation cannot cover the point.
+ // Scroll and measure the same connected generation before real pointer input.
+ const heading=el.querySelector('h2')||el;
+ heading.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+ const r=heading.getBoundingClientRect();return {key:el.dataset.worldPanelKey,x:r.left+r.width*.38,y:r.top+r.height*.5}});
 assert.ok(cardTarget);
 await page.mouse.move(cardTarget.x,cardTarget.y);
 await page.waitForFunction(key=>[...document.querySelectorAll('#view > .card')].some(el=>el.dataset.worldPanelKey===key&&el.style.getPropertyValue('--panel-x')!==''),cardTarget.key);
@@ -174,6 +180,9 @@ assert.equal(await page.locator('.world-depth-frame').count(),1);
 assert.equal(await page.locator('.world-depth-atmosphere').count(),1);
 assert.equal(await page.locator('.world-depth-atmosphere > i').count(),3);
 assert.equal(await page.locator('.world-depth-atmosphere > b').count(),1);
+// Pointer fixtures scroll real panels; restore the top-of-page chapter setup.
+await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));
+await page.waitForFunction(()=>document.documentElement.dataset.scrollPhase==='crown');
 assert.equal((await page.locator('[data-world-chapter-title]').textContent()).trim(),'CROWN');
 assert.equal((await page.locator('[data-world-chapter-lore]').textContent()).trim(),'ASCENSION');
 assert.equal(await page.locator('.world-view-ambient').count(),1);
