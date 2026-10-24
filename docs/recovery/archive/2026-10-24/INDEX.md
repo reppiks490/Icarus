@@ -9,3 +9,7 @@ This is historical evidence, superseded for operation by the [current guide](../
 [Pre-native/defaults/deadline-repair guide](pre-nexus-aion-PRIME_AS_IS_RESTART.md) preserves the exact original guide bytes (Git blob `9d85e39c0caf80f441c45a66a43407bf05338f99`), last updated on main at `7d706696353ce180fb20d3935d15ab423578d04e`. Its runtime pin is `c8bd8d49d9fc759067c75ee76157b812ce287775`. Its UI-only route is superseded; the current build changes Python and requires a full restart.
 
 Use the [current guide](../../PRIME_AS_IS_RESTART.md) and [HIGHLY IMPORTANT settings](../../HIGHLY_IMPORTANT_RESTART_INFO.md).
+
+## Superseded by the mobile stopping-point checkpoint
+
+[Pre-mobile full-restart guide](pre-mobile-pairing-PRIME_AS_IS_RESTART.md) preserves the exact guide bytes from main `79a6675ee6173fa99f49a5c2e9ec575d421eab6b` (runtime candidate `3122d349524fbce803970dc34ab6fc74dad87467`). Hosted Windows and visual failures became known after its local checks. Its restart commands are held and its old fetch-head guard is intentionally no longer the active procedure. Keep the working PC engine and use [current phone pairing](../../../PHONE_ACCESS.md). See the [current checkpoint](../../PRIME_AS_IS_RESTART.md).
