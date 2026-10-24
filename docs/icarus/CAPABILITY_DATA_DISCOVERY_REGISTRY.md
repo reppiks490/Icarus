@@ -73,8 +73,13 @@ Matches use exact admitted domains then exact canonical provider names, never
 fuzzy or host-suffix matches. A link is retained only when the candidate URL path
 matches the catalog operation path. Name-only wrappers and provider-level receipts
 can preserve ancestry, but do not prove candidate access. Links retain exact receipt
-path/SHA-256. Access evidence also requires an admitted HTTPS hostname and effective
-port 443; HTTP, alternate ports and non-admitted `www` variants cannot qualify.
+path/SHA-256. Access evidence also requires the approved collector's HTTPS API
+origin and effective port 443. Provider marketing domains retain ancestry links
+but cannot borrow access evidence from the API host. HTTP, alternate ports and
+non-admitted `www` variants cannot qualify. The origin allowlist in
+`federation.py` matches the origins of
+`tools/provider_exhaustive_collection.py:PROVIDERS`; a collector origin change
+requires a reviewed update to this mapping.
 Operation-specific blockers retain allowlisted reason codes without collector
 messages, credentials or raw payloads. A provider-level positive receipt cannot erase
 an operation's denial or establish its entitlement. Bytes are revalidated before an
@@ -84,6 +89,22 @@ credential/auth-blocked, quota-paused and denied-only evidence cannot advance.
 and an exact operation ID in the provider receipt's `verified_operations` list, with
 no blocker for that operation. Aggregate page counts without that operation-level
 success evidence remain links only. Rejected/restricted candidates do not advance.
+
+For operations sharing a provider, method and path, required query examples that
+distinguish their catalog descriptors must match exactly one occurrence in the
+candidate URL. For example, a verified Bybit `category=spot` operation cannot
+qualify `category=option`, a missing/empty category, or duplicate category fields.
+An ID-qualified singleton still requires its declared query binding. Missing or
+indistinguishable variant descriptors retain ancestry but cannot establish access.
+Ordinary query values such as an asset symbol are not inferred to be variant
+identifiers. Access remains operation-level evidence, not proof of every asset,
+query combination, historical interval or entitlement.
+
+Federation revision `registry-federation-v4` retains the API origin and query
+bindings on new links/events and rejects legacy links lacking these checks.
+Imports preserve immutable history: this change does not rewrite an earlier
+`ACCESS_TESTED` event or demote an existing candidate automatically. Consumers
+requiring current provenance must requalify historical v3 evidence under v4.
 
 ## Storage and safe receipts
 
