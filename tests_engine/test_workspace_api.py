@@ -105,6 +105,8 @@ def _seed(runner, price, label):
     runner.em.process_bar(Bar(180, price + 10, price + 10, price + 10, price + 10, 1), 2)
     runner.live_from_ts = 0
     runner.live_closed_start = 0
+    with runner.lock:
+        runner.publish_read_views()
 
 
 @pytest.fixture

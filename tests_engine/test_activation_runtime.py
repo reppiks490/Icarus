@@ -2,6 +2,7 @@
 from copy import deepcopy
 from dataclasses import asdict
 import json
+import threading
 import time
 
 import pytest
@@ -157,6 +158,7 @@ def test_recovered_feed_fault_keeps_cumulative_count_without_blocking_rollback(s
 def test_failed_commit_restores_exact_runner_references_and_points(setup, monkeypatch):
     store, _, runner, adapter, version = setup
     actual_history(runner)
+    runner.publish_read_views()
     before = dict(runner.__dict__)
     cfg = asdict(runner.cfg)
     finish = store._finish
@@ -171,6 +173,50 @@ def test_failed_commit_restores_exact_runner_references_and_points(setup, monkey
     assert set(runner.__dict__) == set(before)
     assert all(runner.__dict__[name] is value for name, value in before.items())
     assert asdict(runner.cfg) == cfg
+
+
+def test_adoption_publishes_cached_view_only_after_durable_commit_and_rollback(setup, monkeypatch):
+    store, port, runner, adapter, version = setup
+    runner.publish_read_views()
+    previous_views = runner._public_views
+    tag = "activation:" + version["version_id"]
+    entered, release = threading.Event(), threading.Event()
+    original_finish, committed = store._finish, []
+    def finish(operation, active):
+        if operation["status"] == "applied":
+            entered.set()
+            assert release.wait(3), "test durable commit was not released"
+        value = original_finish(operation, active)
+        committed.append(time.time())
+        return value
+    monkeypatch.setattr(store, "_finish", finish)
+    result, errors = {}, []
+    def activate():
+        try:
+            result.update(store.activate(version["version_id"], "cache-apply", adapter.boundary))
+        except BaseException as error:
+            errors.append(error)
+    thread = threading.Thread(target=activate)
+    thread.start()
+    try:
+        assert entered.wait(3)
+        assert runner.inputs_base.conf_min_votes == 9  # Staged inside the locked boundary.
+        assert runner._public_views is previous_views
+        pending = port.status(nonblocking=True)["assets"][0]
+        assert pending["view_stale"] is True and tag not in pending["inputs_sources"]
+    finally:
+        release.set()
+        thread.join(3)
+    assert not thread.is_alive() and not errors
+    assert result["status"] == "applied", result
+    current = port.status(nonblocking=True)["assets"][0]
+    assert current["view_stale"] is False
+    assert tag in current["inputs_sources"]
+    assert current["view_captured_at"] >= committed[0]
+    assert store.rollback("NQ", "cache-rollback", adapter.boundary)["status"] == "rolled_back"
+    restored = port.status(nonblocking=True)["assets"][0]
+    assert tag not in restored["inputs_sources"] and not restored["view_stale"]
+    assert restored["view_captured_at"] > current["view_captured_at"]
 
 
 @pytest.mark.parametrize("kind", ["entry", "open", "close", "exit"])

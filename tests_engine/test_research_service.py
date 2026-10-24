@@ -35,6 +35,9 @@ def portfolio(tmp_path):
         r.on_sub_bar(Bar(i * 60, 100, 102, 99, 101, 1), 1, live=False)
     r.warm = True
     port.runners["NQ"], port.order = r, ["NQ"]
+    with r.lock:
+        r.publish_read_views()
+    journal.publish_dashboard_views()
     yield port
     journal.con.close()
 
@@ -297,6 +300,8 @@ def test_status_public_survives_nan_and_never_empty_replies(http, portfolio):
     r = portfolio.runners["NQ"]
     r.state["hurst"] = float("nan")
     r.last_price = float("inf")
+    with r.lock:
+        r.publish_read_views()
     assert http("GET", "/status/public", headers={"Authorization": "Bearer wrong-token"})[0] == 401
     auth = {"Authorization": "Bearer test-token"}
     status, data = http("GET", "/status/public", headers=auth)
@@ -339,6 +344,7 @@ def test_phone_proxy_preflight_does_not_duplicate_access_activity(portfolio):
 
         status, _ = request(proxy.server_port, "/status/public", "test-token")
         assert status == 200
+        assert engine.access_registry.flush(), "drain asynchronous activity before persisted readback"
         after_valid = registry.snapshot()
         owner_after_valid = next(user for user in after_valid["users"] if user["id"] == "owner")
         assert owner_after_valid["request_count"] == owner_before["request_count"] + 1
@@ -353,6 +359,7 @@ def test_phone_proxy_preflight_does_not_duplicate_access_activity(portfolio):
 
         status, _ = request(engine.server_port, "/status/public", "invalid-token")
         assert status == 401
+        assert engine.access_registry.flush(), "drain asynchronous rejected-auth activity"
         after_direct_invalid = registry.snapshot()
         assert after_direct_invalid["activity_summary"]["failed_auth_24h"] == after_proxy_invalid["activity_summary"]["failed_auth_24h"] + 1
         owner_after_direct_invalid = next(user for user in after_direct_invalid["users"] if user["id"] == "owner")

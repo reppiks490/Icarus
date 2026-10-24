@@ -83,6 +83,7 @@ def _child(state_arg, phase, ready_arg, receipt_arg):
                         "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
                         ("NQ", now-1, "synthetic-"+key, "sell", 1, 100.+i, "exit", "synthetic fixture", 20.*i, 0, 1, journal.run_id))
                     journal.con.commit()
+                journal.publish_dashboard_views()
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         Path(ready_arg).write_text(json.dumps({"port": server.server_port}), encoding="utf-8")

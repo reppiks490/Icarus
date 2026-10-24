@@ -111,7 +111,7 @@ def test_complete_paper_accounting_reuses_manager_totals(engine, monkeypatch):
         {"id": row["id"], "currency": "USD", "runtime_available": True, "snapshot_ts": now,
          "realized_pnl": row["pnl"]["realized_pnl"], "open_pnl": row["pnl"]["open_pnl"],
          "open_positions": 1, "oldest_open_mark_ts": now} for row in snapshot["profiles"]], as_of_ts=now)
-    monkeypatch.setattr(srv.command_centers, "snapshot", lambda: snapshot)
+    monkeypatch.setattr(srv.command_centers, "snapshot", lambda **kwargs: snapshot)
     srv.command_centers.portfolios = {key: object() for key in ("cc1", "cc2", "cc3", "cc4")}
     status, result = request("/api/command-centers/cc3")
     assert status == 200
@@ -139,6 +139,7 @@ def test_missing_other_runtime_preserves_valid_individual_pnl_on_both_endpoints(
             ("NQ", "closed", 1, 1, 100, 1000, 101, 1060, "test", 10, 1),
         )
         journals[0].con.commit()
+        journals[0].publish_dashboard_views()
         code, combined = request("/api/command-centers")
         assert code == 200
         for key in ("cc1", "cc4"):
@@ -171,7 +172,7 @@ def test_invalid_accounting_values_never_produce_complete_aggregate(engine, monk
     srv, request = engine
     snapshot = srv.command_centers.snapshot()
     snapshot["profiles"][0]["pnl"]["open_pnl"] = bad_value
-    monkeypatch.setattr(srv.command_centers, "snapshot", lambda: snapshot)
+    monkeypatch.setattr(srv.command_centers, "snapshot", lambda **kwargs: snapshot)
     srv.command_centers.portfolios = {key: object() for key in ("cc1", "cc2", "cc3", "cc4")}
     status, result = request("/api/command-centers/cc1")
     assert status == 200
@@ -201,7 +202,7 @@ def test_corrupt_duplicate_workspace_accounting_is_unavailable(engine, monkeypat
     srv, request = engine
     snapshot = srv.command_centers.snapshot()
     snapshot["profiles"][3]["id"] = "cc1"
-    monkeypatch.setattr(srv.command_centers, "snapshot", lambda: snapshot)
+    monkeypatch.setattr(srv.command_centers, "snapshot", lambda **kwargs: snapshot)
     srv.command_centers.portfolios = {key: object() for key in ("cc1", "cc2", "cc3", "cc4")}
     result = request("/api/command-centers/cc1")[1]
     assert result["accounting"]["complete"] is False
@@ -231,7 +232,7 @@ def test_missing_marks_with_numeric_fallback_never_appear_as_verified_pnl(engine
     snapshot["aggregate"]["accounting_complete"] = False
     snapshot["profiles"][0]["valuation_complete"] = False
     snapshot["profiles"][0]["pnl"]["open_pnl"] = 0.0
-    monkeypatch.setattr(srv.command_centers, "snapshot", lambda: snapshot)
+    monkeypatch.setattr(srv.command_centers, "snapshot", lambda **kwargs: snapshot)
     srv.command_centers.portfolios = {key: object() for key in ("cc1", "cc2", "cc3", "cc4")}
     result = request("/api/command-centers/cc1")[1]
     assert result["accounting"]["complete"] is False

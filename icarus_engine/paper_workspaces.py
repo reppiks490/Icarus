@@ -214,8 +214,17 @@ class WorkspacePortfolio(Portfolio):
     def _resolved(self, spec, workspace=None):
         workspace = self.workspace if workspace is None else workspace
         override = workspace.get("asset_overrides", {}).get(spec.symbol, {})
-        chart = validate_chart_config({**workspace["chart"], **override.get("chart", {})})
-        values = {**workspace["inputs"], **override.get("inputs", {})}
+        from .restart_defaults import read_default_template
+        policy = read_default_template(self.base_dir)
+        # ETH and SOL's three owner-requested exceptions also apply when it is added
+        # later. Explicit per-asset edits remain the last configuration layer.
+        exception = policy is not None and spec.symbol in {"ETH", "SOL"}
+        chart = validate_chart_config({**workspace["chart"],
+                                       **({"timeframe": "30"} if exception else {}),
+                                       **override.get("chart", {})})
+        values = {**workspace["inputs"],
+                  **({"qty_contracts": 25, "use_session": False} if exception else {}),
+                  **override.get("inputs", {})}
         preset = override.get("preset", self.preset)
         if override.get("preset") and not Path(preset_path(self.base_dir, preset)).is_file():
             raise ValueError(f"workspace preset {preset!r} not found")
@@ -300,6 +309,7 @@ class WorkspacePortfolio(Portfolio):
             try:
                 if not runner.rewarming:
                     runner.poll()
+                    self._publish_runner_read_views(runner)
             except Exception as error:
                 runner.errors += 1
                 runner.last_error = f"{type(error).__name__}: {error}"
@@ -318,6 +328,7 @@ class WorkspacePortfolio(Portfolio):
         return super()._sampler()
 
     def start(self):
+        self.journal.start_display_publisher(since_ts=self.started)
         if not hasattr(self, "_workspace_power_gate"):
             return super().start()
         # Provider preparation may block. Cancellation is checked after every
@@ -417,6 +428,14 @@ class WorkspacePortfolio(Portfolio):
                 self.runners = {symbol: previous.get(symbol, staged.get(symbol)) for symbol in requested}
                 self.order = requested
                 self.workspace = copy.deepcopy(candidate)
+                # Publish the committed selected configuration, including the
+                # first WARMING view for additions, before releasing its gate.
+                # Unchanged siblings retain their existing captured views.
+                for symbol in requested:
+                    if symbol in changed_symbols or symbol in staged:
+                        runner = self.runners[symbol]
+                        with runner.lock:
+                            runner.publish_read_views()
             except Exception:
                 for runner in additions:
                     runner._removed = True
@@ -503,9 +522,14 @@ class PaperWorkspaceManager:
         return self.root / f"{profile_id}.json"
 
     def _load_profiles(self):
+        from .restart_defaults import read_default_template
+        policy = read_default_template(self.parent.base_dir)
         for default in _PROFILE_DEFAULTS:
             path = self._path(default["id"])
             profile = copy.deepcopy(default)
+            if not path.exists() and policy is not None:
+                profile["inputs"] = copy.deepcopy(policy["baseline"]["inputs"])
+                profile["chart"] = copy.deepcopy(policy["baseline"]["chart"])
             if path.exists():
                 with path.open("r", encoding="utf-8") as fh:
                     saved = json.load(fh)
@@ -757,7 +781,7 @@ class PaperWorkspaceManager:
         ]
         return {"feeds": feeds, "adapters": adapters, "execution_authorized": False}
 
-    def _profile_snapshot(self, profile_id, now):
+    def _profile_snapshot(self, profile_id, now, *, nonblocking=False):
         # Never wait behind another workspace's replay. A busy record exposes
         # committed settings and explicit unavailable valuation, no candidate inputs.
         lock = self.configuration_lock(profile_id)
@@ -768,20 +792,28 @@ class PaperWorkspaceManager:
             try:
                 if portfolio is not None and not acquired:
                     raise RuntimeError("workspace configuration is changing")
-                status = portfolio.status(nonblocking=True) if portfolio else {"assets": [], "all_warm": False}
+                status = portfolio.status(nonblocking=nonblocking) if portfolio else {"assets": [], "all_warm": False}
             except RuntimeError:
                 # One initial/busy runner must not disconnect every workspace's
                 # overview or turn missing open marks into known zeroes.
                 status = {"assets": [], "all_warm": False, "view_stale": True,
                           "snapshot_unavailable": True}
             readable = portfolio if acquired and not status.get("snapshot_unavailable") else None
-            runners = readable.runner_list() if readable else []
+            runners = (tuple(readable.runners.values())
+                       if nonblocking and isinstance(getattr(readable, "runners", None), dict)
+                       else readable.runner_list() if readable else [])
             effective = runners[0].inputs_base.to_dict() if runners else {}
             # Lifecycle retirement closes the journal under this same selected
             # configuration lock. Busy snapshots must not retain a closing DB.
-            closed = (portfolio.journal.closed_paper_profit(as_of_ts=now)
+            closed = (portfolio.journal.closed_paper_profit(as_of_ts=now, nonblocking=nonblocking)
                       if portfolio and acquired else
                       {"realized_pnl": None, "closed_pieces": None, "last_close_ts": None})
+            realized_lineage = {
+                "realized_snapshot_ts": closed.get("view_captured_at", now if portfolio and acquired else None),
+                "realized_view_stale": bool(closed.get("view_stale", not (portfolio and acquired))),
+                "realized_view_reason": closed.get("reason"),
+            }
+            status.update(realized_lineage)
             missing_marks = []
             for asset in status.get("assets", []):
                 if asset.get("position"):
@@ -806,7 +838,11 @@ class PaperWorkspaceManager:
             marks_complete = (len(marks) == len(open_assets) == position_count
                               and not status.get("view_stale", False))
             ledger = {"id": profile_id, "currency": "USD", "runtime_available": portfolio is not None,
-                            "snapshot_ts": now, "realized_pnl": closed["realized_pnl"] if portfolio else None,
+                            # This is the assembled valuation receipt. The
+                            # realized component retains its own source clock;
+                            # fresh marks may follow an unchanged closure book.
+                            "snapshot_ts": now, **realized_lineage,
+                            "realized_pnl": closed["realized_pnl"] if portfolio else None,
                             "open_pnl": status.get("open_profit", 0.0) if portfolio and not status.get("view_stale", False) else None,
                             "open_positions": position_count,
                       "oldest_open_mark_ts": min(marks) if marks and marks_complete else None}
@@ -823,15 +859,15 @@ class PaperWorkspaceManager:
             if acquired:
                 lock.release()
 
-    def snapshot(self):
-        return self._snapshot()
+    def snapshot(self, *, nonblocking=False):
+        return self._snapshot(nonblocking=nonblocking)
 
-    def _snapshot(self):
+    def _snapshot(self, *, nonblocking=False):
         now = int(time.time())
         rows = []
         ledgers = []
         for profile_id in self.profiles:
-            row, ledger = self._profile_snapshot(profile_id, now)
+            row, ledger = self._profile_snapshot(profile_id, now, nonblocking=nonblocking)
             rows.append(row)
             ledgers.append(ledger)
         accounting = validate_paper_pnl(ledgers, as_of_ts=now)

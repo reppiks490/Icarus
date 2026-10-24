@@ -95,7 +95,7 @@ from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
 from .performance_proof import PerformanceProofStore
-from .access_control import AccessRegistry
+from .access_control import AccessRegistry, AccessUnavailable
 from .latency_telemetry import LatencyTelemetry
 from .source_reliability import SourceReliabilityStore
 from .qualification_receipts import (
@@ -296,7 +296,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
     def workspace_snapshot(profile_id):
         """Filter runner state while retaining the existing all-ledger accounting."""
-        state = copy.deepcopy(command_centers.snapshot())
+        state = copy.deepcopy(command_centers.snapshot(nonblocking=True))
         rows = state.get("profiles", [])
         profile = next((row for row in rows if row.get("id") == profile_id), None)
         if profile is None:
@@ -1368,6 +1368,12 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 # Stop before partial headers can dispatch or send 100 Continue.
                 # Only our input stream emits this; upstream errors stay visible.
                 self.close_connection = True
+            except AccessUnavailable:
+                # A locked/corrupt authority is not a bad credential. Return a
+                # bounded unavailable receipt without a second auth attempt.
+                self.close_connection = True
+                self._json(503, {"detail": "Access registry is temporarily unavailable",
+                                 "error": "ACCESS_AUTHORITY_UNAVAILABLE"})
 
         def log_message(self, *a: Any) -> None:  # quiet
             pass
@@ -1704,7 +1710,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/workspace-dashboard.js":
                 return self._send(200, (html_path.parent / "workspace-dashboard.js").read_bytes(), "text/javascript")
             if p.path == "/api/command-centers":
-                snapshot = command_centers.snapshot()
+                snapshot = command_centers.snapshot(nonblocking=True)
                 snapshot["input_meta"] = meta
                 return self._json(200, snapshot)
             if p.path == "/":
@@ -2323,6 +2329,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 over = _read_json(os.path.join(port.base_dir, f"inputs.{r.symbol}.json"))
                 return self._json(200, {"asset": r.symbol, "effective": r.inputs.to_dict(), "base": r.inputs_base.to_dict(), "sources": r.cfg.sources,
                                         "overrides": {k: v for k, v in over.items() if not k.startswith("_")}, "preset": r.cfg.preset, "pts_scale": r.pts_scale,
+                                        "session": r.spec.session,
                                         "instrument": {
                                             "kind": r.spec.kind,
                                             "continuous_symbol": r.spec.tv_symbol if r.spec.kind == "futures" else None,
@@ -3389,7 +3396,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         try:
                             for r in targets:
                                 port.rewarm_asset(r.symbol, vals, bool(body.get("persist", True)) if vals is not None else False,
-                                                  reset=reset, chart=chart, **kwargs)
+                                                  reset=reset, chart=chart, _publish_views=False, **kwargs)
                                 applied.append(r)
                         except Exception as apply_ex:
                             port.equity_epoch = equity_epoch_before
@@ -3421,6 +3428,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                             r.live_from_ts = int(cutover)
                             r.live_closed_start = len(r.em.closed)
                         port.equity_epoch = cutover
+                        # Publish only the fully committed batch. Cached readers
+                        # retain the old captured values while any later target
+                        # is replaying or might still roll the batch back.
+                        for r in targets:
+                            r.publish_read_views()
                     done = [r.symbol for r in targets]
                     return self._json(200, {"ok": True, "note": f"configuration applied and re-warmed {done}", "assets": done,
                                             "chart": chart or None})
@@ -3486,6 +3498,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     class ResearchHTTPServer(ThreadingHTTPServer):
         def _close_background_services(self):
             closers = (
+                access_registry.close,
                 workspace_power.close,
                 workspace_panels.close,
                 subsystem_connections.close,
@@ -3515,6 +3528,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         def serve_forever(self, poll_interval=.5):
             background = bool(getattr(self, "background_workers_enabled", True))
             if background:
+                access_registry.start()
                 subsystem_connections.start()
                 workspace_panels.start()
                 workspace_power.start()
@@ -3542,6 +3556,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
     srv = ResearchHTTPServer(("127.0.0.1", http_port), H)
     srv.shared_dashboard = shared_dashboard
+    srv.access_registry = access_registry
     srv.command_centers = command_centers
     srv.workspace_jobs = workspace_jobs
     srv.workspace_power = workspace_power

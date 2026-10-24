@@ -66,7 +66,7 @@ class WorkspaceAPI:
     def _selected_snapshot(self, profile_id):
         """Validate one workspace without reading sibling runtime/journal state."""
         now = int(time.time())
-        selected, ledger = self.manager._profile_snapshot(profile_id, now)
+        selected, ledger = self.manager._profile_snapshot(profile_id, now, nonblocking=True)
         ledgers = []
         for candidate_id in self.manager.profiles:
             if candidate_id == profile_id:
