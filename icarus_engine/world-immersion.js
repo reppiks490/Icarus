@@ -4,6 +4,7 @@
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
   let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,radarTether=null,navPreview=null,inspectionField=null,inspectedPanel=null,inspectionKey=null,topologyHighlightTarget=null,topologyHighlightKey=null,inspectionTimer=0,topologyTimer=0,navPreviewTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
   const readoutCache=new Map(),readoutTimers=new WeakMap(),panelActivityTimers=new WeakMap(),topologyActivityTimers=new WeakMap();
+  let refreshFrame=0;
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
   const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
@@ -204,7 +205,8 @@
       panel.dataset.worldPanelOrdinal=String(index+1);
       panel.dataset.worldPanelKey=panelStableKey(panel);
       const readout=panel.querySelector(':scope > .world-panel-index');
-      if(readout)readout.textContent='P'+String(index+1).padStart(2,'0')+' / '+String(total).padStart(2,'0')+' · '+String(panel.dataset.worldPanelKind||'instrument').toUpperCase();
+      const label='P'+String(index+1).padStart(2,'0')+' / '+String(total).padStart(2,'0')+' · '+String(panel.dataset.worldPanelKind||'instrument').toUpperCase();
+      if(readout&&readout.textContent!==label)readout.textContent=label;
     });
   }
   function observePanel(element){
@@ -562,6 +564,9 @@
     }
   }
   function refresh(){
+    // An explicit refresh also consumes any pending observer update.
+    if(refreshFrame)cancelAnimationFrame(refreshFrame);
+    refreshFrame=0;
     ensureAmbient();ensureTopology();ensureInspectionField();ensureSectionRadar();classifyReadouts();animateReadoutChanges();
     if(inspectedPanel&&!inspectedPanel.isConnected)clearInspection();
     const majors=[...document.querySelectorAll('#view > :is(.card,.asset,.hero,.group), #view > .assets > .asset')];
@@ -595,7 +600,7 @@
           if(record.target?.nodeType===1&&record.target.closest?.('.world-topology'))return false;
           return [...record.addedNodes,...record.removedNodes].some(node=>!decorativeNode(node));
         });
-        if(meaningful)requestAnimationFrame(refresh);
+        if(meaningful&&!refreshFrame)refreshFrame=requestAnimationFrame(refresh);
       });
       viewMutation.observe(view,{childList:true,subtree:true});
     }

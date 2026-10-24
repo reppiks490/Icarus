@@ -9,7 +9,12 @@ from urllib.parse import urlparse
 
 import pytest
 
+from icarus_engine.workspace_universe import dashboard_assets
+
 from tests_engine.test_workspace_api import _job_tape, workspace_http  # noqa: F401
+from tests_engine.test_world_immersion import (  # exercised by the hosted browser step
+    test_immersion_idle_cards_do_not_reschedule_refresh_and_external_changes_coalesce,
+)
 
 
 @pytest.mark.skipif(not shutil.which('node'), reason='optional Node unavailable')
@@ -41,7 +46,7 @@ def test_asset_card_distinguishes_past_error_counts_from_current_faults(count, m
 
 
 @contextmanager
-def common_page(workspace_http, scope="cc1", token="api-owner", *, viewport=None):
+def common_page(workspace_http, scope="cc1", token="api-owner", *, viewport=None, pause_periodic=False):
     playwright = pytest.importorskip("playwright.sync_api")
     server, _, request = workspace_http
     base = f"http://127.0.0.1:{server.server_port}"
@@ -57,6 +62,12 @@ def common_page(workspace_http, scope="cc1", token="api-owner", *, viewport=None
             page.icarus_errors=[]
             page.on('pageerror',lambda error:page.icarus_errors.append(str(error)))
             page.add_init_script("localStorage.setItem('icarus-engine-token'," + json.dumps(token) + ");sessionStorage.setItem('icarus-intro-seen','1')")
+            if pause_periodic:
+                page.add_init_script("""(() => {
+                  const schedule=window.setInterval.bind(window);
+                  window.icarusTestIntervals=[];
+                  window.setInterval=(...args)=>{const id=schedule(...args);icarusTestIntervals.push(id);return id;};
+                })();""")
             def route_request(route):
                 if route.request.url.startswith(base + "/"):
                     route.continue_()
@@ -65,6 +76,9 @@ def common_page(workspace_http, scope="cc1", token="api-owner", *, viewport=None
             page.route("**/*", route_request)
             page.goto(base + path, wait_until="load")
             page.evaluate("async()=>{await dashboardReady}")
+            if pause_periodic:
+                page.evaluate("()=>icarusTestIntervals.forEach(id=>clearInterval(id))")
+                page.wait_for_function("()=>!statusRefreshes&&!statusPollBusy&&(typeof chartRefreshInFlight==='undefined'||!chartRefreshInFlight)")
             yield page, base
         finally:
             browser.close()
@@ -315,7 +329,10 @@ def test_common_selected_panel_controls_and_shared_evidence_are_labeled(workspac
 @pytest.mark.parametrize('panel,selector',[('possibility','#possibilityPanel'),('chronofold','#chronofoldPanel'),
     ('commissioning','#commissioningPanel'),('engine-control','#ecSummary')])
 def test_completed_subsystem_panels_render_real_selected_responses(workspace_http,panel,selector):
-    with common_page(workspace_http) as (page,_):
+    # Test the selected reader after setup, without a periodic status reader
+    # legitimately taking its nonblocking workspace lock at the same instant.
+    # Request deadlines stay real; concurrent-busy behavior has separate checks.
+    with common_page(workspace_http,pause_periodic=True) as (page,_):
         with page.expect_response(lambda res:urlparse(res.url).path=='/api/command-centers/cc1/panels/'+panel) as response:
             page.evaluate('panel=>setView(panel)',panel)
         assert response.value.status==200
@@ -537,3 +554,225 @@ def test_native_read_only_panels_render_without_arming_actions(workspace_http, p
             if page.locator(action).count():
                 assert page.locator(action).is_disabled()
         assert page.icarus_errors == []
+
+
+# Main full-catalog rendering and bounded request-flow regressions.
+def _full_main(page,symbols=None):
+    return page.evaluate("""symbols => {
+      const data=structuredClone(last), base=data.assets.find(a=>a.symbol==='NQ');
+      const chart=charts.NQ80;
+      if(!chart?.bars?.length)throw Error('real fixture chart is required');
+      data.assets=symbols.map((symbol,i)=>({...structuredClone(base),symbol,price:100+i}));
+      for(const symbol of symbols) charts[symbol+'80']=structuredClone(chart);
+      view='overview';lastView=null;render(data);
+      return data.assets.length;
+    }""", list(dashboard_assets()) if symbols is None else symbols)
+
+
+@pytest.mark.parametrize('live_values',[False,True])
+def test_35_asset_status_updates_retain_cards_and_chart_nodes(workspace_http,live_values):
+    with common_page(workspace_http, 'main',pause_periodic=True) as (page, _):
+        assert _full_main(page) == 35
+        result=page.evaluate("""liveValues => {
+          const grid=document.querySelector('#assets');
+          const cards=[...grid.children], svgs=cards.map(c=>c.querySelector('svg'));
+          const watch=new MutationObserver(()=>{});watch.observe(grid,{childList:true,subtree:true});
+          const began=performance.now();
+          for(let i=0;i<5;i++){
+            const data=structuredClone(last);
+            if(liveValues)for(const asset of data.assets){asset.price+=.25;asset.bar_age=(asset.bar_age||0)+1;}
+            render(data);void grid.offsetHeight;
+          }
+          const removedSvg=watch.takeRecords().flatMap(r=>[...r.removedNodes]).reduce((n,el)=>
+            n+(el.nodeType===1?Number(el.matches('svg'))+el.querySelectorAll('svg').length:0),0);
+          watch.disconnect();
+          return {retained:cards.filter((c,i)=>c===grid.children[i]).length,
+            retainedSvg:svgs.filter((s,i)=>s&&s===grid.children[i].querySelector('svg')).length,
+            removedSvg,milliseconds:performance.now()-began};
+        }""",live_values)
+        print('35-asset '+('live' if live_values else 'unchanged')+' status render:',result)
+        assert result['retained'] == result['retainedSvg'] == 35, result
+        assert result['removedSvg'] == 0, result
+        assert not page.icarus_errors
+
+
+def test_live_asset_values_and_membership_update_without_resetting_other_charts(workspace_http):
+    with common_page(workspace_http, 'main',pause_periodic=True) as (page, _):
+        _full_main(page)
+        result=page.evaluate("""() => {
+          const nq=document.querySelector('.asset[data-sym="NQ"]');
+          const svg=nq.querySelector('svg'), es=document.querySelector('.asset[data-sym="ES"]');
+          const data=structuredClone(last);data.assets.find(a=>a.symbol==='NQ').price=987.25;
+          data.assets.find(a=>a.symbol==='NQ').last_error='<new feed error>';
+          data.assets=data.assets.filter(a=>a.symbol!=='ES').reverse();render(data);
+          return {nqRetained:nq===document.querySelector('.asset[data-sym="NQ"]'),
+            svgRetained:svg===nq.querySelector('svg'),oldEsConnected:es.isConnected,
+            price:nq.querySelector('.px').textContent,error:nq.querySelector('[data-asset-error-detail]')?.textContent,
+            symbols:[...document.querySelectorAll('#assets > .asset')].map(c=>c.dataset.sym),
+            expected:data.assets.map(a=>a.symbol)};
+        }""")
+        assert result['nqRetained'] and result['svgRetained'], result
+        assert not result['oldEsConnected']
+        assert result['price'] == '987.25' and result['error'] == '<new feed error>', result
+        assert result['symbols'] == result['expected']
+        assert not page.icarus_errors
+
+
+def test_overlapping_chart_refreshes_share_one_bounded_pass(workspace_http):
+    with common_page(workspace_http, 'main',pause_periodic=True) as (page, base):
+        page.wait_for_function("()=>!statusRefreshes&&!statusPollBusy&&(typeof chartRefreshInFlight==='undefined'||!chartRefreshInFlight)")
+        _full_main(page)
+        chart=page.evaluate('charts.NQ80')
+        held=[]
+        calls=[]
+        def hold(route):
+            calls.append(route.request.url.split('/api/chart/',1)[1].split('?',1)[0])
+            held.append(route)
+        page.route(base+'/api/chart/**',hold)
+        page.evaluate("()=>{window.batchDone=false;window.batchPromise=Promise.all([refreshCharts(),refreshCharts()]).then(()=>{batchDone=true;});}")
+        page.wait_for_timeout(100)
+        assert len(calls) == len(set(calls)), 'overlapping refreshes issued duplicate chart reads: '+str(calls)
+        max_active=len(held)
+        for _ in range(100):
+            batch,held[:]=held[:],[]
+            for route in batch:
+                route.fulfill(status=200,content_type='application/json',body=json.dumps(chart))
+            page.wait_for_timeout(20)
+            max_active=max(max_active,len(held))
+            if page.evaluate('batchDone'):
+                break
+        assert page.evaluate('batchDone'), calls
+        assert len(calls) == len(set(calls)) == 35, calls
+        assert max_active <= 4, max_active
+        assert not page.icarus_errors
+
+
+def test_one_slow_chart_does_not_hold_back_other_assets(workspace_http):
+    with common_page(workspace_http,'main',pause_periodic=True) as (page,base):
+        page.wait_for_function("()=>!statusRefreshes&&!statusPollBusy&&(typeof chartRefreshInFlight==='undefined'||!chartRefreshInFlight)")
+        _full_main(page)
+        chart=page.evaluate('charts.NQ80')
+        held=[]
+        def reply(route):
+            symbol=route.request.url.split('/api/chart/',1)[1].split('?',1)[0]
+            if symbol=='NQ':
+                held.append(route)
+            else:
+                route.fulfill(status=200,content_type='application/json',body=json.dumps({**chart,'symbol':symbol}))
+        page.route(base+'/api/chart/**',reply)
+        page.evaluate("()=>{window.beforeLastChart=charts.M6A80;window.slowChartBatch=refreshCharts();}")
+        try:
+            page.wait_for_function('()=>charts.M6A80!==window.beforeLastChart',timeout=8000)
+            assert len(held)==1
+        finally:
+            for route in held:
+                route.fulfill(status=200,content_type='application/json',body=json.dumps(chart))
+            page.evaluate('async()=>{await window.slowChartBatch;}')
+        assert not page.icarus_errors
+
+
+def test_main_real_status_deadline_expires_then_automatic_poll_recovers(workspace_http):
+    with common_page(workspace_http,'main') as (page,base):
+        page.wait_for_function('()=>!statusRefreshes&&!statusPollBusy')
+        _full_main(page)
+        data=page.evaluate('last')
+        page.route(base+'/status/public',lambda route:route.fulfill(status=200,content_type='application/json',body=json.dumps(data)))
+        page.evaluate('async()=>{await refresh();}')
+        page.unroute(base+'/status/public')
+        held=[]
+        page.route(base+'/status/public',lambda route:held.append(route))
+        page.evaluate('()=>{window.heldStatus=refresh();}')
+        page.wait_for_function('()=>last===null',timeout=15000)
+        assert page.evaluate('Object.keys(charts).length===0&&Object.keys(tradesCache).length===0')
+        page.unroute(base+'/status/public')
+        page.route(base+'/status/public',lambda route:route.fulfill(status=200,content_type='application/json',body=json.dumps(data)))
+        # Recovery must happen from the real scheduled poll, without reload or
+        # extending the deadline to disguise an unavailable observation.
+        page.wait_for_function('()=>last?.assets.length===35',timeout=6000)
+        assert page.locator('#assets > .asset').count()==35
+        assert not page.icarus_errors
+
+
+def test_status_flow_remains_single_flight_during_slow_chart_batch(workspace_http):
+    with common_page(workspace_http, 'main',pause_periodic=True) as (page, base):
+        page.wait_for_function("()=>!statusRefreshes&&!statusPollBusy&&(typeof chartRefreshInFlight==='undefined'||!chartRefreshInFlight)")
+        _full_main(page)
+        data=page.evaluate('last')
+        chart=page.evaluate('charts.NQ80')
+        held=[]
+        statuses=[]
+        page.route(base+'/api/chart/**',lambda route:held.append(route))
+        def status(route):
+            statuses.append(True)
+            route.fulfill(status=200,content_type='application/json',body=json.dumps(data))
+        page.route(base+'/status/public',status)
+        page.evaluate("()=>{window.chartBatch=refreshCharts();}")
+        page.wait_for_timeout(100)
+        assert held
+        page.evaluate('async()=>{await pollStatus();}')
+        state=page.evaluate('()=>({assetCount:last?.assets.length,age:Date.now()-lastStatusAt,statusRefreshes,statusPollBusy})')
+        assert state.get('assetCount')==35 and state['age']<1000, state
+        assert len(statuses) == 1, {'statuses':len(statuses),'state':state}
+        page.unroute(base+'/api/chart/**')
+        for route in held:
+            route.fulfill(status=200,content_type='application/json',body=json.dumps(chart))
+        # Remaining synthetic symbols need no real provider requests.
+        page.route(base+'/api/chart/**',lambda route:route.fulfill(status=200,content_type='application/json',body=json.dumps(chart)))
+        page.evaluate('async()=>{await window.chartBatch;}')
+        assert not page.icarus_errors
+
+
+def test_selected_chart_reads_remain_serial_for_exclusive_workspace_reader(workspace_http):
+    with common_page(workspace_http,'cc1',pause_periodic=True) as (page,base):
+        _full_main(page,['NQ','ES'])
+        chart=page.evaluate('charts.NQ80')
+        held=[]
+        page.route(base+'/api/command-centers/cc1/chart/**',lambda route:held.append(route))
+        page.evaluate('()=>{window.selectedChartPass=refreshCharts();}')
+        page.wait_for_timeout(100)
+        first_count=len(held)
+        page.unroute(base+'/api/command-centers/cc1/chart/**')
+        page.route(base+'/api/command-centers/cc1/chart/**',lambda route:route.fulfill(status=200,content_type='application/json',body=json.dumps(chart)))
+        for route in held:
+            route.fulfill(status=200,content_type='application/json',body=json.dumps(chart))
+        page.evaluate('async()=>{await window.selectedChartPass;}')
+        assert first_count==1, 'selected chart requests must respect the exclusive workspace reader'
+        assert not page.icarus_errors
+
+
+def test_main_automatic_status_survives_a_chart_deadline_and_chart_recovers(workspace_http):
+    with common_page(workspace_http,'main') as (page,base):
+        page.wait_for_function('()=>!statusRefreshes&&!statusPollBusy&&!chartRefreshInFlight')
+        _full_main(page)
+        data=page.evaluate('last')
+        chart=page.evaluate('charts.NQ80')
+        statuses=[]
+        hold_nq=[True]
+        def status(route):
+            statuses.append(True)
+            route.fulfill(status=200,content_type='application/json',body=json.dumps(data))
+        def chart_response(route):
+            symbol=route.request.url.split('/api/chart/',1)[1].split('?',1)[0]
+            if symbol=='NQ' and hold_nq[0]:
+                return  # The real client deadline must expire this chart only.
+            route.fulfill(status=200,content_type='application/json',body=json.dumps({**chart,'symbol':symbol}))
+        page.route(base+'/status/public',status)
+        page.route(base+'/api/chart/**',chart_response)
+        page.evaluate("""()=>{
+          window.flowLostStatus=false;
+          window.flowMonitor=setInterval(()=>{if(!last)flowLostStatus=true;},100);
+          void refreshCharts();
+        }""")
+        try:
+            page.wait_for_function("()=>document.querySelector('#ch-NQ')?.textContent.includes('Request deadline exceeded')",timeout=14000)
+            state=page.evaluate('()=>({lost:flowLostStatus,count:last?.assets.length,age:Date.now()-lastStatusAt})')
+            assert not state['lost'] and state.get('count')==35 and state['age']<4000, state
+            assert len(statuses)>=3, statuses
+            hold_nq[0]=False
+            page.wait_for_function('()=>!chartRefreshInFlight')
+            page.evaluate('async()=>{await refreshCharts();}')
+            assert page.locator('#ch-NQ svg').count()==1
+            assert page.evaluate('!flowLostStatus&&last?.assets.length===35')
+            assert not page.icarus_errors
+        finally:
+            page.evaluate('clearInterval(flowMonitor)')

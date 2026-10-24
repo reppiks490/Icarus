@@ -433,6 +433,43 @@ async function loadChart(sym, n, el, opts, offset=0) {
     if (el && el.isConnected) el.innerHTML = '<div class="empty">chart unavailable: '+esc(e?.message||String(e))+'</div>';
   }
 }
+
+// Status changes update small card fields; a price tick must not discard the
+// existing SVG, scroll position, hover listeners or the card under the pointer.
+function updateOverviewAssets(assets) {
+  const grid=$('#assets'); if(!grid)return;
+  const existing=new Map([...grid.children].map(card=>[card.dataset.sym,card]));
+  const wanted=new Set(assets.map(a=>a.symbol));
+  for(const [symbol,card] of existing)if(!wanted.has(symbol))card.remove();
+  let cursor=grid.firstElementChild;
+  for(const asset of assets) {
+    const markup=assetCard(asset);let card=existing.get(asset.symbol);
+    if(!card||card._assetMarkup!==markup) {
+      const template=document.createElement('template');template.innerHTML=markup;
+      const next=template.content.firstElementChild;
+      if(!card)card=next;
+      else {
+        card.classList.toggle('long',next.classList.contains('long'));
+        card.classList.toggle('short',next.classList.contains('short'));
+        for(const selector of ['.ah','.pulse','.votes','.score','.posline','.exec']) {
+          const currentParts=card.querySelectorAll(':scope > '+selector);
+          const nextParts=next.querySelectorAll(':scope > '+selector);
+          currentParts.forEach((part,index)=>{
+            if(part.outerHTML!==nextParts[index].outerHTML)part.replaceWith(nextParts[index]);
+          });
+        }
+        const currentError=card.querySelector(':scope > [data-asset-error-detail]');
+        const nextError=next.querySelector(':scope > [data-asset-error-detail]');
+        if(currentError&&!nextError)currentError.remove();
+        else if(nextError&&!currentError)card.querySelector('.ah').after(nextError);
+        else if(nextError&&currentError.outerHTML!==nextError.outerHTML)currentError.replaceWith(nextError);
+      }
+      card._assetMarkup=markup;
+    }
+    if(card!==cursor)grid.insertBefore(card,cursor);
+    cursor=card.nextElementSibling;
+  }
+}
 async function downloadCSV(args) {
   try {
     const data=await IcarusClient.csv(args), url=URL.createObjectURL(data.blob);
@@ -621,7 +658,7 @@ function commandCenterHtml(c) {
     </details>
   </section>`;
 }
-function overviewHtml(d, A) {
+function overviewHtml(d, A, includeAssets=true) {
   const sinceLive = (d.live_profit||0) + (d.open_profit||0), histNet = (d.net||0) - sinceLive;
   return `
   ${goliveCard(window.ICARUS_GOLIVE)}
@@ -635,7 +672,7 @@ function overviewHtml(d, A) {
   <section class="card c3" id="engineCard"><h2>Engine</h2><div class="tiles" style="margin-top:0"><div class="tile"><div class="k">Assets</div><div class="v tnum">${A.length}</div></div><div class="tile"><div class="k">Live trades</div><div class="v tnum">${A.reduce((s,a)=>s+(a.live_trades||0),0)}</div></div><div class="tile"><div class="k">Hist. pieces</div><div class="v tnum">${A.reduce((s,a)=>s+(a.trades_total||0),0)}</div></div><div class="tile"><div class="k">Uptime</div><div class="v tnum">${age(d.uptime_sec)}</div></div></div>
     <div class="small muted" style="margin-top:8px">Preset <b>${esc(d.preset||'none')}</b> · NQ-point inputs scaled from NQ ${d.pts_ref&&d.pts_ref.price?px(d.pts_ref.price,0):'—'} · fills at real prices unless a card says otherwise · paper orders are local.</div></section>
   ${typeof possibilityQuickOverviewHtml==='function'?possibilityQuickOverviewHtml(A):''}
-  <div class="assets" id="assets">${A.map(assetCard).join('')}</div>
+  ${includeAssets?`<div class="assets" id="assets">${A.map(assetCard).join('')}</div>`:''}
   <section class="card c7"><h2>Paper fills <span class="sub" id="fillsSub"></span></h2><div class="scroll"><table id="fills"><thead><tr><th>Time</th><th>Asset</th><th>Side</th><th>Qty</th><th>Price</th><th>Kind</th><th>Signal</th><th>P&amp;L</th><th>Pos</th></tr></thead><tbody></tbody></table></div></section>
   <section class="card c5"><h2>Engine log</h2><div class="log" id="log" style="max-height:300px"></div></section>
   <section class="card c12"><h2>Closed trades <span class="sub">history (warm-up replay) and live, newest first</span></h2><div class="scroll" style="max-height:380px"><table id="trades"><thead><tr><th>Asset</th><th></th><th>Entry</th><th>Signal</th><th>Qty</th><th>Entry px</th><th>Exit</th><th>Exit px</th><th>Exit signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>`;
@@ -1263,16 +1300,25 @@ function render(d) {
     rh.className = 'badge ' + (healthy ? 'armed' : (st === 'red' || loopBad) ? 'paused' : 'warm');
     rh.title = ra ? `System Intelligence ${ra.recorded_at||''} · repo ${st} · loops ${ls.length-loopBad}/${ls.length} verified · main ${String(ra.main?.sha||'').slice(0,12)}` : 'System Intelligence unavailable';
   }
-  $('#tabs').innerHTML = tabsHtml(A);
+  const tabsMarkup=tabsHtml(A),tabs=$('#tabs');
+  if(tabs._markup!==tabsMarkup){tabs.innerHTML=tabsMarkup;tabs._markup=tabsMarkup;}
   const viewAsset = view.startsWith('asset:') ? A.find(a => a.symbol === view.slice(6)) : null;
   if (view.startsWith('asset:') && !viewAsset && !solo) view = 'overview';
   const rebuild = lastView !== view;
   if(rebuild)disposeWorkspaceView();
   if (view === 'overview') {
     if (rebuild) $('#view').innerHTML = overviewHtml(d, A);
-    else { const g = $('#assets'); if (g) g.innerHTML = A.map(assetCard).join(''); const h = document.createElement('div'); h.innerHTML = overviewHtml(d, A); ['goliveCard','repoAuditCard','commandCenterCard','heroCard','engineCard'].forEach(id => { const nu = h.querySelector('#'+id), cur = $('#'+id); if (nu && cur) cur.replaceWith(nu); }); }
+    else {
+      updateOverviewAssets(A);
+      const h=document.createElement('div');h.innerHTML=overviewHtml(d,A,false);
+      for(const id of ['goliveCard','repoAuditCard','commandCenterCard','heroCard','engineCard']) {
+        const next=h.querySelector('#'+id),current=$('#'+id);if(!next||!current)continue;
+        const markup=next.outerHTML;
+        if(current._overviewMarkup!==markup){next._overviewMarkup=markup;current.replaceWith(next);}
+      }
+    }
     lineChart($('#eqChart'), d.equity_series, {baseline: d.capital});
-    A.forEach(a => { const el = $(`#ch-${a.symbol}`); if (el) { const c = charts[a.symbol+80]; if (c) candles(el, c, {height:170}); } });
+    A.forEach(a => { const el = $(`#ch-${a.symbol}`); if (el&&!el.hasChildNodes()) { const c = charts[a.symbol+80]; if (c) candles(el, c, {height:170}); } });
     const rows = []; A.forEach(a => (tradesCache[a.symbol]||[]).forEach(t => rows.push({...t, symbol:a.symbol}))); rows.sort((x,y)=>y.exit_ts-x.exit_ts);
     const tradeWarnings = A.filter(a => tradeErrors[a.symbol]).map(a => `<tr><td colspan="10" class="empty neg"><b>${esc(a.symbol)}</b> trade history unavailable: ${esc(tradeErrors[a.symbol])}</td></tr>`).join('');
     const tradeRows = rows.slice(0,80).map(t => `<tr><td><b>${t.symbol}</b></td><td><span class="tag ${t.live?'live':''}">${t.live?'LIVE':'hist'}</span></td><td class="tnum">${dtz(t.entry_ts)}</td><td>${esc(t.id)}</td><td class="tnum">${t.qty}</td><td class="tnum">${px(t.entry)}</td><td class="tnum">${dtz(t.exit_ts)}</td><td class="tnum">${px(t.exit)}</td><td>${esc(t.comment)}</td><td class="tnum ${t.profit>=0?'pos':'neg'}">${sgn$(t.profit)}</td></tr>`).join('');
@@ -1483,11 +1529,32 @@ async function refreshCommandCenter() {
     window.IcarusWorldImmersion?.refresh();
   }
 }
+let chartRefreshInFlight=null;
 async function refreshCharts() {
   if (selectedWorkspacePoweredOff()) return;
   if (!last) return;
-  if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); }
-  if (view.startsWith('asset:') && Date.now()-lastWideChartRefresh >= 20000) { const s=view.slice(6); await loadChart(s, 4000, $('#dChart'), {height:360, compact:false}, chartOffsets[s]||0); }
+  if(chartRefreshInFlight)return chartRefreshInFlight;
+  chartRefreshInFlight=(async()=>{
+    if (view === 'overview') {
+      const assets=last.assets||[];
+      // Keep capacity for status and controls, and share one pass across ticks.
+      // Scoped readers share one exclusive configuration lock; Main's assets
+      // have independent read views and can use the bounded parallel pool.
+      const workers=IcarusClient.context.id==='main'?4:1;
+      let nextIndex=0;
+      await Promise.all(Array.from({length:Math.min(workers,assets.length)},async()=>{
+        while(nextIndex<assets.length) {
+          if(selectedWorkspacePoweredOff()||view!=='overview'||!last)return;
+          const asset=assets[nextIndex++];
+          await loadChart(asset.symbol,80,$(`#ch-${asset.symbol}`),{height:170});
+        }
+      }));
+      refreshFills();
+    }
+    if (view.startsWith('asset:') && Date.now()-lastWideChartRefresh >= 20000) { const s=view.slice(6); await loadChart(s, 4000, $('#dChart'), {height:360, compact:false}, chartOffsets[s]||0); }
+  })();
+  try{return await chartRefreshInFlight;}
+  finally{chartRefreshInFlight=null;}
 }
 async function refreshTrades(only) {
   if (selectedWorkspacePoweredOff()) return;
