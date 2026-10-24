@@ -1,0 +1,42 @@
+{
+  "schema": "icarus-native-subsystem-sources-v1",
+  "source_repository": "reppiks490/divine-providence",
+  "source_revision": "27ae69c593ede3019957100cd401625bd2424f43",
+  "source_tree": "bde186e028d14f79a70b4408e3d94a79d3bc32c7",
+  "upstream_python_requires": ">=3.11",
+  "embedded_python_requires": ">=3.10",
+  "upstream_license_file": null,
+  "upstream_license_status": "not_declared_in_pinned_tree",
+  "scope": "Unmodified four-module standard-library closure; ICARUS-owned namespace initializers exclude the upstream eager package initialization.",
+  "compatibility_boundary": "Actual Python 3.10 tests exercise native VectorEvent, SourceHealthRegistry/SourceHealthPlane and AION SourceSpec/Observation/EventStore persistence, receipt-time as-of replay, idempotency, revisions and chain verification. This does not extend the support policy of the complete upstream packages.",
+  "files": [
+    {
+      "path": "_divine/nexus/contracts.py",
+      "source_path": "systems/nexus/src/nexus/contracts.py",
+      "git_blob_sha": "e9fac11f0d205571e18930813693c6fb0f378d67",
+      "sha256": "3d9918e9a8fa658ae1ef6290efcab5dc287c8bd07c421a47274d6efa6c2e6877",
+      "size_bytes": 20114
+    },
+    {
+      "path": "_divine/nexus/source_health.py",
+      "source_path": "systems/nexus/src/nexus/source_health.py",
+      "git_blob_sha": "f884e9d911f3933d4a26b430ae033458adf3a1ce",
+      "sha256": "84a5f0ea2f1906779c51acc44f7ed67597c2f0780846a3d7fac3b8348f81db77",
+      "size_bytes": 21843
+    },
+    {
+      "path": "_divine/aion/contracts.py",
+      "source_path": "systems/aion/aion/contracts.py",
+      "git_blob_sha": "a3c4cd6d74577d9ff94e148cecd698c6b425f4cb",
+      "sha256": "3de1b91c4bcbc70b1730ee735fe3a1031c4ff8a777e030757e9c2e87e13e649a",
+      "size_bytes": 10709
+    },
+    {
+      "path": "_divine/aion/store.py",
+      "source_path": "systems/aion/aion/store.py",
+      "git_blob_sha": "a0fa57cdbfa0ef77f053bcfeeb7c92074f2a2714",
+      "sha256": "f2c816215e3a4d45aa5419c857fffd9693a67fd83f03f4ea53eea5c73ad374b6",
+      "size_bytes": 22944
+    }
+  ]
+}

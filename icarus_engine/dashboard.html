@@ -190,8 +190,10 @@ window.addEventListener('pagehide', event => {
   else window.IcarusClient.close();
 });
 </script>
+<script src="/workspace_power_ui.js"></script>
 <script src="/workspace-performance-ui.js"></script>
 <script src="/workspace-evidence-ui.js"></script>
+<script src="/subsystem-connections-ui.js"></script>
 <script src="/research-ui.js"></script>
 <script src="/sources-ui.js"></script>
 <script src="/market-data-ui.js"></script>
@@ -233,11 +235,11 @@ const dtz = t => t ? dtm(t) + ' ' + TZ : '—';
 const age = s => s==null ? 'never' : s<60 ? `${Math.round(s)}s` : s<3600 ? `${Math.round(s/60)}m` : `${(s/3600).toFixed(1)}h`;
 const tip = $('#tip'); const showTip = (h,x,y) => { tip.innerHTML=h; tip.style.display='block'; tip.style.left=(x+14)+'px'; tip.style.top=(y+14)+'px'; }; const hideTip = () => tip.style.display='none';
 let last = null, charts = {}, chartOffsets = {}, seenFills = new Set(), first = true, tradesCache = {}, tradeErrors = {}, META = null, PRESETS = [], COMMANDS = [], REGISTRY = [], catalogRefreshBusy = false, lastWideChartRefresh = 0;
-let statusLoadSeq = 0, lastStatusAt = 0, statusPollBusy = false;
+let statusLoadSeq = 0, lastStatusAt = 0, statusPollBusy = false, statusRefreshes = 0;
 let workspaceViewController = null;
 function disposeWorkspaceView(){workspaceViewController?.dispose();workspaceViewController=null;}
 const chartLoadSeq = new Map(), tradeLoadSeq = new Map();
-let accessTokenOnce = null;
+let accessTokenOnce = null, accessLoadSeq = 0;
 const CATALOG_READY = {presets:false, commands:false, registry:false};
 const params = new URLSearchParams(location.search);
 const solo = !!params.get('asset');
@@ -389,11 +391,17 @@ function assetCard(a) {
   const posHtml = ot.length ? ot.map(t => `<span><b class="${t.dir>0?'pos':'neg'}">${t.dir>0?'LONG':'SHORT'} ${t.qty}</b> <span class="muted">${esc(t.id)} @ ${px(t.entry)}</span></span>`).join(' ') + ` <span class="${upl>=0?'pos':'neg'} tnum">${sgn$(upl)}</span>` + (st.runner_tag?` <span class="chip">${esc(st.runner_tag)}${st.rate_be_armed?' ✓':''}</span>`:'')
     : `<span class="muted">flat</span>` + (st.armed_long?` <span class="chip b">ARMED LONG</span>`:'') + (st.armed_short?` <span class="chip r">ARMED SHORT</span>`:'');
   const warm = a.warm ? (a.rewarming ? `<span class="chip w">re-warming</span>` : '') : `<span class="chip w">warming ${a.bar_index>=0?a.bar_index+1+' bars':''}</span>`;
+  const recordedErrors = Number.isInteger(a.errors) && a.errors > 0 ? a.errors : 0;
+  const currentError = typeof a.last_error === 'string' ? a.last_error.trim() : '';
+  const errorBadge = currentError
+    ? `<span class="neg" data-asset-error="active" title="${esc(currentError)}">reported error${recordedErrors ? ' · '+recordedErrors+' recorded' : ''}</span>`
+    : recordedErrors ? `<span class="muted" data-asset-error="historical" title="Recorded since launch; no current error is reported. Check price and bar age separately.">${recordedErrors} past errors</span>` : '';
   return `<div class="asset ${side}" data-sym="${a.symbol}">
     <div class="ah"><span class="sym" title="ICARUS key ${esc(a.symbol)}">${esc(a.continuous_symbol||a.symbol)}</span><span class="px tnum">${px(a.price)}</span>
       <span class="dir ${st.rate_uptrend?'up':'dn'}" title="RATE SuperTrend direction">${st.rate_uptrend==null?'':st.rate_uptrend?'▲':'▼'}</span>
       <span class="chip ${regClass(st.rate_regime_str)}">${esc(st.rate_regime_str||'—')} ${st.rate_regime!=null?(st.rate_regime*100).toFixed(0)+'%':''}</span>${marketChip(a)}${warm}${a.view_stale?'<span class="chip w" title="The engine is rebuilding; this is the last complete snapshot">snapshot · engine busy</span>':''}${a.paused?'<span class="chip r">paused</span>':''}
-      <span class="muted small" style="margin-left:auto" title="Calculation basis">${a.tf}m · ${a.chart_type==='heikin_ashi'?'HA':'OHLC'} · fill ${a.fill_on==='chart'?'chart':'real'} · MTF ${a.security_source==='standard'?'standard':'chart'} · ${a.errors?`<span class="neg">${a.errors} err</span>`:'bar '+age(a.bar_age)}</span></div>
+      <span class="muted small" style="margin-left:auto" title="Calculation basis">${a.tf}m · ${a.chart_type==='heikin_ashi'?'HA':'OHLC'} · fill ${a.fill_on==='chart'?'chart':'real'} · MTF ${a.security_source==='standard'?'standard':'chart'} · bar ${age(a.bar_age)}${errorBadge ? ' · '+errorBadge : ''}</span></div>
+    ${currentError ? `<div class="small neg" data-asset-error-detail role="status" style="overflow-wrap:anywhere">${esc(currentError)}</div>` : ''}
     <div id="ch-${a.symbol}" style="margin-top:6px"></div>
     <div class="pulse"><span>Pulse</span><div class="segs">${pulseSegs(pulse, st.pulse_state)}</div><span>${esc(st.pulse_state||'—')} ${pside} ${(pulse*100).toFixed(0)}%</span><span style="margin-left:auto">${st.po3||''} · fam ${Math.max(st.families_l||0, st.families_s||0)}/5</span></div>
     <div class="votes">${votes}</div>
@@ -426,6 +434,43 @@ async function loadChart(sym, n, el, opts, offset=0) {
     if (el && el.isConnected) el.innerHTML = '<div class="empty">chart unavailable: '+esc(e?.message||String(e))+'</div>';
   }
 }
+
+// Status changes update small card fields; a price tick must not discard the
+// existing SVG, scroll position, hover listeners or the card under the pointer.
+function updateOverviewAssets(assets) {
+  const grid=$('#assets'); if(!grid)return;
+  const existing=new Map([...grid.children].map(card=>[card.dataset.sym,card]));
+  const wanted=new Set(assets.map(a=>a.symbol));
+  for(const [symbol,card] of existing)if(!wanted.has(symbol))card.remove();
+  let cursor=grid.firstElementChild;
+  for(const asset of assets) {
+    const markup=assetCard(asset);let card=existing.get(asset.symbol);
+    if(!card||card._assetMarkup!==markup) {
+      const template=document.createElement('template');template.innerHTML=markup;
+      const next=template.content.firstElementChild;
+      if(!card)card=next;
+      else {
+        card.classList.toggle('long',next.classList.contains('long'));
+        card.classList.toggle('short',next.classList.contains('short'));
+        for(const selector of ['.ah','.pulse','.votes','.score','.posline','.exec']) {
+          const currentParts=card.querySelectorAll(':scope > '+selector);
+          const nextParts=next.querySelectorAll(':scope > '+selector);
+          currentParts.forEach((part,index)=>{
+            if(part.outerHTML!==nextParts[index].outerHTML)part.replaceWith(nextParts[index]);
+          });
+        }
+        const currentError=card.querySelector(':scope > [data-asset-error-detail]');
+        const nextError=next.querySelector(':scope > [data-asset-error-detail]');
+        if(currentError&&!nextError)currentError.remove();
+        else if(nextError&&!currentError)card.querySelector('.ah').after(nextError);
+        else if(nextError&&currentError.outerHTML!==nextError.outerHTML)currentError.replaceWith(nextError);
+      }
+      card._assetMarkup=markup;
+    }
+    if(card!==cursor)grid.insertBefore(card,cursor);
+    cursor=card.nextElementSibling;
+  }
+}
 async function downloadCSV(args) {
   try {
     const data=await IcarusClient.csv(args), url=URL.createObjectURL(data.blob);
@@ -452,6 +497,7 @@ function tabsHtml(A) {
   const t = [`<span class="tab ${view==='overview'?'active':''}" data-v="overview">Overview</span>`];
   A.forEach(a => { const pos = a.position||0; t.push(`<span class="tab ${view==='asset:'+a.symbol?'active':''}" data-v="asset:${a.symbol}"><span class="dot ${pos>0?'long':pos<0?'short':(a.market&&a.market.open===false?'closed':'')}"></span><b class="s">${esc(a.continuous_symbol||a.symbol)}</b> <span class="muted small tnum">${px(a.price)}</span></span>`); });
   t.push(`<span class="tab" data-v="add" title="Add an asset">＋</span>`);
+  t.push(`<span class="tab util ${view==='subsystems'?'active':''}" data-v="subsystems">Subsystems</span>`);
   t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='access'?'active':''}" data-v="access">Access</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='command-centers'?'active':''}" data-v="command-centers">Command Center</span><span class="tab util ${view==='performance'?'active':''}" data-v="performance">Performance</span><span class="tab util ${view==='evidence'?'active':''}" data-v="evidence">Evidence &amp; catalog</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span><span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span><span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span><span class="tab util ${view==='market-data'?'active':''}" data-v="market-data">Market Data</span><span class="tab util ${view==='brain'?'active':''}" data-v="brain">Adaptive Brain</span><span class="tab util ${view==='evolution'?'active':''}" data-v="evolution">MCP Evolution</span><span class="tab util ${view==='parallax'?'active':''}" data-v="parallax">PARALLAX / DREAMSTATE</span><span class="tab util ${view==='possibility'?'active':''}" data-v="possibility">ICARUS Ψ</span><span class="tab util ${view==='pantheon'?'active':''}" data-v="pantheon">PANTHEON / AETHER</span><span class="tab util ${view==='sibyl'?'active':''}" data-v="sibyl">SIBYL Ω</span><span class="tab util ${view==='apex'?'active':''}" data-v="apex">APEX Ω</span><span class="tab util ${view==='ascendancy'?'active':''}" data-v="ascendancy">ASCENDANCY</span><span class="tab util ${view==='learning'?'active':''}" data-v="learning">Learning Fabric</span><span class="tab util ${view==='chronofold'?'active':''}" data-v="chronofold">ICARUS Ξ</span><span class="tab util ${view==='commissioning'?'active':''}" data-v="commissioning">Commissioning</span><span class="tab util ${view==='integrity'?'active':''}" data-v="integrity">Data Integrity</span><span class="tab util ${view==='engine-control'?'active':''}" data-v="engine-control">Engine Control</span><span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span><span class="tab util ${view==='autopilot'?'active':''}" data-v="autopilot">Tactical Autopilot</span>`);
   return t.join('');
 }
@@ -464,10 +510,12 @@ function systemLoopClass(status) {
 function systemLoopOk(status) { return systemLoopClass(status) === 'b'; }
 async function loadAccess() {
   const target = $('#accessBody'); if (!target) return;
+  const sequence=++accessLoadSeq;
   const tok = localStorage.getItem(tokKey) || '';
   try {
     const r = await IcarusClient.request('/api/access', {headers:{'Authorization':'Bearer '+tok},cache:'no-store'});
     const d = await r.json(); if (!r.ok) throw new Error(d.detail||('HTTP '+r.status));
+    if(sequence!==accessLoadSeq || $('#accessBody')!==target)return;
     const owner = d.me?.role === 'owner';
     const users = (d.users||[]).map(u => `<tr><td>${esc(u.label)}</td><td><span class="tag">${esc(u.role)}</span></td><td>${u.active?'Active':'Revoked'}</td><td>${u.last_seen?dtz(u.last_seen):'Never'}</td><td class="tnum">${u.request_count||0}</td><td>${owner&&u.role!=='owner'&&u.active?`<button class="sm danger" data-kick-user="${esc(u.id)}">Kick</button>`:'—'}</td></tr>`).join('');
     const events = (d.events||[]).map(e => `<tr><td>${dtz(e.at)}</td><td>${esc(e.kind)}</td><td>${esc(e.detail)}</td></tr>`).join('');
@@ -475,9 +523,9 @@ async function loadAccess() {
       ${owner?'<div class="row"><input id="accessLabel" maxlength="80" placeholder="Person or device label"><button id="accessAdd">Add viewer</button><span class="small muted">New token appears once; share it privately.</span></div>':''}<div id="accessToken" class="callout" style="display:${accessTokenOnce?'flex':'none'};margin-top:10px">${accessTokenOnce?`<div><b>Copy this token now. It will not be shown again.</b><br><code>${esc(accessTokenOnce)}</code></div><button id="accessTokenDismiss">Dismiss</button>`:''}</div>
       <h3>Accounts</h3><div class="scroll"><table><thead><tr><th>Identity</th><th>Role</th><th>Status</th><th>Last authenticated</th><th>Requests</th><th></th></tr></thead><tbody>${users||'<tr><td colspan="6" class="empty">No accounts recorded.</td></tr>'}</tbody></table></div>
       <h3>Recent security activity</h3><p class="small muted">${esc(d.privacy_note||'')}</p><div class="scroll" style="max-height:360px"><table><thead><tr><th>Time</th><th>Event</th><th>Detail</th></tr></thead><tbody>${events||'<tr><td colspan="3" class="empty">No events recorded.</td></tr>'}</tbody></table></div>`;
-  } catch(e) { target.innerHTML = `<div class="empty neg">Access analyzer unavailable: ${esc(e.message||String(e))}. Save a valid access token in ⚙︎ Token.</div>`; }
+  } catch(e) { if(sequence!==accessLoadSeq || $('#accessBody')!==target)return; target.innerHTML = `<div class="empty neg">Access analyzer unavailable: ${esc(e.message||String(e))}. Save a valid access token in ⚙︎ Token.</div>`; }
 }
-function accessHtml() { return `<section class="card c12"><h2>Icarus access analyzer <span class="sub">individual access, recent activity, and revocation</span></h2><div id="accessBody"><div class="empty">Loading access registry…</div></div></section>`; }
+function accessHtml() { return `<section class="card c12"><h2>Icarus access analyzer <span class="sub">shared security registry · individual access, recent activity, and revocation</span></h2><button id="accessRefresh">Refresh access</button><div id="accessBody"><div class="empty">Loading access registry…</div></div></section>`; }
 function repositoryAuditCard(a, compact=false) {
   if (!a) return `<section class="card c12" id="repoAuditCard"><h2>System Intelligence</h2><div class="empty">loading local repository, loop, and MCP snapshot…</div></section>`;
   const s = a.summary || {}, m = a.main || {}, issue = a.issue || {}, sync = a.loop_sync || {};
@@ -612,7 +660,7 @@ function commandCenterHtml(c) {
     </details>
   </section>`;
 }
-function overviewHtml(d, A) {
+function overviewHtml(d, A, includeAssets=true) {
   const sinceLive = (d.live_profit||0) + (d.open_profit||0), histNet = (d.net||0) - sinceLive;
   return `
   ${goliveCard(window.ICARUS_GOLIVE)}
@@ -626,7 +674,7 @@ function overviewHtml(d, A) {
   <section class="card c3" id="engineCard"><h2>Engine</h2><div class="tiles" style="margin-top:0"><div class="tile"><div class="k">Assets</div><div class="v tnum">${A.length}</div></div><div class="tile"><div class="k">Live trades</div><div class="v tnum">${A.reduce((s,a)=>s+(a.live_trades||0),0)}</div></div><div class="tile"><div class="k">Hist. pieces</div><div class="v tnum">${A.reduce((s,a)=>s+(a.trades_total||0),0)}</div></div><div class="tile"><div class="k">Uptime</div><div class="v tnum">${age(d.uptime_sec)}</div></div></div>
     <div class="small muted" style="margin-top:8px">Preset <b>${esc(d.preset||'none')}</b> · NQ-point inputs scaled from NQ ${d.pts_ref&&d.pts_ref.price?px(d.pts_ref.price,0):'—'} · fills at real prices unless a card says otherwise · paper orders are local.</div></section>
   ${typeof possibilityQuickOverviewHtml==='function'?possibilityQuickOverviewHtml(A):''}
-  <div class="assets" id="assets">${A.map(assetCard).join('')}</div>
+  ${includeAssets?`<div class="assets" id="assets">${A.map(assetCard).join('')}</div>`:''}
   <section class="card c7"><h2>Paper fills <span class="sub" id="fillsSub"></span></h2><div class="scroll"><table id="fills"><thead><tr><th>Time</th><th>Asset</th><th>Side</th><th>Qty</th><th>Price</th><th>Kind</th><th>Signal</th><th>P&amp;L</th><th>Pos</th></tr></thead><tbody></tbody></table></div></section>
   <section class="card c5"><h2>Engine log</h2><div class="log" id="log" style="max-height:300px"></div></section>
   <section class="card c12"><h2>Closed trades <span class="sub">history (warm-up replay) and live, newest first</span></h2><div class="scroll" style="max-height:380px"><table id="trades"><thead><tr><th>Asset</th><th></th><th>Entry</th><th>Signal</th><th>Qty</th><th>Entry px</th><th>Exit</th><th>Exit px</th><th>Exit signal</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div></section>`;
@@ -817,14 +865,17 @@ function applyWritePermissions() {
     if(!canWrite)el.title='Owner access and a fresh selected runtime are required';
   }
 }
-const unavailableWorkspacePanels=new Set(['access','brain','research','parallax','pantheon','sibyl','apex','ascendancy','learning','autopilot','golive']);
+const unavailableWorkspacePanels=new Set();
+const readOnlyWorkspacePanels=new Set(['brain','research','parallax','pantheon','sibyl','apex','ascendancy','learning','autopilot','golive']);
+const workspacePanelReads=new Set(['sibylAsset','sibylLoad','apexAsset','apexLoad','ascendancyReload','learningRefresh','apRefresh','rsAsset']);
 const selectedRuntimePanels=new Set(['possibility','chronofold','commissioning','engine-control']);
 const sharedEvidencePanels=new Set(['sources','evolution','integrity','system','agent','evidence']);
 function applyPanelScope() {
   const host=$('#view');if(!host)return;
   const id=IcarusClient.context.id,scoped=id!=='main';
   const unavailable=scoped&&unavailableWorkspacePanels.has(view),shared=sharedEvidencePanels.has(view);
-  const message=unavailable?`${id.toUpperCase()}: this panel is unavailable for this paper workspace. Its controls are disabled.`:
+  const message=view==='access'?'Shared security registry for Main and all four paper workspaces. Owner authentication controls access changes.':unavailable?`${id.toUpperCase()}: this panel is unavailable for this paper workspace. Its controls are disabled.`:
+    scoped&&readOnlyWorkspacePanels.has(view)?`${id.toUpperCase()}: read-only native subsystem state in this paper workspace. Collection, training, activation and autonomous controls remain unavailable.`:
     shared?'Shared federation evidence. This view does not establish operation of the selected paper workspace.':
     scoped&&view==='market-data'?`${id.toUpperCase()}: existing selected-runner caches only. This view does not acquire data or start subscriptions.`:
     scoped&&selectedRuntimePanels.has(view)?`${id.toUpperCase()}: selected paper-workspace subsystem. State and controls stay isolated; broker execution is disabled.`:'';
@@ -839,6 +890,13 @@ function applyPanelScope() {
     for(const el of host.querySelectorAll('button,textarea')){
       if(el.tagName==='BUTTON'&&(el.dataset.workspaceReadOnly==='true'||/(Refresh|Reload|Read|View|Filter|Search|Copy|Export|Download|Show|Open)/i.test(el.id)))continue;
       if(!el.disabled)el.disabled=true;el.title='Shared configuration changes are unavailable from a paper workspace';
+    }
+  }
+  if(scoped&&readOnlyWorkspacePanels.has(view)){
+    for(const el of host.querySelectorAll('button,input,select,textarea')){
+      if(workspacePanelReads.has(el.id))continue;
+      if(!el.disabled)el.disabled=true;
+      if(el.title!=='This selected-workspace panel is read-only')el.title='This selected-workspace panel is read-only';
     }
   }
   if(selectedRuntimePanels.has(view)&&last?.permissions?.can_write!==true){
@@ -906,6 +964,7 @@ document.addEventListener('click', async ev => {
     return;
   }
   if (b.dataset.v) { if (b.dataset.v === 'add') { setView('commands'); setTimeout(()=>$('#addSym')?.focus(), 50); } else setView(b.dataset.v); return; }
+  if (b.id === 'accessRefresh') { await loadAccess(); return; }
   if (b.id === 'accessAdd') {
     const label = $('#accessLabel')?.value.trim(); if (!label) return toast('enter a label for this person or device', true);
     const result = await admin('/admin/access/add', {label}, true); if (!result?.user?.token) return;
@@ -1243,16 +1302,25 @@ function render(d) {
     rh.className = 'badge ' + (healthy ? 'armed' : (st === 'red' || loopBad) ? 'paused' : 'warm');
     rh.title = ra ? `System Intelligence ${ra.recorded_at||''} · repo ${st} · loops ${ls.length-loopBad}/${ls.length} verified · main ${String(ra.main?.sha||'').slice(0,12)}` : 'System Intelligence unavailable';
   }
-  $('#tabs').innerHTML = tabsHtml(A);
+  const tabsMarkup=tabsHtml(A),tabs=$('#tabs');
+  if(tabs._markup!==tabsMarkup){tabs.innerHTML=tabsMarkup;tabs._markup=tabsMarkup;}
   const viewAsset = view.startsWith('asset:') ? A.find(a => a.symbol === view.slice(6)) : null;
   if (view.startsWith('asset:') && !viewAsset && !solo) view = 'overview';
   const rebuild = lastView !== view;
   if(rebuild)disposeWorkspaceView();
   if (view === 'overview') {
     if (rebuild) $('#view').innerHTML = overviewHtml(d, A);
-    else { const g = $('#assets'); if (g) g.innerHTML = A.map(assetCard).join(''); const h = document.createElement('div'); h.innerHTML = overviewHtml(d, A); ['goliveCard','repoAuditCard','commandCenterCard','heroCard','engineCard'].forEach(id => { const nu = h.querySelector('#'+id), cur = $('#'+id); if (nu && cur) cur.replaceWith(nu); }); }
+    else {
+      updateOverviewAssets(A);
+      const h=document.createElement('div');h.innerHTML=overviewHtml(d,A,false);
+      for(const id of ['goliveCard','repoAuditCard','commandCenterCard','heroCard','engineCard']) {
+        const next=h.querySelector('#'+id),current=$('#'+id);if(!next||!current)continue;
+        const markup=next.outerHTML;
+        if(current._overviewMarkup!==markup){next._overviewMarkup=markup;current.replaceWith(next);}
+      }
+    }
     lineChart($('#eqChart'), d.equity_series, {baseline: d.capital});
-    A.forEach(a => { const el = $(`#ch-${a.symbol}`); if (el) { const c = charts[a.symbol+80]; if (c) candles(el, c, {height:170}); } });
+    A.forEach(a => { const el = $(`#ch-${a.symbol}`); if (el&&!el.hasChildNodes()) { const c = charts[a.symbol+80]; if (c) candles(el, c, {height:170}); } });
     const rows = []; A.forEach(a => (tradesCache[a.symbol]||[]).forEach(t => rows.push({...t, symbol:a.symbol}))); rows.sort((x,y)=>y.exit_ts-x.exit_ts);
     const tradeWarnings = A.filter(a => tradeErrors[a.symbol]).map(a => `<tr><td colspan="10" class="empty neg"><b>${esc(a.symbol)}</b> trade history unavailable: ${esc(tradeErrors[a.symbol])}</td></tr>`).join('');
     const tradeRows = rows.slice(0,80).map(t => `<tr><td><b>${t.symbol}</b></td><td><span class="tag ${t.live?'live':''}">${t.live?'LIVE':'hist'}</span></td><td class="tnum">${dtz(t.entry_ts)}</td><td>${esc(t.id)}</td><td class="tnum">${t.qty}</td><td class="tnum">${px(t.entry)}</td><td class="tnum">${dtz(t.exit_ts)}</td><td class="tnum">${px(t.exit)}</td><td>${esc(t.comment)}</td><td class="tnum ${t.profit>=0?'pos':'neg'}">${sgn$(t.profit)}</td></tr>`).join('');
@@ -1306,8 +1374,9 @@ function render(d) {
   else if (view === 'commissioning') { if(typeof commissioningHtml!=='function') $('#view').innerHTML='<section class="card c12">Scientific Commissioning requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = commissioningHtml(A); wireCommissioning(); } else loadCommissioning(); }
   else if (view === 'integrity') { if(typeof integrityHtml!=='function') $('#view').innerHTML='<section class="card c12">Data Integrity requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = integrityHtml(); wireIntegrity(); } else loadIntegrity(); }
   else if (view === 'engine-control') { if(typeof engineControlHtml!=='function') $('#view').innerHTML='<section class="card c12">Engine Control requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = engineControlHtml(); wireEngineControl(); } else loadEngineControl(); }
+  else if (view === 'subsystems') { if (rebuild) { $('#view').innerHTML='<div class="c12" id="subsystem-connections-mount"></div>'; workspaceViewController=IcarusSubsystemConnections.mount($('#subsystem-connections-mount'),IcarusClient); } }
   else if (view === 'system') { if (rebuild) $('#view').innerHTML = repositoryAuditCard(window.ICARUS_AUDIT, false); }
-  else if (view === 'access') { if (rebuild) $('#view').innerHTML = accessHtml(); loadAccess(); }
+  else if (view === 'access') { if (rebuild) { $('#view').innerHTML = accessHtml(); loadAccess(); } }
   else if (view === 'golive') { if (rebuild) $('#view').innerHTML = goliveCard(window.ICARUS_GOLIVE); else { const nu = document.createElement('div'); nu.innerHTML = goliveCard(window.ICARUS_GOLIVE); const cur = $('#goliveCard'); if (nu.firstElementChild && cur) cur.replaceWith(nu.firstElementChild); } }
   else if (view === 'agent') { if (rebuild) $('#view').innerHTML = agentCard(window.ICARUS_AGENT); }
   else if (view === 'log') { if (rebuild) $('#view').innerHTML = `<section class="card c12"><h2>Engine log</h2><div class="log" id="log2" style="max-height:80vh"></div></section>`; $('#log2').innerHTML = (d.log||[]).slice().reverse().map(l => `<div class="${l.level}">${tms(l.ts)} ${l.level.padEnd(5)} ${esc(l.msg)}</div>`).join(''); }
@@ -1333,12 +1402,30 @@ function expireCoreObservations(reason='Current runtime observations unavailable
   $('#phase').textContent='UNAVAILABLE';$('#phase').className='badge paused';$('#meta').textContent=reason;
   for(const el of document.querySelectorAll('.node'))el.className='node';
   applyWritePermissions();
-  if(view!=='inputs') {disposeWorkspaceView();$('#view').innerHTML='<section class="card c12"><p class="empty">'+esc(reason)+'</p></section>';lastView=null;}
+  if(!['inputs','access'].includes(view)) {disposeWorkspaceView();$('#view').innerHTML='<section class="card c12"><p class="empty">'+esc(reason)+'</p></section>';lastView=null;}
 }
 window.addEventListener('pageshow',event=>{if(event.persisted){expireCoreObservations('Restored page — waiting for fresh selected runtime');void refresh();}});
-setInterval(()=>{if(last&&Date.now()-lastStatusAt>10000)expireCoreObservations('Selected runtime observation expired');},1000);
+function selectedWorkspacePoweredOff() {
+  return IcarusClient.context.id !== 'main' && !!window.IcarusWorkspacePower?.isOff(IcarusClient.context.id);
+}
+let selectedPowerWasOff = false;
+window.addEventListener('icarus:workspace-power', () => {
+  if (IcarusClient.context.id === 'main') return;
+  const off = selectedWorkspacePoweredOff();
+  if (off) {
+    statusLoadSeq++;
+    IcarusClient.cancelPending();
+    expireCoreObservations(IcarusClient.context.id.toUpperCase() + ' runtime is off or changing state; use its power switch.');
+  } else if (selectedPowerWasOff) {
+    void (async()=>{await refreshUiCatalogs();await refresh();await refreshCharts();await refreshTrades();})();
+  }
+  selectedPowerWasOff = off;
+});
+setInterval(()=>{if(!selectedWorkspacePoweredOff()&&last&&Date.now()-lastStatusAt>10000)expireCoreObservations('Selected runtime observation expired');},1000);
 async function refresh() {
+  if (selectedWorkspacePoweredOff()) return;
   const sequence=++statusLoadSeq;
+  statusRefreshes++;
   try {
     const d=await IcarusClient.read('status',{channel:'core-status'});
     if(sequence!==statusLoadSeq)return;
@@ -1347,18 +1434,21 @@ async function refresh() {
     render(d);
   } catch (e) {
     if(sequence===statusLoadSeq)expireCoreObservations('Selected runtime unavailable: '+(e.message||String(e)));
-  }
+  } finally { statusRefreshes--; }
 }
 async function pollStatus() {
   if (statusPollBusy) return;
+  if (statusRefreshes) return;
   statusPollBusy = true;
   try { await refresh(); }
   finally { statusPollBusy = false; }
 }
 async function refreshCombinedPaperPnl() {
+  if (selectedWorkspacePoweredOff()) return;
   await loadPaperWorkspaces();
 }
 async function refreshGolive() {
+  if (selectedWorkspacePoweredOff()) return;
   try {
     const response = await IcarusClient.request('/api/golive', {cache:'no-store'});
     const data = await response.json().catch(()=>({}));
@@ -1382,6 +1472,7 @@ async function refreshGolive() {
   }
 }
 async function refreshAgent() {
+  if (selectedWorkspacePoweredOff()) return;
   try {
     const response = await IcarusClient.request('/api/agent', {cache:'no-store'});
     const data = await response.json().catch(()=>({}));
@@ -1407,6 +1498,7 @@ async function refreshAgent() {
   }
 }
 async function refreshAudit() {
+  if (selectedWorkspacePoweredOff()) return;
   try {
     const r = await IcarusClient.request('/api/system/audit', {cache:'no-store'});
     if (!r.ok) throw new Error('audit '+r.status);
@@ -1417,6 +1509,7 @@ async function refreshAudit() {
   if (last) render(last);
 }
 async function refreshCommandCenter() {
+  if (selectedWorkspacePoweredOff()) return;
   try {
     const r = await IcarusClient.request('/api/overview/command-center', {cache:'no-store'});
     const data = await r.json().catch(()=>({}));
@@ -1439,12 +1532,35 @@ async function refreshCommandCenter() {
     window.IcarusWorldImmersion?.refresh();
   }
 }
+let chartRefreshInFlight=null;
 async function refreshCharts() {
+  if (selectedWorkspacePoweredOff()) return;
   if (!last) return;
-  if (view === 'overview') { for (const a of (last.assets||[])) await loadChart(a.symbol, 80, $(`#ch-${a.symbol}`), {height:170}); refreshFills(); }
-  if (view.startsWith('asset:') && Date.now()-lastWideChartRefresh >= 20000) { const s=view.slice(6); await loadChart(s, 4000, $('#dChart'), {height:360, compact:false}, chartOffsets[s]||0); }
+  if(chartRefreshInFlight)return chartRefreshInFlight;
+  chartRefreshInFlight=(async()=>{
+    if (view === 'overview') {
+      const assets=last.assets||[];
+      // Keep capacity for status and controls, and share one pass across ticks.
+      // Scoped readers share one exclusive configuration lock; Main's assets
+      // have independent read views and can use the bounded parallel pool.
+      const workers=IcarusClient.context.id==='main'?4:1;
+      let nextIndex=0;
+      await Promise.all(Array.from({length:Math.min(workers,assets.length)},async()=>{
+        while(nextIndex<assets.length) {
+          if(selectedWorkspacePoweredOff()||view!=='overview'||!last)return;
+          const asset=assets[nextIndex++];
+          await loadChart(asset.symbol,80,$(`#ch-${asset.symbol}`),{height:170});
+        }
+      }));
+      refreshFills();
+    }
+    if (view.startsWith('asset:') && Date.now()-lastWideChartRefresh >= 20000) { const s=view.slice(6); await loadChart(s, 4000, $('#dChart'), {height:360, compact:false}, chartOffsets[s]||0); }
+  })();
+  try{return await chartRefreshInFlight;}
+  finally{chartRefreshInFlight=null;}
 }
 async function refreshTrades(only) {
+  if (selectedWorkspacePoweredOff()) return;
   if (!last) return;
   for (const a of (last.assets||[])) {
     if (only && a.symbol !== only) continue;
@@ -1464,6 +1580,7 @@ async function refreshTrades(only) {
   }
 }
 async function refreshUiCatalogs() {
+  if (selectedWorkspacePoweredOff()) return;
   if (catalogRefreshBusy) return;
   catalogRefreshBusy = true;
   try {
@@ -1497,6 +1614,10 @@ async function refreshUiCatalogs() {
   }
 }
 const dashboardReady = (async () => {
+  if (IcarusClient.context.id !== 'main') {
+    if (document.readyState === 'loading') await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
+    await window.IcarusWorkspacePower?.ready;
+  }
   await refreshUiCatalogs();
   await refreshCombinedPaperPnl();
   await refreshAudit(); await refreshCommandCenter(); await refresh(); await refreshGolive(); await refreshAgent(); await refreshCharts(); await refreshTrades(); if (last) render(last);

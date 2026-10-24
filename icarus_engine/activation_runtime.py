@@ -69,7 +69,22 @@ class ActivationRuntime:
             runner = self.port.runners.get(asset)
             if runner is None or runner._removed:
                 raise ActivationError("activation asset is not running")
-            yield _Boundary(self, runner)
+            previous_view = runner._public_views
+            previous_state = {name: getattr(runner, name, _MISSING) for name in _TRANSFER}
+            try:
+                yield _Boundary(self, runner)
+            except BaseException:
+                # The existing durable operation owns restoration/quarantine.
+                # A failed boundary must not publish its staged configuration.
+                runner._public_views = previous_view
+                raise
+            else:
+                # ActivationStore commits inside this boundary before returning.
+                # Exact-reference rollback restores previous_state, so failed
+                # commits retain the original view and capture clock unchanged.
+                if any(getattr(runner, name, _MISSING) is not value
+                       for name, value in previous_state.items()):
+                    runner.publish_read_views()
 
 
 class _Boundary:

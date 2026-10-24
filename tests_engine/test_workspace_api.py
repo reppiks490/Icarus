@@ -27,6 +27,71 @@ class _NoNetwork:
         raise AssertionError("workspace HTTP tests must not fetch history")
 
 
+def test_runtime_power_metadata_and_main_stay_responsive_under_workspace_lock(workspace_http):
+    server, _, request = workspace_http
+    with server.command_centers.configuration_lock('cc1'):
+        started = time.monotonic()
+        code, data, _ = request('/api/workspace-runtime')
+        assert code == 200
+        assert data['schema_version'] == 'icarus.workspace-power.v1'
+        assert {row['id'] for row in data['workspaces']} == {'cc1', 'cc2', 'cc3', 'cc4'}
+        assert data['execution_authorized'] is False
+        assert request('/status/public')[0] == 200
+        assert time.monotonic() - started < 1.5, 'a busy sibling must not block power metadata or Main'
+
+
+def test_runtime_off_is_selected_preserves_settings_and_does_not_stop_main(workspace_http):
+    server, parent, request = workspace_http
+    manager = server.command_centers
+    settings = {key: manager._path(key).read_bytes() for key in ('cc1', 'cc2', 'cc3', 'cc4')}
+    siblings = {key: manager.portfolios[key] for key in ('cc2', 'cc3', 'cc4')}
+    selected = manager.portfolios['cc1']
+    code, metadata, _ = request('/api/workspace-runtime')
+    assert code == 200
+    revision = next(row['revision'] for row in metadata['workspaces'] if row['id'] == 'cc1')
+    code, _, _ = request('/admin/command-centers/cc1/runtime', body={'enabled': False, 'expected_revision': revision})
+    assert code == 202
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        _, metadata, _ = request('/api/workspace-runtime')
+        row = next(row for row in metadata['workspaces'] if row['id'] == 'cc1')
+        if row['runtime_state'] == 'OFF':
+            break
+        time.sleep(.01)
+    assert row['runtime_state'] == 'OFF'
+    assert row['desired_enabled'] is False
+    assert selected._stop.is_set()
+    assert all(not thread.is_alive() for thread in selected._threads.values())
+    assert {key: manager._path(key).read_bytes() for key in settings} == settings
+    assert all(manager.portfolios[key] is port for key, port in siblings.items())
+    assert not parent._stop.is_set()
+    assert request('/status/public')[0] == 200
+    assert request('/api/command-centers/cc1/status')[0] == 503
+
+
+@pytest.mark.parametrize('body', [
+    {'enabled': 'false', 'expected_revision': 0},
+    {'enabled': False, 'expected_revision': True},
+    {'enabled': False},
+    {'enabled': False, 'expected_revision': 0, 'workspace': 'cc2'},
+])
+def test_runtime_power_rejects_ambiguous_or_untyped_mutations(workspace_http, body):
+    server, _, request = workspace_http
+    original = dict(server.command_centers.portfolios)
+    assert request('/admin/command-centers/cc1/runtime', body=body)[0] == 400
+    assert server.command_centers.portfolios == original
+
+
+def test_runtime_power_keeps_owner_and_canonical_scope_guards(workspace_http):
+    _, _, request = workspace_http
+    body = {'enabled': False, 'expected_revision': 0}
+    assert request('/admin/command-centers/cc1/runtime', body=body, token=None)[0] == 401
+    assert request('/admin/command-centers/cc1/runtime', body=body,
+                   extra_headers={'X-Icarus-Workspace': 'cc2'})[0] == 409
+    assert request('/admin/command-centers/cc1/runtime?profile=cc2', body=body)[0] == 400
+    assert request('/admin/command-centers/cc1/runtime/extra', body=body)[0] == 404
+
+
 def _seed(runner, price, label):
     runner._init_strategy(price)
     runner.warm = True
@@ -40,6 +105,8 @@ def _seed(runner, price, label):
     runner.em.process_bar(Bar(180, price + 10, price + 10, price + 10, price + 10, 1), 2)
     runner.live_from_ts = 0
     runner.live_closed_start = 0
+    with runner.lock:
+        runner.publish_read_views()
 
 
 @pytest.fixture
@@ -862,7 +929,7 @@ def test_scoped_unavailable_panel_and_action_never_use_parent_service(workspace_
     server, parent, request = workspace_http
     context = {"X-Icarus-Workspace": "cc1"}
     before = _unaffected_state(server, parent)
-    code, panel, _ = request("/api/command-centers/cc1/panels/brain", extra_headers=context)
+    code, panel, _ = request("/api/command-centers/cc1/panels/unimplemented-panel", extra_headers=context)
     assert code == 503 and panel["workspace_id"] == "cc1" and panel["available"] is False
     code, action, _ = request("/admin/command-centers/cc1/unavailable",
                                body={"operation": "POST /admin/pause"}, extra_headers=context)
@@ -870,3 +937,178 @@ def test_scoped_unavailable_panel_and_action_never_use_parent_service(workspace_
     assert action["workspace_id"] == "cc1" and action["execution_authorized"] is False
     assert not server.workspace_jobs._jobs and not parent.runners["NQ"].paused
     assert _unaffected_state(server, parent) == before
+
+
+@pytest.mark.parametrize("exception", [ConnectionAbortedError, ConnectionResetError, BrokenPipeError])
+@pytest.mark.parametrize("failed_write", [1, 2])
+def test_disconnected_response_closes_transport_without_second_error_response(workspace_http, exception, failed_write):
+    server, _, request = workspace_http
+    handler = object.__new__(server.RequestHandlerClass)
+    handler.request_version = "HTTP/1.1"
+    handler.requestline = "GET / HTTP/1.1"
+    handler.command = "GET"
+    handler.close_connection = False
+    writes = []
+
+    class DisconnectedWriter:
+        def write(self, value):
+            writes.append(value)
+            if len(writes) == failed_write:
+                raise exception("client disconnected")
+
+    handler.wfile = DisconnectedWriter()
+    handler._json(200, {"ok": True})
+    assert handler.close_connection is True
+    assert len(writes) == failed_write
+    assert request('/api/command-centers/cc1/status')[0] == 200
+
+
+def test_unrelated_response_io_failure_remains_visible(workspace_http):
+    server, _, _ = workspace_http
+    handler = object.__new__(server.RequestHandlerClass)
+    handler.request_version = "HTTP/1.1"
+    handler.requestline = "GET / HTTP/1.1"
+    handler.command = "GET"
+    class FailedWriter:
+        def write(self, value):
+            raise OSError("unrelated I/O error")
+    handler.wfile = FailedWriter()
+    with pytest.raises(OSError, match="unrelated I/O error"):
+        handler._json(200, {"ok": True})
+
+
+class _RequestInputSocket:
+    """Deterministic native request-stream faults, including an idle keepalive."""
+    def __init__(self, error=None, stage="request_line"):
+        import io
+        lines = ([b"GET /healthz HTTP/1.1\r\n", b"Host: 127.0.0.1\r\n", b"Expect: 100-continue\r\n"]
+                 if stage == "headers_expect" else
+                 [b"GET /healthz HTTP/1.1\r\n"] if stage == "headers" else
+                 [b"GET /healthz HTTP/1.1\r\n", b"Host: 127.0.0.1\r\n", b"\r\n"]
+                 if stage == "keepalive" else [])
+        self.sent = []
+        class Input(io.BytesIO):
+            def readline(self, *args):
+                if lines:
+                    return lines.pop(0)
+                if error is not None:
+                    raise error("request stream fault")
+                return b""
+        self.input = Input()
+
+    def makefile(self, *_args):
+        return self.input
+
+    def settimeout(self, *_args):
+        pass
+
+    def sendall(self, value):
+        self.sent.append(value)
+
+
+@pytest.mark.parametrize("exception", [ConnectionAbortedError, ConnectionResetError, BrokenPipeError])
+@pytest.mark.parametrize("stage", ["request_line", "headers", "headers_expect", "keepalive"])
+def test_disconnected_request_stream_is_eof_and_server_remains_available(workspace_http, monkeypatch, exception, stage):
+    server, _, request = workspace_http
+    dispatched = []
+    original = server.RequestHandlerClass.do_GET
+    def respond(handler):
+        dispatched.append(True)
+        handler._send(200, b"ok")
+    monkeypatch.setattr(server.RequestHandlerClass, "do_GET", respond)
+    transport = _RequestInputSocket(exception, stage)
+    handler = server.RequestHandlerClass(transport, ("127.0.0.1", 0), server)
+    assert handler.close_connection is True
+    assert len(dispatched) == (1 if stage == "keepalive" else 0)
+    assert bool(transport.sent) == (stage == "keepalive")
+    monkeypatch.setattr(server.RequestHandlerClass, "do_GET", original)
+    assert request('/healthz')[0] == 200
+
+
+@pytest.mark.parametrize("exception", [ConnectionAbortedError, ConnectionResetError, BrokenPipeError])
+def test_request_disconnect_guard_does_not_hide_application_transport_errors(workspace_http, monkeypatch, exception):
+    server, _, _ = workspace_http
+    def fail(_handler):
+        raise exception("upstream application fault")
+    monkeypatch.setattr(server.RequestHandlerClass, "do_GET", fail)
+    with pytest.raises(exception, match="upstream application fault"):
+        server.RequestHandlerClass(_RequestInputSocket(stage="keepalive"), ("127.0.0.1", 0), server)
+
+
+def test_unrelated_request_stream_failure_remains_visible(workspace_http):
+    server, _, _ = workspace_http
+    with pytest.raises(OSError, match="request stream fault"):
+        server.RequestHandlerClass(_RequestInputSocket(OSError), ("127.0.0.1", 0), server)
+
+
+def test_real_keepalive_tcp_reset_closes_only_its_request_thread(workspace_http, monkeypatch):
+    import socket
+    import struct
+    import sys
+    server, _, request = workspace_http
+    finished = threading.Event()
+    errors = []
+    disconnected = []
+    original_finish = server.RequestHandlerClass.finish
+    connection = HTTPConnection('127.0.0.1', server.server_port, timeout=3)
+    connection.connect()
+    client_port = connection.sock.getsockname()[1]
+
+    def finish(handler):
+        try:
+            return original_finish(handler)
+        finally:
+            if handler.client_address[1] == client_port:
+                disconnected.append(handler.rfile.disconnected)
+                finished.set()
+
+    monkeypatch.setattr(server.RequestHandlerClass, 'finish', finish)
+    monkeypatch.setattr(server, 'handle_error', lambda *_args: errors.append(True))
+    try:
+        connection.request('GET', '/healthz', headers={'Host': '127.0.0.1'})
+        response = connection.getresponse()
+        assert response.status == 200
+        response.read()
+        linger_format = 'hh' if sys.platform == 'win32' else 'ii'
+        connection.sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack(linger_format, 1, 0))
+    finally:
+        connection.close()
+    assert finished.wait(3), 'reset must release its idle request thread promptly'
+    assert disconnected == [True]
+    assert errors == [], 'known client reset must not reach the unhandled-request logger'
+    assert request('/healthz')[0] == 200
+
+
+def test_stopping_selected_reads_and_jobs_return_without_waiting_for_drain(workspace_http):
+    server, _, request = workspace_http
+    with server.command_centers.configuration_lock('cc1'):
+        server.workspace_power.request('cc1', {'enabled': False, 'expected_revision': 0})
+        began = time.monotonic()
+        for path in ('/api/command-centers/cc1/status', '/api/command-centers/cc1/performance',
+                     '/api/command-centers/cc1/chart/NQ', '/api/command-centers/cc1/panels/commissioning'):
+            assert request(path)[0] == 503
+        assert request('/admin/command-centers/cc1/assets/NQ/config',
+                       body={'expected_revision': 0, 'inputs': {'tp1_pts': 10}})[0] == 503
+        assert time.monotonic() - began < 1.5
+        assert request('/status/public')[0] == 200
+
+
+def test_busy_selected_read_is_bounded_without_affecting_main(workspace_http):
+    server, _, request = workspace_http
+    with server.command_centers.configuration_lock('cc1'):
+        began = time.monotonic()
+        assert request('/api/command-centers/cc1/performance')[0] == 409
+        assert request('/api/command-centers/cc1/panels/commissioning')[0] == 409
+        assert request('/status/public')[0] == 200
+        assert time.monotonic() - began < 1.5
+
+
+def test_off_refuses_contended_job_registry_without_blocking_main(workspace_http):
+    server, _, request = workspace_http
+    with server.workspace_jobs._lock:
+        began = time.monotonic()
+        assert request('/admin/command-centers/cc1/runtime',
+                       body={'enabled': False, 'expected_revision': 0})[0] == 409
+        assert request('/api/workspace-runtime')[0] == 200
+        assert request('/status/public')[0] == 200
+        assert time.monotonic()-began < 1.5

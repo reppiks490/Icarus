@@ -18,7 +18,10 @@ _MAX_REQUEST_BYTES = 8 * 1024 * 1024
 _MAX_RESPONSE_BYTES = 32 * 1024 * 1024
 _PHONE_ORIGIN = "https://icarus-command-center-mobile.cloudyrook1.chatgpt.site"
 _CORS_METHODS = "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS"
-_CORS_HEADERS = {"authorization", "content-type"}
+_CORS_HEADERS = {
+    "authorization", "content-type", "x-icarus-workspace", "x-icarus-config-revision",
+}
+_CORS_EXPOSE_HEADERS = "X-Icarus-Workspace, X-Icarus-Config-Revision"
 _HOP_HEADERS = {
     "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
     "te", "trailer", "transfer-encoding", "upgrade", "host", "content-length",
@@ -87,6 +90,7 @@ def create_handler(*, engine_port: int, gateway_port: int):
             origin = self.headers.get("Origin")
             if origin == _PHONE_ORIGIN:
                 self.send_header("Access-Control-Allow-Origin", _PHONE_ORIGIN)
+                self.send_header("Access-Control-Expose-Headers", _CORS_EXPOSE_HEADERS)
                 self.send_header("Vary", "Origin")
             self.send_header("Connection", "close")
             self.end_headers()
@@ -115,7 +119,7 @@ def create_handler(*, engine_port: int, gateway_port: int):
             self.send_response(204)
             self.send_header("Access-Control-Allow-Origin", _PHONE_ORIGIN)
             self.send_header("Access-Control-Allow-Methods", _CORS_METHODS)
-            self.send_header("Access-Control-Allow-Headers", "authorization, content-type")
+            self.send_header("Access-Control-Allow-Headers", ", ".join(sorted(_CORS_HEADERS)))
             self.send_header("Access-Control-Max-Age", "600")
             self.send_header("Vary", "Origin")
             self.send_header("Cache-Control", "no-store")
@@ -191,6 +195,7 @@ def create_handler(*, engine_port: int, gateway_port: int):
                 self.send_header("Cache-Control", "no-store")
                 if origin == _PHONE_ORIGIN:
                     self.send_header("Access-Control-Allow-Origin", _PHONE_ORIGIN)
+                    self.send_header("Access-Control-Expose-Headers", _CORS_EXPOSE_HEADERS)
                     self.send_header("Vary", "Origin")
                 self.send_header("Connection", "close")
                 self.end_headers()

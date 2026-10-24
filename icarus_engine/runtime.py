@@ -124,9 +124,22 @@ class Journal:
         self.con.execute("DELETE FROM log WHERE ts < ?", (time.time() - 14 * 86400,))
         self.con.commit()
         self.log_tail: Deque[Dict[str, Any]] = collections.deque(maxlen=400)
+        self._trade_generation = self._equity_generation = 0
+        self._dashboard_views = None
+        self._display_stop, self._display_wake = threading.Event(), threading.Event()
+        self._display_lifecycle_lock = threading.Lock()
+        self._display_thread = None
+        self._display_since_ts = None
+        # Initial journal reads belong to startup, never an HTTP request.
+        self.publish_dashboard_views()
 
     def close(self) -> None:
         """Close the SQLite connection; safe to call more than once."""
+        self._display_stop.set()
+        self._display_wake.set()
+        worker = self._display_thread
+        if worker is not None and worker is not threading.current_thread():
+            worker.join(timeout=1)
         with self._lock:
             if self._closed:
                 return
@@ -166,6 +179,8 @@ class Journal:
                 ),
             )
             self.con.commit()
+            self._trade_generation += 1
+            self._display_wake.set()
 
     def performance_review(self, symbol: str, *, limit: int = 30, min_lots: int = 12, since_ts: int = 0) -> Dict[str, Any]:
         """Rolling settled-lot scorecard for this process's live paper trades.
@@ -229,13 +244,93 @@ class Journal:
         with self._lock:
             self.con.execute("INSERT INTO equity VALUES (?,?)", (time.time(), equity))
             self.con.commit()
+            self._equity_generation += 1
+            self._display_wake.set()
 
-    def closed_paper_profit(self, *, as_of_ts=None) -> Dict[str, Any]:
+    def publish_dashboard_views(self, *, since_ts=None, blocking=True) -> bool:
+        """Publish bounded journal views outside request handlers.
+
+        A single immutable assignment binds values, their receipt clock and the
+        committed generation. Writers invalidate cached values immediately;
+        readers never wait for the journal lock or query SQLite.
+        """
+        if not self._lock.acquire(blocking=blocking):
+            return False
+        try:
+            if self._closed:
+                return False
+            now = int(time.time())
+            # SQLite's data_version catches other connections; total_changes
+            # catches every committed write on this connection, including
+            # fixture/import writes outside add_trade. Unchanged images need
+            # a lightweight validation, not another full-ledger scan every 2s.
+            revision = (self.con.total_changes, self.con.execute("PRAGMA data_version").fetchone()[0])
+            previous = self._dashboard_views
+            reusable = (previous is not None and previous.get("source_revision") == revision
+                        and now >= previous["captured_at"] and not previous["closed"].get("reason")
+                        and previous.get("since_ts") == since_ts)
+            closed = previous["closed"] if reusable else self.closed_paper_profit(as_of_ts=now)
+            equity = previous["equity"] if reusable else self.equity_series(max_points=600, since_ts=since_ts)
+            self._dashboard_views = {"captured_at": now, "closed": closed,
+                                     "equity": equity, "trade_generation": self._trade_generation,
+                                     "equity_generation": self._equity_generation,
+                                     "source_revision": revision, "since_ts": since_ts}
+            return True
+        finally:
+            self._lock.release()
+
+    def start_display_publisher(self, *, since_ts=None) -> None:
+        """The portfolio owns this worker; journal close drains it."""
+        self._display_since_ts = since_ts
+        def publish():
+            while not self._display_stop.is_set():
+                try:
+                    self.publish_dashboard_views(since_ts=self._display_since_ts, blocking=False)
+                except Exception:
+                    # Keep the previous timestamp; expiry/dirty checks make
+                    # failure explicit without writing recursively to this DB.
+                    pass
+                self._display_wake.wait(2)
+                self._display_wake.clear()
+        with self._display_lifecycle_lock:
+            if self._display_thread is not None or self._display_stop.is_set():
+                return
+            self._display_thread = threading.Thread(target=publish, daemon=True,
+                                                    name="journal-display-publisher")
+            self._display_thread.start()
+
+    def _cached_dashboard_view(self, kind, *, as_of_ts=None):
+        now = time.time() if as_of_ts is None else as_of_ts
+        view = self._dashboard_views
+        generation = self._trade_generation if kind == "closed" else self._equity_generation
+        reason = None
+        if view is None:
+            reason = "JOURNAL_VIEW_UNAVAILABLE"
+        elif self._closed:
+            reason = "JOURNAL_CLOSED"
+        elif view["equity_generation" if kind == "equity" else "trade_generation"] != generation:
+            reason = "JOURNAL_VIEW_PENDING"
+        elif now < view["captured_at"]:
+            reason = "JOURNAL_VIEW_IN_FUTURE"
+        elif now - view["captured_at"] > 90:
+            reason = "JOURNAL_VIEW_STALE"
+        if reason:
+            return None, {"view_stale": True, "view_captured_at": view["captured_at"] if view else None,
+                          "reason": reason}
+        return copy.deepcopy(view[kind]), {"view_stale": False,
+                                          "view_captured_at": view["captured_at"]}
+
+    def closed_paper_profit(self, *, as_of_ts=None, nonblocking=False) -> Dict[str, Any]:
         """Validated persisted closures after the paper cutover, across runs.
 
         A trade can enter during warmup and close after cutover. Invalid rows
         make realized P&L unknown; an actually empty ledger remains zero.
         """
+        if nonblocking:
+            closed, metadata = self._cached_dashboard_view("closed", as_of_ts=as_of_ts)
+            if closed is None:
+                closed = {"realized_pnl": None, "closed_pieces": None, "last_close_ts": None}
+            return {**closed, **metadata}
         from .workspace_performance import read_persisted_trades
         now = time.time() if as_of_ts is None else as_of_ts
         rows, reason = read_persisted_trades(self, as_of_ts=now)
@@ -255,8 +350,16 @@ class Journal:
         with self._lock:
             return write_paper_csv(self.con, path, live_only=live_only)
 
-    def equity_series(self, since_sec: float = 86400.0, max_points: int = 600, *, since_ts: Optional[float] = None) -> List[Dict[str, float]]:
+    def equity_series(self, since_sec: float = 86400.0, max_points: int = 600, *, since_ts: Optional[float] = None,
+                      nonblocking: bool = False) -> List[Dict[str, float]]:
         cutoff = float(since_ts) if since_ts is not None else (time.time() - since_sec)
+        if nonblocking:
+            rows, _ = self._cached_dashboard_view("equity")
+            rows = [row for row in rows or [] if row["ts"] >= cutoff]
+            if len(rows) > max_points:
+                step = len(rows) / max_points
+                rows = [rows[int(k * step)] for k in range(max_points)] + [rows[-1]]
+            return rows
         with self._lock:
             rows = self.con.execute("SELECT ts, equity FROM equity WHERE ts >= ? ORDER BY ts", (cutoff,)).fetchall()
         if len(rows) > max_points:
@@ -422,6 +525,10 @@ def resolve_inputs(spec: AssetSpec, base_dir: str, profile: str = "nq", preset: 
     if name:
         apply(_read_json(preset_path(base_dir, name)), f"preset:{name}")
     apply(_read_json(os.path.join(base_dir, "inputs.json")), "inputs.json")
+    # The owner's explicit restart template supplies defaults for new assets.
+    # Later per-asset edits and revisioned workspace overrides keep precedence.
+    from .restart_defaults import owner_default_overrides
+    apply(owner_default_overrides(base_dir, spec.symbol), "owner:NQ-defaults")
     if not skip_asset_overrides:
         apply(_read_json(os.path.join(base_dir, f"inputs.{spec.symbol}.json")), f"inputs.{spec.symbol}.json")
     if extra:
@@ -878,7 +985,9 @@ class AssetRunner:
             self.T_w = None
             self.warm = False
             self.rewarming = False
-            self._public_views = None
+            # Publish the reset WARMING/error state. A failed source must stay
+            # observable while the next retry waits, rather than emptying Main.
+            self.publish_read_views()
 
     @staticmethod
     def _databento_history_days() -> int:
@@ -1471,15 +1580,27 @@ class AssetRunner:
         if not nonblocking:
             with self.lock:
                 return self._summary()
-        if not self.lock.acquire(timeout=0.05):
-            return self._busy_read_view(0)
-        try:
-            row = self._summary()
-            views = self._public_views or (None, None)
-            self._public_views = ((row, time.time()), views[1])
-        finally:
+        views = self._public_views
+        if views is None or views[0] is None:
+            raise RuntimeError(f"{self.symbol}: initial view is not ready; retry shortly")
+        source, captured = views[0]
+        row = copy.deepcopy(source)
+        elapsed = time.time() - captured
+        acquired = self.lock.acquire(blocking=False)
+        if acquired:
             self.lock.release()
-        return copy.deepcopy(row)
+        row.update(view_cached=True, view_captured_at=captured,
+                   view_stale=not acquired or self.rewarming or elapsed < 0 or elapsed > 90,
+                   view_age=max(0.0, elapsed), view_age_adjusted=True, rewarming=self.rewarming)
+        # These scalar lifecycle/error observations do not require an emulator
+        # scan. Keep their receipt distinct from the older market-data view.
+        row.update(paused=self.paused, errors=self.errors, last_error=self.last_error,
+                   runtime_state_observed_at=time.time())
+        for key in ("price_age", "bar_age", "poll_age"):
+            age = row.get(key)
+            if type(age) in (int, float) and math.isfinite(age) and age >= 0:
+                row[key] = age + max(0.0, elapsed)
+        return row
 
     def _feed_health_view(self) -> Dict[str, Any]:
         """Return provider health from memory only; status endpoints must never do I/O."""
@@ -1769,6 +1890,10 @@ class Portfolio:
             if spec.symbol in self.runners:
                 raise ValueError(f"{spec.symbol} already running")
         r = self.make_runner(spec)                            # may touch the network (tick size, NQ reference price)
+        # Seed the first immutable display view during startup. HTTP readers
+        # never build summaries, calendars, provider capabilities or charts.
+        with r.lock:
+            r.publish_read_views()
         # A portfolio-wide pause is a durable desired state. Assets added while
         # that intent is active must never begin accepting entries unpaused.
         if self.paused:
@@ -1879,7 +2004,8 @@ class Portfolio:
 
     def rewarm_asset(self, symbol: str, overrides: Optional[Dict[str, Any]] = None, persist: bool = False,
                      *, preset: Any = _UNCHANGED, reset: bool = False,
-                     chart: Optional[Dict[str, Any]] = None) -> AssetRunner:
+                     chart: Optional[Dict[str, Any]] = None,
+                     _publish_views: bool = True) -> AssetRunner:
         """Atomically apply strategy/chart configuration, then persist only after replay succeeds."""
         raw = str(symbol).strip().upper()
         key = raw if raw in self.runners else resolve(symbol).symbol
@@ -1947,6 +2073,11 @@ class Portfolio:
                 elif delete_file:
                     os.remove(path)
                 self.equity_epoch = time.time()
+                # The pre-replay view deliberately exposes only committed old
+                # state while this lock is held. Replace it only after settings,
+                # persistence and the equity epoch have all committed.
+                if _publish_views:
+                    r.publish_read_views()
             except Exception:
                 try:
                     if os.path.exists(tmp):
@@ -1964,6 +2095,7 @@ class Portfolio:
         self._threads[r.symbol] = t
 
     def start(self) -> None:
+        self.journal.start_display_publisher(since_ts=self.started)
         # Start shared live transports before historical warm-up. Databento buffers
         # real-time seconds/trades while each runner replays history, eliminating the
         # history-to-live seam without opening one session per futures symbol.
@@ -2009,12 +2141,20 @@ class Portfolio:
             try:
                 if not r.rewarming:
                     r.poll()
+                    self._publish_runner_read_views(r)
             except Exception as ex:
                 r.errors += 1
                 r.last_error = f"{type(ex).__name__}: {ex}"
                 r.runtime_error = r.last_error
                 self.journal.log("ERROR", f"[{r.symbol}] poll: {r.last_error}")
             self._stop.wait(interval)
+
+    @staticmethod
+    def _publish_runner_read_views(runner) -> None:
+        publish = getattr(runner, "publish_read_views", None)
+        if callable(publish):
+            with runner.lock:
+                publish()
 
     def _warmup_with_retry(self, r: AssetRunner) -> bool:
         """Keep transient startup feed failures in WARMING and retry with backoff."""
@@ -2027,6 +2167,7 @@ class Portfolio:
                 r.runtime_error = ""
                 r.last_error = ""
                 r.feed_error = ""
+                self._publish_runner_read_views(r)
                 return True
             except Exception as ex:
                 r.errors += 1
@@ -2166,7 +2307,8 @@ class Portfolio:
         return view
 
     def status(self, *, nonblocking: bool = False) -> Dict[str, Any]:
-        rs = [r.summary(nonblocking=True) if nonblocking else r.summary() for r in self.runner_list()]
+        runners = tuple(self.runners.values()) if nonblocking else self.runner_list()
+        rs = [r.summary(nonblocking=True) if nonblocking else r.summary() for r in runners]
         shadow_rows = [x["real_price_shadow"] for x in rs if x.get("real_price_shadow")]
         eq = sum(x["equity"] or 0.0 for x in rs)
         cap = sum(x["capital"] for x in rs)
@@ -2212,7 +2354,7 @@ class Portfolio:
             captured_at = summary.get("view_captured_at")
             if age is None:
                 return None
-            if summary.get("view_stale") and captured_at is not None:
+            if summary.get("view_stale") and not summary.get("view_age_adjusted") and captured_at is not None:
                 try:
                     age = float(age) + max(0.0, time.time() - float(captured_at))
                 except (TypeError, ValueError):
@@ -2313,7 +2455,9 @@ class Portfolio:
             "real_price_shadow": shadow_portfolio,
             "equity_epoch": epoch,
             "view_stale": bool(stale),
-            "equity_series": self.journal.equity_series(max_points=600, since_ts=max(self.started, epoch)),
+            "equity_series": self.journal.equity_series(max_points=600, since_ts=max(self.started, epoch),
+                                                       nonblocking=nonblocking),
+            "equity_series_view": self.journal._cached_dashboard_view("equity")[1] if nonblocking else None,
             "all_warm": all(x["warm"] for x in rs) if rs else False,
             "preset": self.preset, "profile": self.profile, "pts_ref": {"symbol": self.pts_ref_symbol, "price": self.pts_ref_price},
         })

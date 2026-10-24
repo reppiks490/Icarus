@@ -27,6 +27,7 @@ def config_server(tmp_path):
         runner._init_strategy(100)
         runner.last_price = 100
         runner.warm = True
+        runner.publish_read_views()
         port.runners["TEST"] = runner
         port.order = ["TEST"]
         entered, release = threading.Event(), threading.Event()
@@ -215,9 +216,11 @@ def test_replay_snapshot_uses_committed_capital_and_epoch_until_metadata_commits
     assert code == 200 and not after["view_stale"]
     assert after["capital"] == after["assets"][0]["capital"] == 12345
     assert after["equity_epoch"] > before["equity_epoch"]
+    assert after["assets"][0]["view_captured_at"] >= after["equity_epoch"]
+    assert after["assets"][0]["view_captured_at"] > pending["assets"][0]["view_captured_at"]
 
 
-def test_wildcard_replay_snapshot_keeps_epoch_and_history_when_later_asset_rolls_back(config_server):
+def test_wildcard_replay_snapshot_keeps_epoch_and_history_when_later_asset_rolls_back(config_server, tmp_path):
     runner, request, _, _ = config_server()
     port = request.portfolio
     spec = AssetSpec("ZZZ", "ZZZ", "yahoo", "ZZZ", "crypto", 1, 1,
@@ -225,9 +228,11 @@ def test_wildcard_replay_snapshot_keeps_epoch_and_history_when_later_asset_rolls
     second = AssetRunner(RunnerConfig(spec, Inputs(use_tide=False, use_eod_flat=False)), port.journal)
     second._init_strategy(100)
     second.warm = True
+    second.publish_read_views()
     port.runners["ZZZ"] = second
     port.order.append("ZZZ")
     port.journal.add_equity(port.equity())
+    port.journal.publish_dashboard_views()
     code, before = request("/status/public")
     assert code == 200 and before["equity_series"]
     entered, release = threading.Event(), threading.Event()
@@ -236,13 +241,19 @@ def test_wildcard_replay_snapshot_keeps_epoch_and_history_when_later_asset_rolls
         assert release.wait(3)
         raise ValueError("test replay failure")
     second.rewarm = fail_second
+    presets = tmp_path / "presets"
+    presets.mkdir(exist_ok=True)
+    (presets / "changed.json").write_text(json.dumps({"tp1_pts": 80, "_meta": {"capital": 12345}}))
     original_inputs = runner.inputs_base.to_dict()
-    code, accepted = request("/admin/inputs/async", {"asset": "*", "values": {"tp1_pts": 80}})
+    code, accepted = request("/admin/preset/async", {"asset": "*", "preset": "changed"})
     assert code == 202 and entered.wait(3)
     try:
         assert port.equity_epoch > before["equity_epoch"]  # First asset staged a new epoch.
         code, pending = request("/status/public")
         assert code == 200 and all(x["view_stale"] for x in pending["assets"])
+        assert runner.spec.capital == 12345
+        assert pending["capital"] == before["capital"]
+        assert pending["assets"][0]["capital"] == before["assets"][0]["capital"]
         assert pending["equity_epoch"] == before["equity_epoch"]
         assert pending["equity_series"] == before["equity_series"]
     finally:

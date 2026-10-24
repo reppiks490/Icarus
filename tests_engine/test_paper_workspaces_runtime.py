@@ -31,6 +31,7 @@ def _open_test_position(runner, direction):
         runner.em.process_bar(Bar(60, 100, 100, 100, 100, 1), 1)
         runner.last_price = 105.0 if direction > 0 else 95.0
         runner.last_price_ts = time.time()
+        runner.publish_read_views()
 
 
 def test_command_center_api_scopes_controls_and_closes_workspace_journals(
@@ -117,9 +118,18 @@ def test_command_center_api_scopes_controls_and_closes_workspace_journals(
         assert list(server.command_centers.portfolios["cc3"].runners) == ["NQ", "CL"]
         assert list(server.command_centers.portfolios["cc1"].runners) == ["NQ"]
         assert cc1.em.position_size == 1 and cc2.em.position_size == -1
-        with urllib.request.urlopen(base + "/api/command-centers", timeout=5) as reply:
-            selected_snapshot = json.load(reply)
-        assert selected_snapshot["aggregate"]["accounting_complete"] is True
+        # Adding CL starts its own worker. Cached HTTP reads must return an
+        # honest unknown valuation while that worker publishes its first view,
+        # rather than waiting inside the request for warmup or its runner lock.
+        deadline = time.monotonic() + 3
+        while True:
+            with urllib.request.urlopen(base + "/api/command-centers", timeout=5) as reply:
+                selected_snapshot = json.load(reply)
+            if selected_snapshot["aggregate"]["accounting_complete"] or time.monotonic() >= deadline:
+                break
+            time.sleep(.01)
+        assert selected_snapshot["aggregate"]["accounting_complete"] is True, [
+            (row["id"], row["reasons"]) for row in selected_snapshot["paper_pnl"]["profiles"]]
         assert selected_snapshot["aggregate"]["runtime_count"] == 4
         assert selected_snapshot["aggregate"]["reconciliation_status"] == "NO_BROKER_RECONCILIATION"
         assert all(p["runtime_available"] for p in selected_snapshot["profiles"])
