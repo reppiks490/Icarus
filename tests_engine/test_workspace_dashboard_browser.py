@@ -676,19 +676,33 @@ def test_main_real_status_deadline_expires_then_automatic_poll_recovers(workspac
         page.wait_for_function('()=>!statusRefreshes&&!statusPollBusy')
         _full_main(page)
         data=page.evaluate('last')
-        page.route(base+'/status/public',lambda route:route.fulfill(status=200,content_type='application/json',body=json.dumps(data)))
-        page.evaluate('async()=>{await refresh();}')
-        page.unroute(base+'/status/public')
         held=[]
-        page.route(base+'/status/public',lambda route:held.append(route))
-        page.evaluate('()=>{window.heldStatus=refresh();}')
-        page.wait_for_function('()=>last===null',timeout=15000)
-        assert page.evaluate('Object.keys(charts).length===0&&Object.keys(tradesCache).length===0')
-        page.unroute(base+'/status/public')
-        page.route(base+'/status/public',lambda route:route.fulfill(status=200,content_type='application/json',body=json.dumps(data)))
+        responses=[]
+        def status(route):
+            if not held:
+                held.append(route)  # Exactly one real scheduled request times out.
+                return
+            responses.append(True)
+            route.fulfill(status=200,content_type='application/json',body=json.dumps(data))
+        page.route(base+'/status/public',status)
+        page.evaluate("""()=>{
+          window.statusDeadlineObservation=null;
+          const expire=expireCoreObservations;
+          expireCoreObservations=reason=>{
+            expire(reason);
+            if(reason.includes('Request deadline exceeded'))statusDeadlineObservation={
+              reason,cleared:last===null&&Object.keys(charts).length===0&&Object.keys(tradesCache).length===0};
+          };
+        }""")
+        # The independent age watchdog can clear the screen before an in-flight
+        # request reaches its deadline. Observe the actual request timeout first;
+        # one permanent route avoids holding a later poll during route replacement.
+        page.wait_for_function('()=>statusDeadlineObservation!==null',timeout=16000)
+        assert page.evaluate('statusDeadlineObservation.cleared')
         # Recovery must happen from the real scheduled poll, without reload or
         # extending the deadline to disguise an unavailable observation.
         page.wait_for_function('()=>last?.assets.length===35',timeout=6000)
+        assert len(held)==1 and responses
         assert page.locator('#assets > .asset').count()==35
         assert not page.icarus_errors
 
