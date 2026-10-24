@@ -1,10 +1,9 @@
-# Current ICARUS restart
+# ICARUS current restart
 
-Use the **[current restart guide](docs/recovery/PRIME_AS_IS_RESTART.md)** for backup, exact-version verification, Windows setup, the expanded Main asset list, independent CC1–CC4 paper worker switches, dashboard URLs, diagnostics and rollback.
+Use the [current pinned restart guide](docs/recovery/PRIME_AS_IS_RESTART.md).
 
-Install **`7aa3900282213c4e690436098702300a0447cb8d`** from `prime/as-is-restart-20261022` ([PR #471](https://github.com/reppiks490/Icarus/pull/471)). Runtime code is on the restart branch; a documentation update on main does not install it. Fetch and verify the pinned revision before switching.
+Current runtime/UI source: `c8bd8d49d9fc759067c75ee76157b812ce287775`; tree `98533b4e053d6cc13447c4decd62f5b327385f3c`; branch `prime/as-is-restart-20261022`, [PR #471](https://github.com/reppiks490/Icarus/pull/471). Code remains on that branch; main received documentation only.
 
-This as-is paper build retains each CC's saved configuration and journals. Full-system readiness remains NO_GO; live execution stays disabled and `execution_authorized=false`. Owner-PC operation and the reported fault's cause require local verification after launch.
+The guide provides a guarded UI update for an already running, clean exact `7aa3900` installation, plus a full controlled restart, 35-symbol Main command, independent CC controls, verification and rollback. Old instructions are [archived with their original bytes](docs/recovery/archive/2026-10-24/INDEX.md).
 
-Fresh final verification: **4,083 local tests and 111 subtests passed, with separately exercised Chromium controls; see the guide and immutable delivery receipt for exact boundaries and hosted outcomes**. Earlier test counts belong to [archived instructions](docs/recovery/archive/2026-10-23/INDEX.md).
-
+New focused Chromium and presentation/client checks pass. The wider browser run passed 93 checks; a final test-only fixture correction passed three focused checks. New exact-head hosted checks are pending. Cloud verification does not certify owner-PC runtime or full-system readiness. `execution_authorized=false`.
