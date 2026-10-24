@@ -1,138 +1,143 @@
-# Current ICARUS as-is restart — 24 October 2026
+# Current ICARUS full restart — 24 October 2026
 
-**Current source: `c8bd8d49d9fc759067c75ee76157b812ce287775`**, tree `98533b4e053d6cc13447c4decd62f5b327385f3c`, branch `prime/as-is-restart-20261022`, [PR #471](https://github.com/reppiks490/Icarus/pull/471). Runtime code remains on that branch. Updating documentation on main does not install it.
+**HIGHLY IMPORTANT: [required NQ, ETHUSD and SOLUSD settings](HIGHLY_IMPORTANT_RESTART_INFO.md).**
 
-This guide replaces the [previous guide, archived with its original bytes](archive/2026-10-24/pre-main-flow-fix-PRIME_AS_IS_RESTART.md). [Earlier instructions remain archived](archive/2026-10-23/INDEX.md); use the current procedure by itself.
+**Verified runtime: `3122d349524fbce803970dc34ab6fc74dad87467` · tree `9ad37de97e160aead6602351b54c43608086a006`** · branch `prime/as-is-restart-20261022` · [PR #471](https://github.com/reppiks490/Icarus/pull/471). Main contains documentation only; fetch the exact runtime below.
 
-The latest update fixes a continuous dashboard decoration render loop, retains asset/chart nodes during status updates and prevents overlapping chart batches. Main uses a bounded four-worker chart pool; CC readers stay serial for their exclusive configuration lock. Actual request deadlines and observation expiry remain unchanged. Normal status recovery after an actual request deadline is tested; unavailable data is not displayed as fresh.
+This replaces the [previous instructions, archived byte-for-byte](archive/2026-10-24/pre-nexus-aion-PRIME_AS_IS_RESTART.md). [Older notes remain historical](archive/2026-10-24/INDEX.md). This build changes Python runtime code and requires a full restart.
 
-The build retains Windows setup repair, all 35 canonical Main assets, independent CC1–CC4 worker switches, selected-private readers, saved Inputs and paper journals. It remains an as-is paper build with `execution_authorized=false`. Owner-PC performance and sustained runtime remain to be verified after applying the update.
+Every Main and CC asset receives actual Main NQ strategy/chart defaults, with these exceptions:
 
-## Already running the previous verified build: update the UI without stopping Python
+| Asset | Timeframe | RTH gate | Quantity input |
+| --- | --- | --- | --- |
+| Every other asset | Same as current NQ | Same as current NQ | Same as current NQ |
+| ETH / COINBASE:ETHUSD | 30 minutes | Disabled; 24/7 crypto calendar | 25 |
+| SOL / COINBASE:SOLUSD | 30 minutes | Disabled; 24/7 crypto calendar | 25 |
 
-Use this route only when the existing owning launcher's output identifies startup revision `7aa390028221` and Source `C:/Users/tripl/Icarus-as-is`, and that checkout is still exactly clean at the full base revision in the command. Git HEAD alone cannot identify the active Python process. If that precondition is unknown, or the engine is stopped, use the full restart below.
+This intentionally resets existing strategy/chart overrides as requested. Asset selections, journals and CC power settings are preserved. Future assets inherit the template; later explicit per-asset edits keep their normal precedence. Native instrument economics and existing runtime point/tick scaling remain asset-specific.
 
-Close the ICARUS browser tabs, keep the owning launcher open, and run this in a **second Git Bash window**. No other terminal should edit the source during the update. The guards verify the exact base, fetched source/tree, clean source and an allowlist of the two served UI files plus their tests. Any unexpected change stops the block.
+The build includes NEXUS source-health observations and AION durable monitoring history. It repairs the reproduced timeout causes: synchronous authentication activity writes, runner recomputation and journal aggregation on status requests. Authentication stays authoritative and immediately revocable; audit writes run separately. Published runtime snapshots preserve source timestamps. Missing or dirty accounting stays explicitly unknown while assets remain visible. Main/CC/activation views update after configuration commits. Request deadlines and freshness limits are not widened.
 
-```bash
-(
-set +x
-set -euo pipefail
-trap 'printf "%s\n" "Update stopped. Do not force Git or alter private state; follow the failure note below." >&2' ERR
-NEW_COMMIT='c8bd8d49d9fc759067c75ee76157b812ce287775'; NEW_TREE='98533b4e053d6cc13447c4decd62f5b327385f3c'
-BASE='7aa3900282213c4e690436098702300a0447cb8d'
-[[ "$NEW_COMMIT" =~ ^[0-9a-f]{40}$ && "$NEW_TREE" =~ ^[0-9a-f]{40}$ ]]
-cd /c/Users/tripl/Icarus-as-is
-[[ -z "$(git rev-parse --show-prefix)" && "$(git rev-parse HEAD)" == "$BASE" && "$(git rev-parse 'HEAD^{tree}')" == 'd6020c33e6a7c7d72946a2faaae52ca8189bae40' ]]
-dirty=$(git status --porcelain=v1 --untracked-files=all)
-[[ -z "$dirty" ]]
-git fetch --quiet origin prime/as-is-restart-20261022 >/dev/null 2>&1
-[[ "$(git rev-parse 'FETCH_HEAD^{commit}')" == "$NEW_COMMIT" && "$(git rev-parse "${NEW_COMMIT}^{tree}")" == "$NEW_TREE" ]]
-git diff --quiet "$BASE" "$NEW_COMMIT" -- . \
-  ':(exclude)icarus_engine/dashboard.html' \
-  ':(exclude)icarus_engine/world-immersion.js' \
-  ':(exclude)tests_engine/test_workspace_dashboard_browser.py' \
-  ':(exclude)tests_engine/test_world_immersion.py'
-for ui in icarus_engine/dashboard.html icarus_engine/world-immersion.js; do [[ "$(git ls-tree "$NEW_COMMIT" -- "$ui")" == 100644\ blob\ * ]]; done
-dirty=$(git status --porcelain=v1 --untracked-files=all)
-[[ -z "$dirty" ]]
-git switch --quiet --no-overwrite-ignore --detach "$NEW_COMMIT" >/dev/null 2>&1
-[[ "$(git rev-parse HEAD)" == "$NEW_COMMIT" && "$(git rev-parse 'HEAD^{tree}')" == "$NEW_TREE" ]]
-printf 'UI source verified: %s\nTree: %s\nNo Python stop/start requested.\n' "$NEW_COMMIT" "$NEW_TREE"
-)
-```
+## 1. Prepare the actual NQ template
 
-Then verify that the running server serves the updated script:
+Use **Git Bash on the PC**. The known source is `C:/Users/tripl/Icarus-as-is`; existing private state is `C:/Users/tripl/Icarus`. Use the actual state root if the previous launcher printed another one.
+
+Paste this complete block. It fetches verified Git objects and reads their preparation helper without switching the running source. If Icarus is running, preparation authenticates and captures current NQ. If it is already stopped, it verifies the saved NQ and preset records. Missing settings or authentication failures stop the operation; stock defaults are not silently substituted.
 
 ```bash
 (
 set +x
 set -euo pipefail
+trap 'printf "\nNQ preparation stopped. Keep the error above; no defaults were applied.\n" >&2' ERR
 cd /c/Users/tripl/Icarus-as-is
-expected=$(git hash-object --no-filters icarus_engine/world-immersion.js)
-served=$(curl --disable --noproxy 127.0.0.1 --max-time 15 --fail --silent --show-error http://127.0.0.1:8791/world-immersion.js | git hash-object --stdin)
-[[ "$served" == "$expected" ]]
-curl --disable --noproxy 127.0.0.1 --max-time 10 --fail --silent --show-error --output /dev/null http://127.0.0.1:8791/healthz
-printf '%s\n' 'Served script matches this checkout; health endpoint responds.'
+ICARUS_RESTART_REV='3122d349524fbce803970dc34ab6fc74dad87467'
+ICARUS_RESTART_TREE='9ad37de97e160aead6602351b54c43608086a006'
+ICARUS_STATE='C:/Users/tripl/Icarus'
+ICARUS_PREPARE_PY="$PWD/.venv/Scripts/python.exe"
+test -d "$ICARUS_STATE"
+test -x "$ICARUS_PREPARE_PY"
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+git fetch --quiet origin prime/as-is-restart-20261022
+test "$(git rev-parse 'FETCH_HEAD^{commit}')" = "$ICARUS_RESTART_REV"
+test "$(git rev-parse "${ICARUS_RESTART_REV}^{tree}")" = "$ICARUS_RESTART_TREE"
+git show "${ICARUS_RESTART_REV}:icarus_engine/restart_defaults.py" |
+  PYTHONUTF8=1 "$ICARUS_PREPARE_PY" -c 'import sys; from pathlib import Path; import icarus_engine; assert Path(icarus_engine.__file__).resolve().parent.parent == Path.cwd().resolve(), "Wrong installed source"; source=sys.stdin.read(); sys.argv=["verified-restart-defaults","--root",sys.argv[1],"--prepare"]; exec(compile(source,"verified-restart-defaults","exec"),{"__name__":"__main__","__package__":"icarus_engine"})' "$ICARUS_STATE"
+printf '\nNQ snapshot prepared. If the old launcher is running, press Ctrl+C there before the full restart block.\n'
 )
 ```
 
-The hash compares raw served and working-tree bytes, including Windows line endings. The responding health route alone does not prove fresh market data. Reopen [Main](http://127.0.0.1:8791/) and the required CC views. Use **Ctrl+Shift+R** for an existing tab.
+The result must say `PREPARED` and show the actual NQ overview plus both crypto exceptions. The snapshot remains private at `ROOT/current-nq-restart-capture.json`. Keep existing custom `ICARUS_TOKEN` configured locally; never send its value. Do not edit Inputs between preparation and restart.
 
-This is a UI update: the Python process remains the one launched at `7aa3900`, and its served UI source is `c8bd8d49d9fc759067c75ee76157b812ce287775`. It does not request setup, worker shutdown, state copying or a process restart. If a guard fails, preserve local changes; do not force checkout, reset, clean or delete state. The full procedure below handles an actual restart. A failure after switching may leave Git at the new revision; inspect `git rev-parse HEAD` before repeating a base-only command.
+If the old engine cannot answer preparation because it is already timing out, stop its owning launcher normally and rerun preparation against saved settings. The output labels that saved-resolution basis explicitly.
 
-## Full controlled restart or next normal start
+## 2. Stop, back up, apply and launch
 
-## 1. Stop and preserve your installation
+Privately record open paper positions first; complete reconstruction of in-memory positions is not certified. Close Icarus browser tabs. In the terminal owning the old engine, press **Ctrl+C** and wait for shutdown. Do not flatten positions merely to restart. If it is already stopped, proceed.
 
-Privately record any open paper positions first: restoration of every open in-memory position is not certified. In the terminal that owns the current engine, press **Ctrl+C** and wait for normal shutdown. Do not flatten positions merely to restart, kill unrelated Python processes, delete PID files or erase databases.
-
-The previously observed PC uses **C:/Users/tripl/Icarus** for private state and **C:/Users/tripl/Icarus-as-is** for updated source. If the old launcher printed a different state root, use that actual root throughout. After shutdown, make a private backup in Git Bash:
+Paste the complete block below. It verifies recorded PIDs and port 8791, copies the stopped private state, records the prior source revision, verifies the new source/tree, applies and verifies NQ defaults, and launches all 35 canonical Main symbols. It does not kill another process or force Git.
 
 ```bash
+(
+set +x
+set -euo pipefail
+trap 'printf "\nRestart stopped. Keep the error above; do not force Git or delete PID files.\n" >&2' ERR
+
+cd /c/Users/tripl/Icarus-as-is
 export ICARUS_STATE='C:/Users/tripl/Icarus'
 export ICARUS_HOME="$ICARUS_STATE"
-test -d "$ICARUS_STATE" &&
-export ICARUS_BACKUP="${ICARUS_STATE}.backup-$(date -u +%Y%m%dT%H%M%SZ)" &&
-test ! -e "$ICARUS_BACKUP" &&
-cp -a "$ICARUS_STATE" "$ICARUS_BACKUP"
-```
+ICARUS_RESTART_REV='3122d349524fbce803970dc34ab6fc74dad87467'
+ICARUS_RESTART_TREE='9ad37de97e160aead6602351b54c43608086a006'
+ICARUS_RESTART_PY="$PWD/.venv/Scripts/python.exe"
+test -d "$ICARUS_STATE"
+test -x "$ICARUS_RESTART_PY"
+test -f "$ICARUS_STATE/current-nq-restart-capture.json"
 
-Wait for the copy to finish successfully before updating. It may be large and contains private journals, saved configuration, history and credentials; keep it local. Copying stopped state preserves SQLite journals and sidecars together.
+if test -n "$(git status --porcelain=v1 --untracked-files=all)"; then
+  printf '%s\n' 'STOP: this source checkout has local changes. Preserve them before updating.' >&2
+  exit 1
+fi
 
-## 2. Fetch and verify the exact source before switching
+"$ICARUS_RESTART_PY" - "$ICARUS_STATE" <<'PY'
+import socket, sys
+from pathlib import Path
+from icarus_engine.process_identity import identity
+root = Path(sys.argv[1])
+for name in ("plant", "engine", "bridge"):
+    path = root / "run" / (name + ".pid")
+    if path.exists():
+        try:
+            pid = int(path.read_text(encoding="ascii").strip())
+        except (OSError, ValueError):
+            raise SystemExit("STOP: cannot verify " + str(path))
+        if identity(pid) is not False:
+            raise SystemExit(f"STOP: {name} PID {pid} is still running or unverified. Stop its owning launcher with Ctrl+C before retrying.")
+with socket.socket() as probe:
+    try:
+        probe.bind(("127.0.0.1", 8791))
+    except OSError:
+        raise SystemExit("STOP: port 8791 is still occupied. Stop its owning launcher with Ctrl+C before retrying.")
+print("Old plant/engine stopped; port 8791 is available.", flush=True)
+PY
 
-Use the existing source checkout. Record the current `git rev-parse HEAD` privately for rollback and preserve local modifications. Do not force checkout, hard-reset or clean.
+ICARUS_RESTART_PREVIOUS="$(git rev-parse HEAD)"
+ICARUS_RESTART_BACKUP="${ICARUS_STATE}.backup-$(date -u +%Y%m%dT%H%M%SZ)"
+test ! -e "$ICARUS_RESTART_BACKUP"
+test ! -e "${ICARUS_RESTART_BACKUP}.source-revision.txt"
+printf "Backing up private state to %s — wait for the copy to finish.\n" "$ICARUS_RESTART_BACKUP"
+cp -a "$ICARUS_STATE" "$ICARUS_RESTART_BACKUP"
+printf "%s\n" "$ICARUS_RESTART_PREVIOUS" > "${ICARUS_RESTART_BACKUP}.source-revision.txt"
 
-Run in **Git Bash on the PC**, after the backup:
+if ! git fetch --quiet origin prime/as-is-restart-20261022 >/dev/null 2>&1; then
+  printf '%s\n' 'STOP: Git fetch failed. Source was not switched.' >&2
+  exit 1
+fi
+test "$(git rev-parse 'FETCH_HEAD^{commit}')" = "$ICARUS_RESTART_REV"
+test "$(git rev-parse "${ICARUS_RESTART_REV}^{tree}")" = "$ICARUS_RESTART_TREE"
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+git switch --no-overwrite-ignore --detach "$ICARUS_RESTART_REV"
+test "$(git rev-parse HEAD)" = "$ICARUS_RESTART_REV"
+test "$(git rev-parse 'HEAD^{tree}')" = "$ICARUS_RESTART_TREE"
 
-```bash
-cd "$HOME/Icarus-as-is" &&
-test -z "$(git status --porcelain=v1 --untracked-files=all)" &&
-git rev-parse HEAD &&
-git fetch --quiet origin prime/as-is-restart-20261022 &&
-test "$(git rev-parse FETCH_HEAD)" = 'c8bd8d49d9fc759067c75ee76157b812ce287775' &&
-git switch --no-overwrite-ignore --detach c8bd8d49d9fc759067c75ee76157b812ce287775 &&
-test "$(git rev-parse HEAD)" = 'c8bd8d49d9fc759067c75ee76157b812ce287775'
-```
+"$ICARUS_RESTART_PY" -m icarus_engine.restart_defaults --root "$ICARUS_STATE" --capture-file "$ICARUS_STATE/current-nq-restart-capture.json" --apply
+"$ICARUS_RESTART_PY" -m icarus_engine.restart_defaults --root "$ICARUS_STATE" --capture-file "$ICARUS_STATE/current-nq-restart-capture.json" --verify
+printf '%s\n' 'Verified NQ defaults for all assets; ETHUSD and SOLUSD: 30-minute, RTH disabled, 25 contracts.'
 
-Continue only after the block succeeds. If the fetched branch has a different SHA, stop and check the current delivery receipt; do not substitute an unverified head. Git refuses conflicting changes; preserve them instead of forcing a switch.
-
-If this source folder is absent, locate your existing Icarus checkout first. From it, fetch and verify the same revision, then create the separate source checkout only when the destination does not exist:
-
-```bash
-git fetch origin prime/as-is-restart-20261022 &&
-test "$(git rev-parse FETCH_HEAD)" = 'c8bd8d49d9fc759067c75ee76157b812ce287775' &&
-test ! -e "$HOME/Icarus-as-is" &&
-git worktree add --detach "$HOME/Icarus-as-is" c8bd8d49d9fc759067c75ee76157b812ce287775
-```
-
-Do not create a fresh private state root. Return to `$HOME/Icarus-as-is` for installation.
-
-## 3. Install and launch with the expanded Main assets
-
-```bash
-export ICARUS_STATE='C:/Users/tripl/Icarus'
-export ICARUS_HOME="$ICARUS_STATE"
 export ICARUS_MAIN_ASSETS='NQ,BTC,MNQ,MES,ES,YM,MYM,RTY,M2K,GC,MGC,SI,SIL,PL,PA,MBT,ETH,SOL,CL,NG,HG,6E,6J,6B,6A,ZN,ZB,BTCF,MHG,MCL,MNG,M6E,MJY,M6B,M6A'
-bash scripts/start-as-is.sh --root "$ICARUS_STATE" --feed yahoo --assets "$ICARUS_MAIN_ASSETS"
+printf "Verified source: %s\nPrivate state: %s\nBackup: %s\nLaunching — keep this window open.\n" "$ICARUS_RESTART_REV" "$ICARUS_STATE" "$ICARUS_RESTART_BACKUP"
+trap - ERR
+ICARUS_PYTHON="$ICARUS_RESTART_PY" bash scripts/start-as-is.sh --root "$ICARUS_STATE" --feed yahoo --assets "$ICARUS_MAIN_ASSETS"
+)
 ```
 
-This uses all **35 symbols in `dashboard_assets()` for Main only**. Saved CC1–CC4 asset selections, custom Inputs and journals remain independent. CC1, CC2 and CC4 retain the three customized workspaces; CC3 remains the spare. Do not use an old expansion/reset helper to overwrite them.
+Wait for the backup to finish. It may be large and contains private configuration, journals, history and credentials; keep it local. The adjacent `.source-revision.txt` records the prior source. The migration also records a private configuration backup and receipt under `ROOT/audit/restart-defaults/`.
 
-A working installation already prepared at the previous verified `7aa3900` needs no dependency reinstall for this UI-only update. If this source checkout has never completed setup, add `--setup` to the launcher command above.
+The working existing `.venv` needs no dependency reinstall: these changes add no runtime dependency. If setup never completed, use this pinned source's `scripts/start-as-is.sh` with `--setup`; do not repeat the old bare editable-install command. The launcher retains the scoped Python 3.10 distutils repair. Do not set `SETUPTOOLS_USE_DISTUTILS` globally.
 
-Windows Python **3.10+** is supported; install 64-bit Python 3.11 or 3.12 if Python is missing. Setup uses the source checkout's separate `.venv`, upgrades pip/setuptools/wheel, then installs the declared extras with `--no-build-isolation`. The launcher scopes `SETUPTOOLS_USE_DISTUTILS=stdlib` to setup commands on Python below 3.12 and uses `local` on 3.12+. This addresses the pip/setuptools distutils collision on the owner's Python 3.10; do not set this variable globally or replace the launcher with the old bare editable-install command.
+**Keep the launcher window open and the PC awake.** A guard failure stops the block; preserve the error instead of forcing checkout, cleaning files or deleting PID records.
 
-The launcher prints its source revision, Python and private state root, refuses empty Main assets or an occupied port, and does not kill another process. Preserve an existing custom `ICARUS_TOKEN` locally; never publish its value. Use the browser's Token control if prompted.
+## 3. Observe the restarted system
 
-**Keep the launcher window open and the PC awake.** Yahoo futures data is delayed paper/research data. A listed asset, a price or an ON worker does not establish provider entitlement or connect a futures/prop-firm account. The 35-symbol catalog is not verified fresh feed coverage. Existing locally configured auxiliary providers remain separate; the Yahoo argument alone does not prove every paid capability is inactive. No order bridge is launched. Existing local history remains preserved; missing history stays missing.
-
-For later starts at the verified source, repeat the exports and launcher command **without `--setup`**. Inspect any old `~/icarus-start.sh` before using it: its source path, six-asset list or feed choice may be stale. The local engine does not require an active ChatGPT subscription; external provider/model services retain their own availability and account requirements.
-
-## 4. Open the views and control each CC independently
-
-Refresh existing tabs once with Ctrl+Shift+R after updating.
+Open [Main](http://127.0.0.1:8791/) first. Use **Ctrl+Shift+R** for an existing tab, then open **Subsystems** in navigation.
 
 | View | URL |
 | --- | --- |
@@ -143,62 +148,36 @@ Refresh existing tabs once with Ctrl+Shift+R after updating.
 | CC4 | http://127.0.0.1:8791/dashboards/cc4 |
 | Connections | http://127.0.0.1:8791/dashboards/connections |
 
-**Paper workspace on/off** in Main has four independent switches. Each CC page has its own switch. These are authenticated owner actions that start/stop that CC's paper workers; they also stop its selected-page runtime polling while it is off. Main remains available for monitoring and for switching the CC back on.
+Existing independent CC switches retain their saved desired states. OFF stops that CC's paper workers, native monitoring worker and ordinary selected-page polling. Main stays available. STOPPING means work is still draining; open positions or pending operations can block OFF. The switch does not flatten positions or promise isolation from shared infrastructure.
 
-| State | Meaning |
-| --- | --- |
-| STARTING | Startup was accepted; worker confirmation is pending. Cancel start requests OFF if preparation is stuck. |
-| ON | The selected CC's paper workers are running. Inspect its data and warmup separately. |
-| STOPPING | Shutdown was accepted; workers or in-flight I/O have not fully finished. |
-| OFF | The selected CC's paper workers have stopped. |
-| ERROR | A transition or saved control state failed; inspect the reason. Retry stop finishes failed cleanup before ON is allowed. |
+Confirm the launcher printed the pinned source (first 12 characters), the existing private root and the verified defaults message. Inspect Main NQ Inputs and compare other assets. ETHUSD and SOLUSD must show 30-minute charts, session filtering disabled and quantity 25. Check saved journals, CC selections and normal Main scrolling/clicking.
 
-The checked switch reflects confirmed **ON**, not merely requested startup. New installations default all four CCs to enabled; later desired settings persist privately at `ROOT/command_centers/runtime-power.json` and survive a normal restart. Inputs, asset selections and paper journals are retained when switching off or on.
-
-OFF is refused when that CC has open positions, pending entries/closes in either its primary or shadow emulator, or busy work/configuration/activation. Wait for work to finish and review positions normally; the switch never flattens positions or cancels orders to make shutdown succeed. A long in-flight provider call can leave it **STOPPING** until that call returns. Do not interpret STOPPING as OFF or repeatedly force a retry.
-
-The switches isolate CC worker lifecycle and selected polling. The application still shares its parent process and provider transports, so an outage or failure of shared infrastructure can affect more than one workspace. These switches are not a guarantee of complete process/provider fault isolation.
-
-## 5. Verify actual state and diagnose problems
-
-Check the launcher printed `c8bd8d49d9fc759067c75ee76157b812ce287775` (its first 12 characters) and the existing private state root. Check each URL's workspace badge, saved Inputs and selected Performance journal. On Main, inspect the expanded asset list; on every running CC inspect actual prices, warmup and freshness.
-
-Asset cards distinguish a **reported error** from **past errors** counted since launch and show **bar age**. A past-error count alone does not prove a current fault; no reported error alone does not establish fresh prices or a healthy feed. The owner-PC cause must be established from its current status/logs after launch.
-
-A blank view or repeated “Selected runtime observation expired” after **30 seconds**, while that workspace is ON, needs diagnostics. An OFF/STARTING/STOPPING CC deliberately suppresses its ordinary runtime observation polls. Warmup depends on available history/feed and may remain incomplete.
-
-In a second Git Bash window:
+In a second Git Bash window, use your existing token locally if customized:
 
 ```bash
-curl --noproxy 127.0.0.1 --max-time 10 -sS -w '\nHealth HTTP %{http_code}\n' http://127.0.0.1:8791/healthz
-curl --noproxy 127.0.0.1 --max-time 15 -sS -o /dev/null -H "Authorization: Bearer ${ICARUS_TOKEN:-icarus}" -w 'Status HTTP %{http_code}; response %{time_total}s\n' http://127.0.0.1:8791/status/public
-tail -n 80 'C:/Users/tripl/Icarus/logs/engine.log'
+curl --disable --noproxy 127.0.0.1 --max-time 10 --fail --silent --show-error \
+  -w '\nHealth HTTP %{http_code}\n' http://127.0.0.1:8791/healthz
+curl --disable --noproxy 127.0.0.1 --max-time 15 --fail --silent --show-error \
+  -o /dev/null -H "Authorization: Bearer ${ICARUS_TOKEN:-icarus}" \
+  -w 'Status HTTP %{http_code}; response %{time_total}s\n' http://127.0.0.1:8791/status/public
 ```
 
-Set your custom token locally in this second window if applicable. Use the actual state root for logs. The native status route is **`/status/public`**; **`/api/status` is not this engine's route**. HTTP 200 alone is insufficient: inspect nonempty assets, price/bar age, warmup and rendered views. Keep logs private and redact tokens/account details before sharing. A browser connection-aborted message alone does not establish that the process died.
+`/status/public` is the native route; `/api/status` is not. HTTP 200 only proves a responding route. Empty assets or `warm:false` do not prove readiness. Warmup depends on actual available history and feeds. A blank ON dashboard or repeated deadline/expiry after 30 seconds needs the preceding startup/runtime log, not indefinite waiting: `tail -n 80 'C:/Users/tripl/Icarus/logs/engine.log'`.
 
-**HTTP 000 with connection refusal means the client did not reach a listener at the sampled address and port.** Run the foreground launcher from step 3 and read its new source-revision/startup output. `logs/engine.log` appends historical entries, so a traceback in its tail may predate the current launch. A per-request disconnect traceback alone does not prove it terminated the engine. Preserve your custom token locally; do not post process command lines or unredacted startup logs.
+Subsystems should show actual observations, a NEXUS plane hash and AION receipts with chain verification at observation. Unknown provider SLOs are expected. These are local monitoring receipts, not recovered market bars, reconstructed open positions or provider qualification. Both native cores are pinned to Divine Providence `27ae69c593ede3019957100cd401625bd2424f43` with exact source provenance.
 
-Shared Access refreshes when opened, on Refresh or after an access action. Connections inventory does not prove an account is connected. Native read-only research panels can honestly report zero or unavailable private evidence; unavailable adapters remain visible. UI paper strategy states such as LIVE/ARMED are not broker authorization.
+The 35-symbol catalog is not verified fresh feed coverage. Yahoo is delayed paper/research data; configured auxiliary providers retain their own access requirements. A past error count differs from an active reported source error. Inspect current ages and errors. No order bridge or live broker arming is requested.
 
+## Verification and next step
 
-## Verification and limits
+Fresh local verification at this exact runtime tree: **4152 passed, 128 skipped, 111 subtests passed (468.28s)**. Optional browser checks ran separately: **107 real Chromium checks passed (437.29s)**. Actual Python 3.10 preparation/application and authenticated NQ capture are included in 18 settings checks. Auth/scope integration passed 96 checks; final publication-writer audit passed 69 checks. Main/CC configuration coverage passed 239 checks with 4 skips. Independent review reproduced and verified accounting-clock coherence. The Python3.10 wheel contains seven byte-exact final runtime modules and all four pinned native cores (wheel SHA256 `f084e5357081f05304bfc3520596759a067f407722a699a42f5f627ae9b4beb2`).
 
-Exact published source: `c8bd8d49d9fc759067c75ee76157b812ce287775`; tree `98533b4e053d6cc13447c4decd62f5b327385f3c`, identical to the frozen local commit `564ec213df31f26e64915638ee24372ece3cc789`. The Main flow update changes only `dashboard.html`, `world-immersion.js` and two test files relative to the previous verified `7aa3900`; all Python runtime/dependency/launcher blobs are unchanged.
+**Hosted checks for this exact head are still running, including Windows. No final Windows pass is claimed yet.** See [this head's checks](https://github.com/reppiks490/Icarus/commit/3122d349524fbce803970dc34ab6fc74dad87467/checks). The preceding native build `211592f2515d`'s ten hosted workflows passed; those are historical proof, not this head's Windows results.
 
-- **10 focused real-Chromium checks passed in 57.05 seconds.** These cover 35-asset card/SVG retention, changed values and membership, shared bounded chart reads, progress despite one held chart, serial selected reads, a real status deadline with automatic poll recovery, and automatic status continuity while a chart reaches its real deadline. That chart then recovers after an explicit refresh.
-- **114 presentation/client checks passed in 8.69 seconds**, including the real-browser decoration regression. Before the fix, five idle frames rewrote 175 panel labels; afterward idle refreshes/mutations are zero, and two actual changes coalesce to one refresh.
-- In an isolated synthetic 35-asset browser fixture, five unchanged status updates dropped from **3,332 ms and 175 removed SVGs** to **about 270 ms and zero removed SVGs**. Live value updates retain all 35 cards/charts. These measurements are cloud engineering evidence, not an owner-PC benchmark.
-- The full API/accounting suite before the final decoration-only repair passed **4,083 tests and 111 subtests**, with 97 explicit skips, in 454.12 seconds. The wider real-Chromium run passed **93 checks in 327.19 seconds** at the identical production UI. The final test-only fixture correction then passed **3 focused checks in 35.77 seconds**. The exact final source also passed both hosted Linux jobs and the full hosted visual workflow, including all five-route/recovery checks and four world contracts with no browser errors or writes. Two hosted Windows jobs are still running; no Windows pass is claimed yet. Previous-source totals are not relabelled as final-source results.
-- The operator UI-update command also passed a synthetic local Git rehearsal: a clean exact source updates; tracked changes, untracked changes, a wrong fetched pin and an unexpected runtime-file change are refused before checkout. A separate private-state sentinel remained unchanged. This does not execute or certify the owner's PC. All seven Bash blocks parse.
-- The previous `7aa3900` passed all ten automatic hosted workflows, including both Windows/Linux test runs and visual contracts. Its [hosted receipt](https://github.com/reppiks490/icarus-owner-actions/blob/main/coordination/events/2026/10/23/icarus2-20261020-federation-integration/054-hosted-verified-pc-launch.json) and [original delivery receipt](https://github.com/reppiks490/icarus-owner-actions/blob/main/coordination/handoffs/prime-installer-expanded-restart-20261023.json) remain historical evidence.
+Intermediate failed integration tests and deliberately interrupted runs remain recorded in the coordination handoff. They are not final passes. The final full and browser suites ran against the frozen tree named above.
 
-Failed pre-fix tests and intermediate attempts remain recorded: duplicate chart reads, a chunk barrier behind one chart, parallel selected-reader lock contention, and persistent slow-chart failures before the decoration loop was found. The request and observation deadlines were not widened to conceal those failures. An environment restart interrupted one wider browser run after 37 passing cases; it is not a completed pass. The first hosted visual run failed its recovery fixture: a hold-all route could strand a second poll, and generic screen expiry did not prove the first request's deadline had elapsed. The final test holds exactly one scheduled request, observes its actual deadline and cleared caches, then verifies normal poll recovery using the original six-second recovery budget. Production code is unchanged by this follow-up.
+The owner PC, real provider freshness/entitlement and sustained uptime still require observation. No software test promises zero future outages. Full-system readiness remains NO_GO; execution and production-decision authority remain false. No paid data, collectors, training, scheduler changes or runtime merge into main are added.
 
-Full-system readiness remains **NO_GO**. These cloud checks do not certify the owner's PC, provider entitlement/freshness, imported history, all open-position reconstruction, sustained uptime or trading accuracy. A listed symbol is not verified fresh feed coverage. Provider, licensing and workflow blockers remain explicit; no training, collectors, live broker arming, paid feed selection, new spend or scheduler changes are introduced by this update.
+After the owner confirms this PC restart is working, reconnect the phone using its existing access setup. Phone/network access is not changed during this restart delivery.
 
-## Rollback and stopping point
-
-For an actual process restart or rollback, use Ctrl+C in the owning launcher, preserve the current private state, and switch to the privately recorded previous source without force. Use that source's matching launcher and confirmed state/feed/assets. Do not restore an older backup over newer journal entries casually.
-
-No automatic main runtime merge, deployment, release or PC reboot is included. The federation mega-loop remains cancelled. Prime waits for the owner's PC readback after this bounded update and continues diagnosis if the recurring symptom remains.
+For rollback, Ctrl+C the owning launcher, preserve the newest private state, and switch without force to the source recorded beside the backup. Do not casually overwrite newer journals with an older backup. `icarus_plant stop` is not a graceful Windows substitute: its implementation force-kills a process tree.
