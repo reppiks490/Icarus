@@ -117,6 +117,9 @@ jobs:
           tests_engine/test_workspace_api.py
           tests_engine/test_workspace_jobs.py
           tests_engine/test_workspace_client.py
+          tests_engine/test_native_subsystem_sources.py
+          tests_engine/test_subsystem_connections.py
+          tests_engine/test_subsystem_connections_api.py
           tests_engine/test_workspace_context.py
           tests_engine/test_workspace_panels.py
           tests_engine/test_workspace_access.py

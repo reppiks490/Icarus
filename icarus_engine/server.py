@@ -72,6 +72,7 @@ from .golive import report as golive_report
 from .agent import report as agent_report
 from .briefing import report as briefing_report
 from .runtime import FlattenUnavailableError, Portfolio, _clean, _read_json, apply_spec_meta, preset_path
+from .subsystem_connections import NativeSubsystemConnections, capture_portfolio
 from .workspace_context import WorkspaceContextError, guard_workspace_request
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
@@ -264,6 +265,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     performance_proof = PerformanceProofStore(port.base_dir)
     latency_telemetry = LatencyTelemetry()
     source_reliability = SourceReliabilityStore(port.base_dir)
+    subsystem_connections = NativeSubsystemConnections(
+        port.base_dir, workspace_id="main", snapshot_supplier=lambda: capture_portfolio(port))
     qualification_receipts = QualificationReceiptStore(port.base_dir, REQUIRED_CANDIDATE_GATES)
     # Bind one collector to the existing live runners; Portfolio.make_runner
     # propagates the same sink to assets added later.
@@ -1451,6 +1454,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._json(200, workspace_power.snapshot())
             if p.path == "/workspace_power_ui.js":
                 return self._send(200, (html_path.parent / "workspace_power_ui.js").read_bytes(), "text/javascript")
+            if p.path == "/subsystem-connections-ui.js":
+                return self._send(200, (html_path.parent / "subsystem-connections-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/api/subsystem-connections":
+                if not self._auth():
+                    return self._json(401, {"detail": "authentication required"})
+                if p.query:
+                    return self._json(400, {"detail": "subsystem connections accept no selectors"})
+                return self._json(200, subsystem_connections.snapshot())
             if p.path == "/api/market-universe":
                 from .market_universe import snapshot as market_universe_snapshot
                 try:
@@ -3477,6 +3488,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             closers = (
                 workspace_power.close,
                 workspace_panels.close,
+                subsystem_connections.close,
                 lambda: autopilot.close(),
                 lambda: ascendancy_autopilot.close(),
                 lambda: ascendancy_native_validation.close(),
@@ -3503,6 +3515,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         def serve_forever(self, poll_interval=.5):
             background = bool(getattr(self, "background_workers_enabled", True))
             if background:
+                subsystem_connections.start()
                 workspace_panels.start()
                 workspace_power.start()
                 research.start_background()
@@ -3544,6 +3557,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.performance_proof = performance_proof
     srv.latency_telemetry = latency_telemetry
     srv.source_reliability = source_reliability
+    srv.subsystem_connections = subsystem_connections
     srv.qualification_receipts = qualification_receipts
     srv.autopilot = autopilot
     srv.pantheon = pantheon

@@ -16,6 +16,7 @@ from .workspace_market_data import snapshot as cached_market_snapshot
 from .workspace_research_engines import WorkspaceResearchEngines
 from .workspace_intelligence_panels import WorkspaceIntelligencePanels
 from .workspace_golive import snapshot as selected_golive_snapshot
+from .subsystem_connections import NativeSubsystemConnections, capture_portfolio
 
 
 class CachedPanelFeed:
@@ -115,6 +116,12 @@ class RuntimePanels:
     def intelligence(self):
         return WorkspaceIntelligencePanels(self, self.research_engines)
 
+    @cached_property
+    def subsystem_connections(self):
+        return NativeSubsystemConnections(
+            self.root, workspace_id=self.workspace_id,
+            snapshot_supplier=lambda: capture_portfolio(self.port._portfolio))
+
     def _control(self, action, target=None, **body):
         return self.api.control(self.workspace_id, target, action, body)
 
@@ -157,6 +164,8 @@ class RuntimePanels:
 
     def read(self, path, query):
         asset = query.get("asset", [""])[0]
+        if path == "subsystem-connections":
+            return self.subsystem_connections.snapshot()
         if path in WorkspaceResearchEngines.READ_SELECTORS:
             return self.research_engines.read(path, query)
         if path in WorkspaceIntelligencePanels.READ_SELECTORS:
@@ -191,7 +200,7 @@ class RuntimePanels:
 
     def close(self):
         errors = []
-        for name in ("intelligence", "research_engines", "commissioning"):
+        for name in ("subsystem_connections", "intelligence", "research_engines", "commissioning"):
             service = self.__dict__.get(name)
             if service is not None:
                 try:
@@ -210,6 +219,7 @@ class RuntimePanels:
 
 class WorkspacePanels:
     READ_SELECTORS = {
+        "subsystem-connections": frozenset(),
         "possibility": frozenset(("asset",)),
         "possibility/evidence": frozenset(("asset", "limit", "include_expired", "as_of")),
         "chronofold": frozenset(("asset",)), "commissioning": frozenset(("asset",)),
@@ -252,6 +262,7 @@ class WorkspacePanels:
                     self._runtimes[profile_id] = current
             if background:
                 current.commissioning.start_background()
+                current.subsystem_connections.start()
             return current
 
     def activate(self, profile_id, portfolio):
@@ -284,6 +295,16 @@ class WorkspacePanels:
                 if isinstance(ex, WorkspaceAPIError):
                     raise
                 raise WorkspaceAPIError(400, str(ex)) from ex
+            if (path == "subsystem-connections"
+                    and data.get("observed_config_revision") is not None
+                    and data["observed_config_revision"] != profile["config_revision"]):
+                # The receipt remains valid history, but belongs to the prior
+                # configuration. Never relabel its assets as the current view.
+                data = copy.deepcopy(data)
+                data.update(state="UNAVAILABLE", assets=[], capture_age_seconds=None)
+                data["warnings"] = sorted(set(data["warnings"] + ["OBSERVED_CONFIGURATION_MISMATCH"]))
+                data["nexus"].update(state="UNAVAILABLE", plane_hash=None,
+                                     stream_count=0, unknown_slo_streams=0)
             return {**copy.deepcopy(data), **self.api._identity(profile)}
 
     def mutate(self, profile_id, path, body, expected_revision):

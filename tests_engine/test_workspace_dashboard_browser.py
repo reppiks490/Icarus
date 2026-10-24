@@ -790,3 +790,16 @@ def test_main_automatic_status_survives_a_chart_deadline_and_chart_recovers(work
             assert not page.icarus_errors
         finally:
             page.evaluate('clearInterval(flowMonitor)')
+
+
+# Collected by the existing required hosted Chromium step.
+from tests_engine.test_subsystem_connections_browser import (  # noqa: E402,F401
+    test_subsystems_show_native_receipts_unknown_slos_and_safe_selected_identity,
+    test_subsystems_latest_failure_is_unavailable_and_recovers_automatically,
+    test_subsystems_reject_foreign_authorized_or_stale_frames,
+    test_subsystems_pause_hidden_and_off_keep_focus_and_dispose_pending_requests,
+    test_subsystems_keep_explicit_service_states_without_observations,
+)
+from tests_engine.test_subsystem_connections_api import (  # noqa: E402,F401
+    test_native_subsystems_page_renders_actual_cached_native_receipts,
+)
