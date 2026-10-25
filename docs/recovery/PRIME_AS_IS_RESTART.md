@@ -59,10 +59,9 @@ git checkout --detach "$RELEASE_COMMIT"
 test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
 ```
 
-If this checkout already has its `.venv`, keep it. If it does not, create it and install the repository in editable mode. This is install-only; it does not start Icarus:
+Reuse the checkout's existing `.venv` and update its editable install. The capture step above requires that environment; if it is missing, stop and prepare a verified environment without changing the active runtime. This install step does not start Icarus:
 
 ```bash
-if [[ ! -f .venv/pyvenv.cfg ]]; then py -3 -m venv .venv; fi
 PY="$PWD/.venv/Scripts/python.exe"
 DISTUTILS_MODE="$("$PY" -c 'import sys; print("stdlib" if sys.version_info < (3,12) else "local")')"
 SETUPTOOLS_USE_DISTUTILS="$DISTUTILS_MODE" "$PY" -m pip install --upgrade pip 'setuptools>=68' wheel
@@ -94,10 +93,12 @@ Keep this launcher window open. The launcher prints its source path, Python inte
 In a second Git Bash window:
 
 ```bash
+ready=false
 for attempt in {1..30}; do
-  if curl --noproxy 127.0.0.1 --max-time 3 -fsS http://127.0.0.1:8791/healthz; then break; fi
+  if curl --noproxy 127.0.0.1 --max-time 3 -fsS http://127.0.0.1:8791/healthz; then ready=true; break; fi
   sleep 1
 done
+if [[ "$ready" != true ]]; then echo 'Engine health did not become ready; inspect the launcher and logs.' >&2; exit 1; fi
 curl --noproxy 127.0.0.1 --max-time 10 -sS -o /dev/null -w 'Main HTTP %{http_code}\n' http://127.0.0.1:8791/
 curl --noproxy 127.0.0.1 --max-time 10 -sS -o /dev/null -w 'Public status HTTP %{http_code}\n' http://127.0.0.1:8791/status/public
 for panel in cc1 cc2 cc3 cc4 connections; do
