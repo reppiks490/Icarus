@@ -10,6 +10,7 @@
 - Owner machine: `C:\Users\tripl\Icarus-as-is` (Git Bash: `~/Icarus-as-is`)
 - Private state: `C:\Users\tripl\Icarus` (Git Bash: `~/Icarus`)
 - Paper-only; `execution_authorized=false`.
+- Dashboard/read/write adapter boundaries: [adapter status matrix](ICARUS_ADAPTER_STATUS.md).
 
 ## Defaults that this restart applies
 

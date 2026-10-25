@@ -12,12 +12,13 @@ Icarus 2. A fully qualified system restart has not been performed. Source inspec
 engineering tests, hosted automation and the owner's PC runtime are separate
 evidence levels. No source-only result establishes that the PC is repaired.
 
-**Latest panel delivery:** [per-panel completion and Git Bash restarts](ICARUS_PANEL_RESTARTS.md)
-documents Possibility, Chronofold, Commissioning and Engine Control for all four
-selected workspaces. The other eleven subsystem adapters remain open. Icarus 2's
-owner-assisted receipt026 records the earlier `38d5328` paper application starting
-on the PC with successful main health probes; this is separate from installing
-the new panel source or proving sustained operation.
+**Latest panel delivery:** [adapter status matrix](ICARUS_ADAPTER_STATUS.md) and
+[historical panel checkpoint](ICARUS_PANEL_RESTARTS.md). The core four controls
+are selected-runtime adapters; the other listed subsystem surfaces have selected
+read adapters, with their mutation/automation limits explicit in the matrix.
+Icarus 2's owner-assisted receipt026 records the earlier `38d5328` paper
+application starting on the PC with successful main health probes; this is
+separate from installing the new panel source or proving sustained operation.
 
 The owner's current two-worker direction supersedes the old five-name selection
 board for this workstream. Claims and updates remain on the existing
