@@ -180,35 +180,61 @@ def test_scroll_focus_bounds_layout_reads_without_disabling_scroll_feedback():
                 raise
             pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
         try:
-            page = browser.new_page(viewport={"width": 1440, "height": 800})
+            page = browser.new_page(viewport={"width": 1440, "height": 800}, reduced_motion="no-preference")
             page.set_content('<div id="tabs"></div><main id="view">' + "".join(
-                f'<section class="asset" style="height:180px"><h2>Instrument {index}</h2><span class="px tnum">100</span></section>'
+                f'<section class="asset" style="height:180px"><h2>Instrument {index}</h2><button>Focus {index}</button><span class="px tnum">100</span></section>'
                 for index in range(35)
             ) + "</main>")
+            page.add_style_tag(path=str(CSS))
             page.evaluate("""() => Object.assign(document.documentElement.dataset, {
               world:'divine', experience:'cinematic', motion:'live', visualResolved:'rich'
             })""")
             page.add_script_tag(path=str(IMMERSION))
             page.wait_for_function("() => document.querySelectorAll('.world-topology circle').length >= 2")
+            page.wait_for_timeout(250)
             reads = page.evaluate("""async () => {
+              document.querySelector('#view .asset button').focus();
+              await new Promise(resolve=>setTimeout(resolve,80));
+              const maxScroll=document.documentElement.scrollHeight;
+              const descriptor=Object.getOwnPropertyDescriptor(Element.prototype,'scrollHeight');
+              window.__documentScrollHeightReads=0;
+              Object.defineProperty(Element.prototype,'scrollHeight',{configurable:true,get(){
+                if(this===document.documentElement)window.__documentScrollHeightReads++;
+                return descriptor.get.call(this);
+              }});
               const original=Element.prototype.getBoundingClientRect;
               window.__panelGeometryReads=0;
               Element.prototype.getBoundingClientRect=function(){
-                if(this.matches?.('[data-world-topology-node]'))window.__panelGeometryReads++;
+                window.__panelGeometryReads++;
                 return original.call(this);
               };
               const end=performance.now()+700;
-              let step=0;
+              let step=0,focusFeedback=false;
               while(performance.now()<end){
                 scrollTo(0,step++%5*500);
                 await new Promise(resolve=>requestAnimationFrame(resolve));
+                focusFeedback=focusFeedback||!!document.querySelector('.world-scroll-focus');
               }
-              scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});
+              scrollTo({top:maxScroll,behavior:'instant'});
               await new Promise(resolve=>setTimeout(resolve,300));
-              return {reads:window.__panelGeometryReads,phase:document.documentElement.dataset.scrollPhase};
+              const bottomPhase=document.documentElement.dataset.scrollPhase;
+              const readsBeforeGrowth=window.__documentScrollHeightReads;
+              const geometryReadsBeforeGrowth=window.__panelGeometryReads;
+              const added=document.createElement('div');added.style.height='12000px';
+              document.getElementById('view').append(added);
+              await new Promise(resolve=>setTimeout(resolve,120));
+              const grownMax=document.documentElement.scrollHeight-window.innerHeight;
+              scrollTo({top:grownMax*.5,behavior:'instant'});
+              await new Promise(resolve=>setTimeout(resolve,250));
+              return {reads:geometryReadsBeforeGrowth,focusFeedback,scrollHeightReads:window.__documentScrollHeightReads,
+                readsBeforeGrowth,bottomPhase,growthPhase:document.documentElement.dataset.scrollPhase,
+                maxScroll:grownMax};
             }""")
-            assert reads["reads"] <= 300, reads
-            assert reads["reads"] > 0, reads
-            assert reads["phase"] == "abyss", reads
+            assert reads["reads"] == 0, reads
+            assert reads["focusFeedback"], reads
+            assert reads["readsBeforeGrowth"] <= 2, reads
+            assert reads["scrollHeightReads"] - reads["readsBeforeGrowth"] <= 3, reads
+            assert reads["bottomPhase"] == "abyss", reads
+            assert reads["growthPhase"] == "depth", reads
         finally:
             browser.close()

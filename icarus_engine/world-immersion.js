@@ -6,8 +6,19 @@
   const readoutCache=new Map(),readoutTimers=new WeakMap(),panelActivityTimers=new WeakMap(),radarArrivalTimers=new WeakMap(),impactTimers=new WeakMap(),topologyActivities=new Map();
   let interactionImpactElements=[];
   let refreshFrame=0;
+  let documentScrollHeight=0,scrollHeightMeasureTimer=0,topologyPanelGeometry=new Map(),topologyRadarRect=null,focusOrbitTarget=null,focusOrbitDocumentRect=null;
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
+  function measureDocumentScrollHeight(){
+    if(scrollHeightMeasureTimer){clearTimeout(scrollHeightMeasureTimer);scrollHeightMeasureTimer=0;}
+    documentScrollHeight=document.documentElement.scrollHeight;
+  }
+  function scheduleDocumentScrollHeightMeasure(){
+    clearTimeout(scrollHeightMeasureTimer);
+    scrollHeightMeasureTimer=setTimeout(()=>{
+      scrollHeightMeasureTimer=0;measureDocumentScrollHeight();queueScroll();
+    },100);
+  }
   function cancelScheduledCleanup(map,element){
     const token=map.get(element);if(!token)return;
     if(token.frame)cancelAnimationFrame(token.frame);
@@ -97,12 +108,12 @@
 
   function writeScrollDepth(){
     scrollFrame=0;
-    const doc=document.documentElement;
-    const max=Math.max(1,doc.scrollHeight-window.innerHeight);
-    const y=Math.max(0,window.scrollY||doc.scrollTop||0);
+    // scrollHeight is a synchronous layout read. Cache it when dashboard content
+    // or viewport dimensions change instead of forcing layout on every scroll frame.
+    const max=Math.max(1,documentScrollHeight-window.innerHeight);
+    const y=Math.max(0,window.scrollY||0);
     const now=performance.now();
-    // Read scroll-linked panel geometry before changing world CSS/classes. This
-    // keeps every scroll frame from forcing layout after its own style writes.
+    // Use geometry cached by the topology refresh so scroll frames never force layout.
     updateScrollFocus();
     if(lastScrollAt&&Math.abs(y-lastScrollY)>.5&&motionAllowed()){
       const dt=Math.max(8,now-lastScrollAt),velocity=Math.abs(y-lastScrollY)/dt;
@@ -346,7 +357,15 @@
     }
     const panel=document.querySelector(`#view [data-world-topology-node="${activeId}"]`);
     if(!panel?.isConnected){radarTether.classList.remove('active');return;}
-    const p=geometry?.panelRect||panel.getBoundingClientRect(),r=geometry?.radarRect||sectionRadar.getBoundingClientRect();
+    const cached=topologyPanelGeometry.get(String(activeId)),view=document.getElementById('view');
+    const cachedPanelRect=cached&&view?{
+      left:cached.docLeft-window.scrollX-view.scrollLeft,
+      right:cached.docLeft-window.scrollX-view.scrollLeft+cached.width,
+      top:cached.docTop-window.scrollY-view.scrollTop,
+      bottom:cached.docTop-window.scrollY-view.scrollTop+cached.height,
+      width:cached.width,height:cached.height
+    }:null;
+    const p=geometry?.panelRect||cachedPanelRect||panel.getBoundingClientRect(),r=geometry?.radarRect||topologyRadarRect||sectionRadar.getBoundingClientRect();
     if(p.bottom<0||p.top>window.innerHeight||r.width<1){radarTether.classList.remove('active');return;}
     const right=Math.min(window.innerWidth-8,r.left-5);
     let left=Math.min(window.innerWidth-8,Math.max(0,p.right+5));
@@ -411,9 +430,17 @@
     const points=elements.map((el,index)=>{
       el.dataset.worldTopologyNode=String(index);
       const r=el.getBoundingClientRect();
-      return {index,el,x:r.left-viewRect.left+view.scrollLeft+r.width/2,y:r.top-viewRect.top+view.scrollTop+r.height/2};
+      return {index,el,x:r.left-viewRect.left+view.scrollLeft+r.width/2,y:r.top-viewRect.top+view.scrollTop+r.height/2,
+        docLeft:window.scrollX+r.left+view.scrollLeft,docTop:window.scrollY+r.top+view.scrollTop,width:r.width,height:r.height};
     }).sort((a,b)=>a.y-b.y||a.x-b.x);
+    const nextPanelGeometry=new Map(points.map(point=>[String(point.index),point]));
+    for(const [id,point] of topologyPanelGeometry){
+      if(!nextPanelGeometry.has(id))viewResizeObserver?.unobserve(point.el);
+    }
+    topologyPanelGeometry=nextPanelGeometry;
+    for(const point of points)viewResizeObserver?.observe(point.el);
     rebuildSectionRadar(points);
+    topologyRadarRect=sectionRadar?.getBoundingClientRect()||null;
     if(points.length<2){restoreTopologyActivities();return;}
     const edgeKeys=new Set(),edges=[];
     const addEdge=(a,b)=>{
@@ -478,21 +505,26 @@
     const now=performance.now();
     if(now-lastScrollFocusAt<200)return;
     lastScrollFocusAt=now;
-    const panels=[...document.querySelectorAll('#view [data-world-topology-node]')].slice(0,18);
-    if(!topology||!motionAllowed()||window.innerWidth<1100||!panels.length){
+    const view=document.getElementById('view');
+    const panels=[...topologyPanelGeometry.values()].filter(point=>point.el.isConnected).slice(0,18);
+    if(!topology||!view||!motionAllowed()||window.innerWidth<1100||!panels.length){
       if(scrollFocusId!==null){scrollFocusPanel?.classList.remove('world-scroll-focus');topology?.querySelectorAll('.scroll-active').forEach(el=>el.classList.remove('scroll-active'));scrollFocusPanel=null;scrollFocusId=null;}
       updateSectionRadar(null);return;
     }
     const targetY=window.innerHeight*.48;
     let best=null,bestRect=null,bestDistance=Infinity;
-    for(const panel of panels){
-      const r=panel.getBoundingClientRect();
+    for(const geometry of panels){
+      const r={left:geometry.docLeft-window.scrollX-view.scrollLeft,
+        right:geometry.docLeft-window.scrollX-view.scrollLeft+geometry.width,
+        top:geometry.docTop-window.scrollY-view.scrollTop,
+        bottom:geometry.docTop-window.scrollY-view.scrollTop+geometry.height,
+        width:geometry.width,height:geometry.height};
       if(r.bottom<0||r.top>window.innerHeight)continue;
       const distance=Math.abs((r.top+r.bottom)/2-targetY);
-      if(distance<bestDistance){best=panel;bestRect=r;bestDistance=distance;}
+      if(distance<bestDistance){best=geometry.el;bestRect=r;bestDistance=distance;}
     }
     const id=best?.dataset.worldTopologyNode??null;
-    const radarRect=best&&sectionRadar?sectionRadar.getBoundingClientRect():null;
+    const radarRect=best&&sectionRadar?topologyRadarRect:null;
     if(id!==scrollFocusId||best!==scrollFocusPanel){
       scrollFocusPanel?.classList.remove('world-scroll-focus');
       best?.classList.add('world-scroll-focus');
@@ -646,6 +678,7 @@
     majors.forEach(decorateSurface);numberPanels(majors);
     const nested=[...document.querySelectorAll('#view :is(.tile,.px-box,.psi-box,.pan-field,.brain-agent,.brain-sub,.brain-lane,.evo-sub)')];
     [...new Set([...majors,...nested])].slice(0,80).forEach(observePanel);
+    measureDocumentScrollHeight();
     writeScrollDepth();scheduleTopology();
   }
   function installObserver(){
@@ -676,7 +709,7 @@
       viewMutation.observe(view,{childList:true,subtree:true});
     }
     if(view&&'ResizeObserver' in window){
-      viewResizeObserver=new ResizeObserver(()=>scheduleTopology());
+      viewResizeObserver=new ResizeObserver(()=>{scheduleDocumentScrollHeightMeasure();scheduleTopology();});
       viewResizeObserver.observe(view);
     }
   }
@@ -686,10 +719,18 @@
     focusOrbit=document.createElement('div');focusOrbit.className='world-focus-orbit';focusOrbit.setAttribute('aria-hidden','true');
     focusOrbit.innerHTML='<i></i><b></b>';document.body.appendChild(focusOrbit);
   }
-  function positionFocusOrbit(target){
-    if(!focusOrbit||!target?.isConnected||!motionAllowed()){focusOrbit?.classList.remove('active');return;}
-    const r=target.getBoundingClientRect();
-    if(!r.width||!r.height){focusOrbit.classList.remove('active');return;}
+  function positionFocusOrbit(target,measure=true){
+    if(!focusOrbit||!target?.isConnected||!motionAllowed()){
+      focusOrbit?.classList.remove('active');focusOrbitTarget=null;focusOrbitDocumentRect=null;return;
+    }
+    if(measure||focusOrbitTarget!==target||!focusOrbitDocumentRect){
+      const measured=target.getBoundingClientRect();
+      if(!measured.width||!measured.height){focusOrbit.classList.remove('active');focusOrbitTarget=null;focusOrbitDocumentRect=null;return;}
+      focusOrbitTarget=target;
+      focusOrbitDocumentRect={left:measured.left+window.scrollX,top:measured.top+window.scrollY,width:measured.width,height:measured.height};
+    }
+    const r={left:focusOrbitDocumentRect.left-window.scrollX,top:focusOrbitDocumentRect.top-window.scrollY,
+      width:focusOrbitDocumentRect.width,height:focusOrbitDocumentRect.height};
     const pad=Math.min(9,Math.max(5,Math.min(r.width,r.height)*.12));
     const w=Math.min(window.innerWidth-4,r.width+pad*2),h=Math.min(window.innerHeight-4,r.height+pad*2);
     const x=Math.max(2,Math.min(window.innerWidth-w-2,r.left-pad));
@@ -707,7 +748,9 @@
     clearTimeout(focusTimer);focusTimer=setTimeout(()=>positionFocusOrbit(target),40);
   }
   function focusOut(){
-    clearTimeout(focusTimer);focusTimer=setTimeout(()=>{if(!document.activeElement?.matches?.('button,a,input,select,textarea,summary,[tabindex]'))focusOrbit?.classList.remove('active');},30);
+    clearTimeout(focusTimer);focusTimer=setTimeout(()=>{if(!document.activeElement?.matches?.('button,a,input,select,textarea,summary,[tabindex]')){
+      focusOrbit?.classList.remove('active');focusOrbitTarget=null;focusOrbitDocumentRect=null;
+    }},30);
   }
 
   function interactionImpact(event){
@@ -831,8 +874,8 @@
     initialized=true;
     root.dataset.worldImmersion='ready';
     buildDepthFrame();ensureFocusOrbit();ensurePointerLens();
-    window.addEventListener('scroll',()=>{queueScroll();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);},{passive:true});
-    window.addEventListener('resize',()=>{queueScroll();scheduleTopology();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);if(inspectedPanel)positionInspection(inspectedPanel);const active=sectionRadar?.querySelector('[data-radar-node].active')?.dataset.radarNode;positionRadarTether(active);},{passive:true});
+    window.addEventListener('scroll',()=>{queueScroll();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement,false);},{passive:true});
+    window.addEventListener('resize',()=>{measureDocumentScrollHeight();queueScroll();scheduleTopology();if(focusOrbit?.classList.contains('active'))positionFocusOrbit(document.activeElement);if(inspectedPanel)positionInspection(inspectedPanel);const active=sectionRadar?.querySelector('[data-radar-node].active')?.dataset.radarNode;positionRadarTether(active);},{passive:true});
     window.addEventListener('pointermove',pointerMove,{passive:true});
     document.addEventListener('pointerleave',event=>{pointerLeave(event);clearInspection();},{passive:true});
     document.addEventListener('pointerdown',interactionImpact,{passive:true,capture:true});
