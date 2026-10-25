@@ -11,6 +11,7 @@ This inventory separates a visible dashboard tab from its Python adapter. A tab 
 | PARALLAX / DREAMSTATE / PANTHEON / SIBYL / APEX | Connected, selected-runtime readers | Read native private state. APEX composition is bound to the selected asset/context. No provider sessions start from these reads. |
 | ASCENDANCY | Connected, selected-runtime reader | Reads selected private archive, capability, work-order, validation and intelligence state. Plan/execute callbacks are disabled. |
 | Learning | Connected, selected-runtime reader | Reads existing private state. Shared-history admission and automatic scan are explicitly unavailable. |
+| Intuition Ω | Connected, selected-runtime research bridge | Shows read-only source/ledger status. An owner can explicitly import only receipt-verified, prospective settled pairs from that workspace's Learning Fabric into its private research ledger. Reads never create either database; source is opened read-only; each workspace has a separate ledger. No automatic import, strategy rewrite, model promotion, or execution. |
 | Tactical Autopilot | Connected, selected-runtime status reader | Reads selected paper state; autonomous mutation/execution remains disabled. |
 | Go-live integrity | Connected, selected-runtime reader | Reports selected cached-tape/paper integrity; it does not arm a broker or refresh providers. |
 | NEXUS / AION Connections | Connected, local native observer | Reads bounded published runtime metadata and local durable receipts. It reports its local observation state; provider SLO/freshness qualification is not asserted. |
@@ -22,7 +23,9 @@ The earlier [panel restart checkpoint](archive/restarts/2026-10-25/pre-final/ICA
 
 ## What remains intentionally unavailable
 
-In a CC context, the read-only set (`brain`, `research`, `parallax`, `pantheon`, `sibyl`, `apex`, `ascendancy`, `learning`, `autopilot`, and `golive`) disables collection, training, activation, shared-history admission, and autonomous controls. The selector set and server API reject unsupported routes/actions instead of falling back to Main. This is a deliberate safety boundary for a paper workspace; it is not evidence that those subsystem readers are disconnected.
+In a CC context, the read-only set (`brain`, `research`, `parallax`, `pantheon`, `sibyl`, `apex`, `ascendancy`, `learning`, `autopilot`, and `golive`) disables collection, training, activation, shared-history admission, and autonomous controls. Intuition Ω's owner-triggered import is a narrow research-ledger write under that same workspace's owner and configuration-revision gates; it does not change the Learning source. The selector set and server API reject unsupported routes/actions instead of falling back to Main. This is a deliberate safety boundary for a paper workspace; it is not evidence that those subsystem readers are disconnected.
+
+The Learning page refreshes its read-only status when opened, after a Learning action, or when the owner presses **Refresh status**. It does not poll every few seconds. The separate Intuition Ω card reports import progress on manual refresh; this avoids multiplying selected-runtime status reads while the main dashboard is open. The bridge accepts no source path or asset selector from the browser, and an empty or unverified source produces no invented evidence.
 
 The dashboard can render a panel while its native data is empty or stale. NEXUS/AION `UNAVAILABLE`, `STALE`, `DEGRADED`, or unknown provider-SLO fields must stay visible as such. A 200 panel route proves the adapter returned a response, not that a provider is fresh or entitled. Broker adaptation, broker qualification, order execution, and live trading remain outside this restart.
 

@@ -8,6 +8,7 @@
 - Latest restart source and owner-default changes: [PR #471](https://github.com/reppiks490/Icarus/pull/471) (merged into this candidate branch)
 - Historical provider-context consumer and ETH-only defaults: source commit `5160a55368fc5c7e5a61dcf53c85193c028042ab`, included in runtime source `1283551fbec56113da656d998ff4c04866c1624e`; PR #457 is consolidated into #462.
 - Dashboard scroll and restart-gate fixes: [PR #474](https://github.com/reppiks490/Icarus/pull/474), merged into #471.
+- The Learning page's Intuition Ω bridge now reads each selected workspace independently and offers an owner-triggered import of receipt-verified settled Learning pairs into that workspace's private research ledger. Status refresh is manual; no 5-second polling is used. This update is part of the current #462 work and remains subject to exact-head checks before installation.
 - Restart code source: `1283551fbec56113da656d998ff4c04866c1624e`; current-main receipt merge/release tree: `f4a4a2800069bcefc3661b38d0b4d134ae775326`.
 - Owner machine: `C:\Users\tripl\Icarus-as-is` (Git Bash: `~/Icarus-as-is`)
 - Private state: `C:\Users\tripl\Icarus` (Git Bash: `~/Icarus`)
@@ -152,6 +153,8 @@ The phone relay code is included in the candidate and retains its independent HT
 ## Archived provider context
 
 CC1–CC4 can display the pinned metadata-only provider statistics archive and record actual read receipts. This is historical context only: it does not poll providers, certify current freshness or entitlement, alter trading inputs, or enable execution. See the [adapter status matrix](ICARUS_ADAPTER_STATUS.md) for the exact boundary.
+
+The Learning page also shows the selected workspace's Intuition Ω source and private-ledger status. Press **Refresh status** for a fresh observation. Press **Import verified Learning pairs** only when you want to start a bounded, asynchronous research import; the source database remains read-only and the result cannot alter trading inputs or promote a model. A completed import with zero qualified pairs is a truthful empty result, not a runtime failure. The card does not poll automatically.
 
 ## Prior notes and evidence boundary
 

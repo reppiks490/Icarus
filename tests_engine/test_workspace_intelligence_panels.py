@@ -1,5 +1,6 @@
 """Native intelligence polling stays private and never starts active services."""
 import json
+from pathlib import Path
 
 import pytest
 
@@ -10,17 +11,23 @@ from tests_engine.test_workspace_api import workspace_http  # noqa: F401
     "learning/scorecards", "learning/datasets", "autopilot", "ascendancy/genomes", "ascendancy/candidates",
     "ascendancy/unknowns", "ascendancy/mechanisms", "ascendancy/inventions", "ascendancy/contributions",
     "ascendancy/evaluator", "ascendancy/governor", "ascendancy/executor", "ascendancy/autopilot",
-    "ascendancy/work-orders", "ascendancy/intelligence", "ascendancy/capabilities", "ascendancy/native-validation"])
+    "ascendancy/work-orders", "ascendancy/intelligence", "ascendancy/capabilities", "ascendancy/native-validation",
+    "intuition-omega"])
 def test_intelligence_status_uses_native_selected_state(workspace_http, monkeypatch, panel):
     _, parent, request = workspace_http
     monkeypatch.setattr(parent, "status", lambda *a, **k: pytest.fail("parent fallback"))
-    code, data, _ = request(f"/api/command-centers/cc1/panels/{panel}?asset=NQ")
+    selectors = "" if panel == "intuition-omega" else "?asset=NQ"
+    code, data, _ = request(f"/api/command-centers/cc1/panels/{panel}{selectors}")
     assert code == 200, data
     assert data["workspace_id"] == "cc1" and data["execution_authorized"] is False
     if panel == "learning":
         assert data["training"]["run_count"] == 0
         assert data["predictions"]["count"] == 0
         assert data["storage_scope"]["shared_history_admission"] == "UNAVAILABLE"
+    if panel == "intuition-omega":
+        assert data["learning_source"]["state"] == "NOT_INITIALIZED"
+        assert data["ledger"]["state"] == "NOT_INITIALIZED"
+        assert data["execution_authorized"] is False
     if panel == "autopilot":
         assert data["running"] is False
     if panel == "ascendancy/autopilot":
@@ -126,3 +133,17 @@ def test_busy_research_runner_returns_unavailable_without_constructing_services(
         assert "research" not in panels.__dict__
     finally:
         lock.release()
+
+
+def test_intuition_status_read_does_not_create_or_open_learning_state(workspace_http):
+    server, parent, request = workspace_http
+    selected_root = server.command_centers.root / "cc1" / "subsystems"
+    parent_learning = parent.base_dir
+    code, data, _ = request("/api/command-centers/cc1/panels/intuition-omega")
+    assert code == 200, data
+    assert data["workspace_id"] == "cc1"
+    assert data["learning_source"]["state"] == "NOT_INITIALIZED"
+    assert data["ledger"]["state"] == "NOT_INITIALIZED"
+    assert not (selected_root / "research" / "learning.sqlite3").exists()
+    assert not (selected_root / "intuition-omega" / "forecasts.sqlite3").exists()
+    assert not (Path(parent_learning) / "intuition-omega" / "forecasts.sqlite3").exists()

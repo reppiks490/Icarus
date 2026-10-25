@@ -19,6 +19,7 @@ from .ascendancy.unknowns import UnknownUnknownLab
 from .ascendancy.work_orders import ResearchWorkOrderBoard
 from .autopilot import TacticalAutopilot
 from .brain import brain_snapshot
+from .intuition_omega.workspace_adapter import IntuitionWorkspaceAdapter
 from .research_service import ResearchWorkspace
 from .workspace_api import WorkspaceAPIError
 from .workspace_research_engines import private_root, validate_query
@@ -44,6 +45,7 @@ class WorkspaceIntelligencePanels:
             "ascendancy/capabilities", "ascendancy/autopilot", "ascendancy/work-orders", "ascendancy/native-validation")},
         **{f"ascendancy/{part}": frozenset(("asset",)) for part in ASCENDANCY_TYPES},
         "ascendancy/intelligence": frozenset(("asset", "as_of", "limit")),
+        "intuition-omega": frozenset(),
         "research/records": frozenset(("asset", "kind", "cik", "limit")),
     }
 
@@ -66,6 +68,10 @@ class WorkspaceIntelligencePanels:
     def learning(self):
         private_root(self.root)
         return self.research.learning
+
+    @cached_property
+    def intuition(self):
+        return IntuitionWorkspaceAdapter(private_root(self.root), workspace_id=self.runtime.workspace_id)
 
     @cached_property
     def autopilot(self):
@@ -145,6 +151,8 @@ class WorkspaceIntelligencePanels:
         if path == "learning/datasets":
             return {"datasets": self.learning.datasets(), "training_runs": self.learning.training_runs(),
                     "execution_authorized": False, "production_decision_authorized": False}
+        if path == "intuition-omega":
+            return self.intuition.snapshot()
         part = path.split("/", 1)[1]
         if part == "capabilities":
             return capability_snapshot()
@@ -168,3 +176,5 @@ class WorkspaceIntelligencePanels:
         # panel method enables or starts them, including saved enabled configs.
         if "research" in self.__dict__:
             self.research.close()
+        if "intuition" in self.__dict__:
+            self.intuition.close()

@@ -947,3 +947,18 @@ def test_ascendancy_dashboard_surfaces_external_research_work_orders():
     assert "ORDER ≠ EVIDENCE" in ui
     assert 'p.path == "/api/ascendancy/work-orders"' in server
     assert 'p.path == "/admin/ascendancy/work-order-claim"' in server
+
+
+def test_learning_view_uses_explicit_intuition_import_without_background_polling():
+    ui = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
+    client = (REPO / "icarus_engine/workspace-client.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "setInterval(" not in ui
+    assert "Refresh status" in ui
+    assert "Import verified Learning pairs" in ui
+    assert "'/api/intuition-omega'" in ui
+    assert "'/admin/intuition-omega/import-learning'" in ui
+    assert "intuition-omega/import-learning" in client
+    assert 'p.path == "/api/intuition-omega"' in server
+    assert 'p.path == "/admin/intuition-omega/import-learning"' in server

@@ -96,6 +96,19 @@ for(const data of [identity('cc2',5),identity('cc1',2)]){
 """)
 
 
+def test_intuition_status_and_import_stay_on_selected_workspace():
+    run_js(r"""
+const {c,calls}=client('cc1',(url)=>reply({...identity('cc1',4),status:'SOURCE_AVAILABLE'}));
+await c.read('status');
+const state=await (await c.request('/api/intuition-omega')).json();assert.equal(state.status,'SOURCE_AVAILABLE');
+const accepted=await (await c.request('/admin/intuition-omega/import-learning',{method:'POST',body:'{}'})).json();
+assert.equal(accepted.workspace_id,'cc1');
+assert.equal(calls[1].path,'/api/command-centers/cc1/panels/intuition-omega');
+assert.equal(calls[2].path,'/admin/command-centers/cc1/panels/intuition-omega/import-learning');
+assert.equal(calls[2].headers.get('X-Icarus-Config-Revision'),'4');
+""")
+
+
 def test_main_persisted_performance_uses_native_journal_reader():
     run_js(r"""
 const {c,calls}=client('main',()=>reply({workspace_id:'main',schema_version:1,realized_pnl:90}));

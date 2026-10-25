@@ -11,4 +11,6 @@ The migration captures live Main NQ when available or validates saved Main NQ pl
 
 The restart remains paper-only. `execution_authorized=false`; no broker adaptation or live order path is started. Green automated checks do not certify the owner's PC has restarted. Run the procedure locally and verify health, public status, all dashboard routes, asset count, and warm state.
 
+The selected-workspace Intuition Ω bridge is included in the current #462 candidate: the Learning page reports read-only source/ledger state and imports only after an owner click, with workspace/revision checks. The Learning page no longer polls every five seconds. Require current exact-head checks before installing this candidate.
+
 For the distinction between a visible panel, a selected-runtime read adapter, and an operational write/automation path, use the [adapter status matrix](ICARUS_ADAPTER_STATUS.md).

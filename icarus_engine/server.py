@@ -279,6 +279,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     workspace_api = WorkspaceAPI(command_centers)
     from .workspace_panels import WorkspacePanels
     workspace_panels = WorkspacePanels(command_centers, workspace_api)
+    from .intuition_omega.workspace_adapter import IntuitionWorkspaceAdapter
+    main_intuition = IntuitionWorkspaceAdapter(port.base_dir or os.getcwd(), workspace_id="main")
     from .workspace_jobs import ScopedWorkspaceJobs, WorkspaceJobError
     workspace_jobs = ScopedWorkspaceJobs(command_centers)
     from .workspace_power import WorkspacePowerControls, WorkspacePowerError
@@ -2056,6 +2058,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 return self._json(200, learning.snapshot())
+            if p.path == "/api/intuition-omega":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                return self._json(200, main_intuition.snapshot())
             if p.path == "/api/learning/health":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
@@ -2405,7 +2411,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             try:
                 panel_action = p.path.startswith("/admin/command-centers/") and "/panels/" in p.path
                 runtime_power_action = bool(re.fullmatch(r"/admin/command-centers/cc[1-4]/runtime", p.path))
-                body = strict_json(raw) if panel_action or runtime_power_action or p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/", "/admin/ascendancy/", "/admin/execution-cost/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                body = strict_json(raw) if panel_action or runtime_power_action or p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/intuition-omega/", "/admin/qualification-receipts/", "/admin/ascendancy/", "/admin/execution-cost/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
@@ -2433,6 +2439,15 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(400, {"detail": "invalid account connection request"})
                 except (OSError, RuntimeError):
                     return self._json(503, {"detail": "account connection unavailable"})
+            if p.path == "/admin/intuition-omega/import-learning":
+                if p.query or body:
+                    return self._json(400, {"detail": "Learning Fabric import accepts an empty request body and no selectors"})
+                try:
+                    result = main_intuition.start_import()
+                    return self._json(202, {**result, "workspace_id": "main"})
+                except ValueError as ex:
+                    return self._json(503, {"detail": str(ex), "workspace_id": "main",
+                                            "execution_authorized": False})
             if p.path.startswith("/admin/command-centers/"):
                 if set(q) & {"workspace", "profile", "asset", "symbol"}:
                     return self._json(400, {"detail": "scope is selected by the canonical workspace route"})
@@ -3509,6 +3524,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 workspace_power.close,
                 workspace_panels.close,
                 subsystem_connections.close,
+                main_intuition.close,
                 lambda: autopilot.close(),
                 lambda: ascendancy_autopilot.close(),
                 lambda: ascendancy_native_validation.close(),

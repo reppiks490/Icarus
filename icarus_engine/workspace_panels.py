@@ -191,6 +191,10 @@ class RuntimePanels:
             if body.get("args") not in (None, {}):
                 raise ValueError("selected-workspace controls do not accept action arguments")
             return self.control.run(body)
+        if path == "intuition-omega/import-learning":
+            if body:
+                raise ValueError("Learning Fabric import accepts an empty request body")
+            return self.intelligence.intuition.start_import()
         if path == "possibility/evidence":
             allowed = {"asset", "values", "source", "observed_at", "ttl_seconds"}
             if set(body) - allowed or not {"asset", "values", "source"} <= set(body):
@@ -227,7 +231,7 @@ class WorkspacePanels:
         **WorkspaceResearchEngines.READ_SELECTORS, **WorkspaceIntelligencePanels.READ_SELECTORS,
     }
     READS = frozenset(READ_SELECTORS)
-    WRITES = frozenset(("engine-control", "possibility/evidence"))
+    WRITES = frozenset(("engine-control", "possibility/evidence", "intuition-omega/import-learning"))
 
     def __init__(self, manager, api):
         self.manager, self.api = manager, api

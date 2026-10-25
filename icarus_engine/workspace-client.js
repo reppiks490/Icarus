@@ -279,7 +279,7 @@
             target=`${api}/panels/${panel}${url.search}`;
             selected=true;
           } else if (method==='POST'&&url.pathname.startsWith('/admin/')&&
-                     ['engine-control','possibility/evidence'].includes(url.pathname.slice(7))) {
+                     ['engine-control','possibility/evidence','intuition-omega/import-learning'].includes(url.pathname.slice(7))) {
             if (observedRevision<0) fail('INVALID_IDENTITY','Observe the selected workspace before running a panel action');
             target=`${admin}/panels/${url.pathname.slice(7)}${url.search}`;
             const headers=new Headers(options.headers||{});

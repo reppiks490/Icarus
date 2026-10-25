@@ -1,7 +1,6 @@
 (function () {
   'use strict';
 
-  let timer = null;
   let mutationBusy = false;
   let loadSeq = 0;
   let lastState = null;
@@ -182,7 +181,32 @@
         '<div class="row" style="gap:8px"><button id="learningRefresh" type="button">Refresh</button><button id="learningTick" type="button">Run Cycle</button><button id="learningScan" type="button">Scan History</button><button id="learningToggle" type="button">Toggle Learning</button></div>' +
       '</div><div id="learningPanel" style="margin-top:12px"><div class="empty">loading Learning Fabric…</div></div></section>';
   }
-  function render(state, data) {
+  function intuitionPanel(state) {
+    state = state || {};
+    const source = state.learning_source || {};
+    const ledger = state.ledger || {};
+    const job = state.import_job || {};
+    const result = job.result || {};
+    const running = job.status === 'RUNNING' || job.status === 'PENDING';
+    const canImport = source.state === 'AVAILABLE' && !running && job.status !== 'UNAVAILABLE' &&
+      !['UNAVAILABLE','INCOMPATIBLE'].includes(ledger.state);
+    const failure = job.error || state.detail || '';
+    return '<section class="card" style="margin-top:14px"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">' +
+      '<div><h3 style="margin:0 0 4px">INTUITION Ω · selected-workspace research bridge</h3>' +
+      '<div class="small muted">Learning source: ' + chip(source.state || 'UNAVAILABLE') + ' · Local ledger: ' + chip(ledger.state || 'NOT_INITIALIZED') + ' · Job: ' + chip(job.status || 'NOT_STARTED') + '</div></div>' +
+      '<div class="row" style="gap:8px"><button id="intuitionRefresh" type="button">Refresh status</button>' +
+      '<button id="intuitionImport" type="button" ' + (canImport ? '' : 'disabled') + '>Import verified Learning pairs</button></div></div>' +
+      '<p class="small muted" role="status" style="margin:10px 0">' +
+      (running ? 'Import is running in the background. Refresh status to see its receipt.' :
+        job.status === 'COMPLETED' ? 'Last import: ' + val(result.imported,0) + ' new · ' + val(result.already_present,0) + ' already present · ' + val(result.total_examined,0) + ' examined.' :
+          source.state === 'AVAILABLE' ? 'Selected Learning Fabric is available. Import starts only when you press the button.' :
+            'No selected Learning Fabric database is initialized yet.') +
+      (failure ? ' · ' + h(failure) : '') + '</p>' +
+      '<div class="small muted">The import reads this workspace’s own source database in read-only mode and writes only its private Intuition Ω research ledger. Receipt integrity is checked during intake. Research diagnostics never change strategy inputs, execute, or promote models; zero verified records stay zero.</div>' +
+      '<div class="small muted" style="margin-top:6px">Stored rows: ' + val(ledger.forecast_count,0) + ' forecasts · ' + val(ledger.settled_count,0) + ' settlements · ledger integrity ' + h(ledger.integrity || 'NOT_CHECKED') + '. Counts alone are not calibration evidence.</div>' +
+      '</section>';
+  }
+  function render(state, data, intuition) {
     const panel = document.querySelector('#learningPanel');
     if (!panel) return;
     const cfg = state.config || {};
@@ -255,16 +279,24 @@
       '<div class="small muted">Last completed: ' + h(health.last_completed_at || 'UNAVAILABLE') + ' · last error: ' + h(health.last_error || 'none') + '</div>' +
       '<h3 class="small" style="margin:16px 0 8px">SYSTEM LEARNING COVERAGE</h3>' +
       table(['Subsystem','Learning contract'], coverageRows(state.coverage), 'UNAVAILABLE') +
-      '<div class="small muted" style="margin-top:12px">The learner does not treat repeated model agreement as new evidence. Credibility moves only from matured observed outcomes or protected historical replay. Missing metrics remain UNAVAILABLE/UNMEASURED.</div>';
+      '<div class="small muted" style="margin-top:12px">The learner does not treat repeated model agreement as new evidence. Credibility moves only from matured observed outcomes or protected historical replay. Missing metrics remain UNAVAILABLE/UNMEASURED.</div>' +
+      intuitionPanel(intuition);
   }
   async function loadLearning() {
     const seq = ++loadSeq;
     const panel = document.querySelector('#learningPanel');
     if (!panel) return;
     try {
-      const triple = await Promise.all([getJson('/api/learning'), getJson('/api/learning/datasets'), getJson('/api/learning/health')]);
+      const triple = await Promise.all([
+        getJson('/api/learning'), getJson('/api/learning/datasets'), getJson('/api/learning/health'),
+        getJson('/api/intuition-omega').catch(function (error) {
+          return {status:'UNAVAILABLE',detail:error && error.message ? error.message : String(error),
+            learning_source:{state:'UNAVAILABLE'},ledger:{state:'UNAVAILABLE'},import_job:{status:'UNAVAILABLE'}};
+        })
+      ]);
       if (seq !== loadSeq) return;
-      lastState = triple[0]; lastState.health = triple[2]; lastDatasets = triple[1]; render(lastState, lastDatasets);
+      lastState = triple[0]; lastState.health = triple[2]; lastDatasets = triple[1];
+      render(lastState, lastDatasets, triple[3]);
     } catch (err) {
       if (seq !== loadSeq) return;
       panel.innerHTML = '<div class="empty">Learning Fabric UNAVAILABLE: ' + h(err && err.message ? err.message : err) + '</div>';
@@ -297,15 +329,19 @@
     if (toggle) toggle.addEventListener('click', function () { action(function () { return postJson('/admin/learning/config', {enabled: !(lastState && lastState.config && lastState.config.enabled)}); }, toggle); });
     if (panel) panel.addEventListener('click', function (ev) {
       const button = ev.target.closest('[data-learn-backfill]');
-      if (!button) return;
-      const datasetId = button.getAttribute('data-learn-backfill');
-      action(function () { return postJson('/admin/learning/backfill', {dataset_id:datasetId, slots:['logit']}); }, button);
+      if (button) {
+        const datasetId = button.getAttribute('data-learn-backfill');
+        action(function () { return postJson('/admin/learning/backfill', {dataset_id:datasetId, slots:['logit']}); }, button);
+        return;
+      }
+      const importButton = ev.target.closest('#intuitionImport');
+      if (importButton) {
+        action(function () { return postJson('/admin/intuition-omega/import-learning', {}); }, importButton);
+        return;
+      }
+      if (ev.target.closest('#intuitionRefresh')) loadLearning();
     });
     loadLearning();
-    if (timer) clearInterval(timer);
-    timer = setInterval(function () {
-      if ((location.hash || '#overview').slice(1) === 'learning') loadLearning();
-    }, 5000);
   }
   window.learningHtml = learningHtml;
   window.wireLearning = wireLearning;
