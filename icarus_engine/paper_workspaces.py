@@ -216,14 +216,15 @@ class WorkspacePortfolio(Portfolio):
         override = workspace.get("asset_overrides", {}).get(spec.symbol, {})
         from .restart_defaults import read_default_template
         policy = read_default_template(self.base_dir)
-        # ETH and SOL's three owner-requested exceptions also apply when it is added
-        # later. Explicit per-asset edits remain the last configuration layer.
-        exception = policy is not None and spec.symbol in {"ETH", "SOL"}
+        # Owner template exceptions also apply when an asset is added later.
+        # Explicit per-asset edits remain the last configuration layer.
+        exception = (policy or {}).get("asset_exceptions", {}).get(spec.symbol)
         chart = validate_chart_config({**workspace["chart"],
-                                       **({"timeframe": "30"} if exception else {}),
+                                       **({"timeframe": exception["timeframe"]} if exception else {}),
                                        **override.get("chart", {})})
         values = {**workspace["inputs"],
-                  **({"qty_contracts": 25, "use_session": False} if exception else {}),
+                  **({"qty_contracts": exception["qty_contracts"],
+                      "use_session": exception["use_session"]} if exception else {}),
                   **override.get("inputs", {})}
         preset = override.get("preset", self.preset)
         if override.get("preset") and not Path(preset_path(self.base_dir, preset)).is_file():
