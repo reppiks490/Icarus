@@ -370,6 +370,32 @@ await assert.rejects(missing.c.read('status'),e=>e.code==='HTTP_ERROR'&&e.status
 """)
 
 
+def test_selected_controls_retry_only_pre_admission_busy_responses():
+    run_js(r"""
+let attempts=0;
+const {c,calls}=client('cc2',(url)=>{
+ const path=new URL(url).pathname;
+ if(path.endsWith('/status'))return reply({...identity('cc2',4),assets:[]});
+ attempts++;
+ if(attempts<3)return reply({workspace_id:'cc2',detail:'selected workspace is busy; retry after its current operation'},409);
+ return reply({...identity('cc2',4),ok:true,paused:true});
+});
+await c.read('status');
+const receipt=await c.control('pause','NQ');
+assert.equal(receipt.ok,true);assert.equal(receipt.workspace_id,'cc2');assert.equal(attempts,3);
+assert(calls.slice(1).every(call=>call.path==='/admin/command-centers/cc2/assets/NQ/pause'));
+let other=0;
+const blocked=client('cc2',url=>{
+ if(new URL(url).pathname.endsWith('/status'))return reply({...identity('cc2',4),assets:[]});
+ other++;
+ return reply({workspace_id:'cc2',detail:'a different conflict'},409);
+});
+await blocked.c.read('status');
+await assert.rejects(blocked.c.control('pause','NQ'),e=>e.status===409&&e.message==='a different conflict');
+assert.equal(other,1,'a non-admission conflict must never be retried');
+""")
+
+
 def test_foreign_operation_error_receipts_are_rejected_before_exposing_payload():
     run_js(r"""
 for(const scope of ['main','cc1']){

@@ -201,10 +201,23 @@ def test_common_input_submission_reserves_draft_before_http_admission(workspace_
 def test_common_controls_csv_and_ledger_navigation_keep_identity(workspace_http):
     server, parent, _ = workspace_http
     with common_page(workspace_http, "cc2", pause_periodic=True) as (page, _):
+        busy_responses = 0
+        def transient_busy(route):
+            nonlocal busy_responses
+            if busy_responses == 0:
+                busy_responses += 1
+                route.fulfill(status=409, content_type="application/json", body=json.dumps({
+                    "workspace_id": "cc2",
+                    "detail": "selected workspace is busy; retry after its current operation",
+                }))
+            else:
+                route.continue_()
+        page.route("**/admin/command-centers/cc2/assets/NQ/pause", transient_busy)
         receipt = page.evaluate("""async()=>{
           await refresh();
           return await admin('/admin/pause',{asset:'NQ'});
         }""")
+        assert busy_responses == 1
         assert receipt and receipt.get('ok') is True and receipt.get('workspace_id') == 'cc2', receipt
         assert receipt.get('paused') is True, receipt
         assert server.command_centers.portfolios['cc2'].runners['NQ'].paused

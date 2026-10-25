@@ -212,9 +212,23 @@
       if (asset!==null) symbol(asset);
       if (!scoped) return json('/admin/'+action,{body:action==='flatten'?{asset,confirm:true}:{asset}});
       const path=asset===null?admin:`${admin}/assets/${asset}`;
-      const receipt=await json(path+(action==='flatten'?'/flatten':'/pause'),{
-        body:action==='flatten'?{confirm:true}:{paused:action==='pause'},historical:true
-      });
+      const operation=path+(action==='flatten'?'/flatten':'/pause');
+      const body=action==='flatten'?{confirm:true}:{paused:action==='pause'};
+      let receipt;
+      for (let attempt=0;;attempt++) {
+        try {
+          receipt=await json(operation,{body,historical:true});
+          break;
+        } catch (error) {
+          // Workspace controls can briefly race a chart or ledger reader. The
+          // server's exact 409 is emitted by its admission lock before the
+          // operation runs, so retrying this response cannot repeat a change.
+          const retryable=error instanceof WorkspaceClientError&&error.status===409&&
+            error.receipt?.detail==='selected workspace is busy; retry after its current operation';
+          if (!retryable||attempt>=3) throw error;
+          await new Promise(resolve=>setTimeout(resolve,75*(2**attempt)));
+        }
+      }
       // Completed actions retain their receipt while the live observation floor only advances.
       observedRevision=Math.max(observedRevision,receipt.config_revision);
       return receipt;
