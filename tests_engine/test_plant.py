@@ -321,6 +321,7 @@ def test_start_plant_scripts_are_dummy_proof():
     assert "--assets NQ,ES,YM,GC,SI,BTC" in guide
     assert 'export ICARUS_EXPECTED_ASSETS="NQ,ES,YM,GC,SI,BTC"' in guide
     assert "warm:true" in guide and "/status/public" in guide
+    assert '"N past errors" is historical telemetry' in guide and '"reported error" badge' in guide
     assert 'for panel in cc1 cc2 cc3 cc4 connections' in guide
     # Yahoo arguments and install behavior are exercised by the PowerShell
     # launcher tests below, including the full ecosystem default.
