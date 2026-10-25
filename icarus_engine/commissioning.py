@@ -672,13 +672,20 @@ class CommissioningEngine:
         except Exception:
             pass
         with self._lock:
+            # close() may run while the immediate commissioning pass is in
+            # progress. Do not create a sampler after that shutdown request.
+            if self._stop.is_set():
+                return
             if self._thread and self._thread.is_alive():
                 return
             self._thread = threading.Thread(target=self._loop, name="icarus-commissioning", daemon=True)
             self._thread.start()
 
     def close(self) -> None:
-        self._stop.set()
-        thread = self._thread
+        # Serialize the shutdown request with the start_background() check and
+        # sampler creation so a concurrent start cannot escape this close.
+        with self._lock:
+            self._stop.set()
+            thread = self._thread
         if thread and thread.is_alive() and thread is not threading.current_thread():
             thread.join(timeout=max(1.0, min(5.0, self.interval_seconds + 0.5)))

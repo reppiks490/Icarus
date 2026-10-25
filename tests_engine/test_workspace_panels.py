@@ -268,11 +268,10 @@ def test_off_waits_for_selected_panel_worker_without_blocking_sibling(workspace_
             raise RuntimeError('fixture selected intelligence close error')
         registry._runtimes['cc1'].__dict__['intelligence'] = SimpleNamespace(close=failed_close)
     entered, release = threading.Event(), threading.Event()
-    original = service.tick
     def blocked():
         entered.set()
         assert release.wait(5)
-        return original()
+        return {"captures": [], "settlement": {"settled": 0, "outcomes": []}, "errors": {}}
     monkeypatch.setattr(service, 'tick', blocked)
     initializer = threading.Thread(target=registry.start, daemon=True)
     initializer.start()
