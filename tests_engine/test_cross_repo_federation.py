@@ -82,3 +82,16 @@ def test_all_active_external_mesh_nodes_are_non_executing():
         row.get("cross_repository_execution_authorized") is False
         for row in active_external
     )
+
+
+def test_federation_receipt_artifact_is_scoped_to_each_workflow_attempt():
+    workflow = (
+        ROOT / ".github" / "workflows" / "live-engine-federation-gate.yml"
+    ).read_text(encoding="utf-8")
+    attempt_scoped_name = (
+        "name: live-engine-federation-receipt-${{ github.run_attempt }}"
+    )
+
+    # A retry must persist the report produced by that same run attempt. Without
+    # this suffix, download-artifact can select the previous attempt's receipt.
+    assert workflow.count(attempt_scoped_name) == 2
