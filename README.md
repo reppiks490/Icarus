@@ -16,7 +16,7 @@ This workspace is maintained for its owner and authorized collaborators. Permiss
 
 Paper trading engine, local Plant supervisor and selected-workspace dashboards. ICARUS spans a federation of repositories; this repository owns the local runtime launcher documented here.
 
-**[Current restart: START_HERE.md](START_HERE.md).** The operator guide pins the reviewed runtime candidate and preserves the existing private state. Follow its exact release gate rather than switching to a floating revision. The paper-only restart disables live execution and does not certify full-system readiness.
+**[Current restart: START_HERE.md](START_HERE.md).** The current paper code release is pinned to `a21507b8b9bb46ec418a0a9b89fae448fb3eae96`. The operator guide backs up existing private state, applies the all-asset defaults, and verifies warm local health. Live execution is disabled; hosted checks do not certify the owner's PC or phone.
 
 **[APEX Ω research layer](docs/icarus/APEX_OMEGA.md).** APEX is an evidence-bounded, research/shadow-only layer; it does not authorize execution or production decisions.
 
@@ -29,7 +29,7 @@ Public visibility does not grant permission to reuse, redistribute, sell, or cla
 
 ## ICARUS Mobile
 
-The native iOS/Android client lives under [mobile/](mobile/README.md). It does not expose the loopback engine directly and does not carry the engine admin token. A separate read-only `icarus-mobile-gateway` performs device pairing, rotating refresh credentials, short-lived sessions, curated read routing, and live snapshot delivery.
+The native iOS/Android client lives under [mobile/](mobile/README.md). It does not expose the loopback engine directly and does not carry the engine admin token. A separate `icarus-mobile-gateway` performs device pairing, rotating refresh credentials, short-lived sessions, curated observation routing, and live snapshot delivery. It permits explicit rate-limited backtest requests but blocks trade-state mutations.
 
 Architecture and deployment: [docs/icarus/MOBILE_APP.md](docs/icarus/MOBILE_APP.md). Security contract: [docs/icarus/MOBILE_SECURITY.md](docs/icarus/MOBILE_SECURITY.md).
 

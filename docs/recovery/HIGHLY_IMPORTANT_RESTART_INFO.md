@@ -1,18 +1,15 @@
-# HIGHLY IMPORTANT — Icarus Prime restart requirements
+# HIGHLY IMPORTANT — current Icarus Prime restart requirements
 
-Use only the [current Prime as-is restart](PRIME_AS_IS_RESTART.md). It includes the paper-only Git Bash procedure, Main asset set, backup, NQ capture, defaults migration, launch, and local HTTP checks. Superseded per-panel notes are preserved in the [restart archive](archive/restarts/2026-10-25/pre-final/INDEX.md). Release source `2fd305598cdbaf1937c3c4214a6f5a72ef13e15a` is integrated by merged PR #462 at `8c1dbf0d989894683d9daaefe6f1a4b6bcf4cc25`. Exact-head hosted checks passed for PR head `9a44dc1c6d20088bac1df013e6ec09e80446d30e`; merge-triggered engine run [40202103435](https://github.com/reppiks490/Icarus/actions/runs/40202103435) passed on Linux and Windows. Local client/UI tests (42), disconnect regressions (19), the control-retry browser regression, and the dashboard/performance/runtime/Connections browser suite passed; the optional Node-based performance subtest skipped because that Node package is unavailable in this local environment. The runtime retries only the selected-workspace busy-before-execution response. Older run IDs and source hashes below this current note are historical evidence; they do not certify this release.
+Use only the [current Prime as-is restart](PRIME_AS_IS_RESTART.md). It is pinned to release commit `a21507b8b9bb46ec418a0a9b89fae448fb3eae96` and contains the backup, Main NQ capture, defaults apply/verify, launch, and HTTP/warm-health checks. The release integrates:
 
-| Assets | Strategy/chart baseline | Special settings |
-| --- | --- | --- |
-| Every Main/selected-CC asset except ETH and SOL | Actual current Main NQ inputs and chart/session settings | Preserve instrument-specific contract economics |
-| ETH / COINBASE:ETHUSD and SOL / COINBASE:SOLUSD | Same strategy settings as current Main NQ | 30-minute chart, session filter off, quantity input 25 |
+- All-asset defaults from PR #479: every registered Main symbol and saved selected CC asset inherits the actual Main NQ inputs except ETH / COINBASE:ETHUSD and SOL / COINBASE:SOLUSD, each set to 30 minutes, session filter off, quantity 25.
+- Main dashboard scroll/layout fix from PR #476.
+- Native mobile observer and isolated gateway; explicit rate-limited backtest requests are allowed, while trade-state mutations are blocked from PR #481. Physical phone pairing, Expo project linking, and signing are still pending owner-PC/account work.
 
-The migration captures live Main NQ when available or validates saved Main NQ plus its preset when stopped. It never silently substitutes built-in stock settings. Saved selections, journals, and CC on/off state are preserved. The 35-symbol list and commands are in the current restart guide.
+The last successful warm owner-PC Main observation had six active assets: `NQ,ES,YM,GC,SI,BTC`. A later `warm:false` probe with no assets was not a healthy zero-asset runtime. The launch keeps the saved six-asset set to avoid increasing runtime load; the defaults migration still covers all 35 registered Main symbols and saved selected CC assets. Preserve the existing private state and back it up before changing files. Do not start a second engine: stop the current launcher with Ctrl+C once, then follow the guide.
 
-The restart remains paper-only. `execution_authorized=false`; no broker adaptation or live order path is started. Green automated checks do not certify the owner's PC has restarted. The local verification waits up to five minutes for `warm:true` and the expected active asset set; HTTP 200 alone is not warm readiness. Then verify public status and every dashboard route.
+Automated checks passed on PR #481's merged revision (`40224524803`, `40224524804`) and PR #482's exact head (`40224637484`, `40224637590`). The #482 main-push bilateral gate (`40227416952`) passed and stored the accepted revision pair in the [canonical receipt](../../automation_intelligence/federation/icarus_engine_acceptance.json). PR #476's dashboard scroll browser regression passed on its exact commit. These hosted results do not establish the owner's PC is running, provider data is fresh, or a phone is paired.
 
-The selected-workspace Intuition Ω bridge is included in merged `main`: the Learning page reports read-only source/ledger state and imports only after an owner click, with workspace/revision checks. The Learning page no longer polls every five seconds. The merge-triggered Linux and Windows engine checks passed before installation.
+ETH and SOL default exceptions are only chart/session/quantity overrides; native contract economics remain instrument-specific. Saved asset selections, journals, and CC on/off toggles remain preserved.
 
-The candidate also connects a bounded, read-only discovery-registry summary to the shared Financial & data page and includes an optional, manually invoked GRU research challenger. The normal paper restart does not refresh/probe catalog services, install PyTorch, or start model training; both features retain false production/execution authority.
-
-For the distinction between a visible panel, a selected-runtime read adapter, and an operational write/automation path, use the [adapter status matrix](ICARUS_ADAPTER_STATUS.md).
+The restart is paper-only. `execution_authorized=false`; broker adaptation, live order flow, and live trading remain excluded. Require `/healthz` `warm:true` with the expected active assets before calling the local runtime ready; HTTP 200 alone is insufficient.
