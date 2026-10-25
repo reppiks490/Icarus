@@ -418,7 +418,26 @@ const payloads=JSON.parse(process.argv[3]);let browser;
   assert.match(await page.locator('#all-open').textContent(),/10.00/);
   await page.waitForFunction(()=>document.querySelector('#corpus-sources').textContent.includes('all ten warmed in all four workspaces'));
   assert.match(await page.locator('#corpus-sources').textContent(),/Missing archived micros: MNG, MHG, M6E, MJY, M6B, M6A/);
+  await page.waitForFunction(()=>document.querySelector('#provider-context')?.textContent.includes('25 unique numeric statistics consumed'));
+  const provider=await page.locator('#provider-context').textContent();
+  assert.match(provider,/132,554 upstream rows reported/);
+  assert.match(provider,/Raw source rows read by this context: 0/);
+  assert.match(provider,new RegExp(id.toUpperCase()+': 25 numeric reads and 14 provider-status reads'));
+  assert.match(provider,/unusual_whales: BLOCKED_AUTHENTICATION in archived snapshot/);
+  assert.doesNotMatch(provider,/current reported rows/);
+  assert.match(provider,/111 historical fallback rows/);
+  assert.equal(await page.locator('#provider-context table tr').count(),6);
+  assert.match(await page.locator('#provider-context table').textContent(),/92\.75882111436948/);
  }
+ const providerRefresh=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/provider-corpus');
+ await page.locator('#refresh').click();
+ await providerRefresh;
+ await page.waitForFunction(()=>document.querySelectorAll('#provider-context table tr').length===6);
+ assert.equal(await page.locator('#provider-context').count(),1,'Manual refresh must replace the static provider panel instead of duplicating it');
+ assert.equal(await page.locator('#provider-context table tr').count(),6);
+ await page.setViewportSize({width:390,height:844});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Provider statistics must fit the mobile viewport');
+ await page.setViewportSize({width:1280,height:900});
  // Browser time moves, the provider remains untouched, and cached totals expire.
  await page.clock.install({time:new Date(payloads.cc4.paper_pnl.as_of_ts*1000)});
  await page.clock.runFor(92000);
@@ -460,3 +479,18 @@ def test_expansion_receipt_api_is_pinned_metadata_and_ignores_user_path(engine, 
     assert code == 200
     assert result["status"] == "HISTORICAL_EXPANSION_CONSUMPTION_VERIFIED"
     called.assert_called_once_with()
+
+
+def test_provider_context_readonly_route_exposes_actual_consumption_and_ignores_query(engine):
+    status, result = engine[1]('/api/provider-corpus?path=/etc/passwd&now_ns=1')
+    assert status == 200
+    assert result['status'] == 'HISTORICAL_CONTEXT_CONSUMED'
+    assert result['summary']['source_rows_reported'] == 132554
+    assert result['summary']['unique_numeric_values_consumed'] == 25
+    assert result['summary']['raw_rows_consumed'] == 0
+    assert set(result['workspaces']) == {'cc1', 'cc2', 'cc3', 'cc4'}
+    assert {row['consumer_id'] for row in result['read_receipts']} == {'quality','research','cc1','cc2','cc3','cc4'}
+    assert result['workspaces']['cc2']['features'][0]['statistics']['mean'] is not None
+    assert result['execution_authorized'] is False
+    assert result['point_in_time_qualified'] is False
+    assert engine[1]('/api/provider-corpus', method='POST', body={'execute': True})[0] in (404, 405)

@@ -1590,6 +1590,13 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not script.is_file():
                     return self._json(503, {"detail": "connections interface unavailable"})
                 return self._send(200, script.read_bytes(), "text/javascript")
+            if p.path == "/api/provider-corpus":
+                try:
+                    from .provider_corpus import snapshot as provider_snapshot
+                    return self._json(200, provider_snapshot())
+                except (ImportError, OSError, ValueError, TypeError):
+                    return self._json(503, {"status": "UNAVAILABLE", "reason": "PROVIDER_CONTEXT_UNAVAILABLE",
+                                            "execution_authorized": False})
             if p.path == "/api/corpus-expansion":
                 try:
                     from .corpus_expansion import snapshot as expansion_snapshot
