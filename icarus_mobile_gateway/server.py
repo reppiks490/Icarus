@@ -213,9 +213,15 @@ def make_server(
             self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
             for key, value in (extra or {}).items():
                 self.send_header(key, value)
-            self.end_headers()
-            if body:
-                self.wfile.write(body)
+            try:
+                self.end_headers()
+                if body:
+                    self.wfile.write(body)
+            except ConnectionError:
+                # A mobile client can navigate away while a long-poll or chart
+                # response is being written. Treat that as a normal disconnect
+                # instead of letting socketserver print a request traceback.
+                self.close_connection = True
 
         def _json(self, code: int, value: Any, extra: dict[str, str] | None = None) -> None:
             raw = json.dumps(value, separators=(",", ":"), allow_nan=False, default=str).encode("utf-8")

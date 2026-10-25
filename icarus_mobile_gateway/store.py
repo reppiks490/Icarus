@@ -26,9 +26,16 @@ class DeviceStore:
     def _read(self) -> dict[str, Any]:
         try:
             value = json.loads(self.path.read_text(encoding="utf-8"))
-        except (FileNotFoundError, json.JSONDecodeError):
-            value = {"version": 1, "devices": {}}
-        if not isinstance(value, dict) or not isinstance(value.get("devices"), dict):
+        except FileNotFoundError as ex:
+            raise ValueError("mobile device store is missing; refusing to forget paired devices") from ex
+        except json.JSONDecodeError as ex:
+            raise ValueError("mobile device store is corrupt") from ex
+        if (
+            not isinstance(value, dict)
+            or value.get("version") != 1
+            or not isinstance(value.get("devices"), dict)
+            or any(not isinstance(row, dict) for row in value["devices"].values())
+        ):
             raise ValueError("mobile device store is corrupt")
         return value
 

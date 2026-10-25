@@ -24,7 +24,8 @@ The signing key is generated with `secrets.token_bytes(32)` and persisted with b
 - Upstream JSON responses are capped at 4 MiB.
 - Dynamic asset identifiers are allowlisted by syntax.
 - Chart/trade limits are clamped.
-- Backtest launches are device-authenticated and rate-limited.\n- Gateway non-loopback binding requires an explicit override.
+- Backtest launches are device-authenticated and rate-limited.
+- Gateway non-loopback binding requires an explicit override.
 - Security headers disable framing, MIME sniffing, referrer leakage, camera, microphone, and geolocation permissions.
 
 ## Threats not solved by application code alone

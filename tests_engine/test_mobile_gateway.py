@@ -50,6 +50,18 @@ def test_device_store_rotates_refresh_and_revokes(tmp_path):
     assert not store.active(device_id)
 
 
+def test_device_store_fails_closed_on_corruption_or_disappearance(tmp_path):
+    path = tmp_path / "devices.json"
+    store = DeviceStore(path)
+    path.write_text("{truncated", encoding="utf-8")
+    with pytest.raises(ValueError, match="device store is corrupt"):
+        store.list_devices()
+
+    path.unlink()
+    with pytest.raises(ValueError, match="refusing to forget paired devices"):
+        store.list_devices()
+
+
 def test_system_alerts_are_transition_based():
     previous = {
         "status": {"paused": False, "all_warm": True, "assets": [{"symbol": "NQ", "last_error": None}]},
@@ -221,3 +233,31 @@ def test_gateway_pair_refresh_read_and_revoke(tmp_path):
         server.shutdown()
         server.server_close()
         thread.join(timeout=3)
+
+
+def test_gateway_response_swallows_client_disconnect(tmp_path):
+    server = make_server(
+        "127.0.0.1",
+        0,
+        data_dir=tmp_path,
+        pairing_secret="correct-horse-battery-staple",
+        upstream=FakeUpstream(),
+        start_background=False,
+    )
+    handler_type = server.RequestHandlerClass
+    handler = handler_type.__new__(handler_type)
+    handler.close_connection = False
+    handler.send_response = lambda code: None
+    handler.send_header = lambda key, value: None
+    handler.end_headers = lambda: None
+
+    class DisconnectedWriter:
+        def write(self, body):
+            raise ConnectionAbortedError(10053, "client disconnected")
+
+    handler.wfile = DisconnectedWriter()
+    try:
+        handler_type._send(handler, 200, b"response")
+        assert handler.close_connection is True
+    finally:
+        server.server_close()
