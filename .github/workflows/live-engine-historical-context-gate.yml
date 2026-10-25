@@ -229,6 +229,34 @@ jobs:
           for path in sorted(event_root.glob("*.json")):
               listing.append(meta_for(path, "event/" + path.name))
 
+          # GitHub Contents caps large directories at 1,000 entries. Model the same immutable
+          # commit/tree fallback used by BrainRemoteSync when the event directory reaches that cap.
+          inventory_api = f"https://api.github.com/repos/{REMOTE_REPOSITORY}"
+          inventory_root = REMOTE_ROOT
+          inventory_revision = os.environ["ENGINE_SHA"]
+          inventory_tree_sha = subprocess.check_output(
+              ["git", "-C", str(peer), "rev-parse", f"{inventory_revision}:{inventory_root}"],
+              text=True,
+          ).strip()
+          inventory_tree = []
+          for row in subprocess.check_output(
+              ["git", "-C", str(peer), "ls-tree", "-z", inventory_tree_sha]
+          ).split(b"\0"):
+              if not row:
+                  continue
+              metadata, name = row.split(b"\t", 1)
+              mode, kind, sha = metadata.decode("ascii").split()
+              inventory_tree.append({
+                  "path": name.decode("utf-8"), "mode": mode, "type": kind, "sha": sha,
+              })
+              if kind == "blob" and name.endswith(b".json"):
+                  blob_path = f"{inventory_root}/{name.decode('utf-8')}"
+                  raw = subprocess.check_output(
+                      ["git", "-C", str(peer), "show", f"{inventory_revision}:{blob_path}"]
+                  )
+                  assert _git_blob_sha(raw) == sha, "event inventory blob differs from the pinned tree"
+                  virtual[inventory_api + "/git/blobs/" + sha] = raw
+
           def fetch_json(url):
               if url == _REMOTE_CONSUMER_CONTRACT_API:
                   return consumer_meta
@@ -243,7 +271,13 @@ jobs:
                       "merge_base_commit": {"sha": source_commit},
                   }
               if url == _REMOTE_API:
-                  return listing
+                  return listing[:1000]
+              if url == inventory_api + f"/commits/{REMOTE_REF}":
+                  return {"sha": inventory_revision}
+              if url == _remote_contents_api(inventory_root.rsplit("/", 1)[0], ref=inventory_revision):
+                  return [{"type": "dir", "path": inventory_root, "sha": inventory_tree_sha}]
+              if url == inventory_api + "/git/trees/" + inventory_tree_sha:
+                  return {"sha": inventory_tree_sha, "truncated": False, "tree": inventory_tree}
               if url in historical_meta:
                   return historical_meta[url]
               if url in packet_historical_meta:
@@ -265,7 +299,9 @@ jobs:
                   fetch_bytes=fetch_bytes,
                   now_utc=lambda: datetime.now(timezone.utc),
               )
-              state = sync.sync_once()
+              polls = max(1, (len({item["sha"] for item in listing}) + 999) // 1000)
+              for _ in range(polls):
+                  state = sync.sync_once()
               snap = brain_snapshot(tmp, remote_sync=state)
               # The UI snapshot exposes only recent events. Validate the complete
               # durable journal before cleanup so later receipts cannot hide history.
