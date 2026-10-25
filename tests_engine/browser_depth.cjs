@@ -302,7 +302,10 @@ const interactionImpact=await page.evaluate(()=>{
 });
 assert.ok(interactionImpact.impacts>0,`Panel interaction should animate linked topology: ${JSON.stringify(interactionImpact)}`);
 await page.waitForTimeout(820);
-assert.equal(await page.locator('.world-topology .impact').count(),0);
+// The linked impact has a 720ms cleanup timer. Hosted Chromium can defer that
+// timer while subsequent browser work is queued, so wait for the contract
+// instead of assuming a wall-clock delay means the timer was scheduled.
+await page.waitForFunction(()=>document.querySelectorAll('.world-topology .impact').length===0,{timeout:3000});
 // Radar navigation scrolls smoothly; let the view observer finish its one
 // position-driven graph rebuild before checking for an ongoing mutation loop.
 await page.waitForTimeout(1000);
