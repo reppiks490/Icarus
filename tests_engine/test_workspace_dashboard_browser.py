@@ -275,13 +275,30 @@ def test_common_backtest_job_and_csv_retain_accepted_source_revision(workspace_h
     _job_tape(server,'cc1')
     writes=[]
     with common_page(workspace_http) as (page,_):
+        network=[]
+        console_errors=[]
+        page.on('response',lambda response:network.append(f"HTTP {response.status} {response.url}")
+                if '/backtest' in response.url or '/jobs/' in response.url else None)
+        page.on('requestfailed',lambda req:network.append(f"FAILED {req.method} {req.url}: {req.failure}"))
+        page.on('console',lambda message:console_errors.append(message.text) if message.type=='error' else None)
         page.on('request',lambda req:writes.append(json.loads(req.post_data))
                 if req.method=='POST' and req.url.endswith('/assets/NQ/backtest') else None)
         page.evaluate("async()=>{await refresh();setView('backtest')}")
         page.locator('#btPreset').select_option('')
         page.locator('#btTf').select_option('1')
         page.locator('#btRun').click()
-        page.wait_for_function("()=>Boolean(BT.res)")
+        try:
+            page.wait_for_function("()=>Boolean(BT.res)||/^(?:error:|backtest (?:start|status) failed:)/i.test(document.querySelector('#btStatus')?.textContent||'')")
+        except Exception as error:
+            state=page.evaluate("""()=>({status:document.querySelector('#btStatus')?.textContent,
+              job:BT.job,hasResult:Boolean(BT.res),buttonDisabled:document.querySelector('#btRun')?.disabled,
+              toast:document.querySelector('#toast')?.textContent})""")
+            pytest.fail(f"backtest did not reach a result or displayed error: {state}; network={network}; "
+                        f"page_errors={page.icarus_errors}; console_errors={console_errors}; wait_error={error}")
+        state=page.evaluate("""()=>({status:document.querySelector('#btStatus')?.textContent,
+          job:BT.job,hasResult:Boolean(BT.res),toast:document.querySelector('#toast')?.textContent})""")
+        assert state['hasResult'], f"backtest reported an error: {state}; network={network}; " \
+            f"page_errors={page.icarus_errors}; console_errors={console_errors}"
         assert len(writes)==1 and writes[0]['expected_revision']==0 and 'preset' not in writes[0],writes
         assert page.evaluate("({workspace:BT.res.workspace_id,revision:BT.res.config_revision})")=={'workspace':'cc1','revision':0}
         assert request('/admin/command-centers/cc1/assets/NQ/config',body={'inputs':{'tp1_pts':12},'expected_revision':0})[0]==200
