@@ -314,7 +314,7 @@ class WorkspacePanels:
             raise WorkspaceAPIError(400, "a captured workspace configuration revision is required")
         if not isinstance(body, dict):
             raise WorkspaceAPIError(400, "panel action must be an object")
-        with self.api.runtime_lock(profile_id):
+        with self.api.mutation_lock(profile_id):
             profile, portfolio, _ = self.api._selected(profile_id)
             if int(expected_revision) != profile["config_revision"]:
                 raise WorkspaceAPIError(409, "workspace configuration changed", "REVISION_CONFLICT")
