@@ -119,10 +119,14 @@ set -euo pipefail
 HEALTH_PY="$HOME/Icarus-as-is/.venv/Scripts/python.exe"
 test -x "$HEALTH_PY"
 export ICARUS_EXPECTED_ASSETS="${ICARUS_ASSETS:-NQ,ES,YM,GC,SI,BTC}"
+read -r -s -p 'Dashboard token used by the launcher (hidden): ' ICARUS_VERIFY_TOKEN </dev/tty
+printf '\n'
+test -n "$ICARUS_VERIFY_TOKEN"
 
 check_http() {
   local label="$1" url="$2" code
-  code="$(curl --noproxy 127.0.0.1 --max-time 10 -sS -o /dev/null -w '%{http_code}' "$url")"
+  code="$(curl --noproxy 127.0.0.1 --max-time 10 -sS -o /dev/null -w '%{http_code}' \
+    -H "Authorization: Bearer $ICARUS_VERIFY_TOKEN" "$url")"
   printf '%s HTTP %s\n' "$label" "$code"
   [[ "$code" == 200 ]]
 }
@@ -159,7 +163,7 @@ for panel in cc1 cc2 cc3 cc4 connections; do
 done
 ```
 
-The verification waits up to five minutes for `/healthz` to report `warm:true` and the expected active asset set before checking HTTP 200 for Main, public status, and each dashboard. If it does not warm in that window, keep the launcher open and inspect its log instead of refreshing repeatedly or starting a second engine. The public status route is `/status/public` (`/api/status` is not the route). Open Main and each CC/Connections URL in the PC browser; check that each page renders and that CC toggles affect only the selected paper workspace. Keep one dashboard tab open during the initial lag check.
+The second window prompts for the same dashboard token used by the launcher without echoing it; the public-status check is authenticated because `/status/public` requires a bearer token. The verification waits up to five minutes for `/healthz` to report `warm:true` and the expected active asset set before checking HTTP 200 for Main, public status, and each dashboard. If it does not warm in that window, keep the launcher open and inspect its log instead of refreshing repeatedly or starting a second engine. The public status route is `/status/public` (`/api/status` is not the route). Open Main and each CC/Connections URL in the PC browser; check that each page renders and that CC toggles affect only the selected paper workspace. Keep one dashboard tab open during the initial lag check.
 
 Re-run the defaults verifier from the first launcher window or another Git Bash window:
 
