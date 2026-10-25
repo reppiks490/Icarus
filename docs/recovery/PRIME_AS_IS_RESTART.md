@@ -100,11 +100,11 @@ SETUPTOOLS_USE_DISTUTILS="$DISTUTILS_MODE" "$PY" -m pip install --no-build-isola
 
 The defaults utility makes its own hash-tracked backup of changed settings under `Icarus/audit/restart-defaults/`. The full backup above also preserves journals and other private state. Do not proceed if `--apply` or `--verify` fails.
 
-Launch the local **paper** engine with the last observed feed and active assets. The known previous runtime used the local file feed; if its intended source has changed, replace `file` with the owner's intended non-live feed explicitly rather than guessing:
+Launch the local **paper** engine with the last owner-observed feed and active assets. The last documented owner-PC startup used Yahoo and reached `warm:true`; if the intended source has since changed, select the owner's intended non-live feed explicitly rather than guessing:
 
 ```bash
 bash scripts/start-as-is.sh --root "$ICARUS_HOME" \
-  --feed file \
+  --feed yahoo \
   --assets NQ,ES,YM,GC,SI,BTC
 ```
 
