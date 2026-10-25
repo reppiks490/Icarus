@@ -94,16 +94,22 @@ Keep this launcher window open. The launcher prints its source path, Python inte
 In a second Git Bash window:
 
 ```bash
+check_http() {
+  local label="$1" url="$2" code
+  code="$(curl --noproxy 127.0.0.1 --max-time 10 -sS -o /dev/null -w '%{http_code}' "$url")"
+  printf '%s HTTP %s\n' "$label" "$code"
+  [[ "$code" == 200 ]]
+}
 ready=false
 for attempt in {1..30}; do
   if curl --noproxy 127.0.0.1 --max-time 3 -fsS http://127.0.0.1:8791/healthz; then ready=true; break; fi
   sleep 1
 done
 if [[ "$ready" != true ]]; then echo 'Engine health did not become ready; inspect the launcher and logs.' >&2; exit 1; fi
-curl --noproxy 127.0.0.1 --max-time 10 -sS -o /dev/null -w 'Main HTTP %{http_code}\n' http://127.0.0.1:8791/
-curl --noproxy 127.0.0.1 --max-time 10 -sS -o /dev/null -w 'Public status HTTP %{http_code}\n' http://127.0.0.1:8791/status/public
+check_http Main http://127.0.0.1:8791/
+check_http 'Public status' http://127.0.0.1:8791/status/public
 for panel in cc1 cc2 cc3 cc4 connections; do
-  curl --noproxy 127.0.0.1 --max-time 10 -sS -o /dev/null -w "$panel HTTP %{http_code}\n" "http://127.0.0.1:8791/dashboards/$panel"
+  check_http "$panel" "http://127.0.0.1:8791/dashboards/$panel"
 done
 ```
 
