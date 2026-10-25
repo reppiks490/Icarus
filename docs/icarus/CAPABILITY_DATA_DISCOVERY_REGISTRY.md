@@ -14,7 +14,10 @@ challenger-only, never observed facts or trade instructions.
 All outputs are research/shadow only: `execution_authorized=false` and
 `production_decision_authorized=false`. No automatic production promotion,
 broker/order/sizing changes, purchases, metered calls or discovered-service probes.
-The foundation does not expose HTTP, MCP, or dashboard surfaces yet.
+The registry does not expose candidate-level HTTP, MCP, or mutation surfaces.
+The restart candidate now has one bounded read-only dashboard adapter for the
+three committed `latest/*.json` catalog receipts; it does not open the private
+SQLite registry or qualify catalog candidates.
 
 ## Intake and replay
 
@@ -133,6 +136,20 @@ nonzero CLI status.
 The CLI parser revision is `catalog-registry-v3`: balanced link targets/labels,
 optional Markdown titles, featured linked headings and malformed one-cell table
 rows are now handled without changing an old snapshot's parse identity.
+
+## Read-only dashboard receipt adapter
+
+`GET /api/discovery-registry` exposes an allowlisted summary of the three
+committed receipts on the shared **Financial & data** page. The handler accepts
+no path or catalog selector, reads no private SQLite database, and never
+refreshes the upstream catalogs. It validates each receipt's expected catalog
+and repository identity, 40-character source commit, content digest, retrieval
+clock, nonnegative summary counts, and both false authority flags. Missing,
+symlinked, oversized, malformed, or misbound receipts remain `UNAVAILABLE`;
+partial data is shown as partial rather than replaced with zeros. Only bounded
+counts and provenance are returned. Source probes and market-data acquisition
+remain false. This is a connection to discovery metadata, not a claim that any
+listed service has working credentials or an active adapter.
 
 ## Refresh and verification
 

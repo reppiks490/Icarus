@@ -2,15 +2,15 @@
 
 **Purpose.** Restore the current Icarus paper runtime on the owner's Windows PC, keep its existing private state, and make the dashboards observable. This procedure never enables live trading or starts a broker bridge.
 
-**Release gate.** The restart code, provider-context consumer, ETH-only defaults, Windows byte-stable archive, and current-main data receipt are in release tree `f4a4a2800069bcefc3661b38d0b4d134ae775326` for PR #462. Runtime source commit `1283551fbec56113da656d998ff4c04866c1624e` passed full Linux and selected full Windows suites twice: [40183899072](https://github.com/reppiks490/Icarus/actions/runs/40183899072) and [40183897492](https://github.com/reppiks490/Icarus/actions/runs/40183897492). The new selected-workspace Intuition Ω bridge is in source commit `cde6d0cca771ec8a401092a231449646306c026c`. Its complete local command `python -m pytest tests_engine tests/test_provider_corpus_intake.py -q` exited 0 with 4,386 tests collected, and focused isolation, owner/revision, cancellation, client-routing, and UI checks passed. Hosted Linux/Windows checks for the new exact PR #462 head are still pending; do not install until they pass. Cloud checks cannot run commands on the owner's PC, certify `warm:true`, or establish sustained uptime.
+**Release gate.** Current paper restart code source commit is `712057cbb7b42d94bd0238068019b0f55aa8ef5a`. It includes the restart/defaults work, selected-workspace Intuition Ω bridge, optional research-only GRU challenger, provider-origin/query-bound discovery evidence, and a bounded discovery-receipt card on the shared Financial & data page. The immediately preceding code head `ab6a4765f6ea76d146fbe80b42f951253d4cf615` passed exact-head Linux and Windows suites, browser, contract, configuration, and observe-only federation checks (runs [40188781995](https://github.com/reppiks490/Icarus/actions/runs/40188781995) and [40188786401](https://github.com/reppiks490/Icarus/actions/runs/40188786401)); those runs predate the current source commit. On the current source, the focused discovery/route/workspace suite passed 51 tests, the shared-panel browser regression passed, and the combined local suite reached 100% with no failed-test markers and an empty pytest failure cache. An initial run exposed and fixed one obsolete documentation assertion. Exact-head hosted checks for the updated PR #462 head, including the optional PyTorch contract, are still required before installation. Cloud checks cannot run commands on the owner's PC, certify `warm:true`, or establish sustained uptime.
 
 - Integrated restart candidate: [PR #462](https://github.com/reppiks490/Icarus/pull/462)
 - Latest restart source and owner-default changes: [PR #471](https://github.com/reppiks490/Icarus/pull/471) (merged into this candidate branch)
 - Historical provider-context consumer and ETH-only defaults: source commit `5160a55368fc5c7e5a61dcf53c85193c028042ab`, included in runtime source `1283551fbec56113da656d998ff4c04866c1624e`; PR #457 is consolidated into #462.
 - Dashboard scroll and restart-gate fixes: [PR #474](https://github.com/reppiks490/Icarus/pull/474), merged into #471.
 - The Learning page's Intuition Ω bridge now reads each selected workspace independently and offers an owner-triggered import of receipt-verified settled Learning pairs into that workspace's private research ledger. Status refresh is manual; no 5-second polling is used. This update is part of the current #462 work and remains subject to exact-head checks before installation.
-- Restart code source: `cde6d0cca771ec8a401092a231449646306c026c`; its prior current-main receipt/release tree is `f4a4a2800069bcefc3661b38d0b4d134ae775326`.
-- New selected-workspace Intuition Ω adapter source: `cde6d0cca771ec8a401092a231449646306c026c` (exact-head hosted checks pending).
+- Restart code source: `712057cbb7b42d94bd0238068019b0f55aa8ef5a` (exact-head hosted checks required before install).
+- Selected-workspace Intuition Ω adapter source: `cde6d0cca771ec8a401092a231449646306c026c`, included in current release source `712057cbb7b42d94bd0238068019b0f55aa8ef5a` (updated exact-head hosted checks pending).
 - Owner machine: `C:\Users\tripl\Icarus-as-is` (Git Bash: `~/Icarus-as-is`)
 - Private state: `C:\Users\tripl\Icarus` (Git Bash: `~/Icarus`)
 - Paper-only; `execution_authorized=false`.
@@ -32,7 +32,7 @@ Run in Git Bash on the owner's PC. Leave any currently running Icarus launcher o
 set -euo pipefail
 export ICARUS_HOME="$HOME/Icarus"
 export ICARUS_TOKEN="${ICARUS_TOKEN:-icarus}"
-RELEASE_COMMIT="cde6d0cca771ec8a401092a231449646306c026c"
+RELEASE_COMMIT="712057cbb7b42d94bd0238068019b0f55aa8ef5a"
 RELEASE_BRANCH="icarus1/restart-readiness-20261020"
 cd "$HOME/Icarus-as-is"
 
@@ -156,6 +156,12 @@ The phone relay code is included in the candidate and retains its independent HT
 CC1–CC4 can display the pinned metadata-only provider statistics archive and record actual read receipts. This is historical context only: it does not poll providers, certify current freshness or entitlement, alter trading inputs, or enable execution. See the [adapter status matrix](ICARUS_ADAPTER_STATUS.md) for the exact boundary.
 
 The Learning page also shows the selected workspace's Intuition Ω source and private-ledger status. Press **Refresh status** for a fresh observation. Press **Import verified Learning pairs** only when you want to start a bounded, asynchronous research import; the source database remains read-only and the result cannot alter trading inputs or promote a model. A completed import with zero qualified pairs is a truthful empty result, not a runtime failure. The card does not poll automatically.
+
+## Additional non-live research connections
+
+The **Financial & data** page now includes a read-only **Capability discovery registry** card backed by `/api/discovery-registry`. It displays bounded summaries for the three pinned public catalog receipts, including source revision, retrieval time, import counts, review backlog, rejected entries, and parse failures. It does not run catalog refreshes, open the private registry database, probe discovered services, or provide market data. The receipts currently describe catalog metadata only; credentials and current provider availability are separate and may be unavailable.
+
+The candidate also contains the optional GRU research challenger from PR #453. It is manually invoked through the research CLI and is not a startup worker or dashboard poll. The ordinary restart install command intentionally omits the optional `deep` extra, so it does not install PyTorch or make the desktop engine heavier. Research runs require a separate owner choice to install `.[deep]`; artifacts remain challenger-only, frozen training slots stay unchanged, and automatic model promotion, production decisions, and execution authority remain false.
 
 ## Prior notes and evidence boundary
 
