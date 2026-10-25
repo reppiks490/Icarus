@@ -128,7 +128,8 @@ In a second Git Bash window:
 set -euo pipefail
 HEALTH_PY="$HOME/Icarus-as-is/.venv/Scripts/python.exe"
 test -x "$HEALTH_PY"
-export ICARUS_EXPECTED_ASSETS="${ICARUS_ASSETS:-NQ,ES,YM,GC,SI,BTC}"
+# Keep this aligned with the --assets list in the launcher command below.
+export ICARUS_EXPECTED_ASSETS="NQ,ES,YM,GC,SI,BTC"
 read -r -s -p 'Dashboard token used by the launcher (hidden): ' ICARUS_VERIFY_TOKEN </dev/tty
 printf '\n'
 test -n "$ICARUS_VERIFY_TOKEN"
