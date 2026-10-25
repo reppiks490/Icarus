@@ -9,10 +9,12 @@ Native iOS/Android observation client for the canonical `reppiks490/Icarus` runt
 - Rotating per-device refresh credentials stored with Expo SecureStore.
 - Short-lived signed sessions; the phone never receives the engine admin token.
 - Long-poll live snapshots for engine status, system audit, and briefing.
-- Native candlestick chart and recent closed-trade drilldown.\n- Backtest Lab with selectable candle/session settings and a four-way Regular/Heikin Ashi × RTH/ETH comparison matrix.
+- Native candlestick chart and recent closed-trade drilldown.
+- Backtest Lab with selectable candle/session settings and a four-way Regular/Heikin Ashi × RTH/ETH comparison matrix.
 - Authenticated Adaptive Brain, APEX Ω, Learning Health, Possibility Ψ, Engine Control, and Data Integrity readouts.
 - Per-device revocation.
-- EAS build profiles for development, internal preview, and production.\n- A Research + Backtest Lab that can start rate-limited analysis jobs without exposing trading mutations.
+- EAS build profiles for development, internal preview, and production.
+- A Research + Backtest Lab that can start rate-limited analysis jobs without exposing trading mutations.
 - System-health push notifications with explicit device opt-in, Expo token registration, and server-side transition filtering.
 
 Trade-state mutations remain intentionally absent from the mobile gateway.
