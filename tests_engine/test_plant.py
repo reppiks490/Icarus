@@ -308,8 +308,17 @@ def test_start_plant_scripts_are_dummy_proof():
     paid = (root / "PAID_NEXT.md").read_text(encoding="utf-8")
     assert "Alpaca" in paid and "TradersPost" in paid and "PickMyTrade" in paid
     cmds = (root / "COMMANDS.md").read_text(encoding="utf-8")
-    assert "127.0.0.1:8791" in cmds and "paper-export" in cmds and "start --assets NQ" in cmds
-    assert "--offline" in cmds
+    guide = (root / "docs" / "recovery" / "PRIME_AS_IS_RESTART.md").read_text(encoding="utf-8")
+    assert "docs/recovery/PRIME_AS_IS_RESTART.md" in cmds
+    assert "docs/recovery/archive/restarts/2026-10-25/pre-final/COMMANDS.md" in cmds
+    assert "Do not use the PowerShell" in cmds
+    assert 'RELEASE_COMMIT="a21507b8b9bb46ec418a0a9b89fae448fb3eae96"' in guide
+    assert "bash scripts/start-as-is.sh --setup --help" in guide
+    assert "--capture-output" in guide and "--capture-file" in guide
+    assert "--prepare" in guide and "--apply" in guide and "--verify" in guide
+    assert "--assets NQ,ES,YM,GC,SI,BTC" in guide
+    assert "warm:true" in guide and "/status/public" in guide
+    assert 'for panel in cc1 cc2 cc3 cc4 connections' in guide
     # Yahoo arguments and install behavior are exercised by the PowerShell
     # launcher tests below, including the full ecosystem default.
     assert "Downloads" in setup
