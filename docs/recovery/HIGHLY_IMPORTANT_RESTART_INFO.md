@@ -1,11 +1,11 @@
 # HIGHLY IMPORTANT — Icarus Prime restart requirements
 
-Use only the [current Prime as-is restart](PRIME_AS_IS_RESTART.md). It includes the paper-only Git Bash procedure, Main asset set, backup, NQ capture, defaults migration, launch, and local HTTP checks. Superseded per-panel notes are preserved in the [restart archive](archive/restarts/2026-10-25/pre-final/INDEX.md). PR #471's latest exact-head Windows, browser, Linux, and contract gates passed. Integrated source candidate `36b3c1f6f931d74b480661ea931af19245058d5d` adds current Icarus main to that tested source; its integrated local suite and exact PR #462 hosted checks are pending. Wait for PR #462's exact-head checks before installation.
+Use only the [current Prime as-is restart](PRIME_AS_IS_RESTART.md). It includes the paper-only Git Bash procedure, Main asset set, backup, NQ capture, defaults migration, launch, and local HTTP checks. Superseded per-panel notes are preserved in the [restart archive](archive/restarts/2026-10-25/pre-final/INDEX.md). The integrated source candidate is `5160a55368fc5c7e5a61dcf53c85193c028042ab` for PR #462. Its full local suite exited 0 with 4,331 cases collected. Hosted checks for this new source commit are pending; do not install until its exact-head checks pass. The previous `350f93e` candidate passed both Windows engine runs and the other listed hosted contracts, but those results do not cover this added source.
 
 | Assets | Strategy/chart baseline | Special settings |
 | --- | --- | --- |
-| Every Main/selected-CC asset except ETH and SOL | Actual current Main NQ inputs and chart/session settings | Preserve instrument-specific contract economics |
-| ETH / COINBASE:ETHUSD and SOL / COINBASE:SOLUSD | Same strategy settings as current Main NQ | 30-minute chart, session filter off, quantity input 25 |
+| Every Main/selected-CC asset except ETH | Actual current Main NQ inputs and chart/session settings | Preserve instrument-specific contract economics; SOL follows NQ |
+| ETH / COINBASE:ETHUSD only | Same strategy settings as current Main NQ | 30-minute chart, session filter off, quantity input 25 |
 
 The migration captures live Main NQ when available or validates saved Main NQ plus its preset when stopped. It never silently substitutes built-in stock settings. Saved selections, journals, and CC on/off state are preserved. The 35-symbol list and commands are in the current restart guide.
 

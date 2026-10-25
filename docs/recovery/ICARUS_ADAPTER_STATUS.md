@@ -1,6 +1,6 @@
 # ICARUS dashboard adapter status
 
-This inventory separates a visible dashboard tab from its Python adapter. A tab is only a view; a connected adapter routes data/actions to a particular runtime or explicitly to shared evidence. This matrix describes integrated restart candidate `36b3c1f6f931d74b480661ea931af19245058d5d`; its exact integrated PR #462 hosted checks are pending.
+This inventory separates a visible dashboard tab from its Python adapter. A tab is only a view; a connected adapter routes data/actions to a particular runtime or explicitly to shared evidence. This matrix describes source candidate `5160a55368fc5c7e5a61dcf53c85193c028042ab` for PR #462. The full local suite exited 0 with 4,331 cases collected. Exact-head hosted checks on this new commit are pending; the previous source's Windows, Linux, browser, contract, configuration, federation and historical-context checks do not substitute for those runs. Install only after the new exact-head checks pass and the owner completes the PC procedure.
 
 | Surface | Adapter state | Scope and actual behavior |
 | --- | --- | --- |
@@ -15,6 +15,7 @@ This inventory separates a visible dashboard tab from its Python adapter. A tab 
 | Go-live integrity | Connected, selected-runtime reader | Reports selected cached-tape/paper integrity; it does not arm a broker or refresh providers. |
 | NEXUS / AION Connections | Connected, local native observer | Reads bounded published runtime metadata and local durable receipts. It reports its local observation state; provider SLO/freshness qualification is not asserted. |
 | Market Data | Connected, cached selected-runner reader | Uses existing selected-runner caches only. A request does not acquire a feed or start a subscription. |
+| Provider archive / Brain context | Connected, local historical-only reader | Displays a pinned metadata-only snapshot in CC1–CC4 with actual read receipts. Labels remain explicitly historical; no provider calls, current freshness claim, paid acquisition, or execution eligibility is added. |
 | Sources / Evolution / Integrity / System / Agent / Evidence | Connected, shared evidence views | These are shared repository/federation evidence, not proof of a selected workspace's operation. Mutating controls are disabled in CC context. |
 
 The earlier [panel restart checkpoint](archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md) correctly described the first four stateful CC adapters at its checkpoint, but its statement that the other eleven had no adapters is superseded by the readers above. Those eleven have selected-runtime **read adapters**, not full write/automation workflows.
@@ -32,3 +33,5 @@ Focused evidence in the candidate includes `tests_engine/test_workspace_research
 This is separate from live feed connectivity. The stale [Icarus-engine PR #216](https://github.com/reppiks490/Icarus-engine/pull/216) was stacked on a closed base and is closed as superseded with its branch retained. Its five unique files were reconstructed directly on current Engine main in [Icarus-engine PR #249](https://github.com/reppiks490/Icarus-engine/pull/249), then merged at `2f9a10c516d7294d875a9e808bd669e208ed0e0c`. Local validation passed 107 focused archive tests and the full Engine suite (1,455 tests and 17 subtests). Exact-head CI passed on Python 3.11/3.12/3.13 and all core/CLI/MCP contracts. Exact-main offline workflow run [40171645677](https://github.com/reppiks490/Icarus-engine/actions/runs/40171645677) passed all eight profiles and their metadata receipt and payload-cleanup checks.
 
 The workflow uses immutable retained archives and emits metadata-only receipts. It blocks provider network requests, exports no raw values, and grants no execution authority. It does not establish current provider freshness or live-feed connectivity. The offline archive adapter is qualified for those eight retained archives only.
+
+The dashboard's archived provider statistics consumer is a separate local read path over a pinned snapshot. It records provenance/read receipts for Brain context; snapshot age and values remain historical and do not certify a provider's present status.

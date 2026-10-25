@@ -2,12 +2,13 @@
 
 **Purpose.** Restore the current Icarus paper runtime on the owner's Windows PC, keep its existing private state, and make the dashboards observable. This procedure never enables live trading or starts a broker bridge.
 
-**Release gate.** PR #471's latest exact-head Linux, Windows, contract, configuration, historical-context, federation, and both browser jobs passed (runs `40170191547`, `40170191544`, `40170191553`, `40170191559`, `40170191568`, `40170191571`, and `40170191594`). Integrated source candidate `36b3c1f6f931d74b480661ea931af19245058d5d` merges Icarus main `105c1e66b05ad0954627bf63dc9e0e689dc9a34b` with restart candidate `a4ebd699997096d0495c276162ad9592ab8c6148`. Its focused local integration suite passed 476 tests with one expected skip; exact integrated PR #462 hosted checks have not run yet. Do not install until those exact-head checks pass. Earlier head `4fc4650` exposed a Windows selected-workspace shutdown race; its bounded shutdown and sampler-close fixes are included here. Cloud tests cannot run commands on the owner's PC or certify PC uptime.
+**Release gate.** Integrated source commit `5160a55368fc5c7e5a61dcf53c85193c028042ab` is prepared for PR #462. Its full local command `python -m pytest tests_engine tests/test_provider_corpus_intake.py -q` exited 0 with 4,331 cases collected, including the corrected ETH-only restart default and provider-context consumer. Exact-head hosted checks for this new commit are pending publication. The previous source `350f93ea721b5edae36777bf251c1738b03bb671` passed Windows runs [40178997534](https://github.com/reppiks490/Icarus/actions/runs/40178997534) and [40178999879](https://github.com/reppiks490/Icarus/actions/runs/40178999879), Linux, browser, contract, configuration, federation, and historical-context checks; these do not certify the new commit. The full feed-free Chromium depth contract and targeted dashboard checks passed on the previous source. Do not install until exact-head checks for `5160a553` pass. Cloud tests cannot run commands on the owner's PC or certify PC uptime.
 
 - Integrated restart candidate: [PR #462](https://github.com/reppiks490/Icarus/pull/462)
-- Latest restart source and owner-default changes: [PR #471](https://github.com/reppiks490/Icarus/pull/471)
+- Latest restart source and owner-default changes: [PR #471](https://github.com/reppiks490/Icarus/pull/471) (merged into this candidate branch)
+- Historical provider-context consumer: source commit `5160a55368fc5c7e5a61dcf53c85193c028042ab`; PR #457 is being consolidated into #462.
 - Dashboard scroll and restart-gate fixes: [PR #474](https://github.com/reppiks490/Icarus/pull/474), merged into #471.
-- Restart code candidate: `36b3c1f6f931d74b480661ea931af19245058d5d` (release gate pending exact-head hosted checks).
+- Restart code candidate: `5160a55368fc5c7e5a61dcf53c85193c028042ab` (local full suite passed; exact-head hosted checks pending).
 - Owner machine: `C:\Users\tripl\Icarus-as-is` (Git Bash: `~/Icarus-as-is`)
 - Private state: `C:\Users\tripl\Icarus` (Git Bash: `~/Icarus`)
 - Paper-only; `execution_authorized=false`.
@@ -17,7 +18,7 @@
 
 The baseline is the actual current Main NQ settings: all declared strategy inputs, chart type, fill source, security source, timeframe, and session. Preparation captures live Main NQ when the local engine is reachable; otherwise it resolves the saved NQ configuration and its named preset. Missing, invalid, or changed source files stop the procedure. There is no stock-input fallback.
 
-Every registered Main asset and every saved selected CC asset receives that NQ baseline. **ETH / COINBASE:ETHUSD and SOL / COINBASE:SOLUSD** each receive quantity input `25`, timeframe `30` minutes, and `use_session=false` (24/7 crypto session). Every other asset retains the NQ values. Native contract economics remain instrument-specific. Saved asset selection, journals, and workspace on/off state are retained. Explicit later per-asset edits keep their usual precedence.
+Every registered Main asset and every saved selected CC asset receives that NQ baseline. **ETH / COINBASE:ETHUSD only** receives quantity input `25`, timeframe `30` minutes, and `use_session=false` (24/7 crypto session). SOLUSD follows the current Main NQ defaults exactly, as do all other assets. Native contract economics remain instrument-specific. Saved asset selection, journals, and workspace on/off state are retained. Explicit later per-asset edits keep their usual precedence.
 
 Main currently declares 35 symbols: `NQ,BTC,MNQ,MES,ES,YM,MYM,RTY,M2K,GC,MGC,SI,SIL,PL,PA,MBT,ETH,SOL,CL,NG,HG,6E,6J,6B,6A,ZN,ZB,BTCF,MHG,MCL,MNG,M6E,MJY,M6B,M6A`. The migration applies defaults across that inventory and saved selected CC assets. The last owner-PC health snapshot showed six active Main assets (`NQ,ES,YM,GC,SI,BTC`), so the launch below preserves that known active set instead of expanding runtime load; change it only if the intended saved Main selection has since changed.
 
@@ -29,7 +30,7 @@ Run in Git Bash on the owner's PC. Leave any currently running Icarus launcher o
 set -euo pipefail
 export ICARUS_HOME="$HOME/Icarus"
 export ICARUS_TOKEN="${ICARUS_TOKEN:-icarus}"
-RELEASE_COMMIT="36b3c1f6f931d74b480661ea931af19245058d5d"
+RELEASE_COMMIT="5160a55368fc5c7e5a61dcf53c85193c028042ab"
 RELEASE_BRANCH="icarus1/restart-readiness-20261020"
 cd "$HOME/Icarus-as-is"
 
@@ -40,7 +41,7 @@ git cat-file -e "${RELEASE_COMMIT}^{commit}"
 git merge-base --is-ancestor "$RELEASE_COMMIT" "refs/remotes/origin/$RELEASE_BRANCH"
 
 # Use the pinned restart utility without changing the active checkout.
-CANDIDATE="$HOME/Icarus-as-is-restart-candidate"
+CANDIDATE="$HOME/Icarus-as-is-restart-candidate-${RELEASE_COMMIT:0:12}"
 if [[ -e "$CANDIDATE" ]]; then
   test "$(git -C "$CANDIDATE" rev-parse HEAD)" = "$RELEASE_COMMIT"
   test -z "$(git -C "$CANDIDATE" status --porcelain)"
@@ -143,6 +144,14 @@ cd "$HOME/Icarus-as-is"
 ```
 
 If an HTTP probe fails, the launcher exits, `warm` stays false, or the dashboard does not render, do not repeatedly refresh or start a second engine. Save the exact output and inspect `Icarus/logs/engine.log`; preserve the window and private-state backup for diagnosis. Restore the backup only after stopping the failed engine.
+
+## Mobile observation
+
+The phone relay code is included in the candidate and retains its independent HTTP, authentication, and workspace-isolation checks. Physical pairing still has to be completed from the owner's PC and phone. Once the desktop runtime reports `warm:true`, use the [phone connection procedure](../PHONE_ACCESS.md) to create a read-only viewer token, start the loopback relay and temporary tunnel, and pair the hosted mobile page. This step does not restart the desktop engine. Keep the PC, relay, and tunnel awake; a new Quick Tunnel URL requires pairing again. The hosted page's private UI bundle and the actual phone session are not verifiable from this workspace.
+
+## Archived provider context
+
+CC1–CC4 can display the pinned metadata-only provider statistics archive and record actual read receipts. This is historical context only: it does not poll providers, certify current freshness or entitlement, alter trading inputs, or enable execution. See the [adapter status matrix](ICARUS_ADAPTER_STATUS.md) for the exact boundary.
 
 ## Prior notes and evidence boundary
 

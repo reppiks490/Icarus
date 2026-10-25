@@ -2,7 +2,7 @@
 
 **Current bounded takeover:** the owner appointed this chat current Prime while the original Prime is stopped. The [Prime as-is restart handoff](PRIME_AS_IS_RESTART.md) records the combined candidate, preserved state, installation and observation boundary. Historical checkpoints below retain their original scope and test counts. Full-system NO_GO remains.
 
-Latest restart source is PR #471 commit `a4ebd699997096d0495c276162ad9592ab8c6148`. Its exact-head Linux and Windows engine, browser, contracts, configuration, historical-context, and federation jobs passed in runs `40170191547`, `40170191559`, `40170191594`, `40170191568`, `40170191544`, `40170191571`, and `40170191553`. Integrated PR #462 candidate `36b3c1f6f931d74b480661ea931af19245058d5d` merges current Icarus main with that restart source; its comprehensive local integration suite passed 476 tests with one expected skip, and exact integrated hosted checks have not run yet. Do not install until those exact-head checks pass. Owner-PC restart remains unobserved until the documented Windows procedure is completed.
+**Latest integrated restart source candidate:** `5160a55368fc5c7e5a61dcf53c85193c028042ab`, prepared for PR #462. It contains the local historical provider-context consumer and corrects defaults so ETHUSD alone gets 30-minute/session-off/25; SOL and every other asset inherit the captured Main NQ inputs and chart/session. `python -m pytest tests_engine tests/test_provider_corpus_intake.py -q` exited 0 with 4,331 cases collected. New exact-head hosted checks are pending publication. The previous source `350f93ea721b5edae36777bf251c1738b03bb671` passed both Windows engine runs (`40178997534`, `40178999879`) and the other listed hosted contracts; those runs predate this update. Owner-PC restart and physical phone pairing remain unobserved until the documented procedures are completed.
 
 Engine PR #216's unique offline archive intake was reconstructed on current Engine main in PR #249 and merged at `2f9a10c516d7294d875a9e808bd669e208ed0e0c`; the stale #216 is closed and its branch retained. Focused tests (107) and the full Engine suite (1,455 tests, 17 subtests) passed locally. Exact-main offline run `40171645677` and exact-head hosted checks passed, including all eight archived profiles. This proves neither live feed access nor provider freshness.
 
@@ -85,9 +85,11 @@ ambiguous. No such installation collision has been observed on the PC yet.
    desktop/mobile browser cases exercise distinct same-symbol prices, journals,
    inputs and navigation. `serve(..., shared_dashboard=False)` preserves the
    dedicated renderer for rollback. Connections remains a shared inventory.
-   Panels lacking selected-runtime adapters are visibly unavailable, with disabled
-   controls and server rejection. Those adapters and actual PC/release verification
-   remain required; common presentation does not establish subsystem operation.
+   The eleven previously unimplemented surfaces now have selected-runtime read
+   adapters, and the first four paper controls use isolated workspace state and
+   owner/revision/confirmation gates; see the [adapter matrix](ICARUS_ADAPTER_STATUS.md).
+   Read adapters do not supply the disabled mutation/automation paths described
+   there. Operating parity, release, and actual PC verification remain open.
 3. **Installed restart/configuration parity — unverified.** The Git Bash
    `restart-command-centers.sh` helper explicitly selects file-only/offline mode;
    `start-yahoo.ps1` selects the Yahoo/Coinbase route. `start-plant.sh` is an
@@ -255,14 +257,14 @@ All rows must have current evidence before a restart is called ready.
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
 | Installed release and startup | Exact repos/refs, interpreter/module origins, data root, one intended launcher, state backups and reversible rollback | PC not observed |
-| Four-dashboard parity | Same main trading UI/components, charts, panels and configurable inputs; browser evidence for CC1–CC4; mutations isolated to the chosen ledger | Common renderer implemented; unavailable runtime adapters, release and PC verification remain |
-| Accounting | Persistent independent journals, known totals, stale/missing/runtime failure cases, partial closures and restart persistence; simulated vs broker basis explicit | Source repair under verification; PC symptom open |
-| Data and consumers | Per-source credential/auth/rights/ingestion/freshness/consumer evidence; no collected-but-unread required source silently treated complete | Audit open; explicit external blockers retained |
-| Subsystems | Current suites and cross-system checks plus actual runtime links/consumer receipts for each required subsystem | Local checks recorded separately; operating links unverified |
+| Four-dashboard parity | Same main trading UI/components, charts, panels and configurable inputs; browser evidence for CC1–CC4; mutations isolated to the chosen ledger | Common renderer and selected readers implemented; mutation/automation limits, release and PC verification remain |
+| Accounting | Persistent independent journals, known totals, stale/missing/runtime failure cases, partial closures and restart persistence; simulated vs broker basis explicit | Current source suite passed; owner-PC symptom and restart persistence remain unverified |
+| Data and consumers | Per-source credential/auth/rights/ingestion/freshness/consumer evidence; no collected-but-unread required source silently treated complete | Audit open; peer packet refreshed; provider-level external blockers and end-to-end freshness remain explicit |
+| Subsystems | Current suites and cross-system checks plus actual runtime links/consumer receipts for each required subsystem | Selected read paths and four paper control families are connected in source; external runtime links and full mutation/automation paths remain unverified or intentionally disabled |
 | Accuracy comparison | Reproducible before/after metric on matched real inputs/configuration; regression explained and required behavior verified | Open |
 | Futures and firms | Exact contract economics/feeds, supported paper/read-only account connection, effective program policy, fees/risk/reconciliation tests and visible access | Open |
 | Recovery rehearsal | Isolated stop/start, saved config and journal recovery, failure handling, panel refresh and rollback observed without altering the owner's running system | Open |
-| Hosted and operator verification | Required checks on the proposed release head, fresh disposition of earlier rejected jobs, actual PC/runtime evidence | Current draft checks/new Engine lab observed separately; PC not connected |
+| Hosted and operator verification | Required checks on the proposed release head, fresh disposition of earlier rejected jobs, actual PC/runtime evidence | Exact candidate checks pass except two pending Windows engine jobs; PC not connected |
 
 Local suite success does not remove these gates. Live broker arming remains
 disabled. Resetting or flattening positions is not a panel refresh.
