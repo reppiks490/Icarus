@@ -89,6 +89,28 @@ def test_apply_copies_all_strategy_values_preserves_specs_journals_and_sol_excep
     assert Path(receipt["backup_directory"]).is_dir()
 
 
+def test_every_main_asset_resolves_to_nq_defaults_with_only_eth_sol_exceptions(state, monkeypatch):
+    from icarus_engine.workspace_universe import dashboard_assets
+
+    monkeypatch.setattr(defaults, "ensure_stopped", lambda *args, **kwargs: None)
+    plan = defaults.plan_defaults(state)
+    defaults.apply_plan(plan)
+    baseline = plan["baseline"]["inputs"]
+    symbols = dashboard_assets()
+    assert set(symbols) <= set(plan["symbols"])
+    for symbol in symbols:
+        inputs, meta, _ = resolve_inputs(
+            copy.deepcopy(REGISTRY[symbol]), str(state), "nq", defaults.DEFAULT_PRESET
+        )
+        expected = dict(baseline)
+        if symbol in {"ETH", "SOL"}:
+            expected.update(qty_contracts=25, use_session=False)
+            assert meta["timeframe"] == "30", symbol
+        else:
+            assert meta["timeframe"] == plan["baseline"]["chart"]["timeframe"], symbol
+        assert inputs.to_dict() == expected, symbol
+
+
 def test_second_application_is_idempotent_and_template_supplies_future_assets(state, monkeypatch):
     monkeypatch.setattr(defaults, "ensure_stopped", lambda *args, **kwargs: None)
     defaults.apply_plan(defaults.plan_defaults(state))
