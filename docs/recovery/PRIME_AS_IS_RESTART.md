@@ -6,7 +6,7 @@
 
 - Integrated restart candidate: [PR #471](https://github.com/reppiks490/Icarus/pull/471)
 - Dashboard scroll and restart-gate fixes: [PR #474](https://github.com/reppiks490/Icarus/pull/474)
-- Source commit to use after the PR #474 exact-head checks are green: `7f4676917f50fc6d51908113fff6bd214cd785d8` (subsequent branch commits contain restart documentation only).
+- Source commit to use after the PR #474 exact-head checks are green: `41f5c8a8b0d9a62a1e15b69bca91f16a2885d34c`.
 - Owner machine: `C:\Users\tripl\Icarus-as-is` (Git Bash: `~/Icarus-as-is`)
 - Private state: `C:\Users\tripl\Icarus` (Git Bash: `~/Icarus`)
 - Paper-only; `execution_authorized=false`.
@@ -28,7 +28,7 @@ Run in Git Bash on the owner's PC. Leave any currently running Icarus launcher o
 set -euo pipefail
 export ICARUS_HOME="$HOME/Icarus"
 export ICARUS_TOKEN="${ICARUS_TOKEN:-icarus}"
-RELEASE_COMMIT="7f4676917f50fc6d51908113fff6bd214cd785d8"
+RELEASE_COMMIT="41f5c8a8b0d9a62a1e15b69bca91f16a2885d34c"
 cd "$HOME/Icarus-as-is"
 
 # Fetch the final, CI-green commit recorded in this guide's release pin.

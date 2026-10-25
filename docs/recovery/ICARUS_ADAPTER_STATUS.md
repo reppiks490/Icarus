@@ -1,6 +1,6 @@
 # ICARUS dashboard adapter status
 
-This inventory separates a visible dashboard tab from its Python adapter. A tab is only a view; a connected adapter routes data/actions to a particular runtime or explicitly to shared evidence. This matrix describes source at restart candidate `7f4676917f50fc6d51908113fff6bd214cd785d8`.
+This inventory separates a visible dashboard tab from its Python adapter. A tab is only a view; a connected adapter routes data/actions to a particular runtime or explicitly to shared evidence. This matrix describes source at restart candidate `41f5c8a8b0d9a62a1e15b69bca91f16a2885d34c`.
 
 | Surface | Adapter state | Scope and actual behavior |
 | --- | --- | --- |
