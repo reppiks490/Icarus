@@ -3,6 +3,8 @@
 ## Non-negotiable boundaries
 
 - Engine port 8791 stays loopback-only.
+- The gateway accepts only an HTTP(S) loopback origin for its engine URL; it rejects remote hosts, URL credentials, and base paths.
+- Engine requests bypass ambient proxy settings and do not follow redirects, so the gateway admin token cannot be forwarded off-host by configuration or redirect behavior.
 - Mobile never stores the ICARUS engine admin token.
 - The gateway does not expose `/admin/*` or arbitrary upstream paths.
 - Trading state remains read-only. The gateway may launch bounded analysis-only backtest jobs.

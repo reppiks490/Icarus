@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import re
 import time
@@ -12,6 +13,19 @@ from typing import Any
 
 _SYMBOL = re.compile(r"^[A-Z0-9!._-]{1,24}$")
 _JOB = re.compile(r"^[A-Za-z0-9_-]{1,96}$")
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+# Engine credentials and requests must never follow ambient proxy settings or
+# an upstream redirect away from the local engine process.
+_LOCAL_ENGINE_OPENER = urllib.request.build_opener(
+    urllib.request.ProxyHandler({}),
+    _NoRedirectHandler(),
+)
 
 
 class UpstreamError(RuntimeError):
@@ -44,10 +58,29 @@ class UpstreamClient:
 
     def __init__(self, base_url: str, admin_token: str = "", timeout: float = 6.0) -> None:
         value = str(base_url or "").strip().rstrip("/")
-        parsed = urllib.parse.urlparse(value)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            raise ValueError("invalid ICARUS engine URL")
-        self.base_url = value
+        parsed = urllib.parse.urlsplit(value)
+        hostname = (parsed.hostname or "").casefold()
+        try:
+            literal_ip = ipaddress.ip_address(hostname)
+            is_loopback = literal_ip.is_loopback
+        except ValueError:
+            is_loopback = hostname == "localhost"
+        try:
+            parsed.port  # Validate malformed or out-of-range ports at configuration time.
+        except ValueError as ex:
+            raise ValueError("invalid ICARUS engine loopback origin") from ex
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or not is_loopback
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("ICARUS engine URL must be a loopback origin")
+        self.base_url = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "", "", ""))
         self.admin_token = str(admin_token or "")
         self.timeout = max(1.0, min(float(timeout), 30.0))
 
@@ -62,7 +95,7 @@ class UpstreamClient:
             headers["Authorization"] = "Bearer " + self.admin_token
         req = urllib.request.Request(url, headers=headers, method="GET")
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as response:
+            with _LOCAL_ENGINE_OPENER.open(req, timeout=self.timeout) as response:
                 raw = response.read(4 * 1024 * 1024 + 1)
                 if len(raw) > 4 * 1024 * 1024:
                     raise UpstreamError(502, "ICARUS response exceeded gateway limit")
@@ -96,7 +129,7 @@ class UpstreamClient:
         raw_body = json.dumps(body, separators=(",", ":"), allow_nan=False).encode("utf-8")
         req = urllib.request.Request(url, data=raw_body, headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as response:
+            with _LOCAL_ENGINE_OPENER.open(req, timeout=self.timeout) as response:
                 raw = response.read(4 * 1024 * 1024 + 1)
                 if len(raw) > 4 * 1024 * 1024:
                     raise UpstreamError(502, "ICARUS response exceeded gateway limit")

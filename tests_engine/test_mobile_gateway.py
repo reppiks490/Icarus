@@ -3,6 +3,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
@@ -92,6 +93,68 @@ def test_mobile_proxy_rejects_execution_mutations_and_unknown_backtest_fields():
     with pytest.raises(UpstreamError) as invalid:
         client.mobile_post("/v1/backtest", {"asset": "NQ", "confirm": True})
     assert invalid.value.status == 400
+
+
+def test_mobile_upstream_requires_loopback_origin():
+    for url in (
+        "https://engine.example:8791",
+        "http://127.0.0.1.example:8791",
+        "http://user@127.0.0.1:8791",
+        "http://127.0.0.1:8791/other-service",
+        "http://127.0.0.1:8791?redirect=1",
+        "http://127.0.0.1:8791#fragment",
+    ):
+        with pytest.raises(ValueError, match="loopback origin"):
+            UpstreamClient(url, admin_token="secret")
+
+    assert UpstreamClient("http://127.0.0.1:8791", admin_token="secret")
+    assert UpstreamClient("http://[::1]:8791", admin_token="secret")
+    assert UpstreamClient("http://localhost:8791", admin_token="secret")
+
+
+def test_mobile_upstream_does_not_follow_redirects_with_admin_token():
+    received_local: list[str | None] = []
+    received: list[str | None] = []
+
+    class RedirectHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            received_local.append(self.headers.get("Authorization"))
+            self.send_response(302)
+            self.send_header("Location", f"http://127.0.0.1:{sink.server_port}/capture")
+            self.end_headers()
+
+        def log_message(self, *_args):
+            pass
+
+    class SinkHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            received.append(self.headers.get("Authorization"))
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *_args):
+            pass
+
+    sink = ThreadingHTTPServer(("127.0.0.1", 0), SinkHandler)
+    redirect = ThreadingHTTPServer(("127.0.0.1", 0), RedirectHandler)
+    sink_thread = threading.Thread(target=sink.serve_forever, daemon=True)
+    redirect_thread = threading.Thread(target=redirect.serve_forever, daemon=True)
+    sink_thread.start()
+    redirect_thread.start()
+    try:
+        client = UpstreamClient(f"http://127.0.0.1:{redirect.server_port}", admin_token="secret")
+        with pytest.raises(UpstreamError) as denied:
+            client.mobile_get("/v1/brain", {})
+        assert denied.value.status == 302
+        assert received_local == ["Bearer secret"]
+        assert received == []
+    finally:
+        redirect.shutdown()
+        sink.shutdown()
+        redirect.server_close()
+        sink.server_close()
+        redirect_thread.join(timeout=3)
+        sink_thread.join(timeout=3)
 
 
 class FakeUpstream:
