@@ -200,8 +200,13 @@ def test_common_input_submission_reserves_draft_before_http_admission(workspace_
 
 def test_common_controls_csv_and_ledger_navigation_keep_identity(workspace_http):
     server, parent, _ = workspace_http
-    with common_page(workspace_http, "cc2") as (page, _):
-        page.evaluate("async()=>{await refresh();await admin('/admin/pause',{asset:'NQ'})}")
+    with common_page(workspace_http, "cc2", pause_periodic=True) as (page, _):
+        receipt = page.evaluate("""async()=>{
+          await refresh();
+          return await admin('/admin/pause',{asset:'NQ'});
+        }""")
+        assert receipt and receipt.get('ok') is True and receipt.get('workspace_id') == 'cc2', receipt
+        assert receipt.get('paused') is True, receipt
         assert server.command_centers.portfolios['cc2'].runners['NQ'].paused
         assert not parent.runners['NQ'].paused
         assert all(not server.command_centers.portfolios[scope].runners['NQ'].paused for scope in ['cc1','cc3','cc4'])

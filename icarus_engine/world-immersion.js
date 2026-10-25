@@ -3,10 +3,32 @@
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
   let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,radarTether=null,navPreview=null,inspectionField=null,inspectedPanel=null,inspectionKey=null,topologyHighlightTarget=null,topologyHighlightKey=null,scrollFocusPanel=null,scrollFocusId=null,radarActiveId=null,inspectionTimer=0,topologyTimer=0,navPreviewTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastScrollFocusAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
-  const readoutCache=new Map(),readoutTimers=new WeakMap(),panelActivityTimers=new WeakMap(),topologyActivityTimers=new WeakMap();
+  const readoutCache=new Map(),readoutTimers=new WeakMap(),panelActivityTimers=new WeakMap(),radarArrivalTimers=new WeakMap(),impactTimers=new WeakMap(),topologyActivities=new Map();
+  let interactionImpactElements=[];
   let refreshFrame=0;
 
   const motionAllowed=()=>root.dataset.motion==='live'&&root.dataset.experience==='cinematic'&&!!root.dataset.world&&!document.hidden&&!reduced.matches&&root.dataset.introActive!=='true';
+  function cancelScheduledCleanup(map,element){
+    const token=map.get(element);if(!token)return;
+    if(token.frame)cancelAnimationFrame(token.frame);
+    if(token.id)clearTimeout(token.id);
+    map.delete(element);
+  }
+  function scheduleCleanupAfterPaint(map,element,delay,cleanup){
+    const token={frame:0,id:0};map.set(element,token);
+    token.frame=requestAnimationFrame(()=>{
+      if(map.get(element)!==token)return;
+      token.frame=requestAnimationFrame(()=>{
+        if(map.get(element)!==token)return;
+        token.frame=0;
+        token.id=setTimeout(()=>{
+          if(map.get(element)!==token)return;
+          map.delete(element);cleanup();
+        },delay);
+      });
+    });
+    return token;
+  }
   const phaseLabels={crown:'CROWN',descent:'DESCENT',depth:'DEPTH',abyss:'ABYSS'};
   const phaseLore={
     divine:{crown:'ASCENSION',descent:'THRESHOLD',depth:'SANCTUM',abyss:'DOMINION'},
@@ -66,7 +88,7 @@
     if(phase!==currentPhase){
       if(motionAllowed()){
         clearTimeout(chapterTimer);depthFrame.dataset.chapter=phase;
-        depthFrame.classList.remove('world-chapter-shift');void depthFrame.offsetWidth;depthFrame.classList.add('world-chapter-shift');
+        depthFrame.classList.add('world-chapter-shift');
         chapterTimer=setTimeout(()=>depthFrame?.classList.remove('world-chapter-shift'),820);
       }
       currentPhase=phase;
@@ -161,8 +183,6 @@
     if(!element?.isConnected||element.dataset.worldDepthSeen==='1')return;
     element.dataset.worldDepthSeen='1';
     if(!motionAllowed())return;
-    element.classList.remove('world-depth-enter');
-    void element.offsetWidth;
     element.classList.add('world-depth-enter');
     const clear=()=>element.classList.remove('world-depth-enter');
     element.addEventListener('animationend',clear,{once:true});
@@ -294,7 +314,7 @@
     navPreview.style.setProperty('--nav-preview-x',x.toFixed(1)+'px');
     navPreview.style.setProperty('--nav-preview-y',y.toFixed(1)+'px');
     navPreview.dataset.view=id;
-    navPreview.classList.remove('active');void navPreview.offsetWidth;navPreview.classList.add('active');
+    navPreview.classList.add('active');
   }
 
   function ensureRadarTether(){
@@ -313,8 +333,9 @@
         document.querySelector(`#view [data-world-topology-node="${item.dataset.radarNode}"]`);
       if(!panel)return;
       panel.scrollIntoView({behavior:motionAllowed()?'smooth':'auto',block:'center'});
-      panel.classList.remove('world-radar-arrival');void panel.offsetWidth;panel.classList.add('world-radar-arrival');
-      setTimeout(()=>panel?.classList.remove('world-radar-arrival'),900);
+      cancelScheduledCleanup(radarArrivalTimers,panel);
+      panel.classList.add('world-radar-arrival');
+      scheduleCleanupAfterPaint(radarArrivalTimers,panel,900,()=>panel.classList.remove('world-radar-arrival'));
     });
     document.body.appendChild(sectionRadar);ensureRadarTether();
   }
@@ -393,7 +414,7 @@
       return {index,el,x:r.left-viewRect.left+view.scrollLeft+r.width/2,y:r.top-viewRect.top+view.scrollTop+r.height/2};
     }).sort((a,b)=>a.y-b.y||a.x-b.x);
     rebuildSectionRadar(points);
-    if(points.length<2)return;
+    if(points.length<2){restoreTopologyActivities();return;}
     const edgeKeys=new Set(),edges=[];
     const addEdge=(a,b)=>{
       if(!a||!b||a.index===b.index||edges.length>=24)return;
@@ -419,6 +440,7 @@
       node.setAttribute('cx',p.x.toFixed(1));node.setAttribute('cy',p.y.toFixed(1));node.setAttribute('r','2.2');
       node.dataset.node=String(p.index);nodeLayer.appendChild(node);
     }
+    restoreTopologyActivities();
     if(scrollFocusPanel&&!elements.includes(scrollFocusPanel)){
       scrollFocusPanel.classList.remove('world-scroll-focus');scrollFocusPanel=null;scrollFocusId=null;
     } else scrollFocusId=scrollFocusPanel?.dataset.worldTopologyNode??null;
@@ -484,18 +506,50 @@
     }
     updateSectionRadar(id,best?{panelRect:bestRect,radarRect}:null);
   }
-  function pulseTopologyFromPanel(panel,activityNodes){
-    if(!topology||!panel?.isConnected||!motionAllowed())return;
-    const id=panel.dataset.worldTopologyNode;if(id==null)return;
-    const kind=panel.dataset.worldPanelKind||'instrument';
+  function topologyActivityElements(id){
     const selector=`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`;
-    const linked=[...topology.querySelectorAll(selector)],radarNode=sectionRadar?.querySelector(`[data-radar-node="${id}"]`);
-    if(radarNode)linked.push(radarNode);
+    const linked=topology?[...topology.querySelectorAll(selector)]:[];
+    const radarNode=sectionRadar?.querySelector(`[data-radar-node="${id}"]`);if(radarNode)linked.push(radarNode);
+    return linked;
+  }
+  function clearTopologyActivity(id,entry){
+    if(topologyActivities.get(id)!==entry)return;
+    if(entry.frame)cancelAnimationFrame(entry.frame);
+    clearTimeout(entry.timer);clearTimeout(entry.capTimer);topologyActivities.delete(id);
+    for(const el of topologyActivityElements(id)){el.classList.remove('data-activity');delete el.dataset.activityKind;}
+  }
+  function keepTopologyActivity(id,entry){
+    if(entry.timer||entry.frame||topologyActivities.get(id)!==entry)return;
+    entry.frame=requestAnimationFrame(()=>{
+      if(topologyActivities.get(id)!==entry)return;
+      entry.frame=requestAnimationFrame(()=>{
+        if(topologyActivities.get(id)!==entry)return;
+        entry.frame=0;entry.timer=setTimeout(()=>clearTopologyActivity(id,entry),920);
+      });
+    });
+  }
+  function restoreTopologyActivities(){
+    const now=Date.now();
+    for(const [id,entry] of topologyActivities){
+      if(now>=entry.expiresAt){clearTopologyActivity(id,entry);continue;}
+      const elements=topologyActivityElements(id);
+      for(const el of elements){el.dataset.activityKind=entry.kind;el.classList.add('data-activity');}
+      if(elements.length)keepTopologyActivity(id,entry);
+    }
+  }
+  function pulseTopologyFromPanel(panel){
+    if(!topology||!panel?.isConnected||!motionAllowed())return;
+    const id=String(panel.dataset.worldTopologyNode??'');if(!id)return;
+    const kind=panel.dataset.worldPanelKind||'instrument';
+    const previous=topologyActivities.get(id);if(previous){if(previous.frame)cancelAnimationFrame(previous.frame);clearTimeout(previous.timer);clearTimeout(previous.capTimer);}
+    const entry={kind,frame:0,timer:0,capTimer:0,expiresAt:Date.now()+8000};topologyActivities.set(id,entry);
+    const linked=topologyActivityElements(id);
     for(const el of linked){
       if(!el.isConnected)continue;
-      const oldTimer=topologyActivityTimers.get(el);if(oldTimer)clearTimeout(oldTimer);
-      el.classList.remove('data-activity');el.dataset.activityKind=kind;activityNodes.add(el);
+      el.dataset.activityKind=kind;el.classList.add('data-activity');
     }
+    if(linked.length)keepTopologyActivity(id,entry);
+    entry.capTimer=setTimeout(()=>clearTopologyActivity(id,entry),8000);
   }
   function classifyReadouts(){
     const states=[...document.querySelectorAll('#view .empty')].slice(0,96);
@@ -539,13 +593,12 @@
     return null;
   }
   function clearReadoutMotion(el){
-    const timer=readoutTimers.get(el);if(timer)clearTimeout(timer);
+    cancelScheduledCleanup(readoutTimers,el);
     el.classList.remove('world-value-change','world-value-increase','world-value-decrease','world-value-shift');
-    readoutTimers.delete(el);
   }
   function animateReadoutChanges(){
     const values=[...document.querySelectorAll('#view .tile > .v,#view .asset .px.tnum,#view .hero > .n.tnum,#view .score > .tnum')].slice(0,180);
-    const seen=new Set(),activityPanels=new Set(),activityNodes=new Set();
+    const seen=new Set(),activityPanels=new Set();
     values.forEach((el,index)=>{
       const key=readoutKey(el,index);if(!key)return;
       const text=(el.textContent||'').trim().replace(/\s+/g,' ');if(!text)return;
@@ -555,30 +608,26 @@
       if(!previous||previous.text===text||!motionAllowed()||root.dataset.introActive==='true')return;
       clearReadoutMotion(el);
       const direction=previous.num!=null&&num!=null?(num>previous.num?'increase':num<previous.num?'decrease':'shift'):'shift';
-      el.classList.add('world-value-change','world-value-'+direction);
       const panel=el.closest('.card,.asset,.group');
       if(panel){
-        panel.classList.remove('world-data-activity');activityPanels.add(panel);
+        activityPanels.add(panel);
       }
-      const timer=setTimeout(()=>clearReadoutMotion(el),860);readoutTimers.set(el,timer);
+      el.classList.add('world-value-change','world-value-'+direction);
+      scheduleCleanupAfterPaint(readoutTimers,el,860,()=>{
+        el.classList.remove('world-value-change','world-value-increase','world-value-decrease','world-value-shift');
+      });
     });
     for(const panel of activityPanels){
-      const oldTimer=panelActivityTimers.get(panel);if(oldTimer)clearTimeout(oldTimer);
-      pulseTopologyFromPanel(panel,activityNodes);
+      cancelScheduledCleanup(panelActivityTimers,panel);
+      pulseTopologyFromPanel(panel);
     }
-    if(activityPanels.size||activityNodes.size){
-      // Restart changed readout effects with one shared layout flush, not one per metric.
-      void root.offsetWidth;
+    if(activityPanels.size){
+      // Keep activity markers visible through a paint, then start cleanup without
+      // forcing layout while market values are being refreshed.
       for(const panel of activityPanels){
         if(!panel.isConnected)continue;
         panel.classList.add('world-data-activity');
-        const timer=setTimeout(()=>{panel.classList.remove('world-data-activity');panelActivityTimers.delete(panel);},820);
-        panelActivityTimers.set(panel,timer);
-      }
-      for(const el of activityNodes){
-        el.classList.add('data-activity');
-        const timer=setTimeout(()=>{el.classList.remove('data-activity');delete el.dataset.activityKind;topologyActivityTimers.delete(el);},920);
-        topologyActivityTimers.set(el,timer);
+        scheduleCleanupAfterPaint(panelActivityTimers,panel,820,()=>panel.classList.remove('world-data-activity'));
       }
     }
     if(readoutCache.size>320){
@@ -679,9 +728,15 @@
     const nodeId=target.closest?.('[data-radar-node]')?.dataset.radarNode??panel?.dataset.worldTopologyNode;
     if(topology&&nodeId!=null){
       const linked=[...topology.querySelectorAll(`path[data-from="${nodeId}"],path[data-to="${nodeId}"],circle[data-node="${nodeId}"]`)];
+      cancelScheduledCleanup(impactTimers,topology);
+      interactionImpactElements.forEach(el=>el.classList.remove('impact'));
+      topology.classList.remove('world-topology-impact');
       linked.forEach(el=>el.classList.add('impact'));
-      topology.classList.remove('world-topology-impact');void topology.getBoundingClientRect();topology.classList.add('world-topology-impact');
-      setTimeout(()=>{linked.forEach(el=>el.classList.remove('impact'));topology?.classList.remove('world-topology-impact');},720);
+      topology.classList.add('world-topology-impact');interactionImpactElements=linked;
+      scheduleCleanupAfterPaint(impactTimers,topology,720,()=>{
+        interactionImpactElements.forEach(el=>el.classList.remove('impact'));
+        topology?.classList.remove('world-topology-impact');interactionImpactElements=[];
+      });
     }
     let cleaned=false;
     const cleanup=()=>{
@@ -696,14 +751,15 @@
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
       const tabs=document.getElementById('tabs'),active=tabs?.querySelector('.tab.active');
       if(!tabs||!active)return;
-      tabs.style.setProperty('--nav-x',active.offsetLeft.toFixed(1)+'px');
-      tabs.style.setProperty('--nav-w',active.offsetWidth.toFixed(1)+'px');
-      tabs.style.setProperty('--nav-center',(active.offsetLeft+active.offsetWidth/2).toFixed(1)+'px');
-      if(tabs.scrollWidth>tabs.clientWidth+2){
-        const left=Math.max(0,active.offsetLeft-(tabs.clientWidth-active.offsetWidth)/2);
+      const activeLeft=active.offsetLeft,activeWidth=active.offsetWidth,scrollWidth=tabs.scrollWidth,clientWidth=tabs.clientWidth;
+      const left=scrollWidth>clientWidth+2?Math.max(0,activeLeft-(clientWidth-activeWidth)/2):null;
+      tabs.style.setProperty('--nav-x',activeLeft.toFixed(1)+'px');
+      tabs.style.setProperty('--nav-w',activeWidth.toFixed(1)+'px');
+      tabs.style.setProperty('--nav-center',(activeLeft+activeWidth/2).toFixed(1)+'px');
+      if(left!==null){
         tabs.scrollTo({left,behavior:motionAllowed()?'smooth':'auto'});
       }
-      tabs.classList.remove('world-nav-settle');void tabs.offsetWidth;tabs.classList.add('world-nav-settle');
+      tabs.classList.add('world-nav-settle');
       setTimeout(()=>tabs?.classList.remove('world-nav-settle'),520);
     }));
   }
@@ -742,7 +798,6 @@
       if(viewIndex)viewIndex.textContent=indexText;if(mobileIndex)mobileIndex.textContent=indexText.replace(/\s/g,'');
       if(raw!==currentView&&motionAllowed()){
         clearTimeout(viewFlashTimer);clearTimeout(viewGateTimer);
-        depthFrame.classList.remove('world-view-shift','world-view-gate-active');void depthFrame.offsetWidth;
         depthFrame.classList.add('world-view-shift','world-view-gate-active');
         viewFlashTimer=setTimeout(()=>depthFrame?.classList.remove('world-view-shift'),760);
         viewGateTimer=setTimeout(()=>depthFrame?.classList.remove('world-view-gate-active'),980);

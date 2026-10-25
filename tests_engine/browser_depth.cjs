@@ -122,23 +122,31 @@ const valueMotion=await page.evaluate(async()=>{
  values.forEach((value,index)=>value.textContent=String(12+index));window.IcarusWorldImmersion.refresh();
  const synchronousLayoutReads={panel:panelLayoutReads,topology:topologyLayoutReads,root:rootLayoutReads};
  Object.defineProperty(layoutProto,'offsetWidth',offsetWidth);Element.prototype.getBoundingClientRect=getRect;
- // Topology/radar activity is delivered through bounded animation frames. Wait
- // for that observable state instead of assuming 48 ms is enough on every CI
- // runner; keep the deadline short enough to catch a genuinely missing signal.
+ // Latch transient readout and panel pulses while the independently rebuilt
+ // graph/radar nodes become observable on busy CI runners.
+ const nextFrame=()=>new Promise(resolve=>requestAnimationFrame(resolve));
+ await nextFrame();await nextFrame();
  const activityDeadline=performance.now()+1500;
- let graphActivity=false,radarActivity=false;
+ const observed={rise:false,active:false,graphActivity:false,radarActivity:false};
  while(performance.now()<activityDeadline){
-  graphActivity=nodeId!=null&&!!document.querySelector(`.world-topology :is(path,circle).data-activity[data-node="${nodeId}"],.world-topology path.data-activity[data-from="${nodeId}"],.world-topology path.data-activity[data-to="${nodeId}"]`);
-  radarActivity=nodeId!=null&&!!document.querySelector(`.world-section-radar [data-radar-node="${nodeId}"].data-activity`);
-  if(graphActivity&&radarActivity)break;
+  observed.rise ||= values[0].classList.contains('world-value-increase');
+  observed.active ||= el.classList.contains('world-data-activity');
+  observed.graphActivity ||= nodeId!=null&&!!document.querySelector(`.world-topology :is(path,circle).data-activity[data-node="${nodeId}"],.world-topology path.data-activity[data-from="${nodeId}"],.world-topology path.data-activity[data-to="${nodeId}"]`);
+  observed.radarActivity ||= nodeId!=null&&!!document.querySelector(`.world-section-radar [data-radar-node="${nodeId}"].data-activity`);
+  if(observed.rise&&observed.active&&observed.graphActivity&&observed.radarActivity)break;
   await new Promise(resolve=>setTimeout(resolve,24));
  }
- const rise=values[0].classList.contains('world-value-increase'),active=el.classList.contains('world-data-activity');
+ let riseExpired=false;const expiryDeadline=performance.now()+3000;
+ while(performance.now()<expiryDeadline&&!riseExpired){
+  riseExpired=!values[0].classList.contains('world-value-change');
+  if(!riseExpired)await new Promise(resolve=>setTimeout(resolve,24));
+ }
  values[0].textContent='8';window.IcarusWorldImmersion.refresh();
- const fall=values[0].classList.contains('world-value-decrease');
- el.remove();return {rise,fall,active,graphActivity,radarActivity,synchronousLayoutReads};
+ let fall=false;const fallDeadline=performance.now()+3000;
+ while(performance.now()<fallDeadline&&!fall){fall=values[0].classList.contains('world-value-decrease');await new Promise(resolve=>setTimeout(resolve,16));}
+ el.remove();return {rise:observed.rise,riseExpired,fall,active:observed.active,graphActivity:observed.graphActivity,radarActivity:observed.radarActivity,synchronousLayoutReads};
 });
-assert.deepEqual(valueMotion,{rise:true,fall:true,active:true,graphActivity:true,radarActivity:true,synchronousLayoutReads:{panel:0,topology:0,root:1}});
+assert.deepEqual(valueMotion,{rise:true,riseExpired:true,fall:true,active:true,graphActivity:true,radarActivity:true,synchronousLayoutReads:{panel:0,topology:0,root:0}});
 if(process.env.ICARUS_READOUT_LAYOUT_ONLY==='1'){
  await context.close();await browser.close();console.log('readout layout browser contract passed');return;
 }
