@@ -220,14 +220,16 @@ await page.waitForFunction(point=>{
 // setup. Reacquire current panel geometry immediately before the churn event
 // so this test measures pointer reconciliation, not stale coordinates.
 const churnPointer=await page.evaluate(()=>{
- const panel=[...document.querySelectorAll('#view > .card[data-world-topology-node]')].find(el=>{
-  const r=el.getBoundingClientRect();return r.width>40&&r.height>28&&r.bottom>0&&r.top<window.innerHeight;
- });
+ // The candidate panel may be below the viewport after a prior card update.
+ // Select the current DOM node first, then bring it into view before judging
+ // visibility; filtering by its pre-scroll rectangle can incorrectly find none.
+ const panel=document.querySelector('#view > .card[data-world-topology-node]');
  if(!panel)return null;
  const heading=panel.querySelector('h2')||panel;
  heading.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
  const r=heading.getBoundingClientRect();
- return r.width>0&&r.height>0?{x:r.left+r.width*.38,y:r.top+r.height*.5,key:panel.dataset.worldPanelKey}:null;
+ return r.width>0&&r.height>0&&r.bottom>0&&r.top<window.innerHeight
+  ?{x:r.left+r.width*.38,y:r.top+r.height*.5,key:panel.dataset.worldPanelKey}:null;
 });
 assert.ok(churnPointer,'A visible topology panel must be available for the DOM-churn fixture');
 await page.mouse.move(4,4);
