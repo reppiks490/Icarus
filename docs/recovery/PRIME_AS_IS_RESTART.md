@@ -2,19 +2,22 @@
 
 **Purpose.** Restore the current Icarus paper runtime on the owner's Windows PC, keep its existing private state, and make the dashboards observable. This procedure never enables live trading or starts a broker bridge.
 
-**Release gate.** Current paper restart code source commit is `712057cbb7b42d94bd0238068019b0f55aa8ef5a`. It includes the restart/defaults work, selected-workspace Intuition Ω bridge, optional research-only GRU challenger, provider-origin/query-bound discovery evidence, and a bounded discovery-receipt card on the shared Financial & data page. The immediately preceding code head `ab6a4765f6ea76d146fbe80b42f951253d4cf615` passed exact-head Linux and Windows suites, browser, contract, configuration, and observe-only federation checks (runs [40188781995](https://github.com/reppiks490/Icarus/actions/runs/40188781995) and [40188786401](https://github.com/reppiks490/Icarus/actions/runs/40188786401)); those runs predate the current source commit. On the current source, the focused discovery/route/workspace suite passed 51 tests, the shared-panel browser regression passed, and the combined local suite reached 100% with no failed-test markers and an empty pytest failure cache. An initial run exposed and fixed one obsolete documentation assertion. Require every exact-head PR #462 check to pass before installation. Cloud checks cannot run commands on the owner's PC, certify `warm:true`, or establish sustained uptime.
+**Release gate.** Current paper restart code source candidate is `2fd305598cdbaf1937c3c4214a6f5a72ef13e15a`, on PR #462. It includes the restart/defaults work, selected-workspace Intuition Ω bridge, optional research-only GRU challenger, provider-origin/query-bound discovery evidence, bounded discovery receipts, and retry handling for a selected-workspace control rejected before execution because a reader briefly held the workspace lock. Local checks on this source passed 42 workspace client/UI tests, 19 disconnect-regression tests, the real-browser control retry regression, and the full dashboard/performance/runtime/Connections Chromium suite; the local Node/Playwright-only performance subtest skipped because that optional Node package is unavailable here. Exact-head hosted checks for PR #462 are required before installation and have not yet run on this candidate. Cloud checks cannot run commands on the owner's PC, certify `warm:true`, or establish sustained uptime.
 
 - Integrated restart candidate: [PR #462](https://github.com/reppiks490/Icarus/pull/462)
+- Current `origin/main` metadata is merged through `3a50623f8a377c615d264dce20a7c87384876fd4`; its provider receipts and observe-only federation acceptance do not establish present provider availability.
 - Latest restart source and owner-default changes: [PR #471](https://github.com/reppiks490/Icarus/pull/471) (merged into this candidate branch)
-- Provider-context consumption and ETH-only defaults began at `5160a55368fc5c7e5a61dcf53c85193c028042ab` and received a Windows byte-stability fix at `1283551fbec56113da656d998ff4c04866c1624e`; both are ancestors of pinned runtime source `712057cbb7b42d94bd0238068019b0f55aa8ef5a`. PR #457's validated historical-statistics reader is present in this source; it does not claim live provider freshness.
+- Provider-context consumption and ETH-only defaults began at `5160a55368fc5c7e5a61dcf53c85193c028042ab` and received a Windows byte-stability fix at `1283551fbec56113da656d998ff4c04866c1624e`; both are ancestors of the current runtime source candidate. PR #457's validated historical-statistics reader is present; it does not claim live provider freshness.
 - Dashboard scroll and restart-gate fixes: [PR #474](https://github.com/reppiks490/Icarus/pull/474), merged into #471.
 - The Learning page's Intuition Ω bridge reads each selected workspace independently and offers an owner-triggered import of receipt-verified settled Learning pairs into that workspace's private research ledger. Status refresh is manual; no 5-second polling is used. Require green exact-head checks before installing this update.
-- Restart code source: `712057cbb7b42d94bd0238068019b0f55aa8ef5a` (exact-head hosted checks required before install).
-- Selected-workspace Intuition Ω adapter source: `cde6d0cca771ec8a401092a231449646306c026c`, included in pinned release source `712057cbb7b42d94bd0238068019b0f55aa8ef5a`.
+- Restart code source: `2fd305598cdbaf1937c3c4214a6f5a72ef13e15a` (exact-head hosted checks required before install).
+- Selected-workspace Intuition Ω adapter source: `cde6d0cca771ec8a401092a231449646306c026c`, included in the current release source candidate.
 - Owner machine: `C:\Users\tripl\Icarus-as-is` (Git Bash: `~/Icarus-as-is`)
 - Private state: `C:\Users\tripl\Icarus` (Git Bash: `~/Icarus`)
 - Paper-only; `execution_authorized=false`.
 - Dashboard/read/write adapter boundaries: [adapter status matrix](ICARUS_ADAPTER_STATUS.md).
+
+Selected-workspace pause, resume, and flatten controls retry only the exact server response emitted before a busy workspace admits the operation. Other errors are returned immediately; successful or partial operations are never replayed.
 
 ## Defaults that this restart applies
 
@@ -32,7 +35,7 @@ Run in Git Bash on the owner's PC. Leave any currently running Icarus launcher o
 set -euo pipefail
 export ICARUS_HOME="$HOME/Icarus"
 export ICARUS_TOKEN="${ICARUS_TOKEN:-icarus}"
-RELEASE_COMMIT="712057cbb7b42d94bd0238068019b0f55aa8ef5a"
+RELEASE_COMMIT="2fd305598cdbaf1937c3c4214a6f5a72ef13e15a"
 RELEASE_BRANCH="icarus1/restart-readiness-20261020"
 cd "$HOME/Icarus-as-is"
 
