@@ -10,6 +10,13 @@ on:
       - "icarus_engine/federation_acceptance.py"
       - "tests_engine/test_brain_sync.py"
       - "tests_engine/test_federation_acceptance.py"
+      # Revalidate the bilateral Icarus/Engine pair when the mobile observer contract changes.
+      - "icarus_engine/mobile_gateway.py"
+      - "tests_engine/test_mobile_gateway.py"
+      - "mobile/**"
+      - "docs/icarus/MOBILE_APP.md"
+      - "docs/icarus/MOBILE_SECURITY.md"
+      - "docs/icarus/MOBILE_WINDOWS.md"
       - ".github/workflows/live-engine-federation-gate.yml"
   pull_request:
     paths:
@@ -17,6 +24,13 @@ on:
       - "icarus_engine/federation_acceptance.py"
       - "tests_engine/test_brain_sync.py"
       - "tests_engine/test_federation_acceptance.py"
+      # Revalidate the bilateral Icarus/Engine pair when the mobile observer contract changes.
+      - "icarus_engine/mobile_gateway.py"
+      - "tests_engine/test_mobile_gateway.py"
+      - "mobile/**"
+      - "docs/icarus/MOBILE_APP.md"
+      - "docs/icarus/MOBILE_SECURITY.md"
+      - "docs/icarus/MOBILE_WINDOWS.md"
       - ".github/workflows/live-engine-federation-gate.yml"
   workflow_dispatch:
   schedule:
