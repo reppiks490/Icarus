@@ -130,7 +130,9 @@ def test_foundation_doc_states_authority_and_scope():
     assert "production_decision_authorized=false" in text
     assert "DISCOVERED does not mean qualified" in text
     assert "provider federation is read-only" in text.lower()
-    assert "does not expose HTTP, MCP, or dashboard surfaces yet" in text
+    assert "does not expose candidate-level HTTP, MCP, or mutation surfaces" in text
+    assert "GET /api/discovery-registry" in text
+    assert "reads no private SQLite database" in text
 
 
 def test_credential_bearing_row_is_only_a_hashed_failure(tmp_path):

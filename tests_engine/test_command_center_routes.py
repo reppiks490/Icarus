@@ -81,6 +81,26 @@ def test_corpus_safe_reader_has_no_user_selected_path(engine, monkeypatch):
     called.assert_called_once_with()
 
 
+def test_discovery_registry_route_exposes_only_committed_metadata_receipts(engine):
+    status, payload = engine[1]("/api/discovery-registry?path=/etc/passwd")
+    assert status == 200
+    assert payload["status"] == "AVAILABLE"
+    assert payload["catalogs_available"] == payload["catalogs_expected"] == 3
+    assert payload["source_probes_performed"] is False
+    assert payload["market_data_provided"] is False
+    assert payload["execution_authorized"] is False
+    assert payload["production_decision_authorized"] is False
+    assert {row["catalog_id"] for row in payload["catalogs"]} == {
+        "api-mega-list", "scraping-apis-for-devs", "ai-agent-tools"
+    }
+    assert all(row["status"] == "SUCCESS" for row in payload["catalogs"])
+    assert all("raw_rows" not in row for row in payload["catalogs"])
+    code, script = engine[1]("/sources-ui.js")
+    assert code == 200
+    assert "loadDiscoveryRegistry" in script
+    assert "api/discovery-registry" in script
+
+
 def test_chart_is_scoped_to_workspace_and_auth_controls_preserved(engine):
     srv, request = engine
     workspace_runner = Mock()

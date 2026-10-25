@@ -12,6 +12,7 @@ from icarus_engine.workspace_context import WorkspaceContextError, guard_workspa
     ({"Referer": "http://127.0.0.1:8791/dashboards/cc2?asset=NQ"}, "/api/command-centers/cc2/status", "GET", "cc2"),
     ({"X-Icarus-Workspace": "cc1"}, "/api/presets", "GET", "cc1"),
     ({"X-Icarus-Workspace": "cc1"}, "/api/command-centers", "GET", "cc1"),
+    ({"X-Icarus-Workspace": "cc1"}, "/api/discovery-registry", "GET", "cc1"),
     ({"X-Icarus-Workspace": "cc1"}, "/workspace-client.js", "GET", "cc1"),
     ({"Referer": "http://localhost:8791/dashboards/cc1"}, "/dashboards/cc2", "GET", "cc1"),
     ({"Referer": "https://external.example/dashboards/cc1"}, "/admin/pause", "POST", None),

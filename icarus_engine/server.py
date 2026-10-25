@@ -1612,6 +1612,14 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except (ImportError, OSError, ValueError):
                     return self._json(503, {"status": "UNAVAILABLE", "reason": "INVALID_CORPUS_EVIDENCE",
                                             "execution_authorized": False})
+            if p.path == "/api/discovery-registry":
+                try:
+                    from .discovery_registry.receipts import snapshot as discovery_snapshot
+                    return self._json(200, discovery_snapshot(html_path.parent.parent))
+                except (ImportError, OSError, ValueError, TypeError):
+                    return self._json(503, {"status": "UNAVAILABLE", "reason": "DISCOVERY_RECEIPTS_UNAVAILABLE",
+                                            "source_probes_performed": False, "execution_authorized": False,
+                                            "production_decision_authorized": False})
             if p.path.startswith("/api/command-centers/"):
                 parts = p.path.split("/")
                 if len(parts) < 4 or parts[3] not in workspace_ids:
