@@ -2,14 +2,15 @@
 
 **Purpose.** Restore the current Icarus paper runtime on the owner's Windows PC, keep its existing private state, and make the dashboards observable. This procedure never enables live trading or starts a broker bridge.
 
-**Release gate.** The restart code, provider-context consumer, ETH-only defaults, Windows byte-stable archive, and all current-main data receipts are in release tree `f4a4a2800069bcefc3661b38d0b4d134ae775326` for PR #462. Runtime source commit `1283551fbec56113da656d998ff4c04866c1624e` passed the full Linux suite and the selected full Windows suite twice: [40183899072](https://github.com/reppiks490/Icarus/actions/runs/40183899072) and [40183897492](https://github.com/reppiks490/Icarus/actions/runs/40183897492). Both Windows restart-persistence/private-intake steps passed. The portfolio, visual-browser, configuration, intelligence-feed, and federation consumer contracts also passed on that source. Local full suite `python -m pytest tests_engine tests/test_provider_corpus_intake.py -q` exited 0 with 4,331 cases collected. The current PR head includes only a current-main catalog receipt merge and these operator-document updates; verify all required checks on the current PR #462 head before installation. Cloud checks cannot run commands on the owner's PC, certify `warm:true`, or establish sustained uptime.
+**Release gate.** The restart code, provider-context consumer, ETH-only defaults, Windows byte-stable archive, and current-main data receipt are in release tree `f4a4a2800069bcefc3661b38d0b4d134ae775326` for PR #462. Runtime source commit `1283551fbec56113da656d998ff4c04866c1624e` passed full Linux and selected full Windows suites twice: [40183899072](https://github.com/reppiks490/Icarus/actions/runs/40183899072) and [40183897492](https://github.com/reppiks490/Icarus/actions/runs/40183897492). The new selected-workspace Intuition Ω bridge is in source commit `cde6d0cca771ec8a401092a231449646306c026c`. Its complete local command `python -m pytest tests_engine tests/test_provider_corpus_intake.py -q` exited 0 with 4,386 tests collected, and focused isolation, owner/revision, cancellation, client-routing, and UI checks passed. Hosted Linux/Windows checks for the new exact PR #462 head are still pending; do not install until they pass. Cloud checks cannot run commands on the owner's PC, certify `warm:true`, or establish sustained uptime.
 
 - Integrated restart candidate: [PR #462](https://github.com/reppiks490/Icarus/pull/462)
 - Latest restart source and owner-default changes: [PR #471](https://github.com/reppiks490/Icarus/pull/471) (merged into this candidate branch)
 - Historical provider-context consumer and ETH-only defaults: source commit `5160a55368fc5c7e5a61dcf53c85193c028042ab`, included in runtime source `1283551fbec56113da656d998ff4c04866c1624e`; PR #457 is consolidated into #462.
 - Dashboard scroll and restart-gate fixes: [PR #474](https://github.com/reppiks490/Icarus/pull/474), merged into #471.
 - The Learning page's Intuition Ω bridge now reads each selected workspace independently and offers an owner-triggered import of receipt-verified settled Learning pairs into that workspace's private research ledger. Status refresh is manual; no 5-second polling is used. This update is part of the current #462 work and remains subject to exact-head checks before installation.
-- Restart code source: `1283551fbec56113da656d998ff4c04866c1624e`; current-main receipt merge/release tree: `f4a4a2800069bcefc3661b38d0b4d134ae775326`.
+- Restart code source: `cde6d0cca771ec8a401092a231449646306c026c`; its prior current-main receipt/release tree is `f4a4a2800069bcefc3661b38d0b4d134ae775326`.
+- New selected-workspace Intuition Ω adapter source: `cde6d0cca771ec8a401092a231449646306c026c` (exact-head hosted checks pending).
 - Owner machine: `C:\Users\tripl\Icarus-as-is` (Git Bash: `~/Icarus-as-is`)
 - Private state: `C:\Users\tripl\Icarus` (Git Bash: `~/Icarus`)
 - Paper-only; `execution_authorized=false`.
@@ -31,7 +32,7 @@ Run in Git Bash on the owner's PC. Leave any currently running Icarus launcher o
 set -euo pipefail
 export ICARUS_HOME="$HOME/Icarus"
 export ICARUS_TOKEN="${ICARUS_TOKEN:-icarus}"
-RELEASE_COMMIT="f4a4a2800069bcefc3661b38d0b4d134ae775326"
+RELEASE_COMMIT="cde6d0cca771ec8a401092a231449646306c026c"
 RELEASE_BRANCH="icarus1/restart-readiness-20261020"
 cd "$HOME/Icarus-as-is"
 
