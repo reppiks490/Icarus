@@ -30,7 +30,7 @@ set -euo pipefail
 export ICARUS_HOME="$HOME/Icarus"
 if [[ -z "${ICARUS_TOKEN:-}" ]]; then
   read -r -s -p 'Dashboard token used by the running launcher (Enter if default is icarus or engine is stopped): ' ICARUS_TOKEN </dev/tty
-  printf '\\n'
+  printf '\n'
   ICARUS_TOKEN="${ICARUS_TOKEN:-icarus}"
 fi
 export ICARUS_TOKEN
