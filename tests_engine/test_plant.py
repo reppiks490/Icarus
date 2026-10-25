@@ -314,6 +314,7 @@ def test_start_plant_scripts_are_dummy_proof():
     assert "Do not use the PowerShell" in cmds
     assert 'RELEASE_COMMIT="a21507b8b9bb46ec418a0a9b89fae448fb3eae96"' in guide
     assert "bash scripts/start-as-is.sh --setup --help" in guide
+    assert "Dashboard token used by the running launcher" in guide and "read -r -s" in guide
     assert "--capture-output" in guide and "--capture-file" in guide
     assert "--prepare" in guide and "--apply" in guide and "--verify" in guide
     assert "--assets NQ,ES,YM,GC,SI,BTC" in guide

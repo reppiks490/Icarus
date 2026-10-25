@@ -28,7 +28,12 @@ Run in Git Bash on the owner's PC. Leave any currently running Icarus launcher o
 ```bash
 set -euo pipefail
 export ICARUS_HOME="$HOME/Icarus"
-export ICARUS_TOKEN="${ICARUS_TOKEN:-icarus}"
+if [[ -z "${ICARUS_TOKEN:-}" ]]; then
+  read -r -s -p 'Dashboard token used by the running launcher (Enter if default is icarus or engine is stopped): ' ICARUS_TOKEN </dev/tty
+  printf '\\n'
+  ICARUS_TOKEN="${ICARUS_TOKEN:-icarus}"
+fi
+export ICARUS_TOKEN
 RELEASE_COMMIT="a21507b8b9bb46ec418a0a9b89fae448fb3eae96"
 cd "$HOME/Icarus-as-is"
 
