@@ -319,6 +319,7 @@ def test_start_plant_scripts_are_dummy_proof():
     assert "--capture-output" in guide and "--capture-file" in guide
     assert "--prepare" in guide and "--apply" in guide and "--verify" in guide
     assert "--assets NQ,ES,YM,GC,SI,BTC" in guide
+    assert 'export ICARUS_EXPECTED_ASSETS="NQ,ES,YM,GC,SI,BTC"' in guide
     assert "warm:true" in guide and "/status/public" in guide
     assert 'for panel in cc1 cc2 cc3 cc4 connections' in guide
     # Yahoo arguments and install behavior are exercised by the PowerShell
