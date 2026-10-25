@@ -157,6 +157,54 @@ def test_mobile_upstream_does_not_follow_redirects_with_admin_token():
         sink_thread.join(timeout=3)
 
 
+def test_mobile_upstream_bypasses_ambient_http_proxies(monkeypatch):
+    engine_auth: list[str | None] = []
+    proxy_requests: list[str] = []
+
+    class EngineHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            engine_auth.append(self.headers.get("Authorization"))
+            payload = b'{"ok":true}'
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, *_args):
+            pass
+
+    class ProxyHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            proxy_requests.append(self.path)
+            self.send_error(502)
+
+        def log_message(self, *_args):
+            pass
+
+    engine = ThreadingHTTPServer(("127.0.0.1", 0), EngineHandler)
+    proxy = ThreadingHTTPServer(("127.0.0.1", 0), ProxyHandler)
+    engine_thread = threading.Thread(target=engine.serve_forever, daemon=True)
+    proxy_thread = threading.Thread(target=proxy.serve_forever, daemon=True)
+    engine_thread.start()
+    proxy_thread.start()
+    for key in ("http_proxy", "HTTP_PROXY", "all_proxy", "ALL_PROXY"):
+        monkeypatch.setenv(key, f"http://127.0.0.1:{proxy.server_port}")
+    for key in ("no_proxy", "NO_PROXY"):
+        monkeypatch.setenv(key, "")
+    try:
+        client = UpstreamClient(f"http://127.0.0.1:{engine.server_port}", admin_token="secret")
+        assert client.mobile_get("/v1/brain", {}) == {"ok": True}
+        assert engine_auth == ["Bearer secret"]
+        assert proxy_requests == []
+    finally:
+        proxy.shutdown()
+        engine.shutdown()
+        proxy.server_close()
+        engine.server_close()
+        proxy_thread.join(timeout=3)
+        engine_thread.join(timeout=3)
+
+
 class FakeUpstream:
     def health(self):
         return {"ok": True}
