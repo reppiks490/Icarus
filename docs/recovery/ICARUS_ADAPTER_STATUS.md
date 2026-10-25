@@ -1,6 +1,6 @@
 # ICARUS dashboard adapter status
 
-This inventory separates a visible dashboard tab from its Python adapter. A tab is only a view; a connected adapter routes data/actions to a particular runtime or explicitly to shared evidence. This matrix describes source at restart candidate `41f5c8a8b0d9a62a1e15b69bca91f16a2885d34c`.
+This inventory separates a visible dashboard tab from its Python adapter. A tab is only a view; a connected adapter routes data/actions to a particular runtime or explicitly to shared evidence. This matrix describes restart code candidate `b0d67889143221087e5f7045cae9109ede0af031`; all hosted exact-head checks on that code commit passed. A documentation-only follow-up is being published, and its exact-head checks must pass before installation.
 
 | Surface | Adapter state | Scope and actual behavior |
 | --- | --- | --- |
@@ -17,7 +17,7 @@ This inventory separates a visible dashboard tab from its Python adapter. A tab 
 | Market Data | Connected, cached selected-runner reader | Uses existing selected-runner caches only. A request does not acquire a feed or start a subscription. |
 | Sources / Evolution / Integrity / System / Agent / Evidence | Connected, shared evidence views | These are shared repository/federation evidence, not proof of a selected workspace's operation. Mutating controls are disabled in CC context. |
 
-The earlier [panel restart checkpoint](ICARUS_PANEL_RESTARTS.md) correctly described the first four stateful CC adapters at its checkpoint, but its statement that the other eleven had no adapters is superseded by the readers above. Those eleven have selected-runtime **read adapters**, not full write/automation workflows.
+The earlier [panel restart checkpoint](archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md) correctly described the first four stateful CC adapters at its checkpoint, but its statement that the other eleven had no adapters is superseded by the readers above. Those eleven have selected-runtime **read adapters**, not full write/automation workflows.
 
 ## What remains intentionally unavailable
 
@@ -26,3 +26,15 @@ In a CC context, the read-only set (`brain`, `research`, `parallax`, `pantheon`,
 The dashboard can render a panel while its native data is empty or stale. NEXUS/AION `UNAVAILABLE`, `STALE`, `DEGRADED`, or unknown provider-SLO fields must stay visible as such. A 200 panel route proves the adapter returned a response, not that a provider is fresh or entitled. Broker adaptation, broker qualification, order execution, and live trading remain outside this restart.
 
 Focused evidence in the candidate includes `tests_engine/test_workspace_research_panels.py`, `test_workspace_intelligence_panels.py`, `test_workspace_golive.py`, `test_workspace_access.py`, `test_subsystem_connections.py`, `test_subsystem_connections_api.py`, and `test_subsystem_connections_browser.py`. The hosted exact-head results must also pass before installing the restart source. Owner-PC observation is a separate operator verification in [the restart guide](PRIME_AS_IS_RESTART.md).
+
+## Offline provider archive consumption remains incomplete
+
+The separate [Icarus-engine PR #216](https://github.com/reppiks490/Icarus-engine/pull/216) has successful metadata-only reads for FMP, Tiingo, FRED, and AlphaVantage's supplemental and native archive profiles. Its Massive, Twelve Data, and EODHD profiles still fail closed while reading the pinned checkpoint snapshots:
+
+| Profile | Safe diagnostic | Current result |
+| --- | --- | --- |
+| Massive | Checkpoint expands beyond the 512 MB diagnostic ceiling | Not consumed |
+| Twelve Data | 42.5 MB checkpoint exceeds the 32 MB intake bound and JSON structure limit | Not consumed |
+| EODHD | 63.3 MB checkpoint exceeds the 32 MB intake bound | Not consumed |
+
+The limits were not widened. These archives are not counted as connected or usable until an exact, bounded checkpoint projection or streaming consumer passes the offline receipt checks. No provider requests or execution authority are used by this work.

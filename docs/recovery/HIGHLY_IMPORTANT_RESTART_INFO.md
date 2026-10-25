@@ -1,6 +1,6 @@
 # HIGHLY IMPORTANT — Icarus Prime restart requirements
 
-Use only the [current Prime as-is restart](PRIME_AS_IS_RESTART.md). It includes the paper-only Git Bash procedure, Main asset set, backup, NQ capture, defaults migration, launch, and local HTTP checks. Old restart blocks are superseded and preserved in Git history.
+Use only the [current Prime as-is restart](PRIME_AS_IS_RESTART.md). It includes the paper-only Git Bash procedure, Main asset set, backup, NQ capture, defaults migration, launch, and local HTTP checks. Superseded per-panel notes are preserved in the [restart archive](archive/restarts/2026-10-25/pre-final/INDEX.md). Candidate `b0d67889143221087e5f7045cae9109ede0af031` passed all hosted exact-head checks and the full local engine suite (4,269 passed, 5 skipped, 111 subtests). The prior head's Windows shutdown test exposed a real start/close race; the regression test failed before the fix and passes afterward. A docs-only follow-up is being published to PR #471, so wait for its exact-head checks before installation.
 
 | Assets | Strategy/chart baseline | Special settings |
 | --- | --- | --- |

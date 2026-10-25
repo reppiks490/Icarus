@@ -1,4 +1,97 @@
 {
+  "restart_lifecycle_race_followup": {
+    "recorded_at_utc": "2026-10-25T05:54:11Z",
+    "repository": "reppiks490/Icarus",
+    "pull_request": 471,
+    "source_commit": "b0d67889143221087e5f7045cae9109ede0af031",
+    "prior_windows_failure": {
+      "commit": "4fc4650ff692324b3f5d6935eb20581dc642a7c5",
+      "run": 40163146732,
+      "cause": "Selected-workspace shutdown test ran the real expensive commissioning tick after its synchronization barrier, so Windows remained STOPPING at the short assertion deadline."
+    },
+    "repair": {
+      "behavior": "CommissioningEngine serializes close with sampler creation and refuses to start a sampler after close during its immediate tick.",
+      "regression": "test_close_during_immediate_tick_does_not_start_sampler_after_shutdown reproduced the race before the fix and passes afterward.",
+      "panel_fixture": "The shutdown test now returns a bounded empty tick result after release, isolating lifecycle timing from 35-asset strategy work.",
+      "source_files": [
+        "icarus_engine/commissioning.py",
+        "tests_engine/test_commissioning.py",
+        "tests_engine/test_workspace_panels.py"
+      ]
+    },
+    "local_verification": {
+      "full_engine_suite": {
+        "command": "python -m pytest tests_engine -q -o addopts=''",
+        "result": "4269 passed, 5 skipped, 111 subtests passed in 850.41s (0:14:10)",
+        "status": "completed after installing the optional ml and databento extras used by CI"
+      },
+      "focused_command": "python -m pytest tests_engine/test_commissioning.py tests_engine/test_workspace_panels.py -q -o addopts=''",
+      "result": "51 passed in 22.09s",
+      "red_command": "python -m pytest tests_engine/test_commissioning.py::test_close_during_immediate_tick_does_not_start_sampler_after_shutdown -q -o addopts=''",
+      "red_result": "failed as expected because shutdown incorrectly allowed a late sampler before the production fix",
+      "dependency_recheck": "165 tests passed across test_data_integrity.py, test_databento.py, test_review_fixes.py, and test_xgb_slot1.py after installing the optional ml and databento extras used by CI"
+    },
+    "hosted_verification": {
+      "pull_request_run": 40165546356,
+      "push_run": 40165543739,
+      "head": "b0d67889143221087e5f7045cae9109ede0af031",
+      "linux_engine": "success",
+      "windows_engine": "success",
+      "browser": "success",
+      "configuration": "success",
+      "contracts": "success",
+      "historical_context": "success",
+      "bilateral_federation": "success",
+      "persisted_acceptance": "skipped by workflow condition; a separate fresh manual federation gate passed at run 40165001486"
+    },
+    "restart": {
+      "code_pin": "b0d67889143221087e5f7045cae9109ede0af031",
+      "operator_pc_restarted": false,
+      "full_system_restart_performed": false,
+      "execution_authorized": false
+    },
+    "limits": [
+      "A docs-only follow-up is being published on PR 471; check its latest exact-head CI before installing the pinned code.",
+      "Hosted verification does not establish owner-PC restart, sustained uptime, provider freshness, phone pairing, or open-position restoration."
+    ]
+  },
+  "provider_archive_bound_diagnostics": {
+    "recorded_at_utc": "2026-10-25T05:54:11Z",
+    "repository": "reppiks490/Icarus-engine",
+    "pull_request": 216,
+    "head": "3e3482a50d6d73b3f7b13705b4c7ed35f42a56a4",
+    "scope": "Read-only offline consumption of existing pinned encrypted archives; socket operations are blocked during the intake step.",
+    "profiles": {
+      "massive": {
+        "run": 40166875167,
+        "stage": "ARCHIVE_INTAKE",
+        "failure_code": "DECOMPRESSED_PAYLOAD_BOUND_OR_FORMAT",
+        "checkpoint_decompressed_bytes_lower_bound": 512000001,
+        "diagnostic_limit_bytes": 512000000,
+        "baseline_intake_limit_bytes": 32000000,
+        "diagnostic_limit_reached": true
+      },
+      "twelve": {
+        "run": 40166927701,
+        "stage": "ARCHIVE_INTAKE",
+        "failure_code": "JSON_STRUCTURE_BOUND",
+        "checkpoint_decompressed_bytes": 42516493,
+        "baseline_intake_limit_bytes": 32000000,
+        "diagnostic_limit_reached": false
+      },
+      "eodhd": {
+        "run": 40166932654,
+        "stage": "ARCHIVE_INTAKE",
+        "failure_code": "DECOMPRESSED_PAYLOAD_BOUND_OR_FORMAT",
+        "checkpoint_decompressed_bytes": 63307789,
+        "baseline_intake_limit_bytes": 32000000,
+        "diagnostic_limit_reached": false
+      }
+    },
+    "interpretation": "Existing provider checkpoint snapshots exceed the strict 32 MB intake bound, and the Massive snapshot exceeds the separate 512 MB diagnostic ceiling. Bounds were not widened; these three archive consumers remain blocked pending a bounded checkpoint projection or streaming design.",
+    "live_or_provider_requests_started": false,
+    "execution_authorized": false
+  },
   "as_is_operator_delivery": {
     "actual_launcher": {
       "containment": "Inherited Python audit hook rejects ordinary nonloopback DNS/connect and credential file opens. This is not an OS network sandbox or proof of zero attempted activity; file feed selected.",
@@ -3970,7 +4063,7 @@
       "Remaining eleven adapters, futures/prop-firm operation, full data-to-consumer qualification, accuracy recovery and long stability run remain open"
     ],
     "live_broker_arming": false,
-    "operator_guide": "docs/recovery/ICARUS_PANEL_RESTARTS.md",
+    "operator_guide": "docs/recovery/archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md",
     "peer_layout_candidate": {
       "failing_assertion": "tests_engine/browser_depth.cjs:217 DOM-churn fixture must keep the real pointer over a topology panel",
       "head": "1c818c272e910dda35ad10d0fc4dffb114bad434",

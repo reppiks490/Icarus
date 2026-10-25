@@ -2,11 +2,11 @@
 
 **Purpose.** Restore the current Icarus paper runtime on the owner's Windows PC, keep its existing private state, and make the dashboards observable. This procedure never enables live trading or starts a broker bridge.
 
-**Release gate.** Do not execute the new-source restart until the PR linked below has green Linux, Windows, and browser checks on its latest commit. Then use that exact commit. Cloud tests cannot run commands on the owner's PC or certify PC uptime.
+**Release gate.** Do not execute the new-source restart until PR #471 has green Linux, Windows, browser, contract, historical-context, and federation checks on its latest exact head. Its prior head (`4fc4650`) failed the Windows suite in a selected-workspace shutdown test. That test now returns a bounded tick result after its synchronization point, and a separate regression test exposed and verifies a fix for a real race that could start a sampler after `close()`. Candidate `b0d67889143221087e5f7045cae9109ede0af031` passes 4,269 local engine tests (5 skipped, 111 subtests), 51 focused commissioning/workspace-panel tests, and all hosted checks, including Linux, Windows, browser, contract, configuration, history, and federation. A docs-only follow-up is being published to PR #471, so verify the latest exact head is green before install. Cloud tests cannot run commands on the owner's PC or certify PC uptime.
 
 - Integrated restart candidate: [PR #471](https://github.com/reppiks490/Icarus/pull/471)
-- Dashboard scroll and restart-gate fixes: [PR #474](https://github.com/reppiks490/Icarus/pull/474)
-- Source commit to use after the PR #474 exact-head checks are green: `41f5c8a8b0d9a62a1e15b69bca91f16a2885d34c`.
+- Dashboard scroll and restart-gate fixes: [PR #474](https://github.com/reppiks490/Icarus/pull/474), merged into #471.
+- Restart code candidate: `b0d67889143221087e5f7045cae9109ede0af031` (release gate pending Windows engine completion).
 - Owner machine: `C:\Users\tripl\Icarus-as-is` (Git Bash: `~/Icarus-as-is`)
 - Private state: `C:\Users\tripl\Icarus` (Git Bash: `~/Icarus`)
 - Paper-only; `execution_authorized=false`.
@@ -28,14 +28,15 @@ Run in Git Bash on the owner's PC. Leave any currently running Icarus launcher o
 set -euo pipefail
 export ICARUS_HOME="$HOME/Icarus"
 export ICARUS_TOKEN="${ICARUS_TOKEN:-icarus}"
-RELEASE_COMMIT="41f5c8a8b0d9a62a1e15b69bca91f16a2885d34c"
+RELEASE_COMMIT="b0d67889143221087e5f7045cae9109ede0af031"
+RELEASE_BRANCH="prime/as-is-restart-20261022"
 cd "$HOME/Icarus-as-is"
 
-# Fetch the final, CI-green commit recorded in this guide's release pin.
-git fetch origin pull/474/head
+# Fetch the exact candidate branch. Do not use a stale PR ref as the release gate.
+git fetch origin "refs/heads/$RELEASE_BRANCH:refs/remotes/origin/$RELEASE_BRANCH"
 git status --short --branch
 git cat-file -e "${RELEASE_COMMIT}^{commit}"
-git merge-base --is-ancestor "$RELEASE_COMMIT" FETCH_HEAD
+git merge-base --is-ancestor "$RELEASE_COMMIT" "refs/remotes/origin/$RELEASE_BRANCH"
 
 # Use the pinned restart utility without changing the active checkout.
 CANDIDATE="$HOME/Icarus-as-is-restart-candidate"
@@ -144,4 +145,4 @@ If an HTTP probe fails, the launcher exits, `warm` stays false, or the dashboard
 
 ## Prior notes and evidence boundary
 
-This file replaces the former generic restart pointer. Previous restart instructions are archived in Git history and must not be mixed with this procedure. The restart defaults, Windows path/port checks, canceled-request handling, and scroll-churn regression have automated evidence; their latest exact-head hosted checks must be green before use. A successful cloud check is not proof of owner-PC restart, sustained uptime, provider freshness, phone pairing, or zero future runtime errors. This release is paper-only and excludes live trading, broker adaptation, and order execution.
+The old per-panel restart instructions are physically archived at [archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md](archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md); use this single procedure. Restart defaults, Windows path/port checks, canceled-request handling, and scroll-churn have automated evidence. The exact PR #471 head must pass all required hosted checks before this candidate is installed. A successful cloud check is not proof of owner-PC restart, sustained uptime, provider freshness, phone pairing, or zero future runtime errors. This release is paper-only and excludes live trading, broker adaptation, and order execution.
