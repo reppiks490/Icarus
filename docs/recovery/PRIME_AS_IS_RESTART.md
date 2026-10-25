@@ -35,17 +35,28 @@ cd "$HOME/Icarus-as-is"
 git fetch origin pull/474/head
 git status --short --branch
 git cat-file -e "${RELEASE_COMMIT}^{commit}"
+git merge-base --is-ancestor "$RELEASE_COMMIT" FETCH_HEAD
+
+# Use the pinned restart utility without changing the active checkout.
+CANDIDATE="$HOME/Icarus-as-is-restart-candidate"
+if [[ -e "$CANDIDATE" ]]; then
+  test "$(git -C "$CANDIDATE" rev-parse HEAD)" = "$RELEASE_COMMIT"
+  test -z "$(git -C "$CANDIDATE" status --porcelain)"
+else
+  git worktree add --detach "$CANDIDATE" "$RELEASE_COMMIT"
+fi
 
 # Capture before changing the active checkout or stopping its server.
 PY="$PWD/.venv/Scripts/python.exe"
 test -x "$PY"
+cd "$CANDIDATE"
 "$PY" -m icarus_engine.restart_defaults \
   --root "$ICARUS_HOME" --prepare \
   --capture-output "$ICARUS_HOME/current-nq-restart-capture.json" \
   --port 8791
 ```
 
-Read the JSON result. Stop if preparation fails or if the NQ chart/input/session summary is not the intended current Main NQ setup. If `restart_defaults` is not available in the currently installed checkout, do not reset the PC or improvise; report that output so the capture can be made from the verified source.
+Read the JSON result. Stop if preparation fails or if the NQ chart/input/session summary is not the intended current Main NQ setup. The utility runs from the detached, pinned worktree while the existing launcher and active checkout stay in place. If Git reports a worktree conflict or the candidate interpreter command fails, do not reset the PC or improvise; preserve the output for diagnosis.
 
 After a successful capture, press **Ctrl+C once** in the current launcher and wait for it to exit. Do not kill Python processes by name. Back up private state before applying settings or switching the checkout:
 
@@ -56,6 +67,11 @@ cp -a "$ICARUS_HOME" "$BACKUP"
 printf 'Private-state backup: %s\n' "$BACKUP"
 
 # Before checkout, stop and resolve any local edits rather than overwriting them.
+cd "$HOME/Icarus-as-is"
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo 'Checkout has local edits. Preserve or commit them before changing revisions.' >&2
+  exit 2
+fi
 git checkout --detach "$RELEASE_COMMIT"
 test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
 ```
