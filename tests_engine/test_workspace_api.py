@@ -1103,6 +1103,22 @@ def test_busy_selected_read_is_bounded_without_affecting_main(workspace_http):
         assert time.monotonic() - began < 1.5
 
 
+def test_selected_observations_share_a_lease_but_configuration_writes_do_not(workspace_http):
+    server, _, request = workspace_http
+    read_lock = server.command_centers.read_lock('cc1')
+    assert read_lock.acquire_read(blocking=False)
+    try:
+        # A chart, ledger and panel read from this same workspace can overlap;
+        # only a configuration/lifecycle writer should make the runtime busy.
+        assert request('/api/command-centers/cc1/performance')[0] == 200
+        assert request('/api/command-centers/cc1/chart/NQ')[0] == 200
+        assert request('/api/command-centers/cc1/panels/possibility?asset=NQ')[0] == 200
+    finally:
+        read_lock.release_read()
+    with server.command_centers.configuration_lock('cc1'):
+        assert request('/api/command-centers/cc1/performance')[0] == 409
+
+
 def test_off_refuses_contended_job_registry_without_blocking_main(workspace_http):
     server, _, request = workspace_http
     with server.workspace_jobs._lock:

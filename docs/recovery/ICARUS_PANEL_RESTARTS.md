@@ -1,9 +1,11 @@
 # Panel completion and Git Bash restarts
 
-Current delivery: **four selected-workspace panel adapters completed in source**:
+Historical checkpoint: **four stateful selected-workspace panel adapters**:
 ICARUS Ψ / Possibility, Chronofold, Scientific Commissioning and Engine Control.
-They operate on CC1, CC2, CC3 and CC4 independently. The other eleven subsystem
-adapters remain unfinished; this page does not mark all of step 3 complete.
+They operate on CC1, CC2, CC3 and CC4 independently. On the current restart
+candidate the other listed subsystem surfaces also have selected-workspace read
+adapters. See the current [adapter status matrix](ICARUS_ADAPTER_STATUS.md):
+these are read-only readers, not full collection/training/automation workflows.
 Paper execution only. Broker arming remains disabled.
 
 Panel code checkpoint:
@@ -218,15 +220,14 @@ receipt confirms the earlier `38d5328` paper application started on the PC and
 returned healthy main-runner probes. It does not establish adoption of this batch,
 all-CC warmup, sustained freshness or open-position recovery.
 
-Still unfinished selected adapters: Access, Adaptive Brain, Research,
-PARALLAX/DREAMSTATE, PANTHEON, SIBYL, APEX, ASCENDANCY, Learning, Tactical Autopilot
-and Go-live. Icarus 2 retains its independent Brain-sync work. Its animation repair
-on [PR #466](https://github.com/reppiks490/Icarus/pull/466) is a separate candidate:
-runtime CI succeeded, but visual run
-[39720172573](https://github.com/reppiks490/Icarus/actions/runs/39720172573) failed
-the later DOM-churn pointer fixture at `browser_depth.cjs:217`. That candidate has
-not been silently installed here or declared fully verified. The owner-reported
-dashboard observation-expiry symptom still needs sustained-runtime verification.
+The prior list of eleven “unfinished selected adapters” is historical and
+superseded for read routing by the matrix. Remaining capability gaps are that most
+of those CC surfaces are read-only, shared Learning history is not admitted,
+provider acquisition/freshness is not established, and local NEXUS/AION status is
+not upstream qualification. Icarus 2's older [PR #466](https://github.com/reppiks490/Icarus/pull/466)
+scroll patch was superseded by the newer integrated PR #474 candidate; it is not a
+separate restart requirement. Runtime observation-expiry and PC uptime still need
+operator-side sustained verification.
 
 Full-system readiness remains **NO_GO**. Futures/prop-firm account operation,
 complete provider-consumer freshness, matched accuracy comparison and a long

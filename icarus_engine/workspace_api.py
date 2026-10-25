@@ -49,11 +49,24 @@ class WorkspaceAPI:
     @contextmanager
     def runtime_lock(self, profile_id):
         self._selected(profile_id)
+        lock = self.manager.read_lock(profile_id)
+        if not lock.acquire_read(blocking=False):
+            raise WorkspaceAPIError(409, "selected workspace is busy; retry after its current operation")
+        try:
+            self._selected(profile_id)
+            yield
+        finally:
+            lock.release_read()
+
+    @contextmanager
+    def mutation_lock(self, profile_id, symbol=None):
+        """Admit one mutation without waiting behind a reader or lifecycle change."""
+        self._selected(profile_id, symbol)
         lock = self.manager.configuration_lock(profile_id)
         if not lock.acquire(blocking=False):
             raise WorkspaceAPIError(409, "selected workspace is busy; retry after its current operation")
         try:
-            self._selected(profile_id)
+            self._selected(profile_id, symbol)
             yield
         finally:
             lock.release()
@@ -157,7 +170,9 @@ class WorkspaceAPI:
             return runner.export_csv(), self._identity(profile)
 
     def control(self, profile_id, symbol, action, body):
-        with self.runtime_lock(profile_id):
+        # These routes mutate runner or configuration state, so they retain
+        # exclusive admission while ordinary GETs use the shared read lease.
+        with self.mutation_lock(profile_id, symbol):
             _, portfolio, runner = self._selected(profile_id, symbol)
             scope = "workspace" if symbol is None else "asset"
             try:

@@ -220,14 +220,16 @@ await page.waitForFunction(point=>{
 // setup. Reacquire current panel geometry immediately before the churn event
 // so this test measures pointer reconciliation, not stale coordinates.
 const churnPointer=await page.evaluate(()=>{
- const panel=[...document.querySelectorAll('#view > .card[data-world-topology-node]')].find(el=>{
-  const r=el.getBoundingClientRect();return r.width>40&&r.height>28&&r.bottom>0&&r.top<window.innerHeight;
- });
+ // The candidate panel may be below the viewport after a prior card update.
+ // Select the current DOM node first, then bring it into view before judging
+ // visibility; filtering by its pre-scroll rectangle can incorrectly find none.
+ const panel=document.querySelector('#view > .card[data-world-topology-node]');
  if(!panel)return null;
  const heading=panel.querySelector('h2')||panel;
  heading.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
  const r=heading.getBoundingClientRect();
- return r.width>0&&r.height>0?{x:r.left+r.width*.38,y:r.top+r.height*.5,key:panel.dataset.worldPanelKey}:null;
+ return r.width>0&&r.height>0&&r.bottom>0&&r.top<window.innerHeight
+  ?{x:r.left+r.width*.38,y:r.top+r.height*.5,key:panel.dataset.worldPanelKey}:null;
 });
 assert.ok(churnPointer,'A visible topology panel must be available for the DOM-churn fixture');
 await page.mouse.move(4,4);
@@ -302,7 +304,10 @@ const interactionImpact=await page.evaluate(()=>{
 });
 assert.ok(interactionImpact.impacts>0,`Panel interaction should animate linked topology: ${JSON.stringify(interactionImpact)}`);
 await page.waitForTimeout(820);
-assert.equal(await page.locator('.world-topology .impact').count(),0);
+// The linked impact has a 720ms cleanup timer. Hosted Chromium can defer that
+// timer while subsequent browser work is queued, so wait for the contract
+// instead of assuming a wall-clock delay means the timer was scheduled.
+await page.waitForFunction(()=>document.querySelectorAll('.world-topology .impact').length===0,{timeout:3000});
 // Radar navigation scrolls smoothly; let the view observer finish its one
 // position-driven graph rebuild before checking for an ongoing mutation loop.
 await page.waitForTimeout(1000);
@@ -376,6 +381,7 @@ if(longEnough){
  assert.equal(await page.locator('.world-depth-frame').getAttribute('data-chapter'),'abyss');
  if(await page.locator('.world-section-radar').isVisible()) assert.ok(parseFloat(await page.locator('.world-section-radar').evaluate(el=>el.style.getPropertyValue('--radar-scroll')))>75);
  await page.waitForFunction(()=>document.querySelectorAll('#view .world-scroll-focus').length>0);
+ await page.waitForFunction(()=>document.querySelectorAll('.world-topology .scroll-active').length>0);
  assert.ok((await page.locator('.world-topology .scroll-active').count())>0);
  await page.screenshot({path:`${output}/depth-lower-page.png`});
  await page.evaluate(()=>window.scrollTo({top:0,left:0,behavior:'instant'}));

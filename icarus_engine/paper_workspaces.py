@@ -39,6 +39,87 @@ REQUESTED_FUTURES_MICROS = tuple(
 REQUESTED_FUTURES_SYMBOLS = REQUESTED_FUTURES_FAMILIES + REQUESTED_FUTURES_MICROS
 
 
+class _WorkspaceReadWriteLock:
+    """Let independent observations share a workspace while edits stay exclusive."""
+
+    def __init__(self):
+        self._condition = threading.Condition(threading.RLock())
+        self._writer = None
+        self._write_depth = 0
+        self._readers = {}
+        self._waiting_writers = 0
+
+    def acquire(self, blocking=True, timeout=-1):
+        """Acquire the exclusive configuration/lifecycle side of the lock."""
+        ident = threading.get_ident()
+        deadline = None if timeout is None or timeout < 0 else time.monotonic() + timeout
+        with self._condition:
+            if self._writer == ident:
+                self._write_depth += 1
+                return True
+            own_reads = self._readers.get(ident, 0)
+            self._waiting_writers += 1
+            try:
+                while self._writer is not None or sum(self._readers.values()) > own_reads:
+                    if not blocking:
+                        return False
+                    remaining = None if deadline is None else deadline - time.monotonic()
+                    if remaining is not None and remaining <= 0:
+                        return False
+                    self._condition.wait(remaining)
+                self._writer = ident
+                self._write_depth = 1
+                return True
+            finally:
+                self._waiting_writers -= 1
+                self._condition.notify_all()
+
+    def release(self):
+        ident = threading.get_ident()
+        with self._condition:
+            if self._writer != ident:
+                raise RuntimeError("cannot release a workspace lock owned by another thread")
+            self._write_depth -= 1
+            if self._write_depth == 0:
+                self._writer = None
+                self._condition.notify_all()
+
+    def acquire_read(self, blocking=True, timeout=-1):
+        """Acquire a shared observation lease, respecting waiting writers."""
+        ident = threading.get_ident()
+        deadline = None if timeout is None or timeout < 0 else time.monotonic() + timeout
+        with self._condition:
+            while (self._writer is not None and self._writer != ident) or (
+                    self._waiting_writers and ident not in self._readers and self._writer != ident):
+                if not blocking:
+                    return False
+                remaining = None if deadline is None else deadline - time.monotonic()
+                if remaining is not None and remaining <= 0:
+                    return False
+                self._condition.wait(remaining)
+            self._readers[ident] = self._readers.get(ident, 0) + 1
+            return True
+
+    def release_read(self):
+        ident = threading.get_ident()
+        with self._condition:
+            count = self._readers.get(ident, 0)
+            if not count:
+                raise RuntimeError("cannot release a workspace read lock not owned by this thread")
+            if count == 1:
+                del self._readers[ident]
+            else:
+                self._readers[ident] = count - 1
+            self._condition.notify_all()
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, _kind, _value, _traceback):
+        self.release()
+
+
 def requested_futures_metadata():
     return {
         "family_count": len(REQUESTED_FUTURES_FAMILIES),
@@ -216,14 +297,15 @@ class WorkspacePortfolio(Portfolio):
         override = workspace.get("asset_overrides", {}).get(spec.symbol, {})
         from .restart_defaults import read_default_template
         policy = read_default_template(self.base_dir)
-        # ETH and SOL's three owner-requested exceptions also apply when it is added
-        # later. Explicit per-asset edits remain the last configuration layer.
-        exception = policy is not None and spec.symbol in {"ETH", "SOL"}
+        # Owner template exceptions also apply when an asset is added later.
+        # Explicit per-asset edits remain the last configuration layer.
+        exception = (policy or {}).get("asset_exceptions", {}).get(spec.symbol)
         chart = validate_chart_config({**workspace["chart"],
-                                       **({"timeframe": "30"} if exception else {}),
+                                       **({"timeframe": exception["timeframe"]} if exception else {}),
                                        **override.get("chart", {})})
         values = {**workspace["inputs"],
-                  **({"qty_contracts": 25, "use_session": False} if exception else {}),
+                  **({"qty_contracts": exception["qty_contracts"],
+                      "use_session": exception["use_session"]} if exception else {}),
                   **override.get("inputs", {})}
         preset = override.get("preset", self.preset)
         if override.get("preset") and not Path(preset_path(self.base_dir, preset)).is_file():
@@ -504,7 +586,7 @@ class PaperWorkspaceManager:
         self.root = Path(parent.base_dir or os.getcwd()) / "command_centers"
         self.root.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
-        self._configuration_locks = {profile_id: threading.RLock() for profile_id in _IDS}
+        self._configuration_locks = {profile_id: _WorkspaceReadWriteLock() for profile_id in _IDS}
         self._closing_journals: set[int] = set()
         self._feeds = {name: SharedFeed(feed) for name, feed in parent.feeds.items()}
         self.profiles: Dict[str, Dict[str, Any]] = {}
@@ -512,6 +594,11 @@ class PaperWorkspaceManager:
         self._load_profiles()
 
     def configuration_lock(self, profile_id):
+        if profile_id not in self.profiles:
+            raise ValueError("unknown command center profile")
+        return self._configuration_locks[profile_id]
+
+    def read_lock(self, profile_id):
         if profile_id not in self.profiles:
             raise ValueError("unknown command center profile")
         return self._configuration_locks[profile_id]
@@ -782,10 +869,12 @@ class PaperWorkspaceManager:
         return {"feeds": feeds, "adapters": adapters, "execution_authorized": False}
 
     def _profile_snapshot(self, profile_id, now, *, nonblocking=False):
-        # Never wait behind another workspace's replay. A busy record exposes
-        # committed settings and explicit unavailable valuation, no candidate inputs.
-        lock = self.configuration_lock(profile_id)
-        acquired = lock.acquire(blocking=False)
+        # Read alongside independent observations, but never wait behind or
+        # expose a partially committed configuration.
+        lock = self.read_lock(profile_id)
+        # Snapshots must preserve their bounded contract even while shutdown or
+        # reconfiguration owns the exclusive side of the lock.
+        acquired = lock.acquire_read(blocking=False)
         try:
             profile = copy.deepcopy(self.profiles[profile_id])
             portfolio = self.portfolios.get(profile_id)
@@ -857,7 +946,7 @@ class PaperWorkspaceManager:
             return row, ledger
         finally:
             if acquired:
-                lock.release()
+                lock.release_read()
 
     def snapshot(self, *, nonblocking=False):
         return self._snapshot(nonblocking=nonblocking)
