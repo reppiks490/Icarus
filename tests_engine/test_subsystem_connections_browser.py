@@ -204,8 +204,18 @@ def test_subsystems_pause_hidden_and_off_keep_focus_and_dispose_pending_requests
         assert len(state["requests"]) == off_reads
         assert "STOPPED" in page.locator("#subsystem-state").inner_text()
         page.get_by_role("switch", name="CC1 paper workers", exact=True).click()
-        page.wait_for_function("() => !IcarusWorkspacePower.isOff('cc1')", timeout=15000)
+        page.evaluate("""async () => {
+          const deadline = Date.now() + 15000;
+          while (Date.now() < deadline) {
+            await IcarusWorkspacePower.refresh();
+            if (!IcarusWorkspacePower.isOff('cc1')) return;
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          throw new Error('CC1 paper workers did not return to ON');
+        }""")
         page.wait_for_function("() => document.querySelector('#subsystem-state').textContent.includes('OBSERVING')")
+        diag = page.evaluate("() => ({powerOff:IcarusWorkspacePower.isOff('cc1'),state:document.querySelector('#subsystem-state')?.textContent,busy:document.querySelector('#subsystem-connections')?.getAttribute('aria-busy')})")
+        assert "OBSERVING" in diag["state"], f"diagnostic did not resume: {diag}, requests={len(state['requests'])}"
         held, failed = [], []
         page.on("requestfailed", lambda req: failed.append(req) if req.url == base + path else None)
         page.route(base + path, lambda route: held.append(route))
