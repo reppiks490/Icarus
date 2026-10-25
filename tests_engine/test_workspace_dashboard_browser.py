@@ -222,9 +222,11 @@ def test_common_controls_csv_and_ledger_navigation_keep_identity(workspace_http)
 
 
 def test_common_chart_and_trade_failure_remove_cached_observations(workspace_http):
-    with common_page(workspace_http) as (page, base):
+    # This checks cache invalidation, not the periodic polling loop. Keep its
+    # initial chart/trade reads deterministic while background refreshes settle.
+    with common_page(workspace_http, pause_periodic=True) as (page, base):
         page.evaluate("async()=>{await refresh();await refreshTrades('NQ');await loadChart('NQ',80,null)}")
-        assert page.evaluate("Boolean(charts.NQ80&&tradesCache.NQ?.length)")
+        page.wait_for_function("()=>Boolean(charts.NQ80&&tradesCache.NQ?.length)")
         for resource in ['chart/NQ*','trades/NQ*']:
             page.route(base+'/api/command-centers/cc1/'+resource, lambda route: route.fulfill(
                 status=503,content_type='application/json',body='{"workspace_id":"cc1","detail":"fixture unavailable"}'))
