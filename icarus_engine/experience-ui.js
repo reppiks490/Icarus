@@ -200,10 +200,7 @@
     const placeSettingsPanel = () => {
       if (!settings.open) return;
       if (window.matchMedia('(max-width:760px)').matches) {
-        settingsPanel.style.removeProperty('left');
-        settingsPanel.style.removeProperty('right');
-        settingsPanel.style.removeProperty('top');
-        settingsPanel.style.removeProperty('max-height');
+        for (const name of ['left','right','top','max-height']) settingsPanel.style.removeProperty('--settings-'+name);
         return;
       }
       const anchor = settingsSummary.getBoundingClientRect();
@@ -212,21 +209,46 @@
       const above = anchor.top - 20;
       const placeAbove = below < 180 && above > below;
       const available = Math.max(0, Math.min(window.innerHeight - 24, placeAbove ? above : below));
-      settingsPanel.style.maxHeight = `${available}px`;
+      settingsPanel.style.setProperty('--settings-max-height', `${available}px`);
       const height = settingsPanel.offsetHeight;
       const left = Math.max(12, Math.min(anchor.right - width, window.innerWidth - width - 12));
       const top = placeAbove
         ? Math.max(12, anchor.top - height - 8)
         : Math.max(12, Math.min(anchor.bottom + 8, window.innerHeight - height - 12));
-      settingsPanel.style.left = `${left}px`;
-      settingsPanel.style.right = 'auto';
-      settingsPanel.style.top = `${top}px`;
+      // A filtered/transformed sticky header can contain fixed descendants.
+      // Measurements above are viewport coordinates; CSS inset values are
+      // relative to that containing block's padding edge instead.
+      const container = settingsPanel.offsetParent;
+      const origin = container?.getBoundingClientRect();
+      const originLeft = origin ? origin.left + container.clientLeft - container.scrollLeft : 0;
+      const originTop = origin ? origin.top + container.clientTop - container.scrollTop : 0;
+      settingsPanel.style.setProperty('--settings-left', `${left - originLeft}px`);
+      settingsPanel.style.setProperty('--settings-right', 'auto');
+      settingsPanel.style.setProperty('--settings-top', `${top - originTop}px`);
     };
     settings.addEventListener('toggle', () => {
       if (settings.open) requestAnimationFrame(() => requestAnimationFrame(placeSettingsPanel));
     });
+    let settingsPlacementFrame = 0;
+    const scheduleSettingsPlacement = () => {
+      if (!settings.open || settingsPlacementFrame) return;
+      settingsPlacementFrame = requestAnimationFrame(() => {
+        settingsPlacementFrame = 0;
+        placeSettingsPanel();
+      });
+    };
+    settings.addEventListener('change', scheduleSettingsPlacement);
+    new MutationObserver(scheduleSettingsPlacement).observe(root, {attributes:true,
+      attributeFilter:['data-world','data-theme','data-experience','data-visual-detail','data-visual-resolved']});
     window.addEventListener('resize', placeSettingsPanel, {passive:true});
     window.addEventListener('scroll', placeSettingsPanel, {passive:true, capture:true});
+    // Wrapped status text and theme/detail changes can move the anchor without
+    // a window resize. Keep the open drawer attached to the current header.
+    if ('ResizeObserver' in window) {
+      const settingsLayoutObserver = new ResizeObserver(placeSettingsPanel);
+      settingsLayoutObserver.observe(controls.parentElement, {box: 'border-box'});
+      settingsLayoutObserver.observe(controls, {box: 'border-box'});
+    }
     const select = document.getElementById('experienceTheme');
     for (const [id, label] of themes) { const option = document.createElement('option'); option.value = id; option.textContent = label; select.appendChild(option); }
     select.value = root.dataset.theme;

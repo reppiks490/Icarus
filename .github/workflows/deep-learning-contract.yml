@@ -1,0 +1,44 @@
+name: deep-learning-contract
+
+on:
+  push:
+    paths:
+      - "icarus_engine/trainers/deep_challenger.py"
+      - "icarus_engine/trainers/sequence.py"
+      - "icarus_engine/trainers/run.py"
+      - "icarus_engine/trainers/__main__.py"
+      - "icarus_engine/spec.py"
+      - "tests_engine/test_deep_learning_challenger.py"
+      - "pyproject.toml"
+      - ".github/workflows/deep-learning-contract.yml"
+  pull_request:
+    paths:
+      - "icarus_engine/trainers/deep_challenger.py"
+      - "icarus_engine/trainers/sequence.py"
+      - "icarus_engine/trainers/run.py"
+      - "icarus_engine/trainers/__main__.py"
+      - "icarus_engine/spec.py"
+      - "tests_engine/test_deep_learning_challenger.py"
+      - "pyproject.toml"
+      - ".github/workflows/deep-learning-contract.yml"
+
+concurrency:
+  group: icarus-deep-learning-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytorch-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install research deep-learning contract
+        run: pip install -e ".[dev,deep]"
+      - name: Verify causal GRU challenger
+        run: python -m pytest tests_engine/test_deep_learning_challenger.py -q
+        env:
+          TZ: UTC

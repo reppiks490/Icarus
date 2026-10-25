@@ -1,12 +1,12 @@
 /* Persisted paper performance. Each URL binds one ledger; never a profit forecast. */
 'use strict';
 (() => {
-  const id = location.pathname.split('/').pop();
-  if (!['cc1','cc2','cc3','cc4'].includes(id)) return;
-  const parent = document.querySelector('#workspace-panel');
-  if (!parent || document.querySelector('#workspace-performance')) return;
+  const mounted=new WeakMap();
+  function mount(parent,client,id=client?.context?.id) {
+  if(!parent||!['main','cc1','cc2','cc3','cc4'].includes(id))throw new Error('An explicit performance workspace is required');
+  if(mounted.has(parent))return mounted.get(parent);
   const section = document.createElement('section');
-  section.id = 'workspace-performance'; section.className = 'card';
+  section.id = 'workspace-performance'; section.className = 'card c12';
   section.setAttribute('aria-label','Selected portfolio performance');
   section.innerHTML = `<style>
     #workspace-performance{box-sizing:border-box;max-width:100%;min-width:0;overflow:hidden;background:var(--panel,#101d2b);color:var(--text,#e6edf5);border:1px solid var(--line,#293d50);border-radius:12px;padding:20px;margin-top:20px;font:14px/1.5 system-ui,sans-serif}
@@ -33,20 +33,21 @@
   const amount = value => finite(value) ? value.toLocaleString(undefined,{style:'currency',currency:'USD'}) : 'Unavailable';
   const ratio = value => finite(value) ? value.toFixed(3) : 'Unavailable';
   const utc = ts => finite(ts) ? new Date(ts*1000).toISOString().replace('T',' ').slice(0,19) : 'Unavailable';
-  let sequence=0, lastSnapshot=null;
-  for(const key of ['cc1','cc2','cc3','cc4']){const option=document.createElement('option');option.value=key;option.textContent=key.toUpperCase();$('switch').append(option);}
+  let sequence=0,lastSnapshot=null,active=true,pending=null;
+  for(const key of (client?['main','cc1','cc2','cc3','cc4']:['cc1','cc2','cc3','cc4'])){const option=document.createElement('option');option.value=key;option.textContent=key.toUpperCase();$('switch').append(option);}
   $('switch').value=id;
-  $('switch').addEventListener('change',()=>{location.href='/dashboards/'+$('switch').value;});
+  $('switch').addEventListener('change',()=>{location.href=$('switch').value==='main'?'/':'/dashboards/'+$('switch').value;});
   function clear(reason) {
     lastSnapshot=null;
     for(const key of ['realized','count','sharpe','sortino'])$(key).textContent='Unavailable';
     for(const key of ['ratio-note','history','equity-note','activity-note','trade-note'])$(key).textContent='';
     $('trades').replaceChildren();
-    for(const key of ['equity','activity']){const canvas=$(key);canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);}
+    for(const key of ['equity','activity']){const canvas=$(key);canvas.getContext('2d')?.clearRect(0,0,canvas.width,canvas.height);}
     $('status').textContent='Performance unavailable: '+reason;
   }
   function chart(key, rows, valueKey, bars=false) {
     const canvas=$(key),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,pad=42;
+    if(!ctx)return;
     ctx.clearRect(0,0,w,h);
     if(!rows.length)return;
     const values=rows.map(row=>row[valueKey]);
@@ -81,20 +82,37 @@
     for(const trade of data.trades){const row=document.createElement('tr');for(const value of [trade.symbol,utc(trade.entry_ts),utc(trade.exit_ts),trade.direction===1?'Long':'Short',trade.qty,trade.entry_price,trade.exit_price,amount(trade.profit),trade.exit_comment]){const cell=document.createElement('td');cell.textContent=String(value??'');row.append(cell);}body.append(row);}
   }
   async function refresh() {
-    const current=++sequence,abort=new AbortController(),timer=setTimeout(()=>abort.abort(),10000);
+    if(!active||!section.isConnected)return;
+    const current=++sequence;pending?.abort();
+    const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),10000);pending=abort;
     try {
-      const reply=await fetch(`/api/command-centers/${id}/performance`,{cache:'no-store',signal:abort.signal});
-      if(!reply.ok)throw Error('HTTP '+reply.status);
-      const data=await reply.json();if(current!==sequence)return;
+      let data;
+      if(client)data=await client.read('performance',{signal:abort.signal});
+      else {
+        const reply=await fetch(`/api/command-centers/${id}/performance`,{cache:'no-store',signal:abort.signal});
+        if(!reply.ok)throw Error('HTTP '+reply.status);data=await reply.json();
+      }
+      if(!active||!section.isConnected||current!==sequence)return;
       if(data.workspace_id!==id||data.schema_version!==1||data.paper_only!==true||data.execution_authorized!==false)throw Error('Ledger identity or contract mismatch');
       if(!finite(data.as_of_ts)||Date.now()/1000-data.as_of_ts>90||data.as_of_ts>Date.now()/1000+5)throw Error('Snapshot expired');
       if(data.available!==true)throw Error(data.reason||'Ledger not available');
       if(![data.trades,data.equity_curve,data.daily_activity].every(rows=>Array.isArray(rows)&&rows.length<=10000))throw Error('Invalid history bounds');
       lastSnapshot=data;render(data);
-    }catch(error){if(current===sequence)clear(error.name==='AbortError'?'Request timed out':error.message);}
-    finally{clearTimeout(timer);}
+    }catch(error){if(active&&section.isConnected&&current===sequence)clear(error.name==='AbortError'?'Request timed out':error.message);}
+    finally{clearTimeout(timer);if(pending===abort)pending=null;}
   }
   $('refresh').addEventListener('click',refresh);
-  refresh();setInterval(()=>{if(!document.hidden)refresh();},15000);
-  setInterval(()=>{if(lastSnapshot&&Date.now()/1000-lastSnapshot.as_of_ts>90)clear('Snapshot expired');},1000);
+  const poll=setInterval(()=>{if(!document.hidden)refresh();},15000);
+  const expiry=setInterval(()=>{if(!section.isConnected)return dispose();if(lastSnapshot&&Date.now()/1000-lastSnapshot.as_of_ts>90)clear('Snapshot expired');},1000);
+  function dispose(){if(!active)return;active=false;sequence++;pending?.abort();pending=null;clearInterval(poll);clearInterval(expiry);globalThis.removeEventListener('pagehide',dispose);mounted.delete(parent);}
+  globalThis.addEventListener('pagehide',dispose);
+  const component=Object.freeze({refresh,dispose});mounted.set(parent,component);void refresh();return component;
+  }
+  globalThis.IcarusWorkspacePerformance=Object.freeze({mount:(parent,client)=>{
+    if(!client?.context)throw new Error('An explicit page client is required');return mount(parent,client);
+  }});
+  if(!globalThis.IcarusClient){
+    const id=location.pathname.split('/').pop(),parent=document.querySelector('#workspace-panel');
+    if(parent&&['cc1','cc2','cc3','cc4'].includes(id))mount(parent,null,id);
+  }
 })();

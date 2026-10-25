@@ -241,7 +241,7 @@
       var input = document.querySelector('#sibylAsset');
       if (input && input.value.trim()) selectedAsset = input.value.trim().toUpperCase();
       var qs = selectedAsset ? '?asset=' + encodeURIComponent(selectedAsset) : '';
-      var r = await fetch('/api/sibyl' + qs, {cache:'no-store', headers:{'Authorization':'Bearer ' + tok}});
+      var r = await IcarusClient.request('/api/sibyl' + qs, {cache:'no-store', headers:{'Authorization':'Bearer ' + tok}});
       var d = await r.json();
       if (!r.ok) throw new Error(d.detail || ('SIBYL HTTP ' + r.status));
       if (seq !== loadSeq) return;

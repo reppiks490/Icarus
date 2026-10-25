@@ -169,7 +169,8 @@ def test_autonomous_workflow_is_offline_tested_and_scope_guarded():
     assert ".catalog_registry_cache" not in artifact and "sqlite3" not in artifact
 
 
-def test_cli_federates_local_receipts_without_downloader_calls(tmp_path):
+@pytest.mark.parametrize("host,qualified", [("api.twelvedata.com", 1), ("twelvedata.com", 0)])
+def test_cli_federates_local_receipts_without_downloader_calls(tmp_path, host, qualified):
     from datetime import datetime, timezone
     config = tmp_path / "config"
     config.mkdir()
@@ -181,11 +182,11 @@ def test_cli_federates_local_receipts_without_downloader_calls(tmp_path):
         "providers": {"twelve": {"status": "COLLECTED_PARTIAL", "collected_pages": 1,
                                     "substantive_work_performed": True,
                                     "verified_operations": ["twelve:get:/quote"]}}}))
-    payload = PAYLOAD.replace(b"https://example.com", b"https://twelvedata.com/quote")
+    payload = PAYLOAD.replace(b"https://example.com", f"https://{host}/quote".encode())
     result = run(tmp_path, run_id="federated", catalog_ids=["api-mega-list"], client=FakeClient(payload))
-    assert result["provider_federation"]["events_recorded"] == 1
+    assert result["provider_federation"]["events_recorded"] == qualified
     assert result["registry_summary"]["provider_links"] == 1
-    assert result["registry_summary"]["qualification_events"] == 1
+    assert result["registry_summary"]["qualification_events"] == qualified
 
 
 @pytest.mark.parametrize("payload", [

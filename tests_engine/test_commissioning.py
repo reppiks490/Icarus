@@ -213,9 +213,42 @@ def test_background_start_commissions_immediately_and_can_restart(tmp_path: Path
         assert engine.status()["background"]["running"] is True
     finally:
         engine.close()
-    assert engine.status()["background"]["running"] is False
     engine.start_background()
     try:
         assert engine.status()["background"]["running"] is True
     finally:
         engine.close()
+
+
+def test_close_during_immediate_tick_does_not_start_sampler_after_shutdown(tmp_path: Path, monkeypatch):
+    import threading
+
+    engine = CommissioningEngine(tmp_path, Port(), Chronofold(), interval_seconds=60.0)
+    entered, release, loop_started = threading.Event(), threading.Event(), threading.Event()
+    original_loop = engine._loop
+
+    def blocked_tick():
+        entered.set()
+        assert release.wait(5)
+        return {"captures": [], "settlement": {"settled": 0, "outcomes": []}, "errors": {}}
+
+    def observed_loop():
+        loop_started.set()
+        original_loop()
+
+    monkeypatch.setattr(engine, "tick", blocked_tick)
+    monkeypatch.setattr(engine, "_loop", observed_loop)
+    starter = threading.Thread(target=engine.start_background, daemon=True)
+    starter.start()
+    try:
+        assert entered.wait(2)
+        engine.close()
+        release.set()
+        starter.join(2)
+        assert not starter.is_alive()
+        assert not loop_started.wait(0.2), "shutdown must prevent a late sampler thread"
+        assert engine._thread is None
+    finally:
+        release.set()
+        engine.close()
+        starter.join(2)

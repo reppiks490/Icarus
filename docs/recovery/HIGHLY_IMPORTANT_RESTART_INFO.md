@@ -1,23 +1,18 @@
-# HIGHLY IMPORTANT — current ICARUS restart settings
+# HIGHLY IMPORTANT — Icarus Prime restart requirements
 
-**Current operation: keep the working PC engine running and use [phone pairing](../PHONE_ACCESS.md). The full defaults restart is held for Windows path/port-fixture and visual startup verification; do not run archived restart blocks. See the [current checkpoint](PRIME_AS_IS_RESTART.md).**
+Use only the [current Prime as-is restart](PRIME_AS_IS_RESTART.md). It includes the paper-only Git Bash procedure, Main asset set, backup, NQ capture, defaults migration, launch, and local HTTP checks. Superseded per-panel notes are preserved in the [restart archive](archive/restarts/2026-10-25/pre-final/INDEX.md). Current release code source candidate is `2fd305598cdbaf1937c3c4214a6f5a72ef13e15a`. Local client/UI tests (42), disconnect regressions (19), the control-retry browser regression, and the full dashboard/performance/runtime/Connections browser suite passed; the optional Node-based performance subtest skipped because that Node package is unavailable in this local environment. The candidate retries only the selected-workspace busy-before-execution response. Exact-head hosted checks for the updated #462 must pass before installation. Older run IDs and source hashes below this current note are historical evidence; they do not certify this candidate.
 
-**Owner requirement, 24 October 2026. Use the [current full restart guide](PRIME_AS_IS_RESTART.md); earlier restart notes are historical.**
+| Assets | Strategy/chart baseline | Special settings |
+| --- | --- | --- |
+| Every Main/selected-CC asset except ETH | Actual current Main NQ inputs and chart/session settings | Preserve instrument-specific contract economics; SOL follows NQ |
+| ETH / COINBASE:ETHUSD only | Same strategy settings as current Main NQ | 30-minute chart, session filter off, quantity input 25 |
 
-Prepared runtime candidate (full restart currently held): `3122d349524fbce803970dc34ab6fc74dad87467`; tree: `9ad37de97e160aead6602351b54c43608086a006`; branch: `prime/as-is-restart-20261022`; [PR #471](https://github.com/reppiks490/Icarus/pull/471). Main contains the instructions; the runtime remains on the pinned branch.
+The migration captures live Main NQ when available or validates saved Main NQ plus its preset when stopped. It never silently substitutes built-in stock settings. Saved selections, journals, and CC on/off state are preserved. The 35-symbol list and commands are in the current restart guide.
 
-| Assets | Strategy/chart defaults | Timeframe | RTH gate | Quantity input |
-| --- | --- | --- | --- | --- |
-| Every asset except ETH and SOL | Actual current Main NQ defaults | Same as NQ | Same as NQ | Same as NQ |
-| ETH / COINBASE:ETHUSD | Same as NQ except these three fields | 30 minutes | Disabled (`use_session=false`; crypto calendar is 24/7) | 25 |
-| SOL / COINBASE:SOLUSD | Same as NQ except these three fields | 30 minutes | Disabled (`use_session=false`; crypto calendar is 24/7) | 25 |
+The restart remains paper-only. `execution_authorized=false`; no broker adaptation or live order path is started. Green automated checks do not certify the owner's PC has restarted. The local verification waits up to five minutes for `warm:true` and the expected active asset set; HTTP 200 alone is not warm readiness. Then verify public status and every dashboard route.
 
-This applies to Main and all selected CC assets, including newly added assets. It intentionally resets saved per-asset strategy/chart overrides to the owner's NQ template. Saved asset selections, journals and CC on/off settings stay intact. Later explicit per-asset edits retain their normal precedence.
+The selected-workspace Intuition Ω bridge is included in the current #462 candidate: the Learning page reports read-only source/ledger state and imports only after an owner click, with workspace/revision checks. The Learning page no longer polls every five seconds. Require current exact-head checks before installing this candidate.
 
-The preparation command captures authenticated Main NQ settings while running. If the engine is already stopped, it verifies actual saved NQ and preset records. It refuses missing records, authentication errors, timeouts, changed source files or malformed settings rather than substituting stock Inputs. The following full restart backs up stopped state, applies the prepared template, verifies it, and starts all 35 canonical Main symbols.
+The candidate also connects a bounded, read-only discovery-registry summary to the shared Financial & data page and includes an optional, manually invoked GRU research challenger. The normal paper restart does not refresh/probe catalog services, install PyTorch, or start model training; both features retain false production/execution authority.
 
-The saved strategy defaults match NQ. Native contract economics and the existing per-instrument runtime point/tick scaling remain asset-specific. Quantity is a configured strategy input; it is not a guarantee that every signal produces a fill of that size.
-
-The build includes NEXUS source-health observations and AION durable monitoring receipts. It also repairs the reproduced request-deadline causes: synchronous access-audit writes and runner/journal recomputation on status requests. Authentication remains authoritative and immediately revocable. Status readers consume published snapshots; unavailable accounting remains explicitly unknown while assets stay observable. Request deadlines and freshness limits are not extended.
-
-The full preparation/default migration waits for the remaining Windows and visual fixes; archived commands must not be run as a current release. Begin [phone pairing](../PHONE_ACCESS.md) against the working desktop engine now, without changing its Inputs. The [current checkpoint](PRIME_AS_IS_RESTART.md) records pending gates and exact evidence. Cloud checks do not certify sustained PC uptime, provider freshness or live trading; execution authority remains false.
+For the distinction between a visible panel, a selected-runtime read adapter, and an operational write/automation path, use the [adapter status matrix](ICARUS_ADAPTER_STATUS.md).

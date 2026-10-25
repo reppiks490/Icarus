@@ -188,8 +188,8 @@
       const tok = localStorage.getItem('icarus-engine-token') || 'icarus';
       const headers = {'Authorization':'Bearer '+tok};
       const [pr, dr] = await Promise.all([
-        fetch('/api/parallax', {cache:'no-store', headers}),
-        fetch('/api/dreamstate', {cache:'no-store', headers})
+        IcarusClient.request('/api/parallax', {cache:'no-store', headers}),
+        IcarusClient.request('/api/dreamstate', {cache:'no-store', headers})
       ]);
       const px = await pr.json();
       const ds = await dr.json();

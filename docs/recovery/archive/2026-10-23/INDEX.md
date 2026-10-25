@@ -13,4 +13,3 @@ These are byte-preserved source documents, not current operator instructions. Re
 Archive does not delete runtime data, journals, source commits or scientific receipts. Main receives documentation only; runtime remains the separately tested pinned revision.
 
 - [Pre-installer-repair current guide](pre-installer-repair-PRIME_AS_IS_RESTART.md): source main `3ed592bb190db563efb42daf9856a5ab040de304`, Git blob `ec8ed0a12f43a9b19d3f1d6047c0f6585cbe2e55`; pins runtime `402722b4b708fc0ea6e2b2ede62252e75ccdd4a0`. Superseded by the Windows setup, Main asset expansion and independent CC worker control update.
-

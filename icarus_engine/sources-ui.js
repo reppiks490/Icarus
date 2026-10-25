@@ -9,6 +9,10 @@ function sourcesHtml(assets) {
   return `<section class="card c12"><h2>Financial &amp; data <span class="sub">Source-backed public observations</span></h2>
     <p class="small muted">Collect on demand or enable bounded background refresh below. CFTC positions, macro releases, company filings and spot BTC trades are research evidence; they do not place orders or supply a licensed futures tick feed.</p>
     <div id="sourcesStatus" role="status" class="small muted">Loading saved source status…</div></section>
+    <section class="card c12"><h2>Capability discovery registry <span class="sub">Pinned catalog receipts</span></h2>
+    <p class="small muted">Read-only summaries from the three approved public catalogs. Catalog entries are discovery metadata, not verified services or market data. This view does not probe sources, refresh catalogs, or start background work.</p>
+    <div id="discoveryRegistryStatus" role="status" class="small muted">Loading committed receipt summaries…</div>
+    <div id="discoveryRegistryCatalogs" class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));overflow-wrap:anywhere"></div></section>
     <section class="card c7"><h2>Public collection</h2><div id="sourcesCards" class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));overflow-wrap:anywhere"></div>
     <div class="toolbar"><label>Map SEC facts to asset <select id="sourceAsset"><option value="">No mapping</option>${options}</select></label>
     <label>SEC CIK <input id="sourceCik" inputmode="numeric" maxlength="10" placeholder="Numeric CIK"></label>
@@ -30,6 +34,26 @@ function sourceLink(url,label) {
 }
 function sourceTime(value) {return value?esc(value):'unknown';}
 function sourceQuantity(value) {return Number.isFinite(value)?value.toLocaleString('en-US',{maximumFractionDigits:8}):'unknown';}
+async function loadDiscoveryRegistry() {
+  try {
+    const data=await researchGet('/api/discovery-registry');
+    if(view!=='sources') return;
+    const target=$('#discoveryRegistryCatalogs');
+    if(!target) return;
+    const catalogs=Array.isArray(data.catalogs)?data.catalogs:[];
+    $('#discoveryRegistryStatus').textContent=`${data.status||'UNKNOWN'} · ${data.catalogs_available??0}/${data.catalogs_expected??3} pinned receipts available · metadata only · no source probes`;
+    target.innerHTML=catalogs.map(c=>{
+      const s=c.summary||{};
+      return `<div class="tile"><b>${esc(c.catalog_id||'Unknown catalog')}</b> <span class="chip">${esc(c.status||'UNKNOWN')}</span>
+        <div class="small muted">${esc(c.upstream_repo||'repository unavailable')} · revision ${esc((c.upstream_commit||'').slice(0,12)||'unknown')}</div>
+        <div class="small">Retrieved ${esc(c.retrieved_at||'unknown')}</div>
+        ${c.status==='SUCCESS'?`<div class="small">${esc(s.imported_entries)} imported · ${esc(s.unique_candidates)} unique · ${esc(s.duplicate_groups)} duplicate families</div><div class="small muted">${esc(s.review_required)} require review · ${esc(s.rejected)} rejected · ${esc(s.parse_failures)} parse failures</div>`:`<div class="small neg">Receipt unavailable; no current qualification is inferred.</div>`}</div>`;
+    }).join('')||'<p class="empty">No committed discovery receipts are available.</p>';
+  } catch(e) {
+    const status=$('#discoveryRegistryStatus');
+    if(status) status.textContent='Discovery registry receipts unavailable: '+e.message;
+  }
+}
 function sourceRecord(r) {
   const title=r.kind==='company'?(r.data?.name||r.instrument_id):r.kind==='cot'?`${r.asset_ids?.join(', ')||'CFTC'} · ${r.report_family||'COT'}`:
     r.kind==='news'?(r.data?.title||r.source):`${r.source} · ${r.report_family||r.instrument_id}`;
@@ -64,8 +88,7 @@ async function loadSources() {
         ${s.error?`<div class="small neg">${esc(s.error)}</div>`:''}<button class="sm" data-collect="${esc(source)}">Collect ${esc(source)}</button></div>`;
     }).join('');
     $('#sourcesCards').querySelectorAll('[data-collect]').forEach(button=>button.onclick=()=>collectSource(button));
-    await loadSourceRecords();
-    await loadSourceWatch();
+    await Promise.all([loadDiscoveryRegistry(),loadSourceRecords(),loadSourceWatch()]);
   } catch(e) {if($('#sourcesStatus')) $('#sourcesStatus').textContent='Financial data unavailable: '+e.message;}
   finally {
     sourcesLoading=false;

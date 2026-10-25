@@ -21,7 +21,7 @@ def test_chronofold_server_and_dashboard_are_wired():
     assert "wireChronofold()" in dashboard
 
     assert "window.chronofoldHtml=chronofoldHtml" in ui
-    assert "fetch('/api/chronofold'" in ui
+    assert "IcarusClient.request('/api/chronofold'" in ui
     assert "assetsCache" in ui
 
 

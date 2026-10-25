@@ -42,6 +42,138 @@ def _remote_event(**overrides):
     return payload
 
 
+def _inventory_fixture(count=1001, fault=None):
+    """Real event bytes/hashes; mock only the repository HTTP transport."""
+    fixture = _fixture(_remote_event(argus=None, nexus=None))
+    api = "https://api.github.com/repos/reppiks490/Icarus-engine"
+    commit, tree_sha = "d" * 40, "e" * 40
+    listing, tree, blobs, shas = [], [], {}, []
+    for i in range(count):
+        name = f"event-{i:04d}.json"
+        event = _remote_event(event_id=f"inventory-{i}", summary=f"Inventory event {i}",
+                              net_new_delta=f"Inventory event {i}", paths=[f"{REMOTE_ROOT}/{name}"],
+                              argus=None, nexus=None)
+        if fault == "authority" and i == count - 1:
+            event["execution_authorized"] = True
+        raw = (json.dumps(event, sort_keys=True) + "\n").encode()
+        sha = _git_blob_sha(raw)
+        url = _remote_contents_api(f"{REMOTE_ROOT}/{name}")
+        listing.append({"name": name, "path": f"{REMOTE_ROOT}/{name}", "sha": sha, "type": "file", "url": url})
+        tree.append({"path": name, "sha": sha, "type": "blob", "mode": "100644"})
+        blobs[url] = blobs[f"{api}/git/blobs/{sha}"] = raw + (b" " if fault == "hash" and i == count - 1 else b"")
+        shas.append(sha)
+    commit_url = f"{api}/commits/main"
+    parent_url = _remote_contents_api(REMOTE_ROOT.rsplit("/", 1)[0], ref=commit)
+    tree_url = f"{api}/git/trees/{tree_sha}"
+    responses = {
+        _remote_contents_api(REMOTE_ROOT): listing[:1000],
+        commit_url: {"sha": commit},
+        parent_url: [{"name": "events", "path": REMOTE_ROOT, "type": "dir", "sha": tree_sha}],
+        tree_url: {"sha": tree_sha, "truncated": False, "tree": tree},
+    }
+    calls, reads = [], []
+
+    def fetch_json(url):
+        calls.append(url)
+        return responses[url] if url in responses else fixture["fetch_json"](url)
+
+    def fetch_bytes(url):
+        if url in blobs:
+            reads.append(url)
+            return blobs[url]
+        return fixture["fetch_bytes"](url)
+
+    return {"responses": responses, "calls": calls, "reads": reads, "shas": shas,
+            "commit_url": commit_url, "parent_url": parent_url, "tree_url": tree_url,
+            "sync_args": {"fetch_json": fetch_json, "fetch_bytes": fetch_bytes, "now_utc": fixture["now_utc"]}}
+
+
+def _inventory_sync(tmp_path, fixture, *, processed=()):
+    sync = BrainRemoteSync(tmp_path, interval_seconds=60, **fixture["sync_args"])
+    if processed:
+        state = sync.status()
+        state["processed_blob_shas"] = list(processed)
+        path = tmp_path / "audit" / "brain_remote_sync.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(state), encoding="utf-8")
+    return sync
+
+
+def test_inventory_recovers_unseen_tail_after_contents_cap_and_is_idempotent(tmp_path):
+    fixture = _inventory_fixture()
+    sync = _inventory_sync(tmp_path, fixture, processed=fixture["shas"][:1000])
+    status = sync.sync_once()
+    assert status["ingested_total"] == 1
+    assert status["status"] == "green"
+    events = brain_snapshot(tmp_path)["events"]
+    assert len(events) == 1 and events[0]["summary"] == "Inventory event 1000"
+    assert status["last_ingested"] == [f"{REMOTE_ROOT}/event-1000.json"]
+    assert fixture["reads"] == ["https://api.github.com/repos/reppiks490/Icarus-engine/git/blobs/" + fixture["shas"][-1]]
+    assert _inventory_sync(tmp_path, fixture).sync_once()["ingested_total"] == 1
+    assert len(brain_snapshot(tmp_path)["events"]) == 1
+
+
+def test_inventory_budget_advances_persisted_progress_without_starving_tail(tmp_path, monkeypatch):
+    from icarus_engine import brain_sync
+    recorded = []
+    monkeypatch.setattr(brain_sync, "record_brain_event", lambda _root, event: recorded.append(event))
+    fixture = _inventory_fixture()
+    first = _inventory_sync(tmp_path, fixture).sync_once()
+    assert first["ingested_total"] == len(recorded) == 1000
+    assert first["status"] == "degraded" and "deferred" in first["last_error"].lower()
+    second = _inventory_sync(tmp_path, fixture).sync_once()
+    assert second["ingested_total"] == len(recorded) == 1001
+    assert second["status"] == "green"
+    assert len({event["summary"] for event in recorded}) == 1001
+    assert len(json.loads((tmp_path / "audit" / "brain_remote_sync.json").read_text())["processed_blob_shas"]) == 1001
+    assert _inventory_sync(tmp_path, fixture).sync_once()["ingested_total"] == 1001
+    assert len(recorded) == 1001
+
+
+@pytest.mark.parametrize("fault", ["commit", "parent_shape", "missing_dir", "parent_sha", "parent_path",
+                                    "truncated", "missing_truncated", "tree_sha", "tree_shape",
+                                    "unsafe_path", "nested_path", "unsafe_mode", "blob_sha"])
+def test_inventory_rejects_incomplete_or_unsafe_fallback_without_claiming_green(tmp_path, fault):
+    fixture = _inventory_fixture()
+    responses = fixture["responses"]
+    parent, tree = responses[fixture["parent_url"]], responses[fixture["tree_url"]]
+    if fault == "commit": responses[fixture["commit_url"]] = {"sha": "invalid"}
+    elif fault == "parent_shape": responses[fixture["parent_url"]] = {}
+    elif fault == "missing_dir": parent.clear()
+    elif fault == "parent_sha": parent[0]["sha"] = "invalid"
+    elif fault == "parent_path": parent[0]["path"] = REMOTE_ROOT + "/wrong"
+    elif fault == "truncated": tree["truncated"] = True
+    elif fault == "missing_truncated": tree.pop("truncated")
+    elif fault == "tree_sha": tree["sha"] = "f" * 40
+    elif fault == "tree_shape": tree["tree"] = {}
+    elif fault == "unsafe_path": tree["tree"][-1]["path"] = "../escape.json"
+    elif fault == "nested_path": tree["tree"][-1]["path"] = "nested/event.json"
+    elif fault == "unsafe_mode": tree["tree"][-1]["mode"] = "120000"
+    elif fault == "blob_sha": tree["tree"][-1]["sha"] = "invalid"
+    status = _inventory_sync(tmp_path, fixture, processed=fixture["shas"][:1000]).sync_once()
+    assert status["status"] == "degraded" and status["last_error"]
+    assert status["ingested_total"] == 0 and fixture["reads"] == []
+    assert len(json.loads((tmp_path / "audit" / "brain_remote_sync.json").read_text())["processed_blob_shas"]) == 1000
+    assert brain_snapshot(tmp_path)["events"] == []
+
+
+@pytest.mark.parametrize("fault,reason", [("hash", "Git blob SHA mismatch"), ("authority", "execution_authorized=false")])
+def test_inventory_fallback_preserves_blob_and_execution_authority_checks(tmp_path, fault, reason):
+    fixture = _inventory_fixture(fault=fault)
+    status = _inventory_sync(tmp_path, fixture, processed=fixture["shas"][:1000]).sync_once()
+    assert status["status"] == "degraded" and status["rejected_total"] == 1
+    assert reason in status["last_error"]
+    assert status["ingested_total"] == 0 and brain_snapshot(tmp_path)["events"] == []
+
+
+def test_inventory_small_contents_listing_needs_no_tree_fallback(tmp_path):
+    fixture = _inventory_fixture(count=1)
+    status = _inventory_sync(tmp_path, fixture).sync_once()
+    assert status["status"] == "green" and status["ingested_total"] == 1
+    assert fixture["commit_url"] not in fixture["calls"] and fixture["tree_url"] not in fixture["calls"]
+    assert len(brain_snapshot(tmp_path)["events"]) == 1
+
+
 def _consumer_contract(**overrides):
     payload = {
         "schema_version": "icarus-engine-brain-federation-v1",
@@ -1900,3 +2032,57 @@ def test_remote_sync_requires_canonical_acceptance_contract_semantics(tmp_path):
     assert status["status"] == "degraded"
     assert status["ingested_total"] == 0
     assert "canonical acceptance attempts authority escalation" in status["last_error"]
+
+
+
+def test_live_provider_context_retains_actual_typed_values_without_changing_packet_summary():
+    from pathlib import Path
+    from icarus_engine.brain_sync import _HISTORICAL_CONTEXT_EXPECTED, _normalize_historical_document
+    raw = (Path(__file__).resolve().parents[1] / 'icarus_engine' / 'provider-corpus.json').read_bytes()
+    payload = json.loads(raw)
+    source = dict(_HISTORICAL_CONTEXT_EXPECTED['provider_collection'], id='provider_collection')
+    before = _normalize_historical_document(source, payload, blob_sha='6451722b09c73f357f4a6e27c8185eb9a6d3a52b')
+    row = _normalize_historical_document(source, payload, blob_sha='6451722b09c73f357f4a6e27c8185eb9a6d3a52b',
+        observed_at_ns=1792372790000000000)
+    assert row['summary'] == before['summary']
+    assert row['clocks'] == before['clocks']
+    assert row['provider_corpus']['features']
+    assert row['provider_corpus']['read_receipts']
+    assert row['provider_corpus']['execution_authorized'] is False
+    assert row['candidate_evidence_eligible'] is False
+
+
+def test_provider_values_survive_verified_git_transport_into_brain_journal(tmp_path):
+    from pathlib import Path
+    from tests_engine.test_brain_historical_context_v2 import _case
+    from icarus_engine.brain_sync import _normalize_historical_context_contract
+    root, block, _ = _case('accept_modern6')
+    contract = _consumer_contract(historical_context=block)
+    sources = _normalize_historical_context_contract(contract)
+    bodies, metadata = {}, {}
+    for source in sources:
+        raw = ((Path(__file__).resolve().parents[1] / 'icarus_engine' / 'provider-corpus.json').read_bytes()
+            if source['id'] == 'provider_collection' else (root / 'sources' / source['path']).read_bytes())
+        url = 'https://api.github.test/typed-context/' + source['id']
+        bodies[url] = raw
+        metadata[_remote_contents_api(source['path'])] = {'type':'file','sha':_git_blob_sha(raw),'url':url}
+    sync = BrainRemoteSync(tmp_path, fetch_json=lambda url:metadata[url], fetch_bytes=lambda url:bodies[url],
+        now_utc=lambda:datetime(2026,10,19,1,20,tzinfo=timezone.utc))
+    state = {}
+    assert sync._sync_historical_context(state, contract) == []
+    row = next(row for row in state['historical_context_sources'] if row['id']=='provider_collection')
+    projection = row['provider_corpus']
+    assert projection['summary']['numeric_feature_reads'] == 150
+    assert projection['summary']['raw_rows_consumed'] == 0
+    snapshot = brain_snapshot(tmp_path)
+    events = [event for event in snapshot['events'] if event.get('details',{}).get('historical_context_source')=='provider_collection']
+    assert len(events) == 1
+    details = events[0]['details']
+    assert details['provider_corpus'] == projection
+    assert details['summary'] == row['summary']
+    assert len(json.dumps(details).encode()) < 32768
+    assert snapshot['candidates'] == []
+    assert details['execution_authorized'] is False
+    assert sync._sync_historical_context(state, contract) == []
+    events = [event for event in brain_snapshot(tmp_path)['events'] if event.get('details',{}).get('historical_context_source')=='provider_collection']
+    assert len(events) == 1

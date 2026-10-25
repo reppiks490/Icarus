@@ -14,7 +14,10 @@ challenger-only, never observed facts or trade instructions.
 All outputs are research/shadow only: `execution_authorized=false` and
 `production_decision_authorized=false`. No automatic production promotion,
 broker/order/sizing changes, purchases, metered calls or discovered-service probes.
-The foundation does not expose HTTP, MCP, or dashboard surfaces yet.
+The registry does not expose candidate-level HTTP, MCP, or mutation surfaces.
+The restart candidate now has one bounded read-only dashboard adapter for the
+three committed `latest/*.json` catalog receipts; it does not open the private
+SQLite registry or qualify catalog candidates.
 
 ## Intake and replay
 
@@ -73,8 +76,13 @@ Matches use exact admitted domains then exact canonical provider names, never
 fuzzy or host-suffix matches. A link is retained only when the candidate URL path
 matches the catalog operation path. Name-only wrappers and provider-level receipts
 can preserve ancestry, but do not prove candidate access. Links retain exact receipt
-path/SHA-256. Access evidence also requires an admitted HTTPS hostname and effective
-port 443; HTTP, alternate ports and non-admitted `www` variants cannot qualify.
+path/SHA-256. Access evidence also requires the approved collector's HTTPS API
+origin and effective port 443. Provider marketing domains retain ancestry links
+but cannot borrow access evidence from the API host. HTTP, alternate ports and
+non-admitted `www` variants cannot qualify. The origin allowlist in
+`federation.py` matches the origins of
+`tools/provider_exhaustive_collection.py:PROVIDERS`; a collector origin change
+requires a reviewed update to this mapping.
 Operation-specific blockers retain allowlisted reason codes without collector
 messages, credentials or raw payloads. A provider-level positive receipt cannot erase
 an operation's denial or establish its entitlement. Bytes are revalidated before an
@@ -84,6 +92,22 @@ credential/auth-blocked, quota-paused and denied-only evidence cannot advance.
 and an exact operation ID in the provider receipt's `verified_operations` list, with
 no blocker for that operation. Aggregate page counts without that operation-level
 success evidence remain links only. Rejected/restricted candidates do not advance.
+
+For operations sharing a provider, method and path, required query examples that
+distinguish their catalog descriptors must match exactly one occurrence in the
+candidate URL. For example, a verified Bybit `category=spot` operation cannot
+qualify `category=option`, a missing/empty category, or duplicate category fields.
+An ID-qualified singleton still requires its declared query binding. Missing or
+indistinguishable variant descriptors retain ancestry but cannot establish access.
+Ordinary query values such as an asset symbol are not inferred to be variant
+identifiers. Access remains operation-level evidence, not proof of every asset,
+query combination, historical interval or entitlement.
+
+Federation revision `registry-federation-v4` retains the API origin and query
+bindings on new links/events and rejects legacy links lacking these checks.
+Imports preserve immutable history: this change does not rewrite an earlier
+`ACCESS_TESTED` event or demote an existing candidate automatically. Consumers
+requiring current provenance must requalify historical v3 evidence under v4.
 
 ## Storage and safe receipts
 
@@ -112,6 +136,20 @@ nonzero CLI status.
 The CLI parser revision is `catalog-registry-v3`: balanced link targets/labels,
 optional Markdown titles, featured linked headings and malformed one-cell table
 rows are now handled without changing an old snapshot's parse identity.
+
+## Read-only dashboard receipt adapter
+
+`GET /api/discovery-registry` exposes an allowlisted summary of the three
+committed receipts on the shared **Financial & data** page. The handler accepts
+no path or catalog selector, reads no private SQLite database, and never
+refreshes the upstream catalogs. It validates each receipt's expected catalog
+and repository identity, 40-character source commit, content digest, retrieval
+clock, nonnegative summary counts, and both false authority flags. Missing,
+symlinked, oversized, malformed, or misbound receipts remain `UNAVAILABLE`;
+partial data is shown as partial rather than replaced with zeros. Only bounded
+counts and provenance are returned. Source probes and market-data acquisition
+remain false. This is a connection to discovery metadata, not a claim that any
+listed service has working credentials or an active adapter.
 
 ## Refresh and verification
 

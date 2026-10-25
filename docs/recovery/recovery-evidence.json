@@ -1,0 +1,4190 @@
+{
+  "restart_lifecycle_race_followup": {
+    "recorded_at_utc": "2026-10-25T05:54:11Z",
+    "repository": "reppiks490/Icarus",
+    "pull_request": 471,
+    "source_commit": "b0d67889143221087e5f7045cae9109ede0af031",
+    "prior_windows_failure": {
+      "commit": "4fc4650ff692324b3f5d6935eb20581dc642a7c5",
+      "run": 40163146732,
+      "cause": "Selected-workspace shutdown test ran the real expensive commissioning tick after its synchronization barrier, so Windows remained STOPPING at the short assertion deadline."
+    },
+    "repair": {
+      "behavior": "CommissioningEngine serializes close with sampler creation and refuses to start a sampler after close during its immediate tick.",
+      "regression": "test_close_during_immediate_tick_does_not_start_sampler_after_shutdown reproduced the race before the fix and passes afterward.",
+      "panel_fixture": "The shutdown test now returns a bounded empty tick result after release, isolating lifecycle timing from 35-asset strategy work.",
+      "source_files": [
+        "icarus_engine/commissioning.py",
+        "tests_engine/test_commissioning.py",
+        "tests_engine/test_workspace_panels.py"
+      ]
+    },
+    "local_verification": {
+      "full_engine_suite": {
+        "command": "python -m pytest tests_engine -q -o addopts=''",
+        "result": "4269 passed, 5 skipped, 111 subtests passed in 850.41s (0:14:10)",
+        "status": "completed after installing the optional ml and databento extras used by CI"
+      },
+      "focused_command": "python -m pytest tests_engine/test_commissioning.py tests_engine/test_workspace_panels.py -q -o addopts=''",
+      "result": "51 passed in 22.09s",
+      "red_command": "python -m pytest tests_engine/test_commissioning.py::test_close_during_immediate_tick_does_not_start_sampler_after_shutdown -q -o addopts=''",
+      "red_result": "failed as expected because shutdown incorrectly allowed a late sampler before the production fix",
+      "dependency_recheck": "165 tests passed across test_data_integrity.py, test_databento.py, test_review_fixes.py, and test_xgb_slot1.py after installing the optional ml and databento extras used by CI"
+    },
+    "hosted_verification": {
+      "pull_request_run": 40165546356,
+      "push_run": 40165543739,
+      "head": "b0d67889143221087e5f7045cae9109ede0af031",
+      "linux_engine": "success",
+      "windows_engine": "success",
+      "browser": "success",
+      "configuration": "success",
+      "contracts": "success",
+      "historical_context": "success",
+      "bilateral_federation": "success",
+      "persisted_acceptance": "skipped by workflow condition; a separate fresh manual federation gate passed at run 40165001486"
+    },
+    "restart": {
+      "code_pin": "b0d67889143221087e5f7045cae9109ede0af031",
+      "operator_pc_restarted": false,
+      "full_system_restart_performed": false,
+      "execution_authorized": false
+    },
+    "limits": [
+      "A docs-only follow-up is being published on PR 471; check its latest exact-head CI before installing the pinned code.",
+      "Hosted verification does not establish owner-PC restart, sustained uptime, provider freshness, phone pairing, or open-position restoration."
+    ]
+  },
+  "provider_archive_bound_diagnostics": {
+    "recorded_at_utc": "2026-10-25T05:54:11Z",
+    "repository": "reppiks490/Icarus-engine",
+    "pull_request": 216,
+    "head": "3e3482a50d6d73b3f7b13705b4c7ed35f42a56a4",
+    "scope": "Read-only offline consumption of existing pinned encrypted archives; socket operations are blocked during the intake step.",
+    "profiles": {
+      "massive": {
+        "run": 40166875167,
+        "stage": "ARCHIVE_INTAKE",
+        "failure_code": "DECOMPRESSED_PAYLOAD_BOUND_OR_FORMAT",
+        "checkpoint_decompressed_bytes_lower_bound": 512000001,
+        "diagnostic_limit_bytes": 512000000,
+        "baseline_intake_limit_bytes": 32000000,
+        "diagnostic_limit_reached": true
+      },
+      "twelve": {
+        "run": 40166927701,
+        "stage": "ARCHIVE_INTAKE",
+        "failure_code": "JSON_STRUCTURE_BOUND",
+        "checkpoint_decompressed_bytes": 42516493,
+        "baseline_intake_limit_bytes": 32000000,
+        "diagnostic_limit_reached": false
+      },
+      "eodhd": {
+        "run": 40166932654,
+        "stage": "ARCHIVE_INTAKE",
+        "failure_code": "DECOMPRESSED_PAYLOAD_BOUND_OR_FORMAT",
+        "checkpoint_decompressed_bytes": 63307789,
+        "baseline_intake_limit_bytes": 32000000,
+        "diagnostic_limit_reached": false
+      }
+    },
+    "interpretation": "Existing provider checkpoint snapshots exceed the strict 32 MB intake bound, and the Massive snapshot exceeds the separate 512 MB diagnostic ceiling. Bounds were not widened; these three archive consumers remain blocked pending a bounded checkpoint projection or streaming design.",
+    "live_or_provider_requests_started": false,
+    "execution_authorized": false
+  },
+  "as_is_operator_delivery": {
+    "actual_launcher": {
+      "containment": "Inherited Python audit hook rejects ordinary nonloopback DNS/connect and credential file opens. This is not an OS network sandbox or proof of zero attempted activity; file feed selected.",
+      "details": "Actual new shell wrapper -> foreground plant -> engine, five real HTML identities and four-ledger API paper authority, owned SIGINT shutdown exited0. Temporary synthetic root; no owner-PC state.",
+      "exit_code": 0,
+      "launcher_log": {
+        "local_log": "/workspace/scratch/as-is-actual-launcher.log",
+        "log_sha256": "c9df6b65627d692797f0c676e19fac1f895f4193b659a8132f02f2036af62fa4",
+        "result": "  dashboard live: http://127.0.0.1:36731/  token=icarus"
+      },
+      "limits": "Brief startup/shutdown observation, not sustained operation, open-position recovery or verified background integrations.",
+      "local_log": "/workspace/scratch/as-is-actual-smoke.log",
+      "log_sha256": "518695232ccd9db24451e2526c4e20e2939f75ef3542b7a6fe4615a85303ce64",
+      "result": "launcher_exit 0"
+    },
+    "behavior": [
+      "Canonical START_HERE.md plus README/COMMANDS/SETUP pointers; separate source worktree and stopped-state private backup preserve original checkout/data.",
+      "Explicit feed and main assets, checkout virtualenv, package-origin/version/root readback, saved-profile count, occupied-port refusal without killing, foreground owned shutdown, browser startup.",
+      "Saved local one-command shortcut, all five trading URLs/Connections, status/configuration/export/import/help/diagnostic/rollback commands; local core independent of ChatGPT session.",
+      "Reviewed Icarus2 test-only463/464 exact blobs incorporated; root fixture and restart regression added to intended Windows selection and root fixture also Linux."
+    ],
+    "focused": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/as-is-startup-focused.log",
+      "log_sha256": "de83694ead8029c5ec8358f66096afd376a2c9063c7d57c888d85e4c0fceec15",
+      "result": "59 passed, 1 skipped in 15.53s"
+    },
+    "full_suite": {
+      "command": "python -m pytest tests_engine tests/test_provider_corpus_intake.py -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/as-is-final-full.log",
+      "log_sha256": "9d521455acaec5afcd5322aaf54659c0f5fe54f0dba7a6de9657558ada5f593f",
+      "result": "3852 passed, 4 skipped, 111 subtests passed in 423.13s (0:07:03)",
+      "status": "completed"
+    },
+    "full_system_restart_performed": false,
+    "handoff": "docs/recovery/ICARUS2_NEXT_12_DAYS.md",
+    "icarus2_later_receipts": {
+      "actual_browser": "43passed, no skips;4API/browser cases; Shadow Twin/Depth/Cinema/world contracts exited0 on2a production bytes.",
+      "freshness": "Actual-clock handshake passed2026-10-21T20:36:16.179183+00:00 against Enginee4b69a; separate timed observation, not permanent freshness.",
+      "handoff": "icarus-owner-actions:coordination/handoffs/icarus2-restart-verification-20261021.md",
+      "persistence": "Two clean synthetic cloud process lifecycles and actual file-fed plant startup/shutdown; not owner-PC or sustained service proof."
+    },
+    "incorporated_test_blobs": {
+      "tests/test_provider_corpus_intake.py": "fcfa344689dc8690b47a7b5fbe7ee44d69929505",
+      "tests_engine/test_restart_persistence.py": "2f5b1177cc53491dc2867665f0311c8111311732"
+    },
+    "launcher_regression_green": {
+      "local_log": "/workspace/scratch/as-is-launcher-green.log",
+      "log_sha256": "b4e6716fbd6745e8531d806d530757d7b2e907a881718c8369d92405a53c4ebc",
+      "result": "4 passed in 0.25s"
+    },
+    "launcher_regression_red": {
+      "local_log": "/workspace/scratch/as-is-launcher-red.log",
+      "log_sha256": "5ddffb1c72e956c67555723a82d370e45d68e1b892390dd0eade3e0f745f3f7c",
+      "result": "4 failed in 0.12s"
+    },
+    "limits": [
+      "Actual operator PC has no connection to this cloud session. User must run the published local command.",
+      "No claim all adapters/accounts/entitled sources/accuracy or sustained operation is complete.",
+      "Open in-memory position recovery not certified; capture before stopping; never flatten merely to make restart pass.",
+      "No release code-main merge, provider purchase, credential publication or live execution."
+    ],
+    "live_broker_arming": false,
+    "operator_pc_restarted": false,
+    "operator_runbook": "START_HERE.md",
+    "owner_direction": "Prioritize a standalone current as-is paper launch and prominent complete GitHub command guide; preserve full-readiness gaps and Icarus2 continuation.",
+    "preceding_2a_hosted": {
+      "head": "2a2ec2a21a2426697259fd227b4c5db57d985bfb",
+      "historical_handshake": {
+        "cause": "packet age3073.677s exceeded1800s; no weakened guard or rerun.",
+        "conclusion": "failure",
+        "run": 39654368024
+      },
+      "other_five_workflows": "success",
+      "tests": {
+        "linux": "success",
+        "run": 39654368046,
+        "windows": "success"
+      },
+      "visual": {
+        "conclusion": "cancelled",
+        "limit": "At required five-route browser step; cancellation cause not established.",
+        "run": 39654368099
+      }
+    },
+    "public_documentation_publication": "Requested default-main command guide and README pointer; runtime source remains recovery branch, no code-main merge.",
+    "recorded_at_utc": "2026-10-21T22:22:58.765562+00:00",
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "7506364684ec46db3f599f2a9e1b1bf595770c18e86d47759dd05b3e07c3fe76",
+      "scripts/start-as-is.sh": "2149b13fe47782694ea6c518c70c7591d4bed2e4a1e15a529d2f2f0668f800d2",
+      "tests/test_provider_corpus_intake.py": "37c1c0bf56870597d9b56c8cf9c71fd07332763772453e4e51ffb87aaa349952",
+      "tests_engine/test_as_is_launcher.py": "b0919620e32d4728c35b438ef8680530e6986d09ebce9309d90c53b343bc1dd4",
+      "tests_engine/test_restart_persistence.py": "3ef8476a296a839497fac1747eb652f1a1f1f1653f837fce5b2cb09119dd6aa4"
+    },
+    "source_parent": "2a2ec2a21a2426697259fd227b4c5db57d985bfb",
+    "source_review": "Root native launcher/docs review. Icarus2 independently reviewed its two test-only deltas; no fresh independent whole-branch clearance claimed.",
+    "upstream_receipt_and_documentation_merge": {
+      "automation_receipt_paths": 34,
+      "code_or_test_changes": false,
+      "encrypted_checkpoint": "Preserved opaque; not decrypted.",
+      "limit": "Receipt updates and code identity do not prove provider freshness or consumer operation.",
+      "main_head": "091e38b2957826c0695ac24d0d34b3b222ee0e15",
+      "paths": 36,
+      "public_doc_paths": [
+        "README.md",
+        "START_HERE.md"
+      ],
+      "readme_resolution": "Retained current operator banner and recovery intro; main added only the identical operator banner.",
+      "tested_source_hashes_unchanged": true
+    },
+    "windows_ci_selection": {
+      "all_paths_and_yaml_valid": true,
+      "limit": "Shell harness skips on Windows; actual PC/Git Bash cold setup remains unobserved. New head hosted results remain separate.",
+      "test_paths": 79
+    }
+  },
+  "as_is_paper_startup_authorized": true,
+  "chart_paging_followup": {
+    "focused_green": {
+      "command": "python -m pytest tests_engine/test_workspace_chart_routes.py tests_engine/test_command_center_routes.py tests_engine/test_chart_history_pagination.py tests_engine/test_workspace_performance_routes.py tests_engine/test_paper_workspaces_runtime.py",
+      "exit_code": 0,
+      "observer": "workspace_backend_audit",
+      "result": "52 passed in 38.46s"
+    },
+    "full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=\"\"",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/icarus-chart-full-tests.log",
+      "log_sha256": "eef1da6da19a54b9cf3ae2e2712f9913b6a64ae23ee6d9475b399d33f9aa34c1",
+      "observer": "Icarus 1",
+      "result": "3475 passed, 4 skipped, 111 subtests passed in 184.42s (0:03:04)"
+    },
+    "independent_review": {
+      "command": "python -m pytest -q tests_engine/test_workspace_chart_routes.py",
+      "exit_code": 0,
+      "observer": "recovery_review",
+      "result": "12 passed; no material findings"
+    },
+    "limits": [
+      "Synthetic offline bars and real HTTP/runner code, not market efficacy evidence.",
+      "Does not implement shared renderer, change strategies, acquire provider data, deploy or restart."
+    ],
+    "original_route_red": {
+      "command": "python -m pytest tests_engine/test_workspace_chart_routes.py",
+      "exit_code": 1,
+      "observer": "workspace_backend_audit",
+      "result": "8 failed, 4 passed in 6.75s"
+    },
+    "recorded_at_utc": "2026-10-20T18:36:36.743231+00:00",
+    "scope": "BOUNDED_SCOPED_CHART_API_REPAIR; shared-dashboard architecture remains proposed",
+    "source_file_sha256": {
+      "icarus_engine/paper_workspaces.py": "50181ab36614d2b39a0bf0a182ab6d90301a288828d5bc3748c17d6821ae6423",
+      "icarus_engine/server.py": "274a58b8d3639338f99c7ba0bec7da88297ae395989430f5cbff7ac4590fb2d5",
+      "tests_engine/test_command_center_routes.py": "ddc89236d39b51f0d46a1661e33fa4892f73748866f5a6239a37da9d79305a73",
+      "tests_engine/test_paper_workspaces.py": "f8cd2631f614e29cda2e3025ee4c12bdaa5a80e310369b9174a0c36f2a4aa226",
+      "tests_engine/test_paper_workspaces_runtime.py": "2f731f4c2bb296e4e8ae7719e47f03d90841deb43a0205fa850d3b953a1d48c6",
+      "tests_engine/test_workspace_chart_routes.py": "ababbdaa89edacdf78a70f2fbebb755f514b8adcf64ccf81004e02d21bfa943c"
+    },
+    "windows_ci_selection": {
+      "added_module": "tests_engine/test_workspace_chart_routes.py",
+      "job": "engine-windows",
+      "limits": "Workflow selection validation only; Windows execution is a separate hosted check.",
+      "local_validation": "YAML parsed; all 67 selected modules exist, no duplicate selections; git diff --check passed",
+      "recorded_at_utc": "2026-10-20T18:41:23.992568+00:00",
+      "workflow": ".github/workflows/test.yml",
+      "workflow_sha256": "a04f2e28bcc8b13e844104f0db18fa1ca28a3049a917744adea292f7f996b0d1"
+    }
+  },
+  "current_upstream_receipt_drift": {
+    "encrypted_checkpoint": "opaque; not decrypted or printed",
+    "from": "617d3e4baf5bef337e0b1b43ad51bdc67ee420d7",
+    "head": "be46d4b9206001a44772976c98981bbdcf5a7ef3",
+    "merge_pending": false,
+    "merged_on_recovery_branch": "5697e71ecb51bd9102adaf73f32f47a6ab30319e",
+    "paths": 34,
+    "runtime_or_test_changes": false,
+    "source_file_hashes_unchanged": true
+  },
+  "desktop_settings_followup": {
+    "behavior": "Convert viewport drawer coordinates to fixed containing-header padding-edge coordinates; preserve desktop CSS variables/mobile media geometry.",
+    "checks": [
+      {
+        "local_log": "/workspace/scratch/settings-desktop-red.log",
+        "log_sha256": "27f28326304e8c15212bdadf1daabd0762332ccf4437844a5aff18b30b0f0e87",
+        "result": "1 failed geometry before fix"
+      },
+      {
+        "local_log": "/workspace/scratch/settings-placement-green.log",
+        "log_sha256": "99db33d5c94c6f7da021687c7391181685cc33299c5435b1c861e2db3be3ec87",
+        "result": "2 passed desktop/mobile"
+      },
+      {
+        "local_log": "/workspace/scratch/desktop-placement-cinema.log",
+        "log_sha256": "1366c744df7c423339d85c8ad2908c90161c326edcbee33c4e10d7f8163e0b24",
+        "result": "unchanged cinema passed; errors[]; writes[]"
+      }
+    ],
+    "hosted_verification": {
+      "all_six_success": true,
+      "head": "68acaec0347a644ee09884fd3826dfadf897ee1d",
+      "runs": [
+        39612117366,
+        39612117381,
+        39612117369,
+        39612117418,
+        39612117400,
+        39612117382
+      ]
+    },
+    "limits": [
+      "Local browser evidence; new hosted visual verification pending.",
+      "No original cinema assertions or waits relaxed; no PC restart or live activation."
+    ],
+    "regression": "Transformed header with nonzero origin reproduced bottom672px in600px viewport before correction.",
+    "source_parent": "d3a17207df07ff4ca878a25db787f8ec1e62fae2"
+  },
+  "external_tool_state": {
+    "firecrawl": "HTTP_402_INSUFFICIENT_CREDITS; requested lookup did not run; no retry or purchase"
+  },
+  "full_recovery_complete": false,
+  "full_system_restart_performed": false,
+  "generated_at_utc": "2026-10-20T18:36:36.743885+00:00",
+  "hosted_failure_annotations": [
+    {
+      "annotations": [
+        {
+          "annotation_level": "failure",
+          "message": "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        },
+        {
+          "annotation_level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        }
+      ],
+      "job_id": 118578968000
+    },
+    {
+      "annotations": [
+        {
+          "annotation_level": "failure",
+          "message": "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        },
+        {
+          "annotation_level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        }
+      ],
+      "job_id": 118489545801
+    },
+    {
+      "annotations": [
+        {
+          "annotation_level": "failure",
+          "message": "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        },
+        {
+          "annotation_level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        }
+      ],
+      "job_id": 118534847255
+    },
+    {
+      "annotations": [
+        {
+          "annotation_level": "failure",
+          "message": "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        },
+        {
+          "annotation_level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+          "path": ".github",
+          "start_line": 1,
+          "title": ""
+        }
+      ],
+      "job_id": 118613128501
+    }
+  ],
+  "hosted_workflow_failures": [
+    {
+      "checks": [
+        {
+          "conclusion": "failure",
+          "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39408129200/job/118578968000",
+          "name": "sweep",
+          "output": {
+            "annotations_count": 2,
+            "annotations_url": "https://api.github.com/repos/reppiks490/Icarus-engine/check-runs/118578968000/annotations",
+            "summary": null,
+            "text": null,
+            "title": null
+          },
+          "status": "completed"
+        }
+      ],
+      "conclusion": "failure",
+      "created_at": "2026-10-20T10:28:00Z",
+      "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+      "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39408129200",
+      "name": "cl-depth-sweep",
+      "run_id": 39408129200,
+      "run_started_at": "2026-10-20T10:28:00Z",
+      "status": "completed",
+      "updated_at": "2026-10-20T10:28:03Z"
+    },
+    {
+      "checks": [
+        {
+          "conclusion": "failure",
+          "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39380903441/job/118489545801",
+          "name": "lab",
+          "output": {
+            "annotations_count": 2,
+            "annotations_url": "https://api.github.com/repos/reppiks490/Icarus-engine/check-runs/118489545801/annotations",
+            "summary": null,
+            "text": null,
+            "title": null
+          },
+          "status": "completed"
+        }
+      ],
+      "conclusion": "failure",
+      "created_at": "2026-10-20T06:31:52Z",
+      "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+      "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39380903441",
+      "name": "cl-lab",
+      "run_id": 39380903441,
+      "run_started_at": "2026-10-20T06:31:52Z",
+      "status": "completed",
+      "updated_at": "2026-10-20T06:31:56Z"
+    },
+    {
+      "checks": [
+        {
+          "conclusion": "failure",
+          "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39394829278/job/118534847255",
+          "name": "acquire",
+          "output": {
+            "annotations_count": 2,
+            "annotations_url": "https://api.github.com/repos/reppiks490/Icarus-engine/check-runs/118534847255/annotations",
+            "summary": null,
+            "text": null,
+            "title": null
+          },
+          "status": "completed"
+        }
+      ],
+      "conclusion": "failure",
+      "created_at": "2026-10-20T08:38:15Z",
+      "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+      "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39394829278",
+      "name": "databento-depth-corpus",
+      "run_id": 39394829278,
+      "run_started_at": "2026-10-20T08:38:15Z",
+      "status": "completed",
+      "updated_at": "2026-10-20T08:38:19Z"
+    },
+    {
+      "checks": [
+        {
+          "conclusion": "failure",
+          "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39418451662/job/118613128501",
+          "name": "seal",
+          "output": {
+            "annotations_count": 2,
+            "annotations_url": "https://api.github.com/repos/reppiks490/Icarus-engine/check-runs/118613128501/annotations",
+            "summary": null,
+            "text": null,
+            "title": null
+          },
+          "status": "completed"
+        }
+      ],
+      "conclusion": "failure",
+      "created_at": "2026-10-20T11:55:36Z",
+      "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+      "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39418451662",
+      "name": "depth-vault",
+      "run_id": 39418451662,
+      "run_started_at": "2026-10-20T11:55:36Z",
+      "status": "completed",
+      "updated_at": "2026-10-20T11:55:40Z"
+    }
+  ],
+  "live_broker_arming": false,
+  "local_checks": {
+    "accounting_regressions": {
+      "green": "Final focused/full verification recorded below; no PC symptom closure inferred.",
+      "red": "4 initial cases failed on original source; 5 expanded projection cases and 1 dedicated HTTP case failed before their respective fixes"
+    },
+    "focused": {
+      "command": "python -m pytest tests_engine/test_paper_workspaces.py tests_engine/test_paper_workspaces_runtime.py tests_engine/test_paper_pnl.py tests_engine/test_paper_pnl_browser.py tests_engine/test_command_center_routes.py -q --tb=short -o addopts=\"\"",
+      "engineering_only": true,
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/icarus-pnl-final-focused-tests.log",
+      "log_sha256": "d54b3c53de4ce42a7478b9564a4ff2f015659f0f554d18343c46e0a5acf9cd89",
+      "scope": "Accounting and endpoint isolation regression",
+      "summary": "133 passed in 27.46s"
+    },
+    "hub_compile_and_adversarial": {
+      "adversarial": {
+        "failure_injection_v0_1.py": {
+          "ok": true,
+          "output": "{'structural_deletions_rejected': 1000, 'adapter_deletions_not_ready': 1000, 'digest_corruptions_rejected': 750, 'identity_substitutions_rejected': 750, 'backend_substitutions_not_ready': 500, 'receipt_attacks_rejected': 500, 'secret_injections_rejected': 300, 'malformed_fail_closed': 500, 'backend_digest_substitutions_not_ready': 500, 'policy_digest_substitutions_not_ready': 500, 'attestation_shape_corruptions_not_ready': 500}\nTOTAL_ATTACK_CASES 6800"
+        },
+        "failure_injection_v0_4.py": {
+          "ok": true,
+          "output": "BACKEND_SUBSTITUTIONS_REJECTED=500/500\nPINNED_POLICY_SUBSTITUTIONS_REJECTED=500/500\nSTRICT_INCLUSION_NODE_MUTATIONS_REJECTED=500/500\nFALSE_INDEX_RELABELS_REJECTED=500/500\nWITNESS_MUTATIONS_REJECTED=400/400\nMALFORMED_INPUTS_FAIL_CLOSED_SAFE_FOR_SIBLINGS=300/300\nDEPENDENCY_DIGEST_CONTRACT_SUBSTITUTIONS_REJECTED=500/500\nPROVENANCE_DELETIONS_DETECTED=26/26\nTOTAL_ATTACKS=3226"
+        },
+        "hostile_test_v0_8.py": {
+          "ok": true,
+          "output": "ORDER_ATTACKS_REJECTED=500\nBAD_NODE_LENGTHS_REJECTED=500\nMALFORMED_TOP_LEVEL_FAIL_CLOSED=500"
+        },
+        "property_test_v0_7.py": {
+          "ok": true,
+          "output": "{'valid_transitions': 2016, 'max_proof_nodes': 7, 'mutated_proofs_rejected': 1000}"
+        },
+        "property_test_v0_8.py": {
+          "ok": true,
+          "output": "VALID_INCLUSIONS=8256\nMAX_PROOF_NODES=7\nMUTATED_NODES_REJECTED=1500\nGEOMETRY_ATTACKS_REJECTED=1000\nBINDING_ATTACKS_REJECTED=1000\nV06_FALSE_INDEX_RELABELS_ACCEPTED=42\nV08_FALSE_INDEX_RELABELS_REJECTED=42"
+        }
+      },
+      "compile": {
+        "aegis": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "aion": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "argus": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "ascension": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "athena": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "daedalus": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "infrastructure": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "janus": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "nexus": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "oracle": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "prometheus": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        },
+        "supermesh_x": {
+          "errors": "\n",
+          "ok": true,
+          "stderr_tail": ""
+        }
+      }
+    },
+    "hub_connections": {
+      "all_ok": true,
+      "basis": "DETERMINISTIC_INTERNAL_CONTRACT_FIXTURES",
+      "command": "PYTHONPATH=src python -m divine_providence.cli connect",
+      "count": 10,
+      "exit_code": 0,
+      "owner_runtime_link_proven": false
+    },
+    "hub_system_passed_test_sum": 2179,
+    "hub_systems": {
+      "aegis": {
+        "counts": {
+          "passed": 36
+        },
+        "passed": true,
+        "seconds": 1.58,
+        "timed_out": false
+      },
+      "aion": {
+        "counts": {
+          "passed": 37
+        },
+        "passed": true,
+        "seconds": 1.32,
+        "timed_out": false
+      },
+      "argus": {
+        "counts": {
+          "passed": 447
+        },
+        "passed": true,
+        "seconds": 2.95,
+        "timed_out": false
+      },
+      "ascension": {
+        "counts": {
+          "passed": 160
+        },
+        "passed": true,
+        "seconds": 1.0,
+        "timed_out": false
+      },
+      "athena": {
+        "counts": {
+          "passed": 18
+        },
+        "passed": true,
+        "seconds": 0.56,
+        "timed_out": false
+      },
+      "daedalus": {
+        "counts": {
+          "passed": 64
+        },
+        "passed": true,
+        "seconds": 28.98,
+        "timed_out": false
+      },
+      "infrastructure": {
+        "counts": {
+          "passed": 345
+        },
+        "passed": true,
+        "seconds": 2.19,
+        "timed_out": false
+      },
+      "janus": {
+        "counts": {
+          "passed": 144
+        },
+        "passed": true,
+        "seconds": 8.65,
+        "timed_out": false
+      },
+      "nexus": {
+        "counts": {
+          "passed": 366
+        },
+        "passed": true,
+        "seconds": 18.69,
+        "timed_out": false
+      },
+      "oracle": {
+        "counts": {
+          "passed": 39
+        },
+        "passed": true,
+        "seconds": 0.96,
+        "timed_out": false
+      },
+      "prometheus": {
+        "counts": {
+          "passed": 171
+        },
+        "passed": true,
+        "seconds": 1.35,
+        "timed_out": false
+      },
+      "supermesh_x": {
+        "counts": {
+          "passed": 352
+        },
+        "passed": true,
+        "seconds": 2.06,
+        "timed_out": false
+      }
+    },
+    "hub_tests": {
+      "collected_cases": 165,
+      "command": "PYTHONPATH=src python -m pytest tests -q --tb=short",
+      "count_basis": "165 reported by collect-only; full hub process exit 0 recorded separately",
+      "engineering_only": true,
+      "exit_code": 0
+    },
+    "runtime_full": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=\"\"",
+      "engineering_only": true,
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/icarus-final-full-tests.log",
+      "log_sha256": "3003e2d44bb8d9d4c560661331541be9c8e5374e90a7ea2b4dd449d1667ca43c",
+      "scope": "Full tests_engine after all source changes",
+      "summary": "3463 passed, 4 skipped, 111 subtests passed in 174.92s (0:02:54)"
+    },
+    "satellite_checks": [
+      {
+        "command": [
+          "python",
+          "-m",
+          "pytest",
+          "tests",
+          "-q",
+          "-o",
+          "addopts=",
+          "--tb=short"
+        ],
+        "exit_code": 0,
+        "log": "/workspace/scratch/daedalus-research-os-tests.log",
+        "repository": "reppiks490/daedalus-research-os",
+        "tail": "...........................................................              [100%]\n59 passed in 13.34s\n"
+      },
+      {
+        "command": [
+          "python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-v"
+        ],
+        "exit_code": 0,
+        "log": "/workspace/scratch/aion-parallax-research-tests.log",
+        "repository": "reppiks490/aion-parallax-research",
+        "tail": "e_uses_documented_regular_candle_family (test_parallax_manifest.ManifestTests.test_candidate_archive_uses_documented_regular_candle_family) ... ok\ntest_documented_candidate_archive_is_regular_candle_family (test_parallax_manifest.ManifestTests.test_documented_candidate_archive_is_regular_candle_family) ... ok\ntest_malformed_member_is_visible_and_not_counted_as_parsed (test_parallax_manifest.ManifestTests.test_malformed_member_is_visible_and_not_counted_as_parsed) ... ok\ntest_preserves_physical_members_duplicate_headers_and_logical_rows (test_parallax_manifest.ManifestTests.test_preserves_physical_members_duplicate_headers_and_logical_rows) ... ok\ntest_preserves_tick_range_and_chart_family_claims (test_parallax_manifest.ManifestTests.test_preserves_tick_range_and_chart_family_claims) ... ok\n\n----------------------------------------------------------------------\nRan 24 tests in 0.616s\n\nOK\n"
+      },
+      {
+        "command": [
+          "python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-v"
+        ],
+        "exit_code": 0,
+        "log": "/workspace/scratch/icarus-csv-evidence-lab-tests.log",
+        "repository": "reppiks490/icarus-csv-evidence-lab",
+        "tail": "header_is_preserved (test_audit.AuditTests.test_long_header_is_preserved) ... ok\ntest_missing_timestamp_column_is_not_clean (test_audit.AuditTests.test_missing_timestamp_column_is_not_clean) ... ok\ntest_quoted_comma_is_one_row (test_audit.AuditTests.test_quoted_comma_is_one_row) ... ok\ntest_identical_inventory_does_not_grant_market_authority (test_reconcile.ReconcileTests.test_identical_inventory_does_not_grant_market_authority) ... ok\ntest_invalid_hash_is_rejected (test_reconcile.ReconcileTests.test_invalid_hash_is_rejected) ... ok\ntest_missing_hash_and_duplicate_multiplicity (test_reconcile.ReconcileTests.test_missing_hash_and_duplicate_multiplicity) ... ok\ntest_row_count_semantics_are_not_assumed_equal (test_reconcile.ReconcileTests.test_row_count_semantics_are_not_assumed_equal) ... ok\n\n----------------------------------------------------------------------\nRan 17 tests in 0.013s\n\nOK\n"
+      },
+      {
+        "command": [
+          "python",
+          "-m",
+          "pytest",
+          "tests",
+          "-q",
+          "-o",
+          "addopts=",
+          "--tb=short"
+        ],
+        "exit_code": 0,
+        "log": "/workspace/scratch/icarus-causal-router-tests.log",
+        "repository": "reppiks490/icarus-causal-router",
+        "tail": "..................................................                                                     [100%]\n50 passed, 42 subtests passed in 1.05s\n"
+      }
+    ]
+  },
+  "mobile_drawer_containing_header_followup": {
+    "final_ui_suite": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/as-is-final-ui-suite.log",
+      "log_sha256": "c1a760bf46ec2f4e13063035803a8bcf4032888df57f981ab5df54789e91c989",
+      "result": "122 passed, 1 skipped in 220.57s (0:03:40)",
+      "scope": "Actual five-route browser suite, Performance, dashboard JS, world immersion/cinema invariants; optional legacy default-cache browser skip retained separately."
+    },
+    "hosted_failure": {
+      "failure": "Required settings resize test: drawer y=-375.78125 while placement callbacks delayed; fixed child anchored to filtered/transformed header.",
+      "job": 119521969306,
+      "preceding_actual_workspace_browser_cases": "43passed",
+      "run": 39686515357
+    },
+    "local_red": {
+      "local_log": "/workspace/scratch/as-is-drawer-resize-red.log",
+      "log_sha256": "f14e7cc38f729338ea3b91ea47ae7f080ac6180dbbf6a6bd090a445e2b9da58b",
+      "result": "1 failed, 106 deselected in 3.65s"
+    },
+    "recorded_at_utc": "2026-10-21T22:37:50.502497+00:00",
+    "repair": "At mobile widths remove header backdrop-filter/filter/transform so fixed drawer bottom anchors to viewport without waiting for JS. Desktop placement remains unchanged. Stronger existing regression explicitly supplies a containing header independent of browser/theme.",
+    "review": "Root native; no fresh independent whole-branch clearance.",
+    "source_file_sha256": {
+      "icarus_engine/experience-ui.css": "6a2ada51341e676b4256665c360590a0e0978d48d53c74863b7b1dbc2c4e7376",
+      "tests_engine/test_workspace_api.py": "29b0309aadf952b347675a787e2dacfa023b7aee87f7a1ae60e0cba0d1937b14"
+    },
+    "source_parent": "6ed1fe8e06da47ffe07eb30671be1cb7df2c70a7",
+    "targeted_browser": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/as-is-drawer-focused-green.log",
+      "log_sha256": "6e4380690cf334462caeceae5a134bf48bdefdc71aebd2f70815443938413aa5",
+      "result": "4 passed, 218 deselected in 8.94s"
+    },
+    "tradeoff": "Mobile header blur is disabled; drawer remains inside viewport.",
+    "unchanged_cinema": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/as-is-final-cinema.log",
+      "log_sha256": "1366c744df7c423339d85c8ad2908c90161c326edcbee33c4e10d7f8163e0b24",
+      "result": "{\"passed\":true,\"errors\":[],\"writes\":[],\"fixture\":{\"same\":true,\"first\":1,\"second\":1,\"surface\":true,\"scan\":true,\"hover\":true,\"x\":\"40.00%\",\"y\":\"60.00%\"}}"
+    },
+    "verification_limit": "The3852full receipt belongs to the preceding operator-startup phase. This narrow presentation/test-fixture correction has fresh4targeted +122UI checks and unchanged cinema, not a new full-runtime rerun. Hosted new-head checks remain separate."
+  },
+  "new_spend_authorized_or_performed": false,
+  "open_pr_inventory": {
+    "captured_at_utc": "2026-10-20T18:04:31.050Z",
+    "items": [
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 456,
+        "repository": "reppiks490/Icarus",
+        "title": "Expose four corpus-backed dashboards with strict paper accounting and firm inventory",
+        "url": "https://github.com/reppiks490/Icarus/pull/456"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 458,
+        "repository": "reppiks490/Icarus",
+        "title": "Bind research as-of selectors to authenticated receipt bodies",
+        "url": "https://github.com/reppiks490/Icarus/pull/458"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 216,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Consume retained provider archives offline with verified read receipts",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/216"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 457,
+        "repository": "reppiks490/Icarus",
+        "title": "Consume provider statistics in Brain and four dashboard research views",
+        "url": "https://github.com/reppiks490/Icarus/pull/457"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 211,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Prove private corpus consumption and substantive operation access",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/211"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 455,
+        "repository": "reppiks490/Icarus",
+        "title": "Bind discovery access evidence to API origins and query variants",
+        "url": "https://github.com/reppiks490/Icarus/pull/455"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 452,
+        "repository": "reppiks490/Icarus",
+        "title": "Consume private retained corpora in four isolated paper workspaces",
+        "url": "https://github.com/reppiks490/Icarus/pull/452"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 213,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Bind corpus requests to approved Databento account budgets",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/213"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 214,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Expire dedicated provider delivery evidence and preserve its provenance",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/214"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 454,
+        "repository": "reppiks490/Icarus",
+        "title": "research: ICARUS INTUITION \u03a9 \u2014 episodic cognition, causal intake, expert calibration",
+        "url": "https://github.com/reppiks490/Icarus/pull/454"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 453,
+        "repository": "reppiks490/Icarus",
+        "title": "Integrate trusted-source GRU research challenger and persisted replay checks",
+        "url": "https://github.com/reppiks490/Icarus/pull/453"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 59,
+        "repository": "reppiks490/divine-providence",
+        "title": "Contain hub child processes and verify tour continuity",
+        "url": "https://github.com/reppiks490/divine-providence/pull/59"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 45,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "Track Icarus requirements, current PR evidence, and active repairs",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/45"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 451,
+        "repository": "reppiks490/Icarus",
+        "title": "Preserve A200 receipt integrity before runtime hashing",
+        "url": "https://github.com/reppiks490/Icarus/pull/451"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 209,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Repair FR-1 provenance and fail closed on incomplete trial accounting",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/209"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 51,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "Separate current workers from stale sessions in the coordination headline",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/51"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 46,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "Coordination: futures integration stopping point",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/46"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 449,
+        "repository": "reppiks490/Icarus",
+        "title": "Docs: record futures integration stopping point",
+        "url": "https://github.com/reppiks490/Icarus/pull/449"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 44,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "coordination: register champion stopping point",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/44"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 448,
+        "repository": "reppiks490/Icarus",
+        "title": "docs: add champion qualification handoff",
+        "url": "https://github.com/reppiks490/Icarus/pull/448"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 43,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "docs: record A200 Pulse stopping handoff",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/43"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 28,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "Record Yahoo-only A200 probe default",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/28"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 42,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "coordination: track Node test coverage repair",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/42"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 435,
+        "repository": "reppiks490/Icarus",
+        "title": "Fail closed outside futures calendar coverage",
+        "url": "https://github.com/reppiks490/Icarus/pull/435"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 41,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "Coordination: claim A200 to Pulse runtime admission",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/41"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 432,
+        "repository": "reppiks490/Icarus",
+        "title": "Tests: separate Databento admission from execution qualification",
+        "url": "https://github.com/reppiks490/Icarus/pull/432"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 186,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Make Sentinel provider health multi-lane accurate",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/186"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 438,
+        "repository": "reppiks490/Icarus",
+        "title": "Separate paper readiness from futures qualification",
+        "url": "https://github.com/reppiks490/Icarus/pull/438"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 445,
+        "repository": "reppiks490/Icarus",
+        "title": "Refresh broker and prop-firm integration baseline",
+        "url": "https://github.com/reppiks490/Icarus/pull/445"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 414,
+        "repository": "reppiks490/Icarus",
+        "title": "Canonicalize ICARUS 32-root futures authority",
+        "url": "https://github.com/reppiks490/Icarus/pull/414"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 387,
+        "repository": "reppiks490/Icarus",
+        "title": "Claim GRU holdout before loading terminal rows",
+        "url": "https://github.com/reppiks490/Icarus/pull/387"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 167,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Coordination: refresh asset, shadow, and transcript status",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/167"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 141,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Atlas: advisory finite-model decision value and prospective evidence",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/141"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 173,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Coordination: record browser fix and current reviews",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/173"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 353,
+        "repository": "reppiks490/Icarus",
+        "title": "Research-only deep learning challenger for ICARUS",
+        "url": "https://github.com/reppiks490/Icarus/pull/353"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 137,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "R01-C2: pre-register FR-1, the win-rate frontier (for Codex review)",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/137"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 148,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "RT01 design: real-price shadow execution twin",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/148"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 330,
+        "repository": "reppiks490/Icarus",
+        "title": "DRAFT C02: process-safe Brain journal and intake persistence",
+        "url": "https://github.com/reppiks490/Icarus/pull/330"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 142,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "R01-C2 FR-1 code (draft): frontier engine, trial ledger, leakage tests",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/142"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 332,
+        "repository": "reppiks490/Icarus",
+        "title": "Design: ICARUS Capability & Data Discovery Registry",
+        "url": "https://github.com/reppiks490/Icarus/pull/332"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 3,
+        "repository": "reppiks490/ideas-reality",
+        "title": "WIP: vault expansion round 1 (W69O\u2013W84Q)",
+        "url": "https://github.com/reppiks490/ideas-reality/pull/3"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 140,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "CL-84 (draft): port PR 84's Databento guards onto current cl_lab",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/140"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 84,
+        "repository": "reppiks490/Icarus-engine",
+        "title": "Harden Databento scheduled corpus activation and cost controls",
+        "url": "https://github.com/reppiks490/Icarus-engine/pull/84"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 2,
+        "repository": "reppiks490/more-instructions-for-sol-and-astra-effort-swapping",
+        "title": "Build AEONFALL's player loop and owner-gated Sovereign Unmaking",
+        "url": "https://github.com/reppiks490/more-instructions-for-sol-and-astra-effort-swapping/pull/2"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 7,
+        "repository": "reppiks490/icarus-owner-actions",
+        "title": "ICARUS: preserve recovery evidence and correct research assurance status",
+        "url": "https://github.com/reppiks490/icarus-owner-actions/pull/7"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 1,
+        "repository": "reppiks490/more-instructions-for-sol-and-astra-effort-swapping",
+        "title": "Advance AEONFALL timers by elapsed simulation time",
+        "url": "https://github.com/reppiks490/more-instructions-for-sol-and-astra-effort-swapping/pull/1"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 2,
+        "repository": "reppiks490/ideas-reality",
+        "title": "Deep edge research handoff \u2014 RDX series",
+        "url": "https://github.com/reppiks490/ideas-reality/pull/2"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 295,
+        "repository": "reppiks490/Icarus",
+        "title": "Surface private research-satellite Actions allocation hold",
+        "url": "https://github.com/reppiks490/Icarus/pull/295"
+      },
+      {
+        "disposition": "EXACT_HEAD_REVIEW_REQUIRED",
+        "number": 198,
+        "repository": "reppiks490/Icarus",
+        "title": "mobile: ICARUS native app foundation",
+        "url": "https://github.com/reppiks490/Icarus/pull/198"
+      }
+    ],
+    "limit": "Discovery metadata, not a supersession/merge qualification; unreviewed entries remain explicitly unreviewed."
+  },
+  "open_recovery_work": [
+    "Selected-runtime adapters for explicitly unavailable common panels; release/hosted and owner-PC verification of the five-route common dashboard",
+    "Exact owner PC checkout/interpreter/module origins/data root/startup command",
+    "Source-to-consumer freshness, entitlement and actual-read audit for all required data",
+    "Matched real-input before/after accuracy comparison; metric definition and denominator unknown",
+    "Futures and prop-firm account/program integration and reconciliation",
+    "Isolated recovery rehearsal and private state backup/rollback evidence",
+    "Required hosted checks on proposed release refs and fresh results for previously rejected workflow attempts",
+    "Exact-head disposition of every relevant open PR/workstream"
+  ],
+  "operator_pc_runtime_restarted": true,
+  "owner_assisted_pc_paper_startup": {
+    "boolean_scope": "operator_pc_runtime_restarted denotes owner-executed paper application restart only; no PC reboot or fully qualified system restart certified",
+    "evidence": "reppiks490/icarus-owner-actions:coordination/events/2026/10/22/icarus2-20261020-federation-integration/026-owner-assisted-paper-startup-observed.json",
+    "new_panel_batch_installed": false,
+    "observed": "Paper application relaunch, health200 ok=true warm=true for six main assets, dashboard200, four saved profile files and main journal present",
+    "provenance": "Icarus2 report of owner-supplied terminal screenshots, not Icarus1 direct PC access",
+    "source_commit": "38d53283608d0134274a88b62db9a949280010c2",
+    "sustained_operation_verified": false
+  },
+  "owner_pc_runtime_observed": true,
+  "persisted_pnl_validation_followup": {
+    "behavior": [
+      "Raw rows validated before aggregation; NULL/text/future closure makes selected realized PnL unknown with reason.",
+      "Every ledger uses manager shared as-of clock.",
+      "Valid empty ledger stays zero; valid siblings remain independently available."
+    ],
+    "fixture_compatibility": "Execution test now uses positive entry timestamp and consistent runner bar index; original reversal/fill assertions preserved.",
+    "focused": "Included in484expanded tests; malformed policies shared with performance",
+    "handoff": "https://github.com/reppiks490/Icarus/pull/462#issuecomment-6321554762",
+    "limits": [
+      "Synthetic journal reproductions; owner real journals unobserved.",
+      "Existing detail-reader100000row bound applies to summary validation.",
+      "Extreme-magnitude detail-curve floating-sum discrepancy remains open."
+    ],
+    "red": {
+      "local_log": "/workspace/scratch/persisted-pnl-red.log",
+      "log_sha256": "04569c0a487bcf697f8f259efa431587e834aaaa566601062d63e24846243645",
+      "result": "3failed,2passed controls"
+    },
+    "shared_clock": {
+      "local_log": "/workspace/scratch/persisted-pnl-shared-clock.log",
+      "log_sha256": "ea497cc3e55853bce1a6d03bf3c6cc1abe3abe9e9ef08e493e0aeb36b618fd1f",
+      "result": "1passed"
+    }
+  },
+  "previous_draft_hosted_checks": {
+    "head_sha": "ae38967519725c21588821307f013d936f5050cd",
+    "limit": "These receipts qualify the prior draft head; a subsequent source commit requires its own checks.",
+    "runs": [
+      {
+        "conclusion": "success",
+        "id": 39473477637,
+        "name": "tests"
+      },
+      {
+        "conclusion": "success",
+        "id": 39473478046,
+        "name": "configuration-job-contract"
+      },
+      {
+        "conclusion": "success",
+        "id": 39473478042,
+        "name": "Four portfolio performance"
+      },
+      {
+        "conclusion": "success",
+        "id": 39473477689,
+        "name": "intelligence-feed-contract"
+      }
+    ]
+  },
+  "private_intake_platform_followup": {
+    "boundary": "Descriptor-relative os.open plus O_NOFOLLOW required by existing _snapshot. Windows private vault/archive intake intentionally refuses; ordinary CSV/file/Yahoo startup is a separate operating path.",
+    "change": "Ten capability-dependent acceptance cases retain original assertions; four existing rejection cases plus new unconditional missing-capability/no-output/input-integrity regression remain runnable. New modules move into an early named Windows step with same79unique paths and no duplicates.",
+    "documentation_checks": "11Bashblocks parse; same79unique Windows modules. Internal supporting command check found optional icarus_agent ignores --help and startsservice; removed fromhelp block, owned testprocess stopped. Other sixhelp commands exited0.",
+    "focused": {
+      "local_log": "/workspace/scratch/private-intake-platform-focused.log",
+      "log_sha256": "ff12905cb1d7d77074acb6f475394d9f6f94a7e939624754311238017398eed2",
+      "result": "124passed in13.41s; root intake/core intake/restart persistence/as-is launcher"
+    },
+    "hosted_previous": {
+      "linux_job": 119526607840,
+      "linux_result": "success",
+      "other_workflows": "seven succeeded, including required UI/browser39687883580",
+      "tests_run": 39687883614,
+      "windows_job": 119526608283,
+      "windows_result": "failure: nine root archive-admission expectations on unsupported safe-open platform; POSIX privacy case already skipped"
+    },
+    "limits": [
+      "No Windows archive support added; guard not bypassed.",
+      "No actual owner-PC restart, sustained run, open-position restoration certification, provider acquisition, account arming or live order.",
+      "Previous aggregate3852 and UI122 phases remain separate; no repeated full suite claimed for test-only followup.",
+      "New-head hosted results pending publication; use exact source/CI in canonical summary."
+    ],
+    "missing_capability_green": {
+      "local_log": "/workspace/scratch/private-intake-missing-capability-green.log",
+      "log_sha256": "b8aa52508ccc172244211b47aa53653682a8e8af7aa564ace7975cd07c3eb5ee",
+      "result": "5passed,10skipped in0.12s"
+    },
+    "previous_published_source": "debf6e180eb41db120a139f92a694f60f6994916",
+    "production_source_changed": false,
+    "public_command_docs_commit": "cc4f0a93bf5f48cd9f1072111f63a9c3fdfe2eba",
+    "recorded_at_utc": "2026-10-21T23:05:30.328186+00:00",
+    "red": {
+      "local_log": "/workspace/scratch/private-intake-missing-capability-red.log",
+      "log_sha256": "0af22b67f4db46ac95f653faf254507fb350cc5827bdb7f35068ef5bfac4e671",
+      "result": "10failed,4passed on POSIX with os.supports_dir_fd emptied; includes mode-privacy test already skipped on Windows"
+    },
+    "review": "Root native bounded diff review plus internal command inspection; no new independent clearance claimed.",
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "fe5706ac823083b5fc43ba7175967a16d00c7f2a028a0051e04fbde2e4f0cd29",
+      "START_HERE.md": "5087f636026b1e75ce00a841f090d7760a5e7f530db355466463a11f4027d3e7",
+      "icarus_engine/corpus_intake.py": "93ef6861b88b4b6ab31d55d53e237ed43ce33376c960a3d4e9f03daae839e9d2",
+      "scripts/start-as-is.sh": "2149b13fe47782694ea6c518c70c7591d4bed2e4a1e15a529d2f2f0668f800d2",
+      "tests/test_provider_corpus_intake.py": "bd50d5090bd8272b0be893a7a7f712317a8ac13b5dc99eef960b570e944767e4",
+      "tests_engine/test_restart_persistence.py": "3ef8476a296a839497fac1747eb652f1a1f1f1653f837fce5b2cb09119dd6aa4",
+      "tools/provider_corpus_intake.py": "795aae28825af1bd899c3764a3d7b77a5d0248fd2b67248e546a5da448941e40"
+    }
+  },
+  "repositories": [
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:07.802797+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 3493,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 10418,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 1281,
+          "state": "READ"
+        }
+      },
+      "head": "10a9e2072cb93b5e09f5396340f9c2ba19dd6dd7",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/Icarus",
+      "role": "CANONICAL_RUNTIME",
+      "root_entries": [
+        ".gitattributes",
+        ".github",
+        ".gitignore",
+        ".superpowers",
+        "AGENTS.md",
+        "AION_HANDOFF.md",
+        "ASSURANCE_INDEX.md",
+        "ASTRA_DO_NOT.md",
+        "ASTRA_HANDOFF.md",
+        "ASTRA_ORDER.md",
+        "CANDIDATE_COG_GROK.md",
+        "COMMANDS.md",
+        "CSV_ACCESS_GROK.md",
+        "DATA.md",
+        "ENGINE_UNIVERSE_GROK.md",
+        "EVENTS_GROK.md",
+        "GITHUB_NATIVE_DATA_FEDERATION.md",
+        "GOAL.md",
+        "GROK.md",
+        "HANDOFF_LOG.md",
+        "ICARUS_EMPIRICAL_QUALIFICATION.md",
+        "ICARUS_INTEGRATION_INDEX.md",
+        "ICARUS_LOOP_INDEX.md",
+        "MODELS_GROK.md",
+        "MODEL_HANDOFF.md",
+        "OPUS_ORDER.md",
+        "OVERRIDE.md",
+        "PAID_NEXT.md",
+        "PARALLAX-PROPOSAL.md",
+        "PARITY.md",
+        "README.md",
+        "SCHWAB_GROK.md",
+        "SETUP.md",
+        "SPEC.md",
+        "TRAINERS_GROK.md",
+        "UNIVERSES.json",
+        "automation_intelligence",
+        "config",
+        "coordination",
+        "deploy",
+        "docs",
+        "history",
+        "icarus-aion-source-v0.1.zip",
+        "icarus_agent",
+        "icarus_bridge",
+        "icarus_control",
+        "icarus_engine",
+        "icarus_futures",
+        "icarus_plant",
+        "instruction.txt",
+        "integration",
+        "pine",
+        "presets",
+        "pyproject.toml",
+        "scripts",
+        "start-agent.ps1",
+        "start-engine-background.ps1",
+        "start-engine-background.sh",
+        "start-plant.bat",
+        "start-plant.ps1",
+        "start-plant.sh",
+        "start-yahoo.bat",
+        "start-yahoo.ps1",
+        "state.json",
+        "studies",
+        "tests",
+        "tests_engine",
+        "tools"
+      ],
+      "size": 14710,
+      "startup_files": [
+        "SETUP.md",
+        "start-agent.ps1",
+        "start-engine-background.ps1",
+        "start-engine-background.sh",
+        "start-plant.bat",
+        "start-plant.ps1",
+        "start-plant.sh",
+        "start-yahoo.bat",
+        "start-yahoo.ps1"
+      ],
+      "test_files": 256,
+      "tracked_files": 2439,
+      "workflows": [
+        ".github/workflows/ascendancy-foundry-evaluator-contract.yml",
+        ".github/workflows/ascendancy-mechanism-contribution-contract.yml",
+        ".github/workflows/atlas-diagnostic-pytest.yml",
+        ".github/workflows/catalog-registry-refresh.yml",
+        ".github/workflows/config-job-contract.yml",
+        ".github/workflows/engine-federation-consumer-contract.yml",
+        ".github/workflows/icarus-full-export.yml",
+        ".github/workflows/intelligence-feed-contract.yml",
+        ".github/workflows/live-engine-federation-gate.yml",
+        ".github/workflows/live-engine-historical-context-gate.yml",
+        ".github/workflows/omnivision-stage0.yml",
+        ".github/workflows/provider-exhaustive-collection.yml",
+        ".github/workflows/source-data-contract.yml",
+        ".github/workflows/test.yml",
+        ".github/workflows/ui-visual-contract.yml",
+        ".github/workflows/windows-background-contract.yml",
+        ".github/workflows/workspace-performance.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:07.803278+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 3918,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 12895,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 1214,
+          "state": "READ"
+        }
+      },
+      "head": "df67307a6923c1ff2d02047c74591d4e2dbe8963",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/Icarus-engine",
+      "role": "SHARED_DATA_HEALTH_AND_RESEARCH",
+      "root_entries": [
+        ".claude",
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "AGENT_CREDENTIALS.md",
+        "CHANGELOG.md",
+        "CLAUDE.md",
+        "HANDOFF.md",
+        "ICARUS_STATE.md",
+        "README.md",
+        "automation_intelligence",
+        "cl_lab",
+        "config",
+        "conftest.py",
+        "coordination",
+        "data",
+        "docs",
+        "icarus",
+        "icarus_bridge",
+        "icarus_engine",
+        "integration",
+        "pine",
+        "presets",
+        "pyproject.toml",
+        "research",
+        "start-engine-background.ps1",
+        "tests",
+        "tests_cl",
+        "tests_engine",
+        "tools"
+      ],
+      "size": 1513176,
+      "startup_files": [
+        "start-engine-background.ps1"
+      ],
+      "test_files": 587,
+      "tracked_files": 17197,
+      "workflows": [
+        ".github/workflows/automation-durability-watchdog.yml",
+        ".github/workflows/brain-federation-contract.yml",
+        ".github/workflows/chatgpt-hybrid-loop-bridge.yml",
+        ".github/workflows/cl-depth-sweep.yml",
+        ".github/workflows/cl-federation-watch.yml",
+        ".github/workflows/cl-lab.yml",
+        ".github/workflows/coordination-mirror.yml",
+        ".github/workflows/data-sentinel.yml",
+        ".github/workflows/databento-bars-vault.yml",
+        ".github/workflows/databento-depth-corpus.yml",
+        ".github/workflows/databento-depth-research-context.yml",
+        ".github/workflows/depth-vault.yml",
+        ".github/workflows/external-data-fabric.yml",
+        ".github/workflows/futures-universe-probe.yml",
+        ".github/workflows/github-native-ai-plane.yml",
+        ".github/workflows/github-native-credential-health.yml",
+        ".github/workflows/github-native-local-model-canary.yml",
+        ".github/workflows/interrepo-peer-intelligence.yml",
+        ".github/workflows/native-five-research.yml",
+        ".github/workflows/native-provider-access.yml",
+        ".github/workflows/official-economic-events.yml",
+        ".github/workflows/provider-exhaustive-collection.yml",
+        ".github/workflows/provider-supplemental-collection.yml",
+        ".github/workflows/provider-supplemental-promote.yml",
+        ".github/workflows/restored-five-durability-watchdog.yml",
+        ".github/workflows/restored-five-local-shadow-canary.yml",
+        ".github/workflows/restored-five-local-shadow.yml",
+        ".github/workflows/restored-five-native-liveness.yml",
+        ".github/workflows/sec-edgar-data.yml",
+        ".github/workflows/secret-inventory.yml",
+        ".github/workflows/tests.yml",
+        ".github/workflows/windows-background-contract.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:07.803422+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 321,
+          "state": "READ"
+        }
+      },
+      "head": "ce82124352762c14eb33836a5c894bc3a2a71dfe",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/multi-level-csv",
+      "role": "SOURCE_ARCHIVE_REFERENCE_NOT_RUNTIME",
+      "root_entries": [
+        "2nd 60 half.zip",
+        "CANDIDATE_COG_GROK.md",
+        "Csv 2nd 60.zip",
+        "Csv files for different chart types.zip",
+        "Csv first 60.zip",
+        "Csv last 57.zip",
+        "ENGINE_UNIVERSE_GROK.md",
+        "First 60 half.zip",
+        "Full csv candles only.zip",
+        "Last 57 half.zip",
+        "More csv by ticks with chart candle and volume profiles technicals built in.zip",
+        "README.md"
+      ],
+      "size": 151066,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 12,
+      "workflows": []
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:07.803775+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 783,
+          "state": "READ"
+        }
+      },
+      "head": "a482e7d1801fa7fa5aec093960097c0051c0403c",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/csv-data-multi-chart-type",
+      "role": "SOURCE_ARCHIVE_REFERENCE_NOT_RUNTIME",
+      "root_entries": [
+        "Csv indexes.zip",
+        "README.md"
+      ],
+      "size": 22034,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 2,
+      "workflows": []
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:07.820820+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 562,
+          "state": "READ"
+        }
+      },
+      "head": "05d010eb36e71d8c2d77f28c8ba72e7200cd924e",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/more-instructions-for-sol-and-astra-effort-swapping",
+      "role": "UNRELATED_AEONFALL",
+      "root_entries": [
+        ".github",
+        "README.md",
+        "ROADMAP.md",
+        "STATUS.md",
+        "content",
+        "docs",
+        "schemas",
+        "tools",
+        "verse",
+        "world"
+      ],
+      "size": 1598,
+      "startup_files": [],
+      "test_files": 1,
+      "tracked_files": 237,
+      "workflows": [
+        ".github/workflows/catalog-validation.yml",
+        ".github/workflows/crafting-validation.yml",
+        ".github/workflows/verse-static-validation.yml"
+      ]
+    },
+    {
+      "branch": "claude/effort-status-tjzcfd",
+      "captured_at_utc": "2026-10-20T18:00:08.091554+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 13431,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 923,
+          "state": "READ"
+        }
+      },
+      "head": "b7d81200b99e73f4e8f7c660df4e9364bb2336b0",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/new",
+      "role": "UNRELATED_CHARACTER3D",
+      "root_entries": [
+        ".claude",
+        ".dockerignore",
+        ".env.example",
+        ".github",
+        ".gitignore",
+        "Dockerfile",
+        "GUIDE.md",
+        "README.md",
+        "app",
+        "blender_scripts",
+        "config",
+        "docs",
+        "pyproject.toml",
+        "release_manifest.json",
+        "scripts",
+        "tests"
+      ],
+      "size": 51852,
+      "startup_files": [],
+      "test_files": 66,
+      "tracked_files": 315,
+      "workflows": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/pages.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:08.494706+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 3889,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 5782,
+          "state": "READ"
+        }
+      },
+      "head": "05064b169c280e881f7b349f0cd04b2987ad0b45",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/icarus-owner-actions",
+      "role": "COORDINATION_AND_OWNER_CONSTRAINTS",
+      "root_entries": [
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "EXPORT_MATRIX.md",
+        "OWNER_TASKS.md",
+        "PROVIDERS_AND_COSTS.md",
+        "README.md",
+        "WORKFLOW_ASSURANCE_REGISTRY.md",
+        "coordination",
+        "coordination_fabric",
+        "docs",
+        "intake",
+        "mission",
+        "templates",
+        "tests"
+      ],
+      "size": 1753,
+      "startup_files": [],
+      "test_files": 7,
+      "tracked_files": 345,
+      "workflows": [
+        ".github/workflows/coordination-fabric.yml",
+        ".github/workflows/coordination-maintenance.yml",
+        ".github/workflows/mission-register.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:08.496479+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 3792,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 648,
+          "state": "READ"
+        }
+      },
+      "head": "135dd303c065543e747b8bc1df4cdaaf09d09bdd",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/daedalus-research-os",
+      "role": "RESEARCH_SIBLING",
+      "root_entries": [
+        ".github",
+        ".gitignore",
+        "AUDIT_CHECKPOINT.txt",
+        "README.md",
+        "docs",
+        "pyproject.toml",
+        "scripts",
+        "src",
+        "tests"
+      ],
+      "size": 136,
+      "startup_files": [],
+      "test_files": 28,
+      "tracked_files": 73,
+      "workflows": [
+        ".github/workflows/assurance.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:08.503534+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 2425,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 6035,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 404,
+          "state": "READ"
+        }
+      },
+      "head": "bd48df0fbaa62e730a6f905a30b390e660610006",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/aion-parallax-research",
+      "role": "MEMORY_RESEARCH_SIBLING",
+      "root_entries": [
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "README.md",
+        "aion",
+        "contracts",
+        "docs",
+        "pyproject.toml",
+        "tests"
+      ],
+      "size": 138,
+      "startup_files": [],
+      "test_files": 2,
+      "tracked_files": 40,
+      "workflows": [
+        ".github/workflows/parallax-tests.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:08.524172+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 2379,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 3747,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 364,
+          "state": "READ"
+        }
+      },
+      "head": "b4bc06a378aade2d14e27bb289108a6f645f3fc4",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/icarus-csv-evidence-lab",
+      "role": "CSV_EVIDENCE_SIBLING",
+      "root_entries": [
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "README.md",
+        "automation_intelligence",
+        "docs",
+        "pyproject.toml",
+        "src",
+        "tests",
+        "tools"
+      ],
+      "size": 523,
+      "startup_files": [],
+      "test_files": 4,
+      "tracked_files": 429,
+      "workflows": [
+        ".github/workflows/python-package-conda.yml",
+        ".github/workflows/restored-five-durability-watchdog.yml",
+        ".github/workflows/restored-five-native-liveness.yml",
+        ".github/workflows/restored-five-watchdog-ci.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:09.141046+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 2186,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 415,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 410,
+          "state": "READ"
+        }
+      },
+      "head": "cba6e187589853b69d80ee74a63c323b2564ecb1",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/icarus-causal-router",
+      "role": "SYNTHETIC_RESEARCH_ASSURANCE",
+      "root_entries": [
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "README.md",
+        "baton-pass.state.json",
+        "causal_router",
+        "docs",
+        "pyproject.toml",
+        "tests"
+      ],
+      "size": 75,
+      "startup_files": [],
+      "test_files": 5,
+      "tracked_files": 25,
+      "workflows": [
+        ".github/workflows/assurance.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:11:44.277231+00:00",
+      "documentation": {},
+      "head": "c38eef396f202bcdd9310ae5c23a9930d0211e4d",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/all-of-the-build-as-they-are-as-of-2-13am-9-26-2026",
+      "remote_ref_check": {
+        "exit_code": 0,
+        "ref_count": 2
+      },
+      "role": "ARCHIVE_REFERENCE_NOT_RUNTIME",
+      "root_entries": [
+        "builds"
+      ],
+      "size": 0,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 1,
+      "workflows": []
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:11:45.390012+00:00",
+      "documentation": {},
+      "inspection": "EMPTY_REMOTE_VERIFIED",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/builds",
+      "remote_ref_check": {
+        "exit_code": 0,
+        "ref_count": 0
+      },
+      "role": "EMPTY_REMOTE_REFERENCE",
+      "size": 0
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:09.623879+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 2526,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 8075,
+          "state": "READ"
+        },
+        "pyproject.toml": {
+          "bytes": 995,
+          "state": "READ"
+        }
+      },
+      "head": "27ae69c593ede3019957100cd401625bd2424f43",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/divine-providence",
+      "role": "SUBSYSTEM_HUB",
+      "root_entries": [
+        ".env.example",
+        ".gitattributes",
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "PROVENANCE.md",
+        "README.md",
+        "docs",
+        "provenance",
+        "pyproject.toml",
+        "scripts",
+        "src",
+        "systems",
+        "tests"
+      ],
+      "size": 7412,
+      "startup_files": [],
+      "test_files": 368,
+      "tracked_files": 1825,
+      "workflows": [
+        ".github/workflows/icarus-institution.yml",
+        ".github/workflows/icarus-observatory.yml",
+        ".github/workflows/nexus-tests.yml",
+        ".github/workflows/o14-corpus-audit.yml",
+        ".github/workflows/onchain-proof-clock-tests.yml",
+        ".github/workflows/subsystem-evolution-tests.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:09.633270+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 493,
+          "state": "READ"
+        }
+      },
+      "head": "d26eb91f4f14e4e0132c24bc9772e7b998372b84",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/skills-expand-your-team-with-copilot",
+      "role": "GITHUB_TUTORIAL_NOT_RUNTIME",
+      "root_entries": [
+        ".devcontainer",
+        ".github",
+        ".vscode",
+        "LICENSE",
+        "README.md",
+        "docs",
+        "src"
+      ],
+      "size": 3332,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 73,
+      "workflows": [
+        ".github/workflows/0-start-exercise.yml",
+        ".github/workflows/1-assign.yml",
+        ".github/workflows/2-collaborate.yml",
+        ".github/workflows/3-prepare-environment.yml",
+        ".github/workflows/4-play-time.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:09.770341+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 698,
+          "state": "READ"
+        }
+      },
+      "head": "464afc97a402009d8a18ae275b342e200ab6bfa6",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/skills-scale-institutional-knowledge-using-copilot-spaces",
+      "role": "GITHUB_TUTORIAL_NOT_RUNTIME",
+      "root_entries": [
+        ".devcontainer",
+        ".github",
+        ".gitignore",
+        "LICENSE",
+        "README.md",
+        "docs"
+      ],
+      "size": 6102,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 59,
+      "workflows": [
+        ".github/workflows/0-start-exercise.yml",
+        ".github/workflows/1-step.yml",
+        ".github/workflows/2-step.yml",
+        ".github/workflows/3-last-step.yml"
+      ]
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:10.159998+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 3768,
+          "state": "READ"
+        }
+      },
+      "head": "0741679319829ca9cfc68811a2f83a199a1a43ab",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/big-contracts-tracker",
+      "role": "PUBLIC_REFERENCE_BUCKET_NOT_INTEGRATED",
+      "root_entries": [
+        "README.md",
+        "data",
+        "schema"
+      ],
+      "size": 6,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 3,
+      "workflows": []
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:10.224042+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 1589,
+          "state": "READ"
+        }
+      },
+      "head": "de380224349713e4ddff8c078dedb7a891ff2a0a",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/ideas-reality",
+      "role": "RESEARCH_INBOX_NOT_RUNTIME",
+      "root_entries": [
+        "CLAUDE_HANDOFF.md",
+        "README.md",
+        "research"
+      ],
+      "size": 919,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 322,
+      "workflows": []
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:11:46.040560+00:00",
+      "documentation": {
+        "README.md": {
+          "bytes": 18,
+          "state": "READ"
+        }
+      },
+      "head": "9bf191b921ca1255617495c5548b49b28260a4ef",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/stacks-on-stacks",
+      "remote_ref_check": {
+        "exit_code": 0,
+        "ref_count": 2
+      },
+      "role": "REFERENCE_STUB_NOT_RUNTIME",
+      "root_entries": [
+        "README.md"
+      ],
+      "size": 0,
+      "startup_files": [],
+      "test_files": 0,
+      "tracked_files": 1,
+      "workflows": []
+    },
+    {
+      "branch": "main",
+      "captured_at_utc": "2026-10-20T18:00:10.409248+00:00",
+      "documentation": {
+        "AGENTS.md": {
+          "bytes": 3322,
+          "state": "READ"
+        },
+        "README.md": {
+          "bytes": 5892,
+          "state": "READ"
+        }
+      },
+      "head": "d30ddd7a3526f0c1ee32a8a66ed83b13752e2e6f",
+      "inspection": "TREE_AND_ENTRYPOINTS_READ_ONLY",
+      "inspection_limits": [
+        "Tree and root entrypoints inspected; not every blob or branch reviewed.",
+        "No claim that this repository is installed or active on the owner PC."
+      ],
+      "name": "reppiks490/cash-flow-",
+      "role": "UNRELATED_MONEYFALL",
+      "root_entries": [
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "CODEX_START_HERE.md",
+        "README.md",
+        "apps",
+        "config",
+        "coordination",
+        "docs",
+        "scripts",
+        "src",
+        "tests"
+      ],
+      "size": 306,
+      "startup_files": [
+        "CODEX_START_HERE.md"
+      ],
+      "test_files": 12,
+      "tracked_files": 107,
+      "workflows": [
+        ".github/workflows/permit-source-watch.yml",
+        ".github/workflows/verify.yml"
+      ]
+    }
+  ],
+  "responsive_settings_followup": {
+    "hosted_reproduction": {
+      "commit": "fb98ce65aaeaa3c5a6d13d3c407976911804e0d8",
+      "failure": "browser_cinema.cjs:181 mobile settings retained desktop inline geometry after800to390 resize",
+      "job": 119223003324,
+      "other_checks": "tests39600359927 plus4contracts completed/success; visual failed",
+      "visual_run": 39600359929
+    },
+    "limits": [
+      "Visual-focused verification; prior full3699suite belongs to preceding replay source. Fresh hosted checks remain separate.",
+      "No renderer switch, provider requests, new execution authority or full system restart.",
+      "Native root review only; no unavailable independent review approval invented."
+    ],
+    "local_log_sha256": {
+      "settings-cinema-browser.log": "1366c744df7c423339d85c8ad2908c90161c326edcbee33c4e10d7f8163e0b24",
+      "settings-presentation-focused.log": "faab599d44a2e4effd6712ecaf7a80c4fde3277bd3ebade6233dbf11d50de9d1",
+      "settings-responsive-green.log": "7be8fd2dbe59bd41eeab62553be11b660eda9dad0eca8ea7408632ba2d1cd22d",
+      "settings-responsive-red.log": "124ebb23fe3fbe4d363dbcf3804287da8108e433c9e352aabf08fde38567e5b1"
+    },
+    "local_reproduction": [
+      "One stale-placement occurrence in8two-page resize probes with openTrue/mediaTrue at390px",
+      "No reproduction in25single-page cycles; timing dependence retained",
+      "Deterministic browser test holds viewport placement callbacks; original code fails inline-geometry assertion"
+    ],
+    "recorded_at_utc": "2026-10-21T12:53:03.727044+00:00",
+    "repair": "Desktop coordinates are CSS variables consumed only above760px; mobile media rules apply immediately without waiting for JS callbacks. Existing browser_cinema assertions unchanged.",
+    "scope": "BOUNDED_RESPONSIVE_SETTINGS_REPAIR; common renderer remains pending",
+    "source_file_sha256": {
+      "icarus_engine/experience-ui.css": "4dc1cad8fb7da96d5c590f2102e663fa308841e0ec6a071fdcfdddb71fa12f0a",
+      "icarus_engine/experience-ui.js": "b84a5d8e31bec9e4fb04330f63fe16288ff349902810dfab090f0f27e69ebc98",
+      "tests_engine/test_workspace_api.py": "93da8b52b0eb380a7487e99599a9c8dff128abae55c96f2a2b7e147fdf1c10ca"
+    },
+    "verification": [
+      "2real Chromium cases passed in14.61s (main context plus delayed resize)",
+      "132presentation invariants passed in8.02s",
+      "Unchanged browser_cinema.cjs passed with errors:[] and writes:[]"
+    ]
+  },
+  "restart_decision": "NO_GO",
+  "schema_version": "icarus.recovery-audit.v1",
+  "session_id": "icarus1-20261020-system-recovery",
+  "source_manifest_snapshot": {
+    "commit": "df67307a6923c1ff2d02047c74591d4e2dbe8963",
+    "limits": "Recorded manifest declarations retain their original meaning; LIVE labels are not independently reverified consumption. Compare current per-repository receipts and observed consumers, especially where Sentinel disagrees.",
+    "path": "config/data_ingestion_manifest.json",
+    "repository": "reppiks490/Icarus-engine",
+    "sources": [
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/massive.json",
+          "automation_intelligence/provider_collection_v1/research_context.json"
+        ],
+        "id": "massive",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/twelve.json",
+          "automation_intelligence/provider_collection_v1/research_context.json"
+        ],
+        "id": "twelve_data",
+        "ingestion_state": "PARTIAL",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_PARTIAL_RESUMABLE",
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/fmp.json",
+          "automation_intelligence/cl_lab/external_data_fabric.json"
+        ],
+        "id": "fmp",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/eodhd.json",
+          "automation_intelligence/cl_lab/external_data_fabric.json"
+        ],
+        "id": "eodhd",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/tiingo.json",
+          "automation_intelligence/cl_lab/external_data_fabric.json"
+        ],
+        "id": "tiingo",
+        "ingestion_state": "PARTIAL",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_PARTIAL_RESUMABLE",
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/fred.json",
+          "automation_intelligence/provider_collection_v1/research_context.json",
+          "automation_intelligence/cl_lab/fred_alfred_manifest.json",
+          "automation_intelligence/native_research_v1/latest.json"
+        ],
+        "id": "fred",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/bybit.json",
+          "automation_intelligence/provider_collection_v1/research_context.json",
+          "automation_intelligence/native_research_v1/latest.json"
+        ],
+        "id": "bybit",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "BLOCKED_MISSING_CREDENTIAL",
+        "consumption_state": "BLOCKED",
+        "credential_state": "MISSING",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/intrinio.json"
+        ],
+        "id": "intrinio",
+        "ingestion_state": "BLOCKED",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "BLOCKED_MISSING_CREDENTIAL",
+        "consumption_state": "BLOCKED",
+        "credential_state": "MISSING",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/quiver.json"
+        ],
+        "id": "quiver",
+        "ingestion_state": "BLOCKED",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "BLOCKED_MISSING_CREDENTIAL",
+        "consumption_state": "BLOCKED",
+        "credential_state": "MISSING",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/alpaca.json"
+        ],
+        "id": "alpaca",
+        "ingestion_state": "BLOCKED",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "BLOCKED_MISSING_CREDENTIAL",
+        "consumption_state": "BLOCKED",
+        "credential_state": "MISSING",
+        "evidence_paths": [
+          "automation_intelligence/provider_collection_v1/latest/tickstream.json"
+        ],
+        "id": "tickstream",
+        "ingestion_state": "BLOCKED",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/provider-exhaustive-collection.yml"
+      },
+      {
+        "access_mode": "github_actions+connector",
+        "canary_workflow": ".github/workflows/native-provider-access.yml",
+        "consumption_state": "PARTIAL",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "config/provider_endpoint_catalog_supplemental.json",
+          "automation_intelligence/provider_collection_v1/latest/unusual_whales.json",
+          "automation_intelligence/provider_collection_v1/native_access/latest/unusual_whales.json",
+          "automation_intelligence/provider_collection_v1/research_context.json",
+          "reppiks490/Icarus:icarus_engine/unusual_whales_intake.py",
+          "automation_intelligence/provider_collection_v1/cycles/"
+        ],
+        "id": "unusual_whales",
+        "ingestion_state": "BLOCKED",
+        "last_verified_run": "38905397776",
+        "required_for_all_ai_units": true,
+        "runtime_status": "BLOCKED_AUTHENTICATION",
+        "verification": "Credential presence is confirmed by redacted health run 38902710676. The latest supplemental request (38905397776) returned HTTP 401 for greek-exposure with zero rows; the independent native canary (38897165047) also returned HTTP 401 for market-tide. The prior successful 5-request canary (38838224842) is historical evidence only. Repair/replace the GitHub Actions credential or provider authorization before API collection resumes. The separate interactive connector intake is not proof that this GitHub Actions API lane is working.",
+        "workflow": ".github/workflows/provider-supplemental-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "Some official endpoint families returned HTTP 403 under the current provider plan; accessible endpoints returned real data and remain resumable.",
+        "canary_workflow": ".github/workflows/native-provider-access.yml",
+        "consumption_state": "PARTIAL",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "config/provider_endpoint_catalog_supplemental.json",
+          "automation_intelligence/provider_collection_v1/latest/alphavantage.json",
+          "automation_intelligence/provider_collection_v1/native_access/latest/alphavantage.json",
+          "automation_intelligence/provider_collection_v1/research_context.json"
+        ],
+        "id": "alpha_vantage",
+        "ingestion_state": "PARTIAL",
+        "last_verified_run": "38838224842",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_PARTIAL_WITH_ENTITLEMENT_LIMITS",
+        "workflow": ".github/workflows/provider-supplemental-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "Stored Finnhub credential returned HTTP 401 using documented X-Finnhub-Token authentication and also failed the prior query-token canary. Replace/repair the GitHub Finnhub secret before this lane can ingest data.",
+        "canary_workflow": ".github/workflows/native-provider-access.yml",
+        "consumption_state": "BLOCKED",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "config/provider_endpoint_catalog_supplemental.json",
+          "automation_intelligence/provider_collection_v1/latest/finnhub.json",
+          "automation_intelligence/provider_collection_v1/native_access/latest/finnhub.json"
+        ],
+        "id": "finnhub",
+        "ingestion_state": "BLOCKED",
+        "last_verified_run": "38838224842",
+        "required_for_all_ai_units": true,
+        "runtime_status": "BLOCKED_AUTHENTICATION",
+        "workflow": ".github/workflows/provider-supplemental-collection.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "The integrity gate refuses publication because the persisted depth vault contains 156,928 derived feature rows for secondary/third accounts but no primary-account feature files. The vault key fallback is working: data/depth_vault/manifest.json records HKDF(DATABENTO_API_KEY), so the absent ICARUS_DATA_ARCHIVE_KEY is not the recovery blocker. The primary sweep ledger records $34.317511 spent against $34.344215 allocated ($0.026704 remaining); recovery/reacquisition needs a valid source for the already-paid primary feature files or a separately recorded budget allocation. Do not weaken the integrity gate.",
+        "consumption_state": "DEDICATED_LANE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "data/depth_vault/",
+          "automation_intelligence/depth_research_context_v1/",
+          ".github/workflows/databento-depth-research-context.yml",
+          ".github/workflows/cl-depth-sweep.yml"
+        ],
+        "id": "databento_depth",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "INTEGRITY_BLOCKED_PRIMARY_FEATURE_GAP",
+        "workflow": ".github/workflows/databento-depth-corpus.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "DEDICATED_LANE",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          ".github/workflows/sec-edgar-data.yml",
+          "automation_intelligence/cl_lab/sec_edgar_manifest.json"
+        ],
+        "id": "sec_edgar",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE",
+        "verification": "Current manifest contained 15,931 fact rows and 2,375 filing rows across the configured large-cap universe.",
+        "workflow": ".github/workflows/sec-edgar-data.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "blocker": "BLS live ICS/HTML returns HTTP 403 from GitHub-hosted runners; the lane preserves an explicit official BLS snapshot fallback while BEA, Census and FOMC sources remain live.",
+        "consumption_state": "DEDICATED_LANE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          ".github/workflows/official-economic-events.yml",
+          "automation_intelligence/cl_lab/economic_events_manifest.json",
+          "cl_lab/feeds/economic_events.py"
+        ],
+        "id": "official_economic_events",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_WITH_BLS_FALLBACK",
+        "workflow": ".github/workflows/official-economic-events.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PRESENT",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/external_data_fabric.json"
+        ],
+        "id": "external_data_fabric",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_WITH_PLAN_LIMITS",
+        "workflow": ".github/workflows/external-data-fabric.yml"
+      },
+      {
+        "access_mode": "repository+github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/native_research_v1/latest.json",
+          "automation_intelligence/native_research_v1/cycles/",
+          "docs/research/native-five-research.md"
+        ],
+        "id": "native_five_research",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_HOURLY",
+        "workflow": ".github/workflows/native-five-research.yml"
+      },
+      {
+        "access_mode": "repository+github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/feeds_manifest.json",
+          "automation_intelligence/cl_lab/fred_alfred_manifest.json",
+          "automation_intelligence/cl_lab/ui_feed.json",
+          "cl_lab/feeds/registry.py"
+        ],
+        "id": "cl_lab_data_fabric",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "LIVE_MULTI_SOURCE_RESEARCH",
+        "workflow": ".github/workflows/cl-lab.yml"
+      },
+      {
+        "access_mode": "github_actions+runtime",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/feeds_manifest.json",
+          "automation_intelligence/native_research_v1/latest.json",
+          "cl_lab/feeds/sources.py",
+          "tools/native_research_sources.py",
+          "icarus_engine/feeds/__init__.py",
+          "icarus_engine/market_sources.py"
+        ],
+        "id": "coinbase_public",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/cl-lab.yml"
+      },
+      {
+        "access_mode": "github_actions+runtime",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/native_research_v1/latest.json",
+          "tools/native_research_sources.py",
+          "icarus_engine/feeds/__init__.py"
+        ],
+        "id": "kraken_public",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/native-five-research.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/feeds_manifest.json",
+          "cl_lab/feeds/registry.py",
+          "cl_lab/feeds/sources.py"
+        ],
+        "id": "binance_public_bulk",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/cl-lab.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/feeds_manifest.json",
+          "cl_lab/feeds/registry.py",
+          "cl_lab/feeds/sources.py"
+        ],
+        "id": "cboe_indices",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/cl-lab.yml"
+      },
+      {
+        "access_mode": "github_actions+runtime",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/feeds_manifest.json",
+          "cl_lab/feeds/registry.py",
+          "cl_lab/feeds/sources.py",
+          "icarus_engine/market_sources.py"
+        ],
+        "id": "cftc_positioning",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/cl-lab.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "LIVE",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/cl_lab/feeds_manifest.json",
+          "cl_lab/feeds/registry.py",
+          "cl_lab/feeds/treasury.py"
+        ],
+        "id": "us_treasury_fiscal",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/cl-lab.yml"
+      },
+      {
+        "access_mode": "github_actions",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "automation_intelligence/native_research_v1/latest.json",
+          "automation_intelligence/native_research_v1/cycles/",
+          "tools/native_research_sources.py"
+        ],
+        "id": "official_release_feeds",
+        "ingestion_state": "LIVE",
+        "required_for_all_ai_units": true,
+        "workflow": ".github/workflows/native-five-research.yml"
+      },
+      {
+        "access_mode": "repository",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/interrepo/latest.json",
+          "automation_intelligence/mcp_interface/",
+          "reppiks490/Icarus:automation_intelligence/federation/icarus_engine_acceptance.json"
+        ],
+        "id": "interrepo_peer_intelligence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "FEDERATED_PEER_PACKET",
+        "workflow": ".github/workflows/interrepo-peer-intelligence.yml"
+      },
+      {
+        "access_mode": "local_runtime",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "PUBLIC",
+        "default_enabled": false,
+        "evidence_paths": [
+          "icarus_engine/market_sources.py",
+          "icarus_engine/source_watch.py",
+          "icarus_engine/research_service.py"
+        ],
+        "id": "runtime_market_sources",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "OPT_IN_DISABLED_DEFAULT",
+        "verification": "MarketSources supports bounded public CFTC, BLS, Federal Reserve, BEA, SEC, Coinbase and Yahoo DXY retrieval; SourceWatch persists schedules/claims but defaults to enabled=false, so runtime status must be inspected before claiming continuous collection.",
+        "workflow": null
+      },
+      {
+        "access_mode": "local_runtime",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "PUBLIC",
+        "evidence_paths": [
+          "icarus_engine/feeds/__init__.py",
+          "icarus_engine/feeds/yahoo.py",
+          "icarus_engine/assets.py"
+        ],
+        "id": "engine_market_feeds",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "RUNTIME_SELECTED_FEEDS",
+        "verification": "Engine feed adapters provide keyless Coinbase and Kraken data plus delayed Yahoo futures bars; adapter existence does not prove the current runtime selected a given feed.",
+        "workflow": null
+      },
+      {
+        "access_mode": "repository+hybrid_scheduler",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/agent_fabric/robustness_guardian/heartbeat.json",
+          "automation_intelligence/agent_fabric/robustness_guardian/finalization_state.json",
+          "automation_intelligence/agent_fabric/robustness_guardian/"
+        ],
+        "id": "robustness_guardian_evidence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "ACTIVE_PERSISTED",
+        "workflow": null
+      },
+      {
+        "access_mode": "cross_repo_repository+hybrid_scheduler",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "reppiks490/icarus-csv-evidence-lab:automation_intelligence/advanced_csv/latest.json",
+          "reppiks490/icarus-csv-evidence-lab:automation_intelligence/advanced_csv/heartbeat.json",
+          "reppiks490/icarus-csv-evidence-lab:automation_intelligence/advanced_csv/history_ledger.jsonl"
+        ],
+        "id": "advanced_csv_evidence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "ACTIVE_PERSISTED",
+        "workflow": null
+      },
+      {
+        "access_mode": "repository+hybrid_scheduler",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/agent_fabric/alpha_synthesis/heartbeat.json",
+          "automation_intelligence/agent_fabric/alpha_synthesis/finalization_state.json",
+          "automation_intelligence/agent_fabric/alpha_synthesis/"
+        ],
+        "id": "alpha_synthesis_evidence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "ACTIVE_PERSISTED",
+        "workflow": null
+      },
+      {
+        "access_mode": "repository+hybrid_scheduler",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/flow/heartbeat.json",
+          "automation_intelligence/flow/finalization_state.json",
+          "automation_intelligence/flow/"
+        ],
+        "id": "flow_microstructure_evidence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "ACTIVE_PERSISTED",
+        "workflow": null
+      },
+      {
+        "access_mode": "repository+hybrid_scheduler",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/agent_fabric/apex_council/heartbeat.json",
+          "automation_intelligence/agent_fabric/apex_council/finalization_state.json",
+          "automation_intelligence/agent_fabric/apex_council/"
+        ],
+        "id": "apex_council_evidence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "ACTIVE_PERSISTED",
+        "workflow": null
+      },
+      {
+        "access_mode": "repository",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "automation_intelligence/mcp_interface/contract.json",
+          "automation_intelligence/mcp_interface/events/",
+          "automation_intelligence/mcp_interface/research_runs/"
+        ],
+        "id": "mcp_interface_evidence",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "CANONICAL_EVIDENCE_BUS",
+        "workflow": null
+      },
+      {
+        "access_mode": "repository",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "coordination/README.md",
+          "coordination/board/",
+          "coordination/inbox/",
+          "docs/agent-handoffs/FEDERATED_DATA_COLLECTION.md",
+          "docs/agent-handoffs/DATA_GAP_LEDGER.md"
+        ],
+        "id": "coordination_fabric",
+        "ingestion_state": "DEDICATED_LANE",
+        "required_for_all_ai_units": true,
+        "runtime_status": "MANDATORY_SESSION_CONTEXT",
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "bigdata",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "financial_datasets",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "coinversa_hyperliquid",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "crypto_com",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "coinmarketcap",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "quartr",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "lunarcrush",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "firecrawl",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "exa",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "consensus",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "wolfram",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "huggingface",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "ICARUS_STATE.md"
+        ],
+        "id": "tavily",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "config/data_ingestion_manifest.json"
+        ],
+        "id": "blockscout",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "external_connector",
+        "consumption_state": "EVIDENCE_ONLY",
+        "credential_state": "EXTERNAL_CONNECTOR",
+        "evidence_paths": [
+          "config/data_ingestion_manifest.json"
+        ],
+        "id": "us_gold_bureau",
+        "ingestion_state": "INTERACTIVE_ONLY",
+        "required_for_all_ai_units": true,
+        "workflow": null
+      },
+      {
+        "access_mode": "dropbox_shared_folder+local_workspace",
+        "consumption_state": "BLOCKED",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "Dropbox:/ICARUS_DATA_STAGING/Databento/incoming/yahoo_cme_futures_1m_2026-09-17_to_2026-10-16.zip",
+          "Dropbox:/ICARUS_DATA_STAGING/Databento/incoming/yahoo_cme_futures_1h_2024-10_to-2026-10.zip",
+          "/workspace/yahoo_corpus_1m_recent_2026-10-16/",
+          "/workspace/yahoo_corpus_1h_2026-10-16/",
+          "Dropbox:/ICARUS_DATA_STAGING/Databento/notes/YAHOO_CORPUS_RECEIPT_2026-10-16.md"
+        ],
+        "id": "yahoo_cme_futures_seed",
+        "ingestion_state": "STAGED",
+        "required_for_all_ai_units": true,
+        "runtime_status": "SHARING_UNVERIFIED",
+        "verification": "Two Yahoo archives are present in Dropbox and this workspace: 1-minute 16-contract coverage 2026-09-17..2026-10-16; 1-hour 16-contract coverage 2024-10..2026-10. Dropbox folder is under shared parent 15245772211, but membership for every agent has not been verified; consumption is therefore blocked outside this workspace until shared access is verified."
+      },
+      {
+        "access_mode": "dropbox_shared_folder",
+        "consumption_state": "UNVERIFIED",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "Dropbox:/ICARUS_DATA_STAGING/companyfacts 2.zip"
+        ],
+        "id": "sec_edgar_companyfacts_dropbox_archive",
+        "ingestion_state": "STAGED_CONTENT_UNVERIFIED",
+        "required_for_all_ai_units": true,
+        "verification": "Dropbox metadata confirms an 877,547,017-byte ZIP. ZIP members and content have not been validated; do not treat this as the active SEC lane, which has its own verified manifest."
+      },
+      {
+        "access_mode": "dropbox_shared_folder",
+        "consumption_state": "UNVERIFIED",
+        "credential_state": "NOT_APPLICABLE",
+        "evidence_paths": [
+          "Dropbox:/ICARUS_DATA_STAGING/submissions.zip"
+        ],
+        "id": "sec_edgar_submissions_dropbox_archive",
+        "ingestion_state": "STAGED_CONTENT_UNVERIFIED",
+        "required_for_all_ai_units": true,
+        "verification": "Dropbox metadata confirms a 372,666,267-byte ZIP. ZIP members and content have not been validated; do not treat this as the active SEC lane, which has its own verified manifest."
+      }
+    ]
+  },
+  "source_verification": {
+    "baseline_runtime_sha": "10a9e2072cb93b5e09f5396340f9c2ba19dd6dd7",
+    "branch": "icarus1/restart-readiness-20261020",
+    "dependencies": {
+      "cryptography": "46.0.7",
+      "databento": "0.87.0",
+      "mcp": "2.3.0",
+      "openpyxl": "3.1.5",
+      "pytest": "9.1.1",
+      "tzdata": "2026.5",
+      "xgboost": "3.4.1"
+    },
+    "python": "3.12.14",
+    "scope": "INITIAL_ACCOUNTING_REPAIR",
+    "source_file_sha256": {
+      "icarus_engine/paper_workspaces.py": "50181ab36614d2b39a0bf0a182ab6d90301a288828d5bc3748c17d6821ae6423",
+      "icarus_engine/server.py": "1ec4d701d52d5e4884b3306392425e7bb41dfcde588dafb6f81748630620a0b5",
+      "tests_engine/test_command_center_routes.py": "78be6c4eb073ad0ce4d0d8b3d086d584c859a4e52b60166f497fcbe06388a14a",
+      "tests_engine/test_paper_workspaces.py": "f8cd2631f614e29cda2e3025ee4c12bdaa5a80e310369b9174a0c36f2a4aa226",
+      "tests_engine/test_paper_workspaces_runtime.py": "2f731f4c2bb296e4e8ae7719e47f03d90841deb43a0205fa850d3b953a1d48c6"
+    },
+    "source_reviewed_commit": "bf582b8e69536d3dd734f34c9ae2b1594a42f20f"
+  },
+  "stored_data_health": {
+    "commit": "df67307a6923c1ff2d02047c74591d4e2dbe8963",
+    "counts": {
+      "BLOCKED": 6,
+      "DEGRADED": 6,
+      "FAILING": 4,
+      "OK": 69,
+      "UNKNOWN": 1
+    },
+    "generated_at": "2026-10-20T17:36:54+00:00",
+    "limits": "Stored source-qualified evidence, not direct observation of the owner PC. Intrinio repository scope must be checked against Icarus preferred-owner receipt.",
+    "non_ok_entries": [
+      {
+        "age_h": null,
+        "source": "workflow:cl-depth-sweep.yml",
+        "verdict": "FAILING",
+        "why": "latest run failure: https://github.com/reppiks490/Icarus-engine/actions/runs/39408129200"
+      },
+      {
+        "age_h": 16.7,
+        "source": "workflow:cl-lab.yml",
+        "verdict": "FAILING",
+        "why": "latest run failure: https://github.com/reppiks490/Icarus-engine/actions/runs/39380903441"
+      },
+      {
+        "age_h": 16.7,
+        "source": "workflow:databento-depth-corpus.yml",
+        "verdict": "FAILING",
+        "why": "latest run failure: https://github.com/reppiks490/Icarus-engine/actions/runs/39394829278"
+      },
+      {
+        "age_h": null,
+        "source": "workflow:depth-vault.yml",
+        "verdict": "FAILING",
+        "why": "latest run failure: https://github.com/reppiks490/Icarus-engine/actions/runs/39418451662"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/alpaca.json",
+        "rows": 0,
+        "source": "provider:alpaca",
+        "verdict": "BLOCKED",
+        "why": "no key reaches the runner"
+      },
+      {
+        "age_h": 0.1,
+        "path": "automation_intelligence/provider_collection_v1/latest/finnhub.json",
+        "rows": 0,
+        "source": "provider:finnhub",
+        "verdict": "BLOCKED",
+        "why": "BLOCKED_AUTHENTICATION"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/intrinio.json",
+        "rows": 0,
+        "source": "provider:intrinio",
+        "verdict": "BLOCKED",
+        "why": "no key reaches the runner"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/quiver.json",
+        "rows": 0,
+        "source": "provider:quiver",
+        "verdict": "BLOCKED",
+        "why": "no key reaches the runner"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/tickstream.json",
+        "rows": 0,
+        "source": "provider:tickstream",
+        "verdict": "BLOCKED",
+        "why": "no key reaches the runner"
+      },
+      {
+        "age_h": 0.1,
+        "path": "automation_intelligence/provider_collection_v1/latest/unusual_whales.json",
+        "rows": 0,
+        "source": "provider:unusual_whales",
+        "verdict": "BLOCKED",
+        "why": "BLOCKED_AUTHENTICATION"
+      },
+      {
+        "age_h": 0.1,
+        "path": "automation_intelligence/provider_collection_v1/latest/alphavantage.json",
+        "rows": 14366,
+        "source": "provider:alphavantage",
+        "verdict": "DEGRADED",
+        "why": "14366 rows; 3 endpoints denied by plan"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/bybit.json",
+        "rows": 0,
+        "source": "provider:bybit",
+        "verdict": "DEGRADED",
+        "why": "no key; keyless endpoints only, none ready"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/eodhd.json",
+        "rows": 2510,
+        "source": "provider:eodhd",
+        "verdict": "DEGRADED",
+        "why": "2510 rows; 29 endpoints denied by plan"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/fmp.json",
+        "rows": 6772,
+        "source": "provider:fmp",
+        "verdict": "DEGRADED",
+        "why": "6772 rows; 85 endpoints denied by plan"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/tiingo.json",
+        "rows": 47497,
+        "source": "provider:tiingo",
+        "verdict": "DEGRADED",
+        "why": "47497 rows; 4 endpoints denied by plan"
+      },
+      {
+        "age_h": 0.6,
+        "path": "automation_intelligence/provider_collection_v1/latest/twelve.json",
+        "rows": 71966,
+        "source": "provider:twelve",
+        "verdict": "DEGRADED",
+        "why": "71966 rows; 1 endpoints denied by plan"
+      },
+      {
+        "source": "workflow:databento-depth-research-context.yml",
+        "verdict": "UNKNOWN",
+        "why": "no completed run on main"
+      }
+    ],
+    "path": "automation_intelligence/sentinel/data_health.json",
+    "repository": "reppiks490/Icarus-engine"
+  },
+  "subsequent_visibility_and_workflow_check": {
+    "acquisition_or_rerun_initiated": false,
+    "current_blanket_billing_block_established": false,
+    "owner_report": "Two repositories were temporarily private yesterday and are public again. This may explain earlier billing treatment; the causal timing is not independently proven.",
+    "repositories_currently_public": [
+      "reppiks490/Icarus",
+      "reppiks490/Icarus-engine"
+    ],
+    "workflow_observations": {
+      "captured_at_utc": "2026-10-20T18:25:37.004830+00:00",
+      "repository": "reppiks490/Icarus-engine",
+      "workflows": [
+        {
+          "latest_jobs": [
+            {
+              "conclusion": "failure",
+              "failed_steps": [],
+              "id": 118578968000,
+              "name": "sweep",
+              "status": "completed",
+              "step_count": 0
+            }
+          ],
+          "runs": [
+            {
+              "conclusion": "failure",
+              "created_at": "2026-10-20T10:28:00Z",
+              "event": "schedule",
+              "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+              "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39408129200",
+              "id": 39408129200,
+              "name": "cl-depth-sweep",
+              "status": "completed",
+              "updated_at": "2026-10-20T10:28:03Z"
+            },
+            {
+              "conclusion": "failure",
+              "created_at": "2026-10-20T08:38:21Z",
+              "event": "workflow_run",
+              "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+              "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39394840786",
+              "id": 39394840786,
+              "name": "cl-depth-sweep",
+              "status": "completed",
+              "updated_at": "2026-10-20T08:38:25Z"
+            },
+            {
+              "conclusion": "failure",
+              "created_at": "2026-10-20T06:32:00Z",
+              "event": "workflow_run",
+              "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+              "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39380917473",
+              "id": 39380917473,
+              "name": "cl-depth-sweep",
+              "status": "completed",
+              "updated_at": "2026-10-20T06:32:07Z"
+            }
+          ],
+          "workflow": "cl-depth-sweep.yml"
+        },
+        {
+          "latest_jobs": [
+            {
+              "conclusion": null,
+              "failed_steps": [],
+              "id": 118797311279,
+              "name": "lab",
+              "status": "in_progress",
+              "step_count": 17
+            }
+          ],
+          "runs": [
+            {
+              "conclusion": null,
+              "created_at": "2026-10-20T18:05:44Z",
+              "event": "schedule",
+              "head_sha": "2bf88a41c10cd0aa8fba5905dd0b12bf07339492",
+              "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39471755340",
+              "id": 39471755340,
+              "name": "cl-lab",
+              "status": "in_progress",
+              "updated_at": "2026-10-20T18:05:48Z"
+            },
+            {
+              "conclusion": "failure",
+              "created_at": "2026-10-20T06:31:52Z",
+              "event": "schedule",
+              "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+              "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39380903441",
+              "id": 39380903441,
+              "name": "cl-lab",
+              "status": "completed",
+              "updated_at": "2026-10-20T06:31:56Z"
+            },
+            {
+              "conclusion": "success",
+              "created_at": "2026-10-20T00:36:38Z",
+              "event": "schedule",
+              "head_sha": "a3f0735da4d4d81db264f75417ef06f5401320a7",
+              "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39348657135",
+              "id": 39348657135,
+              "name": "cl-lab",
+              "status": "completed",
+              "updated_at": "2026-10-20T00:53:05Z"
+            }
+          ],
+          "workflow": "cl-lab.yml"
+        },
+        {
+          "latest_jobs": [
+            {
+              "conclusion": "failure",
+              "failed_steps": [],
+              "id": 118534847255,
+              "name": "acquire",
+              "status": "completed",
+              "step_count": 0
+            }
+          ],
+          "runs": [
+            {
+              "conclusion": "failure",
+              "created_at": "2026-10-20T08:38:15Z",
+              "event": "schedule",
+              "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+              "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39394829278",
+              "id": 39394829278,
+              "name": "databento-depth-corpus",
+              "status": "completed",
+              "updated_at": "2026-10-20T08:38:19Z"
+            },
+            {
+              "conclusion": "skipped",
+              "created_at": "2026-10-20T06:31:57Z",
+              "event": "workflow_run",
+              "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+              "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39380912156",
+              "id": 39380912156,
+              "name": "databento-depth-corpus",
+              "status": "completed",
+              "updated_at": "2026-10-20T06:31:58Z"
+            },
+            {
+              "conclusion": "success",
+              "created_at": "2026-10-20T00:53:07Z",
+              "event": "workflow_run",
+              "head_sha": "adf76357775e1e19645ed4a2b367ccaebb6f6c7b",
+              "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39350271922",
+              "id": 39350271922,
+              "name": "databento-depth-corpus",
+              "status": "completed",
+              "updated_at": "2026-10-20T00:55:53Z"
+            }
+          ],
+          "workflow": "databento-depth-corpus.yml"
+        },
+        {
+          "latest_jobs": [
+            {
+              "conclusion": "failure",
+              "failed_steps": [],
+              "id": 118613128501,
+              "name": "seal",
+              "status": "completed",
+              "step_count": 0
+            }
+          ],
+          "runs": [
+            {
+              "conclusion": "failure",
+              "created_at": "2026-10-20T11:55:36Z",
+              "event": "schedule",
+              "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+              "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39418451662",
+              "id": 39418451662,
+              "name": "depth-vault",
+              "status": "completed",
+              "updated_at": "2026-10-20T11:55:40Z"
+            },
+            {
+              "conclusion": "failure",
+              "created_at": "2026-10-20T10:28:05Z",
+              "event": "workflow_run",
+              "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+              "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39408140731",
+              "id": 39408140731,
+              "name": "depth-vault",
+              "status": "completed",
+              "updated_at": "2026-10-20T10:28:10Z"
+            },
+            {
+              "conclusion": "failure",
+              "created_at": "2026-10-20T08:38:27Z",
+              "event": "workflow_run",
+              "head_sha": "689a02fefc8cb1d084b6427461b6e736eacdbeb6",
+              "html_url": "https://github.com/reppiks490/Icarus-engine/actions/runs/39394853434",
+              "id": 39394853434,
+              "name": "depth-vault",
+              "status": "completed",
+              "updated_at": "2026-10-20T08:38:31Z"
+            }
+          ],
+          "workflow": "depth-vault.yml"
+        }
+      ]
+    }
+  },
+  "worker_direction": {
+    "icarus2_session_id": "icarus2-20261020-federation-integration",
+    "icarus2_session_registered": true,
+    "integration_completion_inferred": false,
+    "primary_workers": [
+      "Icarus 1",
+      "Icarus 2"
+    ],
+    "registration_observed_from": "reppiks490/icarus-owner-actions:coordination/sessions/icarus2-20261020-federation-integration.json",
+    "registration_started_at_utc": "2026-10-20T18:13:50.114225Z"
+  },
+  "workspace_api_jobs_followup": {
+    "focused_verification": [
+      "298passed after per-workspace locks and cost/query fixes",
+      "73passed HTTP/lifecycle before final two I/O cases",
+      "2passed admission I/O cases",
+      "10passed flatten compatibility selection"
+    ],
+    "full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/workspace-api-jobs-full-final.log",
+      "log_sha256": "8e638ae7a310f72b2882432449d9884078e6ef9dd3a7ebc986bf1f1254704e43",
+      "result": "3650 passed, 4 skipped, 111 subtests passed in223.72s"
+    },
+    "independent_review": {
+      "all_reported_findings_reproduced_and_corrected": true,
+      "final_whole_diff_review_complete": false,
+      "findings": [
+        "Invalid preset costs",
+        "Query selectors broadening controls",
+        "Admission I/O disconnect"
+      ],
+      "limit": "Reviewer confirmed corrections then stopped at its usage limit before final diff consistency check; root inspected the final diff and ran full suite. No final independent clear is asserted.",
+      "observer": "workspace_configuration_final_review",
+      "verification": [
+        "63passed focused selection",
+        "2passed admission I/O cases"
+      ]
+    },
+    "limits": [
+      "No common renderer switch, runtime deployment, full system restart, main release merge or live activation.",
+      "Offline deterministic engineering fixtures do not establish trading accuracy, source freshness or connected brokers.",
+      "Existing new-asset startup remains asynchronous after commit; staged startup rollback is unverified.",
+      "Jobs are bounded process-local records, not durable work queues; shared * default edits preserve per-asset precedence until explicit UI transformation is implemented.",
+      "Owner PC installation and the reported accuracy decline remain unobserved."
+    ],
+    "previous_published_hosted_ci": {
+      "commit": "6ac652e9505732a886bc5c807eeda80daab24b5a",
+      "linux": "success",
+      "tests_run": 39514770172,
+      "three_other_contracts": "success",
+      "windows": "failure",
+      "windows_failure_reproduction": "Missing offline CSV caused startup retry reset of seeded position; independent Event-controlled reproduction and passing CSV-fixture probe. Fixture now provides genuine local bars, asserts warmup and locks seed; no hosted Windows pass claimed.",
+      "windows_job": 118944172965
+    },
+    "recorded_at_utc": "2026-10-21T11:57:26.946469+00:00",
+    "regressions_observed_before_repair": [
+      "15 missing scoped read route failures; reviewed busy/chart/trade-lock failures",
+      "11 scoped control failures",
+      "2 cross-workspace global-lock serialization failures",
+      "24 preset-cost/query-scope failures",
+      "11 missing job-route failures with4already-passing scope refusals",
+      "2 preset admission I/O disconnects",
+      "1 full-suite legacy flatten error-field regression"
+    ],
+    "scope": "SCOPED_TRADING_READS_CONTROLS_AND_FROZEN_JOBS; shared renderer unchanged",
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "5dcecdedc9ebc1832249eac0a7763ae72b946874a537aa26b9ca5e9c23c83cad",
+      "icarus_engine/paper_workspaces.py": "fb60d8b73769debdcf98f649f2d54b54b7d58c5b52a7a49a5bce7840b4fca1c1",
+      "icarus_engine/server.py": "3d29bbb5c1d2184f6ec21114e8fbed0dfcf097242c304e04c5977f477eff6994",
+      "icarus_engine/workspace_api.py": "350dad4fc5ecf80c817816a9403b5ebd510d5fdd7bd1544266d73365383eddcf",
+      "icarus_engine/workspace_jobs.py": "0e1607a93b5c827c7cc32767c9e974dd32a361a9ecd0fbc84243913bf47ff0e7",
+      "tests_engine/test_paper_workspaces_runtime.py": "01ecc047e6f2f6d75d0eca81523450b664f93ce28fd22662ffa6225570591c9a",
+      "tests_engine/test_workspace_api.py": "996e700b995ed90d79d2b883b098a452f931f81f0a273dcf90249e16e6cc7532",
+      "tests_engine/test_workspace_config.py": "18b1c3f31e9f076eb7674d96881740fc18eee74dac547f17f5186acfeaf44e15",
+      "tests_engine/test_workspace_jobs.py": "ec3686d0b60c5f452fd711428d6b8e1af9c4a8acd36666ce97d85a61eee257e1"
+    },
+    "windows_ci_selection": {
+      "execution": "Fresh hosted exact-head results pending publication",
+      "local_check": "YAML parsed; all selected module paths exist without duplicates",
+      "modules": 70
+    }
+  },
+  "workspace_cached_market_reader_followup": {
+    "behavior": "Read concrete Databento owner buffers under lock, actual provider symbol, bounded detached rows; no feed methods, subscriptions, requests or complete-book claim.",
+    "focused": {
+      "local_log": "/workspace/scratch/cached-market-green.log",
+      "log_sha256": "43be76faac9efd4be375832f561a486305184383c6b630dc6c8c894fcba83aa1",
+      "result": "10passed"
+    },
+    "limits": [
+      "Standalone module only; no scoped panel route/UI wiring yet.",
+      "Unknown or unlocked providers return unavailable diagnostics without invoking meta."
+    ]
+  },
+  "workspace_common_dashboard_followup": {
+    "actual_five_routes": {
+      "local_log": "/workspace/scratch/actual-common-routes-green-v2.log",
+      "log_sha256": "9fd18f608054869b5609d6cfe45c0dd3a21e4ff148ce0b3bc21e0cef5bc62e68",
+      "result": "12 passed, 29 deselected in 74.74s (0:01:14)"
+    },
+    "behavior": [
+      "Main and CC1-CC4 serve the same renderer/modules with server-frozen page identity; shared_dashboard=False preserves the dedicated renderer rollback.",
+      "Every migrated linked reader/action uses explicit workspace transport, including the Commissioning POST; mapped panel responses retain identity/revision checks.",
+      "Selected market diagnostics read only actual-runner existing locked Databento buffers; unknown session health is UNOBSERVED and cached reads cannot acquire data or promise MBO snapshots.",
+      "Unavailable runtime panels display reasons and disable controls; server bypass rejects. Shared federation readers have visible provenance.",
+      "Reusable Performance reads five independent persisted journals, including removed instruments. Shared corpus, selected consumer receipts, archived expansion, A200 qualifications and Connections remain accessible.",
+      "Research history requires explicit owner action and backend owner authorization; receipt identity, authority and bounded bars remain validated.",
+      "Discard after a conflict explicitly reloads current configuration; unrelated configuration job completion preserves unsaved edits and captured revision."
+    ],
+    "editor_regressions": {
+      "local_log": "/workspace/scratch/editor-explicit-reload-green.log",
+      "log_sha256": "35a04b48834d8d784732729edddc8532bb44304915081569cec66e368c507bad",
+      "result": "2 passed, 40 deselected in 7.95s"
+    },
+    "evidence_history_performance": {
+      "local_log": "/workspace/scratch/common-evidence-performance-final.log",
+      "log_sha256": "397e52fed328a78438f6be6f3816d5cac58acde5b45ba1f63943aeaf656422cc",
+      "result": "12 passed, 17 deselected in 39.03s"
+    },
+    "final_full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/common-dashboard-full-v2.log",
+      "log_sha256": "3e6a4441915d3ab86d7440308b46c8c4fcaa7b23a9d2160f83d9cabdfa4c2ec3",
+      "result": "3833 passed, 4 skipped, 111 subtests passed in 429.28s (0:07:09)",
+      "status": "completed"
+    },
+    "hosted_verification": {
+      "status": "Pending at source publication; current exact-head receipts are maintained in PR462 and coordination/summaries/icarus1-20261020-system-recovery.json on the owner-actions bus."
+    },
+    "initial_full": {
+      "cause": "Three standalone Node harnesses omitted the explicit client; two static wiring assertions required old raw-fetch strings. Their failed executions preceded the five test-only alignments. No behavioral failure reported.",
+      "exit_code": 1,
+      "local_log": "/workspace/scratch/common-dashboard-full-final.log",
+      "log_sha256": "786102b7e115445c8c485542c648318a82787a47c5ff7becf81cc0982053dc91",
+      "result": "5 failed, 3828 passed, 4 skipped, 111 subtests passed in 515.49s (0:08:35)"
+    },
+    "interim_focused": {
+      "local_log": "/workspace/scratch/common-dashboard-final-focused.log",
+      "log_sha256": "830625b48395dc0c0b013dc83be5a01a75a057ba7da2ab4425b78227db46e7ec",
+      "result": "352 passed in 270.76s (0:04:30)"
+    },
+    "legacy_compatibility": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/performance-legacy-installed-browser.log",
+      "log_sha256": "eeb1423b8528810d57f2142b60818a0e674da27bd99b993f515d816d381f2dde",
+      "result": "All original eight viewport/workspace cases and assertions passed using installed /usr/bin/chromium; only executable selection changed in-memory."
+    },
+    "limits": [
+      "Same renderer is presentation and selected-core parity; unavailable runtime adapters remain unfinished integrations.",
+      "Owner PC checkout/interpreter/start command/data/journals remain unobserved; no matched real-input accuracy recovery proof.",
+      "Actual futures/prop-firm accounts, program semantics and universal source-to-consumer operation remain unverified.",
+      "No provider acquisition, spending, deployment, main release merge, full system restart or live activation."
+    ],
+    "linked_contracts_final": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/common-linked-contracts-final.log",
+      "log_sha256": "80f7d1b927880ea75e1bfa65c163698a0273f27259ae2616f9f07c60607dafd7",
+      "result": "53 passed, 86 subtests passed in 2.27s"
+    },
+    "observed_red": [
+      {
+        "local_log": "/workspace/scratch/selected-market-panel-red.log",
+        "log_sha256": "a359c31ba35cfdf728964a11dd14b51ac7e4f95ba23cff415bd3163ec293262e",
+        "result": "8 failed, 136 deselected in 3.53s"
+      },
+      {
+        "local_log": "/workspace/scratch/panel-labels-red.log",
+        "log_sha256": "c681f1ccec087f361260dcf75d5ad2b83e284de26736f3e2c388c59329997616",
+        "result": "1 failed, 16 deselected in 32.63s"
+      },
+      {
+        "local_log": "/workspace/scratch/common-performance-red.log",
+        "log_sha256": "ae3fb85e3763b23015fda23143bb2a8f4d8e9ed94e695c0071e052bd07b8839e",
+        "result": "7 failed, 4 passed, 150 deselected in 19.43s"
+      },
+      {
+        "local_log": "/workspace/scratch/actual-common-routes-red.log",
+        "log_sha256": "5677819e7afc6310109362197692967a3e027965c855dbaad260db44fd96d322",
+        "result": "12 failed, 29 deselected in 83.33s (0:01:23)"
+      },
+      {
+        "local_log": "/workspace/scratch/editor-explicit-reload-red.log",
+        "log_sha256": "59e8df419e0eaf35b5dc41e073d65ea6507412406aeb941552b9cd1f5437247b",
+        "result": "2 failed, 40 deselected in 37.23s"
+      },
+      {
+        "boundary": "raw module GET and direct Commissioning POST",
+        "result": "2 failing isolation cases observed before explicit transport migration"
+      }
+    ],
+    "recorded_at_utc": "2026-10-21T18:37:01.873101+00:00",
+    "required_api_browser": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/common-dashboard-required-api-browser.log",
+      "log_sha256": "56d604356a1d9f601d9728f554928c7cc7559d30be1e463aad2909602d84cf28",
+      "result": "4 passed, 103 deselected in 22.85s"
+    },
+    "required_browser_ci": {
+      "behavior": "Installs Python Playwright, resolves the downloaded Node Chromium executable, sets ICARUS_REQUIRE_WORKSPACE_BROWSER=1 and runs actual five-route/API browser coverage before unchanged world contracts.",
+      "status": "source validated; new-head hosted run pending",
+      "workflow": ".github/workflows/ui-visual-contract.yml"
+    },
+    "required_browser_selection": {
+      "command": "ICARUS_BROWSER_BINARY=/usr/bin/chromium ICARUS_REQUIRE_WORKSPACE_BROWSER=1 python -m pytest tests_engine/test_workspace_dashboard_browser.py tests_engine/test_workspace_performance_browser.py tests_engine/test_dashboard_js.py -q -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/common-dashboard-editor-final.log",
+      "log_sha256": "bc3ef093abe613e9eecfab5ff7de847dd7d463bd60ae964af03c7cfd9adf87b3",
+      "result": "114 passed, 1 skipped in 285.34s (0:04:45)",
+      "source_limit": "Runtime/UI bytes match the final manifest; the later five changes only align standalone test transport mocks/string assertions. The optional legacy browser test skips without its default cache; its original eight cases were separately run with installed Chromium."
+    },
+    "review": {
+      "fresh_independent_whole_diff_clear": false,
+      "limit": "Independent review quota boundary preserved; documentation support is not independent approval.",
+      "root_native_diff_review": true
+    },
+    "source_file_sha256": {
+      ".github/workflows/ui-visual-contract.yml": "778dc939666f6fae37cca958e573b8f34058ceb3ffbacd59313b082556829751",
+      "icarus_engine/apex-ui.js": "05c1d6acc9740db9cc233ae20b6b0e64aad9ec233976baf96143ede6c3ea4786",
+      "icarus_engine/ascendancy-ui.js": "43bdef1867dcd0136e8cf2881715d913f8d5e815c5a6d931c448669e9e9b8f08",
+      "icarus_engine/autopilot-ui.js": "5cdee573155795438fbf5d49b2d8a6ba17e84222d21a9aaf957f5007c66fa014",
+      "icarus_engine/brain-ui.js": "dfd372f2997c3121cede647c3bac840c1b82ee0251ae4c9a502cdaad2c21fb83",
+      "icarus_engine/chronofold-ui.js": "a8481792a6dea08e1ab86f2102a193c1b6e619d42b1a2d11aafe02229d2c1b0d",
+      "icarus_engine/commissioning-ui.js": "6af02064f1733b30181895ceb5dea222c689c24ea1a8566360cc35251f9e15a1",
+      "icarus_engine/dashboard.html": "6e0392b398414e0054213ede42adad94cde7ce683c26281816359c1cfb5361d9",
+      "icarus_engine/engine-control-ui.js": "8b72408cd8968a569b382271f087780a1f48526fb533b1fdad6bc7a39763eea5",
+      "icarus_engine/evolution-ui.js": "fc1c4eadf703167bdf3a269bbafcfd9c8e91ba73afe08ef80b252ae3e43055a2",
+      "icarus_engine/integrity-ui.js": "e7854f71d1f6fe67c76a2ec92ab7fb406ed7d845192d71b2367849f94a8999ef",
+      "icarus_engine/learning-ui.js": "76e93927054bfb56067d56860fdcb8bbb8d27d45e254d1257076454c6adf2e64",
+      "icarus_engine/market-data-ui.js": "fd85048e2182ffd86b10fbd32b84f304fe8ecb54c88fe9c0e26c97339dfa8c30",
+      "icarus_engine/pantheon-ui.js": "988524c74d69cc4eabeaac9d8f6e3e73df819462423ac2ee744b5dd748d2c782",
+      "icarus_engine/paper-pnl-ui.js": "a5356819e8a4ef7e856480347e2b126cd945f1b4e485af8f21eb11a976311af6",
+      "icarus_engine/parallax-ui.js": "40aaf22adff3e3e14e6a519b379d262315fc06e8a56c00d16b9d33845231744e",
+      "icarus_engine/possibility-ui.js": "a6deb3d6b77e501a698e4114443a30a949c8651587a3e95577733bfab2b866bd",
+      "icarus_engine/research-ui.js": "98496df876987681294510b9ed92a1d2f9905340e423c29dc16bb9469c6a1573",
+      "icarus_engine/server.py": "0cf59df90a0ea8e36e094082edfde6edf298fcfe783842e5b5758a0185f3bef4",
+      "icarus_engine/sibyl-ui.js": "b3dd8e12ce2836766f93bc66577ec8fe00d9d70e6db4a6813042df7690e198a4",
+      "icarus_engine/workspace-client.js": "bb0f7ecf5bf967bf3284a1f940d6a61ebd277639ada9606694421435b193d41d",
+      "icarus_engine/workspace-evidence-ui.js": "0b0c55294f356a782b53aea39f27d7fb5191d226a4b0c7958c1366e592953899",
+      "icarus_engine/workspace-performance-ui.js": "303e188162c842aa090e5ecc44654af94e72395ef5eb938054869fd3bcd9de7d",
+      "icarus_engine/workspace_api.py": "2cd40ee7aeeeeb0bd3997baccbba5d1444be86e2d0b08ec0ce45c409d070fd24",
+      "tests_engine/test_chronofold_integration.py": "f5fb3afd78831a5513ad61b8c758859b95f274c7c9fe37238ad8dc6fa0f6ab7c",
+      "tests_engine/test_command_center_routes.py": "284a7ff3c0d68f5f4f846670be75df76406a7cbc3e5e5298131f60be1994dfb8",
+      "tests_engine/test_commissioning_integration.py": "b3f93922800920177e354ca22396e0861a7bc74a87a483ac4f156d233cc4e3c7",
+      "tests_engine/test_dashboard_js.py": "aefc823fad995e961f6fe5556b048283a23bdd8e5fc3340c7fd169720c11ee5f",
+      "tests_engine/test_evolution_ui_status.py": "4c3828869be97c86b82147115aa8c486a94e783d678b6aaf09f3a71c6371c5cd",
+      "tests_engine/test_historical_trade_admission.py": "7f409fe36f9e8b26433207aae3a697e0cb315393252b666a12075ed29922b1a4",
+      "tests_engine/test_intelligence_feed.py": "bbe35b5e0ebbed10e545500e7222c59a095b416b91e61bbe1c5d24829d521bbb",
+      "tests_engine/test_native_validation_ui.py": "46d2f431d87913e6359697ab528c87f7076ac6a409f141a34ca0e2b69e35929d",
+      "tests_engine/test_source_data_contract.py": "41bf0495826f02f72f136eaaebb0a7507ca0e5de275a5538f3726a0ee4cde580",
+      "tests_engine/test_workspace_api.py": "955a25de8cf3a96df7947501303442ccb37b7ed39ab6da3104e7255cfec82f8d",
+      "tests_engine/test_workspace_client.py": "939ce22e204d567a2d6f20d718f215952ebd9719ae5e4d7f620a21502cb73598",
+      "tests_engine/test_workspace_dashboard_browser.py": "5a1ac22124fb326d28f320f3f11f080255df331d2306e0930c3933624c18c44a",
+      "tests_engine/test_workspace_market_data.py": "eb6ea3916fdd9f1e21808e4c699448e934604934b47c383840b6d11c97f50ee3"
+    },
+    "source_parent": "91fb8c7280a287012d3dce9004ad9833267b8b68",
+    "unchanged_cinema": {
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/common-dashboard-cinema.log",
+      "log_sha256": "1366c744df7c423339d85c8ad2908c90161c326edcbee33c4e10d7f8163e0b24",
+      "result": "{\"passed\":true,\"errors\":[],\"writes\":[],\"fixture\":{\"same\":true,\"first\":1,\"second\":1,\"surface\":true,\"scan\":true,\"hover\":true,\"x\":\"40.00%\",\"y\":\"60.00%\"}}"
+    },
+    "windows_selection": {
+      "existing_modules": 76,
+      "limit": "Path selection is not a new-head Windows pass.",
+      "yaml_and_all_paths_valid": true
+    }
+  },
+  "workspace_configuration_followup": {
+    "approval": "Owner explicitly approved the shared-dashboard written design and directed continued implementation; coordination event011.",
+    "full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/workspace-config-reviewed-full-tests.log",
+      "log_sha256": "b40dc1065fa805bdd6a19d1aab2cffe098e75d94ab4902477c90ea794857e8a0",
+      "result": "3533 passed, 4 skipped, 111 subtests passed in 183.71s"
+    },
+    "limits": [
+      "Offline engineering fixtures do not establish trading accuracy or provider/broker connectivity.",
+      "New asset additions still warm asynchronously after commit; staged startup-warmup rollback for additions is not established.",
+      "Common dashboard, scoped HTTP APIs/jobs and context client are subsequent delivery layers.",
+      "No full restart, main merge, deployment or live activation."
+    ],
+    "new_module": {
+      "command": "python -m pytest tests_engine/test_workspace_config.py -q",
+      "independent_observer": "workspace_configuration_final_review",
+      "material_findings_remaining": 0,
+      "result": "58 passed"
+    },
+    "recorded_at_utc": "2026-10-20T23:24:04.386312+00:00",
+    "regressions_observed_before_repair": [
+      "19 initial schema/migration validation failures",
+      "7 per-asset resolution/exact-file rollback failures",
+      "Inherited parent writer and preset identity/reset failures",
+      "22 revision/scoped-edit validation failures",
+      "Cached uncommitted view leak and chart/event rollback (2 failures)",
+      "Unselected overrides and implicit configured-asset removal (3 failures)",
+      "Snapshot escaping the configuration commit boundary",
+      "Explicit null preset identity falling back to parent preset",
+      "Partial whole-workspace chart edit discarding saved choices"
+    ],
+    "scope": "APPROVED_WORKSPACE_CONFIGURATION_FOUNDATION; no renderer switch or deployment",
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "23aa0f3bd4ee58c49080ea228c4900c447e7a107e31c8555602c4400f5e91822",
+      "icarus_engine/paper_workspaces.py": "89126c02c62e587f8003be883c5aa4870cc3cbf9fc7214fee5312b61f9adf57c",
+      "icarus_engine/runtime.py": "e55137f6273d3b5a148fdf6ca49901816d3dfe0f3d7519fac1dfde0390ddc9a2",
+      "icarus_engine/workspace_config.py": "6189ba6eef138d6e37d42978bbf3e7e335c2db0d7f64ce55253d817266bb941c",
+      "tests_engine/test_paper_workspaces.py": "d6237a3830c493b6800276bf5d3e81f06216b164e90c8ead9ae742a6b49841ba",
+      "tests_engine/test_workspace_config.py": "46b2b91cfe5cdaf2807e6ee7864e6241a5f91590d21e9e9a371ef38ca8c54b4d"
+    },
+    "upstream_receipt_merge": "25d560b1d67848e244e59095f9f9152c3d7ab09b; provider/federation receipts only, runtime code unchanged",
+    "windows_ci": {
+      "execution": "New exact-head hosted run still required",
+      "module": "tests_engine/test_workspace_config.py",
+      "selection_check": "YAML parsed and all 68 selected modules exist without duplicates",
+      "workflow": ".github/workflows/test.yml"
+    }
+  },
+  "workspace_context_client_followup": {
+    "focused": "191passed in65.08s; client17behavior cases; browser1passed in2.21s",
+    "full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/workspace-client-bootstrap-full.log",
+      "log_sha256": "2997a9f326d28778d383513ccc4f0475cdc7c30203cd0eddcb45b8c2afc85cef",
+      "result": "3671passed,4skipped,111subtests in228.09s"
+    },
+    "limits": [
+      "Main bootstrap is initialized before UI modules; legacy renderer call migration and CC renderer switch remain open.",
+      "Backend jobs and client are engineering evidence, not data freshness, accuracy or broker operating proof.",
+      "No release merge, deployment, full system restart or live activation."
+    ],
+    "previous_backend_hosted_checks": {
+      "all_four": "completed/success",
+      "commit": "ce6a15f3eba3f71de8606fddb78ea65027cf8a09",
+      "configuration": 39595853336,
+      "intelligence": 39595853362,
+      "linux_job": 119207846881,
+      "performance": 39595853354,
+      "tests": 39595854165,
+      "windows_job": 119207847137
+    },
+    "real_browser": {
+      "engine": "installed Chromium via Playwright",
+      "network": "loopback only; external requests aborted; deterministic offline runtimes",
+      "result": "1passed; frozen context, authenticated main status price900, no page errors"
+    },
+    "recorded_at_utc": "2026-10-21T12:15:35.476106+00:00",
+    "red_evidence": [
+      "1missing-client failure",
+      "2CSV/native-preset cases",
+      "2admission-receipt revision cases",
+      "2missing-bootstrap/static-route cases"
+    ],
+    "review": "Native root self-review; no final independent review claimed while specialist is usage-limited.",
+    "scope": "EXPLICIT_CLIENT_AND_MAIN_BOOTSTRAP; common-renderer/module migration remains open",
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "a3ed08ae1b353ed4fb06592ee620dbf93d48a0ed4c14015058e498fadba4e3c2",
+      "icarus_engine/dashboard.html": "0ddc3ad3da88507df7f960b82cd9aba424f4e2b1f8563ed1b8b14a5d6a2f19ef",
+      "icarus_engine/server.py": "b37990ca2f0ca1e9bf27208325bd11a44c87072f700944008bb5ec85c681af9e",
+      "icarus_engine/workspace-client.js": "a984d06565ad7d3b2039a173701f4870e785462f803bd5d153619bb8a3eed802",
+      "tests_engine/test_dashboard_js.py": "9771561f31b32a05c6aef2d58f5d27d30b7db9f385dc2dc4d0aefd84a94057ff",
+      "tests_engine/test_workspace_api.py": "8736d195966b0d78f41557a4adf1897e6fafc5555601269065d35e6ebe0a4bbd",
+      "tests_engine/test_workspace_client.py": "0acea76f661dec1d1d8dfed3a5f801e3231ff088ee78db3915b3c95ae4b72915"
+    },
+    "windows_selection": {
+      "current_client_head_execution": "pending publication",
+      "modules": 71,
+      "yaml_and_paths": "valid/no_duplicates"
+    }
+  },
+  "workspace_context_guard_followup": {
+    "behavior": [
+      "Header and same-origin CC Referer validate context without choosing runtime implicitly.",
+      "Foreign routes, parent reads and unsupported global writes reject before mutation; owner/viewer auth retained.",
+      "Explicit module Response transport labels shared reads, validates selected responses and uses rejecting scoped endpoints.",
+      "Repeated cached pagehide cancels in-flight generations while preserving immutable restored client; noncached unload closes it.",
+      "Wrong job IDs, stale revisions, null bodies and cancelled late decoding cannot supply observations."
+    ],
+    "focused": [
+      "195HTTP/auth/execution/route tests before final lifecycle follow-up",
+      "115client/policy/JavaScript tests after review fixes",
+      "9HTTP/lifecycle/unsupported-endpoint cases after review fixes"
+    ],
+    "full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/workspace-context-guard-full.log",
+      "log_sha256": "97e23129f92b2bce45cbe1a2c0cab793d448e81eaa8908b5da1b0ac5d929a64f",
+      "result": "3736passed,4skipped,111subtests in252.16s"
+    },
+    "hosted_verification": {
+      "head": "d3a17207df07ff4ca878a25db787f8ec1e62fae2",
+      "other_contracts": "4 success",
+      "tests": {
+        "conclusion": "success",
+        "run": 39609414673
+      },
+      "visual": {
+        "assertion": "browser_cinema.cjs:176 settings bottom629 in600px viewport",
+        "conclusion": "failure",
+        "job": 119254022392,
+        "run": 39609414779
+      }
+    },
+    "limits": [
+      "Typed core renderer/module migration and CC common HTML switch remain pending.",
+      "Engineering fixtures do not establish accuracy recovery, connected providers/brokers or PC operating readiness.",
+      "No deployment, release merge, provider acquisition, full restart or live activation."
+    ],
+    "observed_red": [
+      "Missing policy module collection error",
+      "2missing module transport cases",
+      "7raw context HTTP failures",
+      "Same-workspace wrong-job and close-during-decode failures",
+      "Persisted-pagehide permanently closed client in real Chromium",
+      "Null job response typed-error failure"
+    ],
+    "previous_responsive_hosted": {
+      "all_six": "completed/success",
+      "commit": "0fbfbd9e31e88b2a36929afcc8990ebfb1eb4157",
+      "configuration": 39603222313,
+      "consumer": 39603222550,
+      "intelligence": 39603222409,
+      "performance": 39603222332,
+      "tests": 39603222401,
+      "visual": 39603222538
+    },
+    "recorded_at_utc": "2026-10-21T13:35:49.212872+00:00",
+    "review": "Native root review; no fresh independent approval invented while specialist is usage-limited.",
+    "scope": "COMMON_RENDERER_TASK1_EXPLICIT_MODULE_TRANSPORT_AND_SERVER_CONTEXT_GUARD; CC renderer unchanged",
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "d215aa55a8715130d7ec837734399ca694be61bc4caac2b98738e9cfe06bbe02",
+      "icarus_engine/dashboard.html": "021fcd0df10c2b7d4d02bd20dc9775f81e7b2a09f7d28c20e4331e213876a03a",
+      "icarus_engine/server.py": "69944a9c5fc0b4c9be21ccb53e3da201b19c1669e891128b2ec2a124403a7278",
+      "icarus_engine/workspace-client.js": "2cf09368d0333878c3811768267d4ed9b36ea94205a24f73dd3f9811ee184ef8",
+      "icarus_engine/workspace_context.py": "6a7bf98f275d135d1b96c1dd72c8cc673d3f1351b05287e54230ac7d9b93fde6",
+      "tests_engine/test_workspace_api.py": "5d3c78bdd1607ea3ecbad5333c4e60eefb25c1e402496358f460a0e4b5ec6271",
+      "tests_engine/test_workspace_client.py": "a306e4adf0f3c829415652106c52a527d0ba2570b489732a828ba10e2679b1c4",
+      "tests_engine/test_workspace_context.py": "47f132ecf1f924993c0451d6004a5198e5d6664e052619712513c6c5a960cc24"
+    },
+    "upstream_receipts_pending_merge": "617d3e4baf5bef337e0b1b43ad51bdc67ee420d7;39automation_intelligence paths; no runtime source changes",
+    "windows_selection": {
+      "current_source_execution": "pending publication",
+      "modules": 72,
+      "validation": "YAML parsed, all paths exist/no duplicates"
+    }
+  },
+  "workspace_core_renderer_followup": {
+    "behavior": [
+      "Typed selected status/chart/trades/inputs/control/config/jobs/backtest/compare/CSV/navigation.",
+      "Captured editor revisions and immutable profiles; whole edits preserve unrelated overrides.",
+      "Drafts reserved before admission, retained through failed jobs and conflicts.",
+      "Owner/viewer controls follow authenticated status permissions.",
+      "Failed/stale observations cannot overwrite fresh frames or retain old caches.",
+      "Numeric-leading futures supported; full partial-control receipts retained.",
+      "Duplicate configuration editor removed; ledger cards navigate; Shadow Twin selected."
+    ],
+    "final_full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/core-accounting-full-final.log",
+      "log_sha256": "49ca6db73d44458d704e75b1e5ced1792ea54165c09481d3d7bdaf70630d013e",
+      "result": "3790passed,4skipped,111subtests in304.42s",
+      "status": "completed"
+    },
+    "fixture_corrections": [
+      "Hybrid evidence test invented received_at=fetched_now+1ms; deterministic beginning/end-second clocks and explicit future rejection now preserve the production guard.",
+      "Historical job comparison uses actual authenticated downloaded CSV; job JSON deliberately omits raw csv.",
+      "Test-only common preview awaits explicit startup completion before forcing concurrent refreshes."
+    ],
+    "focused": {
+      "local_log": "/workspace/scratch/core-accounting-focused.log",
+      "log_sha256": "f6e70bbc5dd584abb25c2527fb4c444dc8be9cc2a89d51cc445c433e735abb82",
+      "result": "484passed in148.53s"
+    },
+    "hosted_verification": {
+      "conclusion": "all six workflows succeeded",
+      "head_sha": "91fb8c7280a287012d3dce9004ad9833267b8b68",
+      "limit": "This published core phase does not certify later common-renderer source.",
+      "runs": [
+        {
+          "conclusion": "success",
+          "id": 39643359886,
+          "name": "tests"
+        },
+        {
+          "conclusion": "success",
+          "id": 39643359867,
+          "name": "ui-visual-contract"
+        },
+        {
+          "conclusion": "success",
+          "id": 39643359877,
+          "name": "configuration-job-contract"
+        },
+        {
+          "conclusion": "success",
+          "id": 39643360016,
+          "name": "intelligence-feed-contract"
+        },
+        {
+          "conclusion": "success",
+          "id": 39643360073,
+          "name": "Four portfolio performance"
+        },
+        {
+          "conclusion": "success",
+          "id": 39643360142,
+          "name": "engine-federation-consumer-contract"
+        }
+      ],
+      "status": "completed"
+    },
+    "limits": [
+      "Actual CC routes still dedicated; common panel migration and five-route acceptance remain incomplete.",
+      "Root native diff review only; no fresh final independent whole-diff clear.",
+      "No owner-PC observation, provider collection, accuracy proof, restart, deployment or live activation."
+    ],
+    "prior_core_full": {
+      "local_log": "/workspace/scratch/common-core-full-final.log",
+      "log_sha256": "6674bf5da1fcd9003bfa4c2abdfcf39d8d8fba7d1b5dee0738b248a7ae1a798a",
+      "result": "3783passed,4skipped,111subtests in296.68s before final draft reservation/accounting changes"
+    },
+    "source_commits": {
+      "cached_market_reader": "ef30f3ddd82d2ebfae747c145f613f865fe66953",
+      "core": "80c441dc5ba83e846f8b1e67081b12a995c83f84",
+      "persisted_pnl": "485d264a8f875a5299cb90af6ce0ac8dc3372f90",
+      "receipt_only_merge": "5697e71ecb51bd9102adaf73f32f47a6ab30319e"
+    },
+    "source_file_sha256": {
+      ".github/workflows/test.yml": "eb700a122bae82454484fb1a26f1f9defa18b45edf61949d479c0bfafafa078d",
+      "icarus_engine/command-centers-ui.js": "89f09773c28695f7a7a729b61843f2f451c3ea565dcc64dbda8df36d38d2f6c8",
+      "icarus_engine/dashboard.html": "da14dcbac66ebc7834b348c9c555db89ecc3e9732b9b32003c30ab67b6f48240",
+      "icarus_engine/paper_workspaces.py": "5caadde7c617d789a9d3a82254afce598ae4e4f1d95c36f6ab7bdea9186bd196",
+      "icarus_engine/runtime.py": "786f647575d72763e2f659fb6fedcb3a4264662bf341ea677152088c6f8d9958",
+      "icarus_engine/server.py": "610d33ed4fb88de8d0b8b045a344c3b3bd95e51d38ca30f98afe9a8e5c2388e3",
+      "icarus_engine/shadow-twin-ui.js": "1d82b4e936cf52f7b6ea3448e6941706a410fa2974b8ef085d68cdd8af7c1837",
+      "icarus_engine/workspace-client.js": "d9d53dee5671cdbb2949e829d92475daf11ac7cb56ba3fa146d48513cc8a9007",
+      "icarus_engine/workspace-ui.js": "c96de1f7d4b2c8cf387ebb253b9d73df3754eff5d70685ec65223b24d9dc3651",
+      "icarus_engine/workspace_market_data.py": "517c977654ccddca2b85de6da4d76dffda472a2d6842bd7580d9820bbcd49ab8",
+      "icarus_engine/workspace_performance.py": "6178c3c367c5c5f4acd78a37db78f0a6992eae368904241d83e12d9605c37770",
+      "tests_engine/test_dashboard_js.py": "a9cb3972e12ad977884e0e39d77720ee0a04863c8c6d7abdff63de6e06728dd2",
+      "tests_engine/test_execution_controls.py": "59458952921ef5cfeed2bb7412b2621ad9630759c1eab839f7ea5af4c08f1254",
+      "tests_engine/test_market_universe.py": "8afb9920cb02b535a78e093777ac911f1e4c05a016ff0be2004ba2c43187aa89",
+      "tests_engine/test_paper_workspaces.py": "ad2fd3e54417f6bf4ee6eecf0ff042f14d866cfb872001e63965a4f7d156ff91",
+      "tests_engine/test_workspace_client.py": "e8e437a541db9027bdab9223a1d5c14a29d1a7a73891150da4fc29f6d5a6cabc",
+      "tests_engine/test_workspace_dashboard_browser.py": "afe87dbdbd818392fdf9a996c8334586d10763eec85ac7925d8f3f0ef7a98716",
+      "tests_engine/test_workspace_market_data.py": "def76bee889513ae90e4b6e2e67eeca81cb4536714c7a6f3c651b84a423875c1",
+      "tests_engine/test_workspace_performance.py": "c094fc44957e67b9edd7caeb794b1a82a1a9a37130fab1d0b8fc6fae06de9ea2",
+      "tests_engine/test_workspace_ui.py": "afec3ae9fd722b8b4efe8496b64cf225bebf8cd2c479c85771a2ed4474d52684"
+    },
+    "source_parent": "68acaec0347a644ee09884fd3826dfadf897ee1d",
+    "unchanged_cinema": {
+      "local_log": "/workspace/scratch/core-accounting-cinema.log",
+      "log_sha256": "1366c744df7c423339d85c8ad2908c90161c326edcbee33c4e10d7f8163e0b24",
+      "result": "passed;errors[];writes[]"
+    }
+  },
+  "workspace_first_four_panels_followup": {
+    "actions": "Thirteen registered selected-paper actions. Owner/revision/confirmation gates remain; stale mutation409 and viewer403. sync.all reads cached selected diagnostics only. Unused args/duplicate JSON keys rejected.",
+    "browser": "Actual common-page readers and Commissioning cycle verified. Viewer async controls disabled without DOM observer feedback. Required Chromium tests included in full runtime.",
+    "cached_only": "PanelRunner/PanelPortfolio use cached feed adapters. Trapped provider trades/depth_events/meta/capabilities calls remain unused for all four readers. One source owner retains provider collection.",
+    "completed_panels": [
+      "possibility",
+      "chronofold",
+      "commissioning",
+      "engine-control"
+    ],
+    "final_panel_lifecycle": {
+      "command": "python -m pytest tests_engine/test_workspace_panels.py -q -o addopts= --tb=short",
+      "log_bytes": 100,
+      "log_local_path": "/workspace/scratch/workspace-panels-lifecycle.log",
+      "log_sha256": "7ed353cb9943d1d90a14b7f7777f1a28a2551e99eb365c2d5fe63611246abd91",
+      "summary": "37 passed in 19.77s"
+    },
+    "focused": {
+      "command": "python -m pytest tests_engine/test_workspace_panels.py tests_engine/test_workspace_client.py tests_engine/test_workspace_market_data.py tests_engine/test_workspace_context.py -q -o addopts= --tb=short",
+      "log_bytes": 180,
+      "log_local_path": "/workspace/scratch/workspace-panels-routing-green.log",
+      "log_sha256": "75329b6c444e59ac9128188119c97ff0aef92045c62a81c0335409151d60243f",
+      "summary": "92 passed in 17.81s"
+    },
+    "full_runtime": {
+      "command": "ICARUS_REQUIRE_WORKSPACE_BROWSER=1 python -m pytest tests_engine tests/test_provider_corpus_intake.py -q -o addopts= --tb=short",
+      "log_bytes": 4418,
+      "log_local_path": "/workspace/scratch/workspace-panels-batch1-full.log",
+      "log_sha256": "2d36c80a1b4796cc4e9c47c21c350ba025410dca91c1f12825cd92d4b14b6b83",
+      "summary": "3895 passed, 4 skipped, 111 subtests passed in 462.60s (0:07:42)"
+    },
+    "full_system_readiness": "NO_GO",
+    "immediate_restart_followup": {
+      "actual_first_and_second": {
+        "forecast_counts_each": {
+          "cc1": 1,
+          "cc2": 1,
+          "cc3": 1,
+          "cc4": 1
+        },
+        "owned_exit_codes": [
+          0,
+          0
+        ],
+        "panel_endpoints_each_start": 16,
+        "selected_psi_digest_recovered": true,
+        "sibling_evidence_isolated": true,
+        "workspaces": 4
+      },
+      "actual_fixed_sequence": {
+        "bytes": 634,
+        "local_path": "/workspace/scratch/panel-batch1-actual-restart-fixed.log",
+        "sha256": "4d0f8a52ffbc317d26e350bc734f3889d442a6940581923b55e07bfb24005557",
+        "summary": "owned_launcher_exit 0"
+      },
+      "actual_sequence_helper_sha256": "66c9b299706fd3623014b4343235a0e892f87c6e03c953ada4f3a1cac623e735",
+      "actual_sequence_source": "Launcher reported basebf3b558 while the exact fixed script blob subsequently committede0980d8 was in its working tree. Other production source stayed unchanged.",
+      "boundaries": "Synthetic file history and temporary root only; external socket/DNS access and credential-file reads forbidden by inherited audit hook. No provider acquisition, owner-PC command or live trading.",
+      "committed_source": "e0980d84804d736aeede81b8f1f0cd2cd47f73ea",
+      "first_actual_sequence": {
+        "bytes": 831,
+        "local_path": "/workspace/scratch/panel-batch1-actual-restart.log",
+        "sha256": "58875debd0039e88fb6abca91036e95cdda16fb32abd236eb0730b50da3fc742",
+        "summary": "AssertionError"
+      },
+      "full_suite_scope": "3895/4skip/111subtests is the unchanged panel runtime checkpoint2c1b627. This subsequent launcher-only production change has42focusedpasses and the actual two-start proof; no second full-suite claim.",
+      "green": {
+        "bytes": 100,
+        "local_path": "/workspace/scratch/panel-immediate-restart-green.log",
+        "sha256": "1376819d677060417f7d2fe4db4b269f3b0cfeae7d85c8ad6e8d1812a902afc9",
+        "summary": "42 passed in 19.69s"
+      },
+      "platform": "POSIX probe matches HTTP SO_REUSEADDR behavior; Windows port probe unchanged to avoid allowing active-port reuse. No actual Windows immediate-restart sequence certified.",
+      "reason": "An actual immediate second launch refused occupied port after owned first shutdown. Controlled accepted-HTTP-connection test reproduced TIME_WAIT false refusal without any listening engine.",
+      "recorded_at_utc": "2026-10-22T07:30:34.299553Z",
+      "red": {
+        "bytes": 1314,
+        "local_path": "/workspace/scratch/panel-immediate-restart-red.log",
+        "sha256": "ca2a1b6b9d41e0671573dfb6d75250160784535985c1313c44041b175e5d1124",
+        "summary": "1 failed, 4 deselected in 0.11s"
+      },
+      "source_file_sha256": {
+        "scripts/start-as-is.sh": "4335a4d1c5e1f97744dd5de076972f7811d801bc7a003ca1756a807b14072635",
+        "tests_engine/test_as_is_launcher.py": "1484f9f22badc2cd9a02cbd232d0c4b878051dc910984f751de6ea2a3a96190f"
+      }
+    },
+    "initial_adapter_red": {
+      "command": "python -m pytest tests_engine/test_workspace_panels.py -q -o addopts= --tb=short",
+      "log_bytes": 11762,
+      "log_local_path": "/workspace/scratch/workspace-panels-initial-red.log",
+      "log_sha256": "f3004bd0ce6b1226925fbb88298a35a6c39239384cef142d3bed08d98cd59217",
+      "summary": "22 failed, 1 passed in 11.96s"
+    },
+    "limits": [
+      "Cloud fixture/browser evidence is not owner-PC installation of this batch",
+      "Earlier owner-assisted PC startup does not establish all-CC warmup, sustained freshness or open-position recovery",
+      "Remaining eleven adapters, futures/prop-firm operation, full data-to-consumer qualification, accuracy recovery and long stability run remain open"
+    ],
+    "live_broker_arming": false,
+    "operator_guide": "docs/recovery/archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md",
+    "peer_layout_candidate": {
+      "failing_assertion": "tests_engine/browser_depth.cjs:217 DOM-churn fixture must keep the real pointer over a topology panel",
+      "head": "1c818c272e910dda35ad10d0fc4dffb114bad434",
+      "integrated": false,
+      "pr": 466,
+      "runtime_conclusion": "success",
+      "runtime_run": 39720172498,
+      "visual_conclusion": "failure",
+      "visual_run": 39720172573
+    },
+    "persisted_state": {
+      "chronofold": "In-memory observation/model caches warm again; no durable all-observation recovery claimed",
+      "commissioning": "ROOT/command_centers/{workspace}/subsystems/audit/commissioning/{predictions,outcomes}.jsonl",
+      "engine_control": "Existing system audit below ROOT/command_centers/{workspace}/subsystems",
+      "possibility": "ROOT/command_centers/{workspace}/subsystems/research/psi_evidence.sqlite3"
+    },
+    "preceding_components": {
+      "command": "ICARUS_REQUIRE_WORKSPACE_BROWSER=1 python -m pytest tests_engine/test_workspace_panels.py tests_engine/test_workspace_client.py tests_engine/test_workspace_context.py tests_engine/test_workspace_ui.py tests_engine/test_workspace_dashboard_browser.py tests_engine/test_possibility.py tests_engine/test_chronofold.py tests_engine/test_chronofold_integration.py tests_engine/test_commissioning.py tests_engine/test_commissioning_integration.py tests_engine/test_engine_control.py -q -o addopts= --tb=short",
+      "log_bytes": 352,
+      "log_local_path": "/workspace/scratch/workspace-panels-batch1-components.log",
+      "log_sha256": "7a34b689902e2f75ce763b7227d7afb9e3d5f8d3f7bc24d7b35bd2413f98143e",
+      "summary": "248 passed in 198.50s (0:03:18)"
+    },
+    "recorded_at_utc": "2026-10-22T07:21:03.059102Z",
+    "remaining_panels": [
+      "access",
+      "brain",
+      "research",
+      "parallax",
+      "pantheon",
+      "sibyl",
+      "apex",
+      "ascendancy",
+      "learning",
+      "autopilot",
+      "golive"
+    ],
+    "review": "Root native review plus fresh regressions; earlier independent checkpoint preserved, no new independent whole-branch clearance claimed",
+    "routing_red": {
+      "command": "python -m pytest tests_engine/test_workspace_panels.py -k 'nested_market or duplicate_json or unused_arguments or client_preserves' -q -o addopts= --tb=short",
+      "log_bytes": 2386,
+      "log_local_path": "/workspace/scratch/workspace-panels-routing-red.log",
+      "log_sha256": "2e3a7c3956ca4f3f050600a0782edda950eb14bdbd7d903265aa193195185c85",
+      "summary": "4 failed, 25 deselected in 1.81s"
+    },
+    "source_commit": "2c1b6270eda685f5de2733ff4dbb9478ec98bd05",
+    "source_file_sha256": {
+      "icarus_engine/dashboard.html": "a309eca7907084b205fd904baa7be7e22ab332de6bf8342447f06fde6e6b0908",
+      "icarus_engine/engine-control-ui.js": "5a2ca9559cd3998abe468c5ab4179ca76a12bba7a874266a26ce6b8a3ff50924",
+      "icarus_engine/server.py": "3a384d5a538c62d1d0d763d24236dd33a401569659444533a3398a72a72e2ab3",
+      "icarus_engine/workspace-client.js": "b64101eb11d9e713847b8c4df5bb3052566475626acbc2b71287894d09bb060d",
+      "icarus_engine/workspace_panels.py": "eccf9735e91b8b4a99fb56213d297aac086531911ab44a6d2af57e41901f9c47",
+      "tests_engine/test_workspace_client.py": "fb82373ff57f402d82fc0d4293dfd2a11f76454226803cbe41f4a7ea6383ea02",
+      "tests_engine/test_workspace_dashboard_browser.py": "874424b307b676a127317c483a49a3f6e1e5b81212d70c977d297ba0338656e6",
+      "tests_engine/test_workspace_panels.py": "e62ccafb7ff24f3bf6230c6e53702e8dcc35d7ecdaf76b0204374343f8b2ec6e"
+    },
+    "source_parent": "38d53283608d0134274a88b62db9a949280010c2",
+    "windows_selection": {
+      "all_paths_exist": true,
+      "distinct_overall_modules": 80,
+      "hosted_status": "Pending new published head; a local selection check is not a Windows pass",
+      "main_modules": 78,
+      "new_module": "tests_engine/test_workspace_panels.py"
+    },
+    "workspaces": [
+      "cc1",
+      "cc2",
+      "cc3",
+      "cc4"
+    ]
+  },
+  "workspace_selected_replay_followup": {
+    "behavior": [
+      "Per-asset override changes replay only affected retained symbols; whole-default changes replay selected assets.",
+      "Conservative flat-workspace guard retained, including open unselected siblings.",
+      "Unchanged settings can be replayed by explicit asset or whole-workspace revisioned jobs.",
+      "Same transaction/persistence/exact-file rollback used by settings and rewarm; revision rechecked at worker commit.",
+      "Active rewarm requests reuse identical accepted work, reject conflicting config work and foreign job reads.",
+      "Client keeps caller revision; no parent per-asset writer or provider request in rewarm."
+    ],
+    "focused": "350passed in54.64s; earlier manager166passed; Node/service7passed",
+    "full_suite": {
+      "command": "python -m pytest tests_engine -q --tb=short -o addopts=''",
+      "exit_code": 0,
+      "local_log": "/workspace/scratch/workspace-selected-rewarm-full.log",
+      "log_sha256": "0a687cfc8c54ddae0c3d9e91d82c9597122e79233a9826c2e9f3ffa0e12e5202",
+      "result": "3699passed,4skipped,111subtests in231.52s"
+    },
+    "limits": [
+      "Current replay-source hosted checks remain separate from preceding client checks.",
+      "No common renderer switch, release merge, runtime restart, provider acquisition or live activation.",
+      "No accuracy gain or explanation of the reported accuracy regression established."
+    ],
+    "observed_red": [
+      "2unrelated-sibling replay failures (2safety cases already passing)",
+      "8missing manager rewarm cases",
+      "7missing job/client rewarm cases",
+      "5missing HTTP rewarm cases"
+    ],
+    "previous_context_client_hosted": {
+      "all_six": "completed/success",
+      "commit": "e9a33b79109f021fc6a32b7373bd52d30e4ebcae",
+      "configuration": 39598192909,
+      "consumer": 39598192978,
+      "intelligence": 39598192976,
+      "performance": 39598192960,
+      "tests": 39598192902,
+      "visual": 39598192894
+    },
+    "recorded_at_utc": "2026-10-21T12:31:55.304315+00:00",
+    "review": "Native root diff review; no fresh independent final approval claimed while reviewer is usage-limited.",
+    "scope": "SELECTED_REPLAY_AND_EXPLICIT_REVISIONED_REWARM; common-renderer migration remains open",
+    "source_file_sha256": {
+      "icarus_engine/paper_workspaces.py": "8ae4eaa355786b4c035d68a98dd3b67b4e883e227237f744661796a2e792145f",
+      "icarus_engine/server.py": "ca41bdd77b1b9d03e3fc02a27e63585ad812355d622fffa7d4e16a22b24ec34d",
+      "icarus_engine/workspace-client.js": "b5269d87418c2fa1373d0d50a7f5c30084b9263d89766b06ddf5ec4c37a21cc3",
+      "icarus_engine/workspace_jobs.py": "1168e6fd9099a25e0ec32209d321155d81b42dc5e3f0f6b199717e3081d7212b",
+      "tests_engine/test_workspace_api.py": "48ef1d96da80242c9660d9922ff8a6c9a269b5bd7cfc698e6e6d7a1d74841823",
+      "tests_engine/test_workspace_client.py": "e1d29cb6cec543a29c0c1c222c75826c6cdaa5c037d35849d5ff86b24804b425",
+      "tests_engine/test_workspace_config.py": "c919ca793ec715a5bd416add6c9ebd8cbae168ef0ac9a043b6bb9568dd5278f5",
+      "tests_engine/test_workspace_jobs.py": "3b1170750e565b5844d030d93946eb1cfccb26036a9d0a6a0094875fb5003191"
+    }
+  }
+}

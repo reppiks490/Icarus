@@ -58,6 +58,7 @@ def _run_gate(receipt_count, mutation=None):
         "BrainRemoteSync": fixture_sync, "brain_snapshot": brain_snapshot,
         "_stored_event": _stored_event, "consumer": consumer, "json": json,
         "tempfile": tempfile, "datetime": datetime, "timezone": timezone, "Path": Path,
+        "listing": remote["listing"],
         "fetch_json": remote["fetch_json"], "fetch_bytes": remote["fetch_bytes"],
     }
     exec(compile(gate_block, f"{workflow} (inline Python)", "exec"), namespace)

@@ -150,4 +150,3 @@ Windows private vault/archive intake still refuses without safe descriptor-relat
 Stop the owning launcher with Ctrl+C, preserve the current private state again, and switch the source checkout to the privately recorded previous commit without force. Use that version's corresponding launcher and the confirmed state/feed/assets. Do not casually restore an older backup over current state: that can discard newer journal entries. Keep backups for deliberate recovery.
 
 No automatic main code merge, deployment, release, paid feed selection, new spend, scheduler change or PC reboot is part of this handoff. Live execution stays disabled. The recurring federation loop remains cancelled; after this bounded update, Prime waits for the owner's PC command output and continues restart diagnosis in this session. [Delivery handoff](https://github.com/reppiks490/icarus-owner-actions/blob/main/coordination/handoffs/prime-installer-expanded-restart-20261023.json).
-

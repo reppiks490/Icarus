@@ -490,6 +490,7 @@ def _normalize_historical_document(
     payload: Mapping[str, Any],
     *,
     blob_sha: str,
+    observed_at_ns: int | None = None,
 ) -> dict[str, Any]:
     _validate_historical_source_semantics(source, payload)
     sha = str(blob_sha or "").lower()
@@ -516,7 +517,7 @@ def _normalize_historical_document(
             "collected_at": collected.isoformat().replace("+00:00", "Z"),
             "availability_clock": availability,
         }
-        return {
+        row = {
             "id": source["id"], "path": source["path"], "remote_blob_sha": sha,
             "run_id": None, "run_status": None, "evidence_status": source["evidence_status"],
             "collection_only": True, "research_context_eligible": True,
@@ -525,6 +526,17 @@ def _normalize_historical_document(
             "availability_clock": availability, "subject": source["subject"],
             "execution_authorized": False, "production_decision_authorized": False,
         }
+
+        if source.get("id") == "provider_collection" and observed_at_ns is not None:
+            try:
+                from .provider_corpus import consume_context
+                row["provider_corpus"] = consume_context(
+                    payload, source_blob_sha=sha, available_at_ns=observed_at_ns, asof_ns=observed_at_ns)
+            except (ImportError, ValueError, TypeError, KeyError, OverflowError):
+                row["provider_corpus"] = {"status": "UNAVAILABLE", "reason": "PROVIDER_CONTEXT_UNAVAILABLE",
+                    "candidate_evidence_eligible": False, "execution_authorized": False,
+                    "production_decision_authorized": False}
+        return row
 
     summary: dict[str, Any] = {}
     for field in source.get("summary_fields") or []:
@@ -1423,6 +1435,53 @@ class BrainRemoteSync:
     def _default_fetch_bytes(self, url: str) -> bytes:
         return self._request(url, "application/vnd.github.raw+json")
 
+    def _event_listing(self) -> list[Any]:
+        listing = self._fetch_json(_REMOTE_API)
+        if not isinstance(listing, list):
+            raise ValueError("GitHub event directory response is not a list")
+        if len(listing) < 1000:
+            return listing
+
+        # Contents silently caps directories at 1,000 entries. Resolve a fresh
+        # immutable snapshot, then enumerate its nonrecursive directory tree.
+        api = f"https://api.github.com/repos/{REMOTE_REPOSITORY}"
+        commit = self._fetch_json(f"{api}/commits/{REMOTE_REF}")
+        revision = commit.get("sha") if isinstance(commit, Mapping) else None
+        if not _is_sha(revision):
+            raise ValueError("GitHub event inventory commit SHA is invalid")
+        parent = self._fetch_json(
+            _remote_contents_api(REMOTE_ROOT.rsplit("/", 1)[0], ref=revision)
+        )
+        if not isinstance(parent, list):
+            raise ValueError("GitHub event inventory parent is not a directory listing")
+        directories = [item for item in parent if isinstance(item, Mapping)
+                       and item.get("type") == "dir" and item.get("path") == REMOTE_ROOT]
+        if len(directories) != 1 or not _is_sha(directories[0].get("sha")):
+            raise ValueError("GitHub event inventory directory SHA is missing or invalid")
+        tree_sha = directories[0]["sha"]
+        tree = self._fetch_json(f"{api}/git/trees/{tree_sha}")
+        if (not isinstance(tree, Mapping) or tree.get("sha") != tree_sha
+                or tree.get("truncated") is not False or not isinstance(tree.get("tree"), list)):
+            raise ValueError("GitHub event inventory tree is truncated, mismatched or malformed")
+        entries = []
+        names = set()
+        for item in tree["tree"]:
+            if not isinstance(item, Mapping):
+                raise ValueError("GitHub event inventory tree entry is malformed")
+            name = item.get("path")
+            if (not isinstance(name, str) or not name or name in {".", ".."}
+                    or "/" in name or "\\" in name or "\0" in name or name in names):
+                raise ValueError("GitHub event inventory contains an unsafe or duplicate path")
+            names.add(name)
+            if item.get("type") != "blob" or not name.endswith(".json"):
+                continue
+            sha = item.get("sha")
+            if item.get("mode") not in {"100644", "100755"} or not _is_sha(sha):
+                raise ValueError("GitHub event inventory file mode or blob SHA is invalid")
+            entries.append({"name": name, "path": f"{REMOTE_ROOT}/{name}",
+                            "type": "file", "sha": sha, "url": f"{api}/git/blobs/{sha}"})
+        return entries
+
     def status(self) -> dict[str, Any]:
         state = _read_state(self.base_dir, self.interval_seconds)
         was_fresh = state.get("peer_packet_fresh") is True
@@ -1532,17 +1591,24 @@ class BrainRemoteSync:
                 payload = json.loads(raw.decode("utf-8"))
                 if not isinstance(payload, Mapping):
                     raise ValueError("historical context payload is not an object")
-                row = _normalize_historical_document(
-                    source,
-                    payload,
-                    blob_sha=blob_sha,
-                )
-                if source.get("kind") == "RESEARCH_CONTEXT_DOCUMENT":
+                now = None
+                observed_ns = None
+                if source.get("id") == "provider_collection" or source.get("kind") == "RESEARCH_CONTEXT_DOCUMENT":
                     now = self._now_utc()
                     if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
                         raise ValueError("INVALID_SOURCE_CLOCK: live sync clock")
+                    now = now.astimezone(timezone.utc)
+                    if source.get("id") == "provider_collection":
+                        elapsed = now - datetime(1970, 1, 1, tzinfo=timezone.utc)
+                        observed_ns = (elapsed.days * 86400 + elapsed.seconds) * 1_000_000_000 + elapsed.microseconds * 1000
+                row = _normalize_historical_document(
+                    source, payload, blob_sha=blob_sha,
+                    observed_at_ns=observed_ns if source.get("id") == "provider_collection" else None,
+                )
+                if source.get("kind") == "RESEARCH_CONTEXT_DOCUMENT":
+                    assert now is not None
                     collected = datetime.fromisoformat(row["clocks"]["collected_at"].replace("Z", "+00:00"))
-                    if (collected - now.astimezone(timezone.utc)).total_seconds() > 300:
+                    if (collected - now).total_seconds() > 300:
                         raise ValueError(f"FUTURE_SOURCE_CLOCK: {source['id']}")
                 rows.append(row)
 
@@ -1576,6 +1642,7 @@ class BrainRemoteSync:
                                 "requires_foundry_and_evaluator": True,
                                 "foreign_evidence_only": True,
                                 "summary": row["summary"],
+                                **({"provider_corpus": row["provider_corpus"]} if "provider_corpus" in row else {}),
                                 "execution_authorized": False,
                                 "production_decision_authorized": False,
                             },
@@ -2268,9 +2335,7 @@ class BrainRemoteSync:
                     })
                     peer_error = f"{type(ex).__name__}: {ex}"[:1000]
 
-                listing = self._fetch_json(_REMOTE_API)
-                if not isinstance(listing, list):
-                    raise ValueError("GitHub event directory response is not a list")
+                listing = self._event_listing()
             except Exception as ex:
                 state["status"] = "degraded"
                 state["last_error"] = f"{type(ex).__name__}: {ex}"[:1000]
@@ -2283,7 +2348,7 @@ class BrainRemoteSync:
                 if _is_sha(x)
             }
             entries = []
-            for item in listing[:1000]:
+            for item in listing:
                 if not isinstance(item, Mapping):
                     continue
                 name = item.get("name")
@@ -2300,9 +2365,16 @@ class BrainRemoteSync:
                     entries.append((name, path, sha, str(item.get("url") or "")))
             entries.sort(key=lambda x: x[0])
 
+            attempted = set()
             for _name, path, blob_sha, url in entries:
-                if blob_sha in processed:
+                if blob_sha in processed or blob_sha in attempted:
                     continue
+                if len(attempted) >= 1000:
+                    deferred = {entry[2] for entry in entries} - processed - attempted
+                    if deferred:
+                        errors.append(f"event ingest deferred: {len(deferred)} unseen blobs await the next poll")
+                    break
+                attempted.add(blob_sha)
                 if not url:
                     errors.append(f"{path}: missing GitHub contents URL")
                     continue

@@ -20,7 +20,7 @@ def engine(tmp_path, monkeypatch):
     monkeypatch.setenv("ICARUS_FEED", "file")
     journal = Journal(":memory:")
     parent = Portfolio(journal, str(tmp_path), feeds={})
-    srv = serve(parent, 0, token="owner-test", start=False)
+    srv = serve(parent, 0, token="owner-test", start=False, shared_dashboard=False)
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
 
@@ -81,6 +81,26 @@ def test_corpus_safe_reader_has_no_user_selected_path(engine, monkeypatch):
     called.assert_called_once_with()
 
 
+def test_discovery_registry_route_exposes_only_committed_metadata_receipts(engine):
+    status, payload = engine[1]("/api/discovery-registry?path=/etc/passwd")
+    assert status == 200
+    assert payload["status"] == "AVAILABLE"
+    assert payload["catalogs_available"] == payload["catalogs_expected"] == 3
+    assert payload["source_probes_performed"] is False
+    assert payload["market_data_provided"] is False
+    assert payload["execution_authorized"] is False
+    assert payload["production_decision_authorized"] is False
+    assert {row["catalog_id"] for row in payload["catalogs"]} == {
+        "api-mega-list", "scraping-apis-for-devs", "ai-agent-tools"
+    }
+    assert all(row["status"] == "SUCCESS" for row in payload["catalogs"])
+    assert all("raw_rows" not in row for row in payload["catalogs"])
+    code, script = engine[1]("/sources-ui.js")
+    assert code == 200
+    assert "loadDiscoveryRegistry" in script
+    assert "api/discovery-registry" in script
+
+
 def test_chart_is_scoped_to_workspace_and_auth_controls_preserved(engine):
     srv, request = engine
     workspace_runner = Mock()
@@ -90,7 +110,7 @@ def test_chart_is_scoped_to_workspace_and_auth_controls_preserved(engine):
     srv.command_centers.portfolios["cc2"] = workspace
     code, result = request("/api/command-centers/cc2/chart/NQ?n=40")
     assert code == 200 and result["bars"][0]["c"] == 121
-    workspace_runner.chart.assert_called_once_with(40, nonblocking=True)
+    workspace_runner.chart.assert_called_once_with(40, offset=0, nonblocking=True)
     assert request("/api/command-centers/cc1/chart/NQ")[0] == 503
     assert request("/api/command-centers/cc2/chart/ES")[0] == 404
     assert request("/admin/command-centers/cc2/pause", method="POST", body={"paused": True})[0] == 401
@@ -111,7 +131,7 @@ def test_complete_paper_accounting_reuses_manager_totals(engine, monkeypatch):
         {"id": row["id"], "currency": "USD", "runtime_available": True, "snapshot_ts": now,
          "realized_pnl": row["pnl"]["realized_pnl"], "open_pnl": row["pnl"]["open_pnl"],
          "open_positions": 1, "oldest_open_mark_ts": now} for row in snapshot["profiles"]], as_of_ts=now)
-    monkeypatch.setattr(srv.command_centers, "snapshot", lambda: snapshot)
+    monkeypatch.setattr(srv.command_centers, "snapshot", lambda **kwargs: snapshot)
     srv.command_centers.portfolios = {key: object() for key in ("cc1", "cc2", "cc3", "cc4")}
     status, result = request("/api/command-centers/cc3")
     assert status == 200
@@ -120,6 +140,44 @@ def test_complete_paper_accounting_reuses_manager_totals(engine, monkeypatch):
     assert result["aggregate"]["open_pnl"] == 10
     assert result["profile"]["pnl"]["realized_pnl"] == 30
     srv.command_centers.portfolios.clear()
+
+
+def test_missing_other_runtime_preserves_valid_individual_pnl_on_both_endpoints(engine):
+    srv, request = engine
+    journals = []
+    try:
+        for key in ("cc1", "cc2", "cc3"):
+            journal = Journal(":memory:")
+            journals.append(journal)
+            srv.command_centers.portfolios[key] = types.SimpleNamespace(
+                journal=journal, runner_list=lambda: [],
+                status=lambda **kwargs: {"assets": [], "positions": 0, "open_profit": 0.0},
+            )
+        journals[0].con.execute(
+            "INSERT INTO trades (symbol,entry_id,direction,qty,entry_price,entry_ts,exit_price,exit_ts,exit_comment,profit,live) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            ("NQ", "closed", 1, 1, 100, 1000, 101, 1060, "test", 10, 1),
+        )
+        journals[0].con.commit()
+        journals[0].publish_dashboard_views()
+        code, combined = request("/api/command-centers")
+        assert code == 200
+        for key in ("cc1", "cc4"):
+            code, dedicated = request("/api/command-centers/" + key)
+            assert code == 200
+            own = next(row for row in combined["profiles"] if row["id"] == key)
+            assert dedicated["paper_pnl"] is not None
+            for field in ("profiles", "aggregate"):
+                assert dedicated["paper_pnl"][field] == combined["paper_pnl"][field]
+            assert dedicated["aggregate"]["total_pnl"] is None
+            assert dedicated["aggregate"]["realized_pnl"] is None
+            assert dedicated["profile"]["pnl"] == own["pnl"]
+            assert dedicated["profile"]["pnl"]["realized_pnl"] == (10 if key == "cc1" else None)
+            assert dedicated["accounting"]["complete"] is False
+    finally:
+        srv.command_centers.portfolios.clear()
+        for journal in journals:
+            journal.close()
 
 
 def test_old_ui_links_all_four_separate_views(engine):
@@ -134,7 +192,7 @@ def test_invalid_accounting_values_never_produce_complete_aggregate(engine, monk
     srv, request = engine
     snapshot = srv.command_centers.snapshot()
     snapshot["profiles"][0]["pnl"]["open_pnl"] = bad_value
-    monkeypatch.setattr(srv.command_centers, "snapshot", lambda: snapshot)
+    monkeypatch.setattr(srv.command_centers, "snapshot", lambda **kwargs: snapshot)
     srv.command_centers.portfolios = {key: object() for key in ("cc1", "cc2", "cc3", "cc4")}
     status, result = request("/api/command-centers/cc1")
     assert status == 200
@@ -164,7 +222,7 @@ def test_corrupt_duplicate_workspace_accounting_is_unavailable(engine, monkeypat
     srv, request = engine
     snapshot = srv.command_centers.snapshot()
     snapshot["profiles"][3]["id"] = "cc1"
-    monkeypatch.setattr(srv.command_centers, "snapshot", lambda: snapshot)
+    monkeypatch.setattr(srv.command_centers, "snapshot", lambda **kwargs: snapshot)
     srv.command_centers.portfolios = {key: object() for key in ("cc1", "cc2", "cc3", "cc4")}
     result = request("/api/command-centers/cc1")[1]
     assert result["accounting"]["complete"] is False
@@ -194,7 +252,7 @@ def test_missing_marks_with_numeric_fallback_never_appear_as_verified_pnl(engine
     snapshot["aggregate"]["accounting_complete"] = False
     snapshot["profiles"][0]["valuation_complete"] = False
     snapshot["profiles"][0]["pnl"]["open_pnl"] = 0.0
-    monkeypatch.setattr(srv.command_centers, "snapshot", lambda: snapshot)
+    monkeypatch.setattr(srv.command_centers, "snapshot", lambda **kwargs: snapshot)
     srv.command_centers.portfolios = {key: object() for key in ("cc1", "cc2", "cc3", "cc4")}
     result = request("/api/command-centers/cc1")[1]
     assert result["accounting"]["complete"] is False
@@ -248,6 +306,7 @@ let browser;
  await page.locator('#a200-history').click();
  assert.equal(historyCalls.length,0,'no owner token means no request');
  await page.locator('#owner-token').fill('owner-test');
+ await page.evaluate(async()=>{await IcarusWorkspacePower.refresh();});
  await page.locator('#a200-history').click();
  await page.waitForFunction(()=>document.querySelector('#a200-history-note').textContent.includes('2 observed bars'));
  assert.equal(historyCalls.length,1);
@@ -259,7 +318,8 @@ let browser;
  assert.equal(Number(url.searchParams.get('end_ts'))-Number(url.searchParams.get('start_ts')),5*86400);
  assert.match(await page.locator('#a200-receipt').textContent(),/UNKNOWN/);
  assert.equal(await page.locator('#all-total').textContent(),before,'research cannot change P&L');
- assert.match(await page.locator('#chart-note').textContent(),/No selected workspace/);
+ assert.match(await page.locator('#chart-note').textContent(),/No current workspace observations/);
+ assert.equal(await page.locator('[data-power-row="cc4"] [data-state]').textContent(),'OFF');
  await page.locator('#a200-instrument').selectOption({index:1});
  assert.match(await page.locator('#a200-history-note').textContent(),/No history requested/);
  assert.equal(historyCalls.length,1,'selection cannot acquire another dataset');
@@ -361,6 +421,12 @@ const payloads=JSON.parse(process.argv[3]);let browser;
  browser=await chromium.launch({executablePath:process.argv[2],headless:true,args:['--no-sandbox']});
  const page=await browser.newPage({viewport:{width:1280,height:900}});page.setDefaultTimeout(8000);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ // This presentation fixture already supplies four synthetic running ledgers.
+ // Supply their matching lifecycle metadata so OFF suppression remains real.
+ await page.route('**/api/workspace-runtime',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+  schema_version:'icarus.workspace-power.v1',paper_only:true,execution_authorized:false,
+  workspaces:['cc1','cc2','cc3','cc4'].map(id=>({id,desired_enabled:true,runtime_state:'ON',revision:0,error:null}))
+ })}));
  await page.route('**/api/command-centers/cc*',async route=>{
   const key=new URL(route.request().url()).pathname.split('/').at(-1);
   if(payloads[key])await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(payloads[key])});else await route.continue();
@@ -372,7 +438,26 @@ const payloads=JSON.parse(process.argv[3]);let browser;
   assert.match(await page.locator('#all-open').textContent(),/10.00/);
   await page.waitForFunction(()=>document.querySelector('#corpus-sources').textContent.includes('all ten warmed in all four workspaces'));
   assert.match(await page.locator('#corpus-sources').textContent(),/Missing archived micros: MNG, MHG, M6E, MJY, M6B, M6A/);
+  await page.waitForFunction(()=>document.querySelector('#provider-context')?.textContent.includes('25 unique numeric statistics consumed'));
+  const provider=await page.locator('#provider-context').textContent();
+  assert.match(provider,/132,554 upstream rows reported/);
+  assert.match(provider,/Raw source rows read by this context: 0/);
+  assert.match(provider,new RegExp(id.toUpperCase()+': 25 numeric reads and 14 provider-status reads'));
+  assert.match(provider,/unusual_whales: BLOCKED_AUTHENTICATION in archived snapshot/);
+  assert.doesNotMatch(provider,/current reported rows/);
+  assert.match(provider,/111 historical fallback rows/);
+  assert.equal(await page.locator('#provider-context table tr').count(),6);
+  assert.match(await page.locator('#provider-context table').textContent(),/92\.75882111436948/);
  }
+ const providerRefresh=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/provider-corpus');
+ await page.locator('#refresh').click();
+ await providerRefresh;
+ await page.waitForFunction(()=>document.querySelectorAll('#provider-context table tr').length===6);
+ assert.equal(await page.locator('#provider-context').count(),1,'Manual refresh must replace the static provider panel instead of duplicating it');
+ assert.equal(await page.locator('#provider-context table tr').count(),6);
+ await page.setViewportSize({width:390,height:844});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Provider statistics must fit the mobile viewport');
+ await page.setViewportSize({width:1280,height:900});
  // Browser time moves, the provider remains untouched, and cached totals expire.
  await page.clock.install({time:new Date(payloads.cc4.paper_pnl.as_of_ts*1000)});
  await page.clock.runFor(92000);
@@ -414,3 +499,18 @@ def test_expansion_receipt_api_is_pinned_metadata_and_ignores_user_path(engine, 
     assert code == 200
     assert result["status"] == "HISTORICAL_EXPANSION_CONSUMPTION_VERIFIED"
     called.assert_called_once_with()
+
+
+def test_provider_context_readonly_route_exposes_actual_consumption_and_ignores_query(engine):
+    status, result = engine[1]('/api/provider-corpus?path=/etc/passwd&now_ns=1')
+    assert status == 200
+    assert result['status'] == 'HISTORICAL_CONTEXT_CONSUMED'
+    assert result['summary']['source_rows_reported'] == 132554
+    assert result['summary']['unique_numeric_values_consumed'] == 25
+    assert result['summary']['raw_rows_consumed'] == 0
+    assert set(result['workspaces']) == {'cc1', 'cc2', 'cc3', 'cc4'}
+    assert {row['consumer_id'] for row in result['read_receipts']} == {'quality','research','cc1','cc2','cc3','cc4'}
+    assert result['workspaces']['cc2']['features'][0]['statistics']['mean'] is not None
+    assert result['execution_authorized'] is False
+    assert result['point_in_time_qualified'] is False
+    assert engine[1]('/api/provider-corpus', method='POST', body={'execute': True})[0] in (404, 405)

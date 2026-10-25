@@ -64,7 +64,7 @@
     try{
       const token=localStorage.getItem('icarus-engine-token')||'icarus';
       const q=requestAsset?'?asset='+encodeURIComponent(requestAsset):'';
-      const r=await fetch('/api/chronofold'+q,{cache:'no-store',headers:{'Authorization':'Bearer '+token}});
+      const r=await IcarusClient.request('/api/chronofold'+q,{cache:'no-store',headers:{'Authorization':'Bearer '+token}});
       const d=await r.json();
       if(!r.ok)throw new Error(d.detail||d.error||('HTTP '+r.status));
       if(requestAsset!==selected){pendingLoad=true;return;}

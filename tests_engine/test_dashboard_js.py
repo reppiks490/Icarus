@@ -20,6 +20,9 @@ NODE = shutil.which("node")
     "rel",
     [
         "icarus_engine/dashboard.html",
+        "icarus_engine/workspace-client.js",
+        "icarus_engine/workspace-ui.js",
+        "icarus_engine/workspace-evidence-ui.js",
         "icarus_bridge/dashboard.html",
         "icarus_engine/research-ui.js",
         "icarus_engine/shadow-twin-ui.js",
@@ -205,7 +208,8 @@ def test_asset_adder_uses_registry_and_timeframe_suggestions_and_single_flight_s
     assert "button.disabled = true; button.classList.add('world-busy')" in src
     assert "await withBusyButton(b, async () => {" in src
     assert "await admin('/admin/assets/add'" in src
-    assert "j.detail||j.error||'request failed'" in src
+    assert "operationMessage(path,e.receipt,e)" in src
+    assert "await IcarusUI.admin(path, body||{}, draft)" in src
 
 
 def test_engine_dashboard_surfaces_repository_mcp_audit():
@@ -213,7 +217,7 @@ def test_engine_dashboard_surfaces_repository_mcp_audit():
     assert 'id="repoHealth"' in src
     assert 'data-v="system">System</span>' in src
     assert "repositoryAuditCard(window.ICARUS_AUDIT" in src
-    assert "fetch('/api/system/audit'" in src
+    assert "IcarusClient.request('/api/system/audit'" in src
     assert "setInterval(refreshAudit, 20000)" in src
     assert "System Intelligence" in src
     assert "Automation loops" in src
@@ -737,7 +741,7 @@ def test_command_palette_and_scheduler_mutations_are_single_flight():
 def test_dashboard_catalogs_recover_after_transient_startup_failures():
     dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
     assert "async function refreshUiCatalogs()" in dashboard
-    assert "Promise.allSettled([get('/api/presets'), get('/api/commands'), get('/api/assets')])" in dashboard
+    assert "Promise.allSettled([IcarusClient.shared('/api/presets'), IcarusClient.shared('/api/commands'), IcarusClient.read('assets')])" in dashboard
     assert "const CATALOG_READY = {presets:false, commands:false, registry:false};" in dashboard
     assert "CATALOG_READY.presets = true;" in dashboard
     assert "CATALOG_READY.commands = true;" in dashboard
@@ -943,3 +947,18 @@ def test_ascendancy_dashboard_surfaces_external_research_work_orders():
     assert "ORDER ≠ EVIDENCE" in ui
     assert 'p.path == "/api/ascendancy/work-orders"' in server
     assert 'p.path == "/admin/ascendancy/work-order-claim"' in server
+
+
+def test_learning_view_uses_explicit_intuition_import_without_background_polling():
+    ui = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
+    client = (REPO / "icarus_engine/workspace-client.js").read_text(encoding="utf-8")
+    server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
+
+    assert "setInterval(" not in ui
+    assert "Refresh status" in ui
+    assert "Import verified Learning pairs" in ui
+    assert "'/api/intuition-omega'" in ui
+    assert "'/admin/intuition-omega/import-learning'" in ui
+    assert "intuition-omega/import-learning" in client
+    assert 'p.path == "/api/intuition-omega"' in server
+    assert 'p.path == "/admin/intuition-omega/import-learning"' in server

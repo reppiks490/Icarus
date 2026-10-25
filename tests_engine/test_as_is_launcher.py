@@ -1,0 +1,178 @@
+"""Operator launcher source/argument boundaries; no provider access."""
+import os
+from pathlib import Path
+import shutil
+import socket
+import subprocess
+import sys
+
+import pytest
+
+SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/start-as-is.sh'
+pytestmark = pytest.mark.skipif(os.name == 'nt' or not shutil.which('bash'), reason='POSIX shell harness; Windows operator path requires Git Bash')
+
+
+def launcher(tmp_path):
+    repo = tmp_path / 'source with spaces'
+    (repo / 'scripts').mkdir(parents=True)
+    script = repo / 'scripts/start-as-is.sh'
+    shutil.copy2(SCRIPT, script)
+    python = repo / '.venv/bin/python'
+    python.parent.mkdir(parents=True)
+    python.write_text('#!/usr/bin/env bash\nif [[ "$1" == "-c" ]]; then exit 0; fi\nprintf "%s\\n" "$PWD" "$@" > "$ICARUS_CAPTURE"\n')
+    python.chmod(0o755)
+    return repo, script
+
+
+def test_requires_explicit_feed_and_assets(tmp_path):
+    _, script = launcher(tmp_path)
+    result = subprocess.run(['bash', str(script)], capture_output=True, text=True)
+    assert result.returncode != 0
+    assert '--feed' in result.stderr and '--assets' in result.stderr
+
+
+@pytest.mark.parametrize('asset_args', [
+    ['--assets', ''],
+    ['--assets', ' \t '],
+    ['--assets', ', ,\t,,'],
+    ['--assets='],
+    ['--assets= , \t,'],
+    ['--assets', 'NQ', '--assets', ''],
+])
+@pytest.mark.parametrize('setup', [False, True])
+def test_empty_assets_refuse_before_python_or_private_state_changes(tmp_path, asset_args, setup):
+    repo, script = launcher(tmp_path)
+    capture = tmp_path / 'python-invocations'
+    python = repo / '.venv/bin/python'
+    python.write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$@" >> "$ICARUS_CAPTURE"\n')
+    # A prepared venv avoids bootstrapping an actual interpreter in --setup.
+    (repo / '.venv/pyvenv.cfg').write_text('')
+    state = tmp_path / 'private state'
+    state.mkdir()
+    saved = state / 'saved-workspaces'
+    saved.write_bytes(b'keep existing settings')
+    command = ['bash', str(script), '--feed', 'file', *asset_args, '--root', str(state)]
+    if setup:
+        command.append('--setup')
+    result = subprocess.run(command, env={**os.environ, 'ICARUS_PYTHON': str(python),
+                                         'ICARUS_CAPTURE': str(capture)},
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert '--assets' in result.stderr and 'non-empty' in result.stderr
+    assert not capture.exists(), 'invalid startup must not invoke Python, pip, or plant'
+    assert list(state.iterdir()) == [saved]
+    assert saved.read_bytes() == b'keep existing settings'
+
+
+def test_uses_checkout_venv_and_preserves_argument_boundaries(tmp_path):
+    repo, script = launcher(tmp_path)
+    capture = tmp_path / 'capture'
+    state = str(tmp_path / 'private state')
+    result = subprocess.run(['bash', str(script), '--feed', 'file', '--assets', 'NQ,ES', '--root', state, '--no-browser'],
+        cwd=tmp_path, env={**os.environ, 'ICARUS_CAPTURE': str(capture)}, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    args = capture.read_text().splitlines()
+    assert args[:4] == [str(repo), '-m', 'icarus_plant', 'start']
+    assert '--no-downloads' in args and '--bridge' not in args
+    assert args[args.index('--root') + 1] == state
+    assert args[args.index('--assets') + 1] == 'NQ,ES'
+    assert args[args.index('--feed') + 1] == 'file'
+
+
+def test_bridge_is_not_admitted_by_paper_launcher(tmp_path):
+    _, script = launcher(tmp_path)
+    result = subprocess.run(['bash', str(script), '--feed', 'file', '--assets', 'NQ', '--bridge'], capture_output=True, text=True)
+    assert result.returncode != 0 and 'bridge' in result.stderr.lower()
+
+
+def test_setup_builds_metadata_without_distutils_collision_or_runtime_env_leak(tmp_path):
+    """Catch pip-before-setuptools assertion using a real opted-in interpreter.
+
+    Package downloads/upgrades and engine startup are the external boundaries;
+    the Python version probe, pip import and setuptools editable metadata are real.
+    Set ICARUS_SETUP_TEST_PYTHON to exercise Python 3.10/3.11 or 3.12+ offline.
+    """
+    real_python = os.environ.get('ICARUS_SETUP_TEST_PYTHON')
+    if not real_python:
+        pytest.skip('opt-in real packaging interpreter; no package downloads in unit suite')
+    repo, script = launcher(tmp_path)
+    (repo / '.venv/pyvenv.cfg').write_text('')
+    (repo / 'pyproject.toml').write_text(
+        '[build-system]\nrequires = ["setuptools>=68"]\nbuild-backend = "setuptools.build_meta"\n'
+        '[project]\nname = "icarus-setup-regression"\nversion = "0.0.0"\n')
+    metadata = tmp_path / 'metadata'
+    metadata.mkdir()
+    capture = tmp_path / 'runtime-environment'
+    python = repo / '.venv/bin/python'
+    python.write_text(
+        '#!/usr/bin/env bash\nset -eu\n'
+        'if [[ "$1" == "-m" && "$2" == "pip" ]]; then\n'
+        '  for arg in "$@"; do if [[ "$arg" == "--upgrade" ]]; then exit 0; fi; done\n'
+        '  exec "$ICARUS_SETUP_TEST_PYTHON" -c '\
+        "'import os, pip; from setuptools.build_meta import prepare_metadata_for_build_editable; "
+        'prepare_metadata_for_build_editable(os.environ["ICARUS_METADATA"])' + "'\n"
+        'fi\n'
+        'if [[ "$1" == "-c" ]]; then\n'
+        '  if [[ "$2" == *"import icarus_engine"* ]]; then exit 0; fi\n'
+        '  exec "$ICARUS_SETUP_TEST_PYTHON" "$@"\n'
+        'fi\n'
+        'printf "%s\\n" "${SETUPTOOLS_USE_DISTUTILS-unset}" "$@" > "$ICARUS_CAPTURE"\n')
+    state = tmp_path / 'private state'
+    state.mkdir()
+    saved = state / 'saved-inputs'
+    saved.write_bytes(b'preserve owner settings')
+    result = subprocess.run(
+        ['bash', str(script), '--setup', '--feed', 'file', '--assets', 'NQ', '--root', str(state)],
+        env={**os.environ, 'SETUPTOOLS_USE_DISTUTILS': 'local',
+             'ICARUS_METADATA': str(metadata), 'ICARUS_CAPTURE': str(capture)},
+        capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert list(metadata.glob('*.dist-info/METADATA')), 'real editable metadata must be produced'
+    assert capture.read_text().splitlines()[:4] == ['local', '-m', 'icarus_plant', 'start']
+    assert list(state.iterdir()) == [saved]
+    assert saved.read_bytes() == b'preserve owner settings'
+
+
+def test_occupied_port_refuses_without_mutating_state(tmp_path):
+    # Use the actual checkout/interpreter for the preflight; never start a service.
+    with socket.socket() as occupied:
+        occupied.bind(('127.0.0.1', 0))
+        occupied.listen()
+        state = tmp_path / 'untouched'
+        result = subprocess.run(['bash', str(SCRIPT), '--feed', 'file', '--assets', 'NQ', '--root', str(state),
+                                 '--engine-port', str(occupied.getsockname()[1])],
+                                env={**os.environ,'ICARUS_PYTHON':sys.executable},capture_output=True,text=True)
+    assert result.returncode != 0 and 'occupied' in result.stderr.lower(), result.stdout + result.stderr
+    assert not state.exists()
+
+
+def test_closed_http_connection_does_not_block_immediate_restart(tmp_path):
+    # The real HTTP server reuses addresses. An accepted connection can outlive
+    # its listener as TIME_WAIT without any running engine owning the port.
+    with socket.socket() as listener:
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listener.bind(('127.0.0.1', 0))
+        listener.listen()
+        port = listener.getsockname()[1]
+        with socket.create_connection(('127.0.0.1', port)) as client:
+            accepted, _ = listener.accept()
+            accepted.close()  # The server closes first, retaining TIME_WAIT.
+            assert client.recv(1) == b''
+    with socket.socket() as probe:
+        probe.settimeout(.5)
+        assert probe.connect_ex(('127.0.0.1', port)) != 0
+
+    state = tmp_path / 'private state'
+    state.mkdir()
+    capture = tmp_path / 'invocation'
+    wrapper = tmp_path / 'preflight-python'
+    wrapper.write_text('#!/usr/bin/env bash\n'
+        'if [[ "$1" == "-c" ]]; then exec "$ICARUS_PREFLIGHT_PYTHON" "$@"; fi\n'
+        'printf "%s\\n" "$@" > "$ICARUS_CAPTURE"\n')
+    wrapper.chmod(0o755)
+    result = subprocess.run(['bash', str(SCRIPT), '--feed', 'file', '--assets', 'NQ',
+                             '--root', str(state), '--engine-port', str(port), '--no-browser'],
+        env={**os.environ, 'ICARUS_PYTHON':str(wrapper), 'ICARUS_PREFLIGHT_PYTHON':sys.executable,
+             'ICARUS_CAPTURE':str(capture)}, capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert capture.read_text().splitlines()[:3] == ['-m', 'icarus_plant', 'start']

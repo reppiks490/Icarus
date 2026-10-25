@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - "icarus_engine/dashboard.html"
+      - "icarus_engine/*-ui.js"
+      - "icarus_engine/workspace-client.js"
+      - "icarus_engine/server.py"
+      - "icarus_engine/workspace_*.py"
       - "icarus_engine/experience-ui.css"
       - "icarus_engine/experience-ui.js"
       - "icarus_engine/world-*.js"
@@ -11,6 +15,8 @@ on:
       - "tests_engine/browser_*.cjs"
       - "tests_engine/browser_preview_server.py"
       - "tests_engine/test_dashboard_js.py"
+      - "tests_engine/test_workspace_*.py"
+      - "tests_engine/test_command_center_routes.py"
       - "tests_engine/test_world_*.py"
       - "tests_engine/test_reference_choreography.py"
       - "tests_engine/test_intelligence_feed.py"
@@ -42,7 +48,7 @@ jobs:
           node-version: "22"
 
       - name: Install ICARUS test dependencies
-        run: pip install -e ".[dev,ml,bridge,databento]"
+        run: pip install -e ".[dev,ml,bridge,databento]" playwright
 
       - name: Run focused presentation invariants
         run: |
@@ -63,6 +69,15 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
+          node -e "require('node:fs').appendFileSync(process.env.GITHUB_ENV, 'ICARUS_BROWSER_BINARY=' + require('playwright').chromium.executablePath() + '\n')"
+
+      - name: Verify five workspace routes in real Chromium
+        env:
+          ICARUS_REQUIRE_WORKSPACE_BROWSER: "1"
+          ICARUS_BROWSER_OUTPUT: /tmp/icarus-ui-previews
+        run: |
+          python -m pytest tests_engine/test_workspace_dashboard_browser.py tests_engine/test_workspace_performance_browser.py tests_engine/test_runtime_layout_browser.py tests_engine/test_connections_layout_browser.py -q
+          python -m pytest tests_engine/test_workspace_api.py -k 'real_browser or settings_ or cached_page' -q
 
       - name: Start feed-free ICARUS preview
         run: |

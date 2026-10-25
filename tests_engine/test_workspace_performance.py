@@ -92,6 +92,8 @@ def test_bad_persisted_trade_fails_closed(journal, field, value):
     assert not r['available']
     assert r['realized_pnl'] is None
     assert r['ratios']['sharpe'] is None
+    accounting=journal.closed_paper_profit(as_of_ts=NOW)
+    assert accounting['realized_pnl'] is None and accounting['reason']==r['reason']
 
 
 def test_tied_closures_order_by_persisted_id(journal):

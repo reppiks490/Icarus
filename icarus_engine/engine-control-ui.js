@@ -153,7 +153,7 @@ async function loadEngineControl(){
   engineControlPendingLoad=false;
   try{
     const token=localStorage.getItem('icarus-engine-token')||'';
-    const r=await fetch('/api/engine-control',{cache:'no-store',headers:{'Authorization':'Bearer '+token}});
+    const r=await IcarusClient.request('/api/engine-control',{cache:'no-store',headers:{'Authorization':'Bearer '+token}});
     const data=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(data.detail||data.error||('HTTP '+r.status));
     if(view==='engine-control') engineControlRender(data);
@@ -207,6 +207,9 @@ async function ecRun(actionId){
 }
 
 function wireEngineControl(){
+  const scoped=IcarusClient.context?.id!=='main';
+  const syncLabel=document.querySelector('#ecSyncAll');
+  if(scoped&&syncLabel)syncLabel.textContent='Refresh workspace diagnostics';
   const refresh=document.querySelector('#ecRefresh');
   if(refresh) refresh.onclick=loadEngineControl;
   const sync=document.querySelector('#ecSyncAll');

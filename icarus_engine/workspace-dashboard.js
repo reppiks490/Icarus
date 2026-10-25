@@ -35,7 +35,19 @@
   const money = value => number(value) == null ? 'Unavailable' : value.toLocaleString(undefined,{style:'currency',currency:'USD'});
   const node = (tag, value, cls) => { const el=document.createElement(tag); if(value!=null)el.textContent=String(value); if(cls)el.className=cls; return el; };
   const fail = error => { text('#snapshot-notice', error.message || String(error)); $('#snapshot-notice').classList.add('error'); };
-  let state=null, baseline='', dirty=false, pending=false, sequence=0, chartSequence=0;
+  let state=null, baseline='', dirty=false, pending=false, sequence=0, chartSequence=0, providerContextLoaded=false;
+  const poweredOff = () => !!window.IcarusWorkspacePower?.isOff(id);
+  let wasOff = true;
+  window.addEventListener('icarus:workspace-power', () => {
+    const off = poweredOff();
+    if (off) {
+      state=null; sequence++; chartSequence++; clearAccounting();
+      $('#price-chart').getContext('2d').clearRect(0,0,960,360);
+      text('#snapshot-notice', 'Paper workers are off or changing state.');
+      text('#chart-note', 'No current workspace observations.');
+    } else if (wasOff) { providerContextLoaded=false; void refresh(); }
+    wasOff=off;
+  });
   document.querySelector(`nav a[href="/dashboards/${id}"]`).setAttribute('aria-current','page');
   async function get(path) { return IcarusPaperPnl.fetchJson(path); }
   async function admin(suffix, body) {
@@ -84,6 +96,7 @@
     renderConfig(data);loadChart();
   }
   async function loadChart() {
+    if(poweredOff())return;
     const current=++chartSequence,symbol=$('#chart-asset').value,canvas=$('#price-chart'),ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
     if(!symbol){text('#chart-note','No selected workspace runner or observed bars.');return;}
     try{const chart=await get(`/api/command-centers/${id}/chart/${encodeURIComponent(symbol)}?n=240`);if(current!==chartSequence)return;
@@ -95,7 +108,70 @@
       text('#chart-note',`${symbol} · ${bars.length} observed bars · ${new Date(bars[0][0]*1000).toISOString()} — ${new Date(bars.at(-1)[0]*1000).toISOString()} · selected workspace chart closes`);
     }catch(error){if(current===chartSequence)text('#chart-note',`Chart unavailable: ${error.message}`);}
   }
-  async function loadCorpus(){const target=$('#corpus-sources');try{const evidence=await get('/api/corpus-consumption');target.replaceChildren(node('p',evidence.status,'note'));for(const corpus of evidence.corpora||[]){const item=node('article',null,'source');item.append(node('h3',corpus.cache_name));item.append(node('p',`${corpus.dataset_count} datasets · ${corpus.retained_rows} retained rows · Historical: ${corpus.historical===true?'yes':'unknown'}`));item.append(node('p',`Latest closed source bar: ${Number.isFinite(corpus.latest_bar_closed_ts)?new Date(corpus.latest_bar_closed_ts*1000).toISOString():'unknown'} · source age ${Number.isFinite(corpus.age_seconds)?Math.floor(corpus.age_seconds/86400)+' days':'unknown'}`));item.append(node('p',`Native run ${corpus.run_id} · artifact ${corpus.artifact_id}`));const details=node('details');details.append(node('summary','Receipt and workspace consumption'));details.append(node('pre',JSON.stringify({receipt_sha256:corpus.receipt_sha256,paper_warmup_used:corpus.paper_warmup_used,workspace:corpus.workspaces?.find?.(row=>row.id===id)||corpus.workspaces?.[id]},null,2)));item.append(details);target.append(item);}}catch(error){target.replaceChildren(node('p',`Corpus evidence unavailable: ${error.message}`,'error'));} await loadExpansion(target);}
+  async function loadCorpus(){
+    if(poweredOff())return;
+    const target=$('#corpus-sources');
+    try{
+      const evidence=await get('/api/corpus-consumption');
+      if(poweredOff())return;
+      target.replaceChildren(node('p',evidence.status,'note'));
+      for(const corpus of evidence.corpora||[]){
+        const item=node('article',null,'source');
+        item.append(node('h3',corpus.cache_name));
+        item.append(node('p',`${corpus.dataset_count} datasets · ${corpus.retained_rows} retained rows · Historical: ${corpus.historical===true?'yes':'unknown'}`));
+        item.append(node('p',`Latest closed source bar: ${Number.isFinite(corpus.latest_bar_closed_ts)?new Date(corpus.latest_bar_closed_ts*1000).toISOString():'unknown'} · source age ${Number.isFinite(corpus.age_seconds)?Math.floor(corpus.age_seconds/86400)+' days':'unknown'}`));
+        item.append(node('p',`Native run ${corpus.run_id} · artifact ${corpus.artifact_id}`));
+        const details=node('details');
+        details.append(node('summary','Receipt and workspace consumption'));
+        details.append(node('pre',JSON.stringify({receipt_sha256:corpus.receipt_sha256,paper_warmup_used:corpus.paper_warmup_used,workspace:corpus.workspaces?.find?.(row=>row.id===id)||corpus.workspaces?.[id]},null,2)));
+        item.append(details);target.append(item);
+      }
+    }catch(error){target.replaceChildren(node('p',`Corpus evidence unavailable: ${error.message}`,'error'));}
+    if(poweredOff())return;
+    await loadExpansion(target);
+    if(poweredOff())return;
+    await loadProviderContext(target);
+  }
+  async function loadProviderContext(target){
+    if(poweredOff()||providerContextLoaded)return;
+    providerContextLoaded=true;
+    $('#provider-context')?.remove();
+    const item=node('article',null,'source');item.id='provider-context';
+    try{
+      const context=await get('/api/provider-corpus');
+      if(poweredOff())return;
+      item.append(node('h3','Provider corpus · descriptive research context'));
+      if(context.status!=='HISTORICAL_CONTEXT_CONSUMED'){
+        item.append(node('p','Verified provider context unavailable.'));
+        target.append(item);return;
+      }
+      const summary=context.summary,workspace=context.workspaces?.[id],receipt=context.read_receipts?.find(row=>row.consumer_id===id);
+      item.append(node('p',`${summary.source_rows_reported.toLocaleString()} upstream rows reported; ${summary.feature_records_consumed} feature records and ${summary.unique_numeric_values_consumed} unique numeric statistics consumed. Raw source rows read by this context: ${summary.raw_rows_consumed}.`));
+      item.append(node('p',`${id.toUpperCase()}: ${receipt?.numeric_feature_reads??0} numeric reads and ${receipt?.coverage_reads??0} provider-status reads. Historical snapshot ${context.source.snapshot_at_utc}. Local isolated context; no additional provider requests.`));
+      const table=node('table'),head=node('tr');
+      for(const label of ['Provider / field','Samples','Mean','Observed range','Standard deviation'])head.append(node('th',label));
+      table.append(head);
+      for(const feature of workspace?.features||[]){
+        const row=node('tr'),stats=feature.statistics;
+        for(const value of [`${feature.provider} / ${feature.field} / record ${feature.record_ordinal+1}`,stats.samples,stats.mean,`${stats.minimum} — ${stats.maximum}`,stats.standard_deviation])row.append(node('td',value));
+        table.append(row);
+      }
+      const scroll=node('div',null,'scroll');scroll.append(table);item.append(scroll);
+      const diagnostics=node('details');diagnostics.append(node('summary','Coverage, quality checks and source binding'));
+      for(const provider of context.provider_coverage||[]){
+        diagnostics.append(node('p',`${provider.provider}: ${provider.current_status} in archived snapshot · ${provider.current_rows_reported} rows in snapshot · ${provider.historical_rows_reported} historical fallback rows.`));
+      }
+      diagnostics.append(node('pre',JSON.stringify({quality:context.quality,research:context.research,source:context.source,read_receipt:receipt},null,2)));item.append(diagnostics);
+      item.append(node('p','Instrument identities, units, observation windows and point-in-time qualification are unverified. Statistics support coverage review, quality diagnostics and descriptive research; they do not change trading signals, asset admission or P&L.'));
+      target.append(item);
+    }catch{
+      if(!poweredOff()){
+        item.append(node('h3','Provider corpus · descriptive research context'));
+        item.append(node('p','Provider context unavailable.','error'));
+        target.append(item);
+      }
+    }
+  }
   async function loadExpansion(target){
     try{
       const proof=await get('/api/corpus-expansion'),item=node('article',null,'source');
@@ -116,8 +192,21 @@
     $('#pause').disabled=true;$('#flatten').disabled=true;
   }
   setInterval(()=>{if(state&&!IcarusPaperPnl.read(state)){clearAccounting();}},1000);
-  async function refresh(){const request=++sequence;try{const data=await get(`/api/command-centers/${id}`);if(request===sequence)render(data);}catch(error){if(request!==sequence)return;state=null;chartSequence++;$('#price-chart').getContext('2d').clearRect(0,0,960,360);text('#chart-note','Workspace snapshot unavailable; chart cleared.');clearAccounting();$('#pause').disabled=true;$('#flatten').disabled=true;fail(error);}loadCorpus();}
-  $('#refresh').addEventListener('click',refresh);$('#chart-asset').addEventListener('change',loadChart);
+  async function refresh(){
+    if(poweredOff())return;
+    const request=++sequence;
+    try{
+      const data=await get(`/api/command-centers/${id}`);
+      if(request===sequence)render(data);
+    }catch(error){
+      if(request!==sequence)return;
+      state=null;chartSequence++;$('#price-chart').getContext('2d').clearRect(0,0,960,360);
+      text('#chart-note','Workspace snapshot unavailable; chart cleared.');
+      clearAccounting();$('#pause').disabled=true;$('#flatten').disabled=true;fail(error);
+    }
+    if(request===sequence&&!poweredOff())await loadCorpus();
+  }
+  $('#refresh').addEventListener('click',()=>{providerContextLoaded=false;refresh();});$('#chart-asset').addEventListener('change',loadChart);
   async function action(suffix,body){if(pending)return;pending=true;try{await admin(suffix,body);await refresh();}catch(error){fail(error);}finally{pending=false;if(state)render(state);}}
   $('#pause').addEventListener('click',()=>action('/pause',{paused:!state?.profile?.status?.paused}));
   $('#flatten').addEventListener('click',()=>{if(confirm(`Flatten all simulated paper positions only in ${id.toUpperCase()}?`))action('/flatten',{confirm:true});});
@@ -214,5 +303,5 @@
   $('#a200-history').addEventListener('click',readEquityHistory);
   $('#a200-refresh').addEventListener('click',loadEquityCatalog);
   loadEquityCatalog();
-  refresh();setInterval(()=>{if(!document.hidden&&!pending)refresh();},15000);
+  Promise.resolve(window.IcarusWorkspacePower?.ready).then(()=>refresh());setInterval(()=>{if(!document.hidden&&!pending)refresh();},15000);
 })();

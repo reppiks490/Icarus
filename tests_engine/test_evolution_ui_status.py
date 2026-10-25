@@ -85,6 +85,7 @@ const context = {
     return {ok: true, async json() {return state;}};
   },
 };
+context.IcarusClient={request:context.fetch};
 vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), context);
 (async () => {
   const rendered = [];
