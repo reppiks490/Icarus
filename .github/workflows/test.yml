@@ -28,6 +28,20 @@ jobs:
       - run: python -m icarus_engine.cli doctor --json
         env:
           TZ: UTC
+  engine-windows-python310-restart-setup:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Exercise the actual Python 3.10 Windows restart setup path
+        shell: bash
+        run: |
+          python -m venv .venv
+          bash scripts/start-as-is.sh --setup --help
+          .venv/Scripts/python.exe -c 'import sys; assert sys.version_info[:2] == (3, 10), sys.version; print(sys.version)'
   engine-windows:
     runs-on: windows-latest
     steps:

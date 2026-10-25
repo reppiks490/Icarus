@@ -1,11 +1,11 @@
 # ICARUS Mobile
 
-Native iOS/Android observation client for the canonical `reppiks490/Icarus` runtime.
+Native iOS/Android observer for the canonical `reppiks490/Icarus` runtime, with an explicit rate-limited backtest request and no trade-state mutations.
 
 ## What exists now
 
 - Expo SDK 57 / React Native 0.86 client.
-- Device pairing through the dedicated read-only ICARUS mobile gateway.
+- Device pairing through the dedicated ICARUS mobile observation gateway.
 - Rotating per-device refresh credentials stored with Expo SecureStore.
 - Short-lived signed sessions; the phone never receives the engine admin token.
 - Long-poll live snapshots for engine status, system audit, and briefing.
@@ -59,7 +59,14 @@ The app can also revoke its own current credential.
 
 ## Remaining release dependencies
 
-A store-signed install still requires the operator's Apple/Google developer credentials and the final public/private gateway hostname. Those credentials are deliberately not committed or requested by the codebase.
+A usable phone build and pairing require owner-side steps that are not completed by the desktop restart:
+
+- Link `mobile/` to the owner's Expo project and add its project ID to `mobile/app.json` (currently absent).
+- Authenticate with Expo and use `EXPO_TOKEN` only as a local or CI environment secret if running EAS automation; never commit it. Current repository CI exports the iOS and Android JavaScript bundles but does not run EAS builds.
+- For a physical phone, provide a reachable HTTPS/private-network gateway hostname and pair through the read-only gateway. Keep engine port 8791 private.
+- Store distribution also needs the owner's Apple/Google developer accounts and signing credentials.
+
+The code and CI bundle exports are integrated; no claim is made that an EAS build was signed, installed, or paired.
 
 
 ## Compatibility
