@@ -1,17 +1,16 @@
 # Icarus recovery status
 
-**Current status — 2026-10-25.** The owner resumed exhaustive non-live completion work. The [Prime as-is restart handoff](PRIME_AS_IS_RESTART.md) is the single operator procedure; earlier status paragraphs and checkpoints below are historical evidence and retain their original test counts. Live broker arming, execution authority, main merge, and new provider spend remain disabled.
+**Current status — 2026-10-25.** The [Prime as-is restart handoff](PRIME_AS_IS_RESTART.md) is the single operator procedure. The pinned paper runtime source is `712057cbb7b42d94bd0238068019b0f55aa8ef5a`, carried by open PR #462. Install only after all required checks are green on the current PR head. This cloud workspace cannot restart or observe the owner's PC; current `/healthz` warmth, sustained uptime, and physical phone pairing remain unverified. Live broker arming, order execution, and live trading are excluded.
 
-**Latest paper restart release tree:** `f4a4a2800069bcefc3661b38d0b4d134ae775326`, on PR #462. Runtime source `1283551fbec56113da656d998ff4c04866c1624e` contains the NQ-based all-assets migration, ETH-only 30-minute/session-off/25 default, read-only selected-workspace adapters, runtime/connection fixes, and Windows-stable provider snapshot. Full Linux/Windows runs `40183899072` and `40183897492` both passed at that runtime source; its portfolio, browser, configuration, intelligence-feed and federation contracts also passed. The release tree then merged the current-main catalog receipt and operator documentation; verify required checks on the current PR head before installing. The PC restart, current `/healthz` warm state, and physical phone pairing remain unobserved from this workspace.
+**Restart coverage:** Main and selected CC assets use actual captured Main NQ defaults, with ETH / COINBASE:ETHUSD set to 30 minutes, session filtering off, and quantity 25; SOL follows NQ. The candidate includes selected-workspace readers, client-disconnect/runtime-expiry handling, dashboard refresh/scroll fixes, historical provider context, a guarded Intuition Ω research bridge, optional manual GRU research, and read-only discovery receipts. Exact boundaries and adapter status are in the [adapter matrix](ICARUS_ADAPTER_STATUS.md); the complete backup/capture/apply/launch/verification procedure is in the restart guide.
 
-**Current local integration candidate:** source commit `cde6d0cca771ec8a401092a231449646306c026c` adds the reviewed Intuition Ω research library to selected-workspace Learning status and owner-triggered import. The bridge reads the selected Learning database read-only, writes only to a workspace-private ledger, checks source receipt identity, supports background cancellation, and does not alter strategy or production authority. Learning status no longer polls every five seconds. The full command `python -m pytest tests_engine tests/test_provider_corpus_intake.py -q` exited 0 with 4,386 tests collected, and focused adapter, workspace isolation, client-routing, browser-script, and dashboard checks passed. This source has not yet passed exact-head hosted Windows/Linux checks; do not install until the PR #462 head is green. No owner-PC or phone operation was run.
+Older status paragraphs and checkpoints below are historical evidence with their original test counts; they are not alternate restart instructions or current release gates.
 
 Engine PR #216's unique offline archive intake was reconstructed on current Engine main in PR #249 and merged at `2f9a10c516d7294d875a9e808bd669e208ed0e0c`; the stale #216 is closed and its branch retained. Focused tests (107) and the full Engine suite (1,455 tests, 17 subtests) passed locally. Exact-main offline run `40171645677` and exact-head hosted checks passed, including all eight archived profiles. This proves neither live feed access nor provider freshness.
 
-**Current operator commands: [START_HERE.md](../../START_HERE.md).** The owner has
-requested a limited as-is paper launch despite remaining full-readiness gaps.
-The tested launcher preserves a chosen existing private root and requires explicit
-feed/assets; this cloud session cannot start the owner’s PC.
+**Current operator commands: [the Prime as-is restart guide](PRIME_AS_IS_RESTART.md).**
+It preserves the existing private root and uses explicit feed/assets. This cloud
+session cannot start the owner's PC.
 
 **System-wide strategy/data qualification: NO-GO.** This is distinct from the tested paper restart code. No strategy is execution-qualified; external provider authentication, licensing, freshness, and historical coverage have evidence-backed limits in the Engine federation ledger. A successful source build does not establish live feed health, owner-PC runtime, sustained uptime, or physical phone connectivity.
 
@@ -23,8 +22,8 @@ Icarus 2's owner-assisted receipt026 records the earlier `38d5328` paper
 application starting on the PC with successful main health probes; this is
 separate from installing the new panel source or proving sustained operation.
 
-The owner's current two-worker direction supersedes the old five-name selection
-board for this workstream. Claims and updates remain on the existing
+The 2026-10-20 two-worker direction superseded that period's old five-name selection
+board. Its claims and updates remain on the existing
 [`icarus-owner-actions` coordination bus](https://github.com/reppiks490/icarus-owner-actions/blob/main/coordination/START_HERE.md),
 session `icarus1-20261020-system-recovery`. Icarus 2 registered separately as
 `icarus2-20261020-federation-integration` at `2026-10-20T18:13:50.114225Z`.
