@@ -40,10 +40,16 @@ def _digest(data):
 def _safe(path):
     path = Path(path).expanduser().absolute()
     for item in (path, *path.parents):
-        if item.is_symlink() or (hasattr(item, "is_junction") and item.is_junction()):
+        try:
+            info = item.lstat()
+        except FileNotFoundError:
+            continue
+        reparse_point = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        is_reparse = bool(getattr(info, "st_file_attributes", 0) & reparse_point)
+        if item.is_symlink() or (hasattr(item, "is_junction") and item.is_junction()) or is_reparse:
             raise ValueError("settings path must not follow a symlink or junction")
-    if os.path.normcase(os.path.realpath(path)) != os.path.normcase(str(path)):
-        raise ValueError("settings path must not follow a symlink or junction")
+    # Do not compare realpath(path) with path here: Windows expands valid 8.3
+    # short names during realpath, which is not evidence of a symlink/junction.
     return path
 
 
@@ -286,9 +292,9 @@ def prepare_current(root, *, port=8791, profile="nq", preset=DEFAULT_PRESET,
                     token=None, timeout=10, output=None):
     """Prepare live NQ when listening, otherwise prove stopped and read saved NQ.
 
-    Only an explicit connection refusal chooses the offline path. Authentication,
-    request deadlines and other failures against a listener are never converted
-    into a successful saved-settings fallback.
+    A refusal, or a timeout followed by a successful exclusive bind check, chooses
+    the offline path. A listener, authentication failure or other uncertainty
+    never becomes a successful saved-settings fallback.
     """
     root = _safe(root)
     if not root.is_dir() or type(port) is not int or not 1 <= port <= 65535:
@@ -297,8 +303,17 @@ def prepare_current(root, *, port=8791, profile="nq", preset=DEFAULT_PRESET,
         raise ValueError("prepare timeout must be 0..15 seconds")
     try:
         connection = socket.create_connection(("127.0.0.1", port), timeout=min(timeout, 2))
-    except ConnectionRefusedError:
-        ensure_stopped(root, port)
+    except (ConnectionRefusedError, TimeoutError) as connect_error:
+        try:
+            # Windows may leave a recently closed loopback socket in TIME_WAIT;
+            # connect can time out even though no listener owns the port. The
+            # PID identity and exclusive bind check distinguish that case from
+            # a live/unresponsive listener before saved settings are accepted.
+            ensure_stopped(root, port)
+        except ValueError:
+            if isinstance(connect_error, TimeoutError):
+                raise connect_error
+            raise
         source_originals = {}
         baseline = _saved_baseline(root, profile, preset, source_originals)
         value = {"schema_version": CAPTURE_SCHEMA, "asset": "NQ", "baseline": baseline,

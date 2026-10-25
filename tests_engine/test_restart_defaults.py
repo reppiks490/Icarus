@@ -346,6 +346,25 @@ def test_prepare_after_ctrl_c_resolves_saved_nq_and_rejects_missing_source(state
     assert capture.read_bytes()==before
 
 
+def test_prepare_treats_loopback_timeout_as_stopped_only_after_exclusive_bind(state, monkeypatch):
+    # Windows can time out on a recently closed loopback socket. The helper may
+    # use saved settings only after the normal PID and exclusive-bind proof.
+    monkeypatch.setattr(defaults.socket, 'create_connection',
+                        lambda *args, **kwargs: (_ for _ in ()).throw(TimeoutError('TIME_WAIT')))
+    result = defaults.prepare_current(state, port=18791)
+    assert result['status'] == 'PREPARED'
+    assert Path(result['capture_file']).is_file()
+
+
+def test_safe_does_not_treat_realpath_short_name_expansion_as_reparse_point(tmp_path, monkeypatch):
+    # Windows realpath expands 8.3 aliases; the filesystem attribute checks are
+    # authoritative for links, while lexical normalization accepts that alias.
+    path = tmp_path / 'ordinary.json'
+    monkeypatch.setattr(defaults.os.path, 'realpath',
+                        lambda *_: (_ for _ in ()).throw(AssertionError('realpath must not gate')))
+    assert defaults._safe(path) == path.absolute()
+
+
 @pytest.mark.parametrize('failure',['authentication','deadline'])
 def test_prepare_active_api_failure_never_substitutes_saved_nq(state,failure):
     release=threading.Event()
