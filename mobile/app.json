@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "ICARUS Mobile",
+    "slug": "icarus-mobile",
+    "version": "0.2.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "icarus",
+    "plugins": [
+      "expo-secure-store",
+      "expo-notifications"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.reppiks490.icarus.mobile"
+    },
+    "android": {
+      "package": "com.reppiks490.icarus.mobile",
+      "predictiveBackGestureEnabled": false
+    }
+  }
+}
