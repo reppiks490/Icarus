@@ -1,8 +1,8 @@
 # Icarus recovery status
 
-**Current bounded takeover:** the owner appointed this chat current Prime while the original Prime is stopped. The [Prime as-is restart handoff](PRIME_AS_IS_RESTART.md) records the combined candidate, preserved state, installation and observation boundary. Historical checkpoints below retain their original scope and test counts. Full-system NO_GO remains.
+**Current status — 2026-10-25.** The owner resumed exhaustive non-live completion work. The [Prime as-is restart handoff](PRIME_AS_IS_RESTART.md) is the single operator procedure; earlier status paragraphs and checkpoints below are historical evidence and retain their original test counts. Live broker arming, execution authority, main merge, and new provider spend remain disabled.
 
-**Latest integrated restart source candidate:** `5160a55368fc5c7e5a61dcf53c85193c028042ab`, prepared for PR #462. It contains the local historical provider-context consumer and corrects defaults so ETHUSD alone gets 30-minute/session-off/25; SOL and every other asset inherit the captured Main NQ inputs and chart/session. `python -m pytest tests_engine tests/test_provider_corpus_intake.py -q` exited 0 with 4,331 cases collected. New exact-head hosted checks are pending publication. The previous source `350f93ea721b5edae36777bf251c1738b03bb671` passed both Windows engine runs (`40178997534`, `40178999879`) and the other listed hosted contracts; those runs predate this update. Owner-PC restart and physical phone pairing remain unobserved until the documented procedures are completed.
+**Latest paper restart release tree:** `f4a4a2800069bcefc3661b38d0b4d134ae775326`, on PR #462. Runtime source `1283551fbec56113da656d998ff4c04866c1624e` contains the NQ-based all-assets migration, ETH-only 30-minute/session-off/25 default, read-only selected-workspace adapters, runtime/connection fixes, and Windows-stable provider snapshot. Full Linux/Windows runs `40183899072` and `40183897492` both passed at that runtime source; its portfolio, browser, configuration, intelligence-feed and federation contracts also passed. The release tree then merged the current-main catalog receipt and operator documentation; verify required checks on the current PR head before installing. The PC restart, current `/healthz` warm state, and physical phone pairing remain unobserved from this workspace.
 
 Engine PR #216's unique offline archive intake was reconstructed on current Engine main in PR #249 and merged at `2f9a10c516d7294d875a9e808bd669e208ed0e0c`; the stale #216 is closed and its branch retained. Focused tests (107) and the full Engine suite (1,455 tests, 17 subtests) passed locally. Exact-main offline run `40171645677` and exact-head hosted checks passed, including all eight archived profiles. This proves neither live feed access nor provider freshness.
 
@@ -11,10 +11,7 @@ requested a limited as-is paper launch despite remaining full-readiness gaps.
 The tested launcher preserves a chosen existing private root and requires explicit
 feed/assets; this cloud session cannot start the owner’s PC.
 
-**Full recovery restart decision: NO-GO.** This is the current recovery record for Icarus 1 and
-Icarus 2. A fully qualified system restart has not been performed. Source inspection,
-engineering tests, hosted automation and the owner's PC runtime are separate
-evidence levels. No source-only result establishes that the PC is repaired.
+**System-wide strategy/data qualification: NO-GO.** This is distinct from the tested paper restart code. No strategy is execution-qualified; external provider authentication, licensing, freshness, and historical coverage have evidence-backed limits in the Engine federation ledger. A successful source build does not establish live feed health, owner-PC runtime, sustained uptime, or physical phone connectivity.
 
 **Latest panel delivery:** [adapter status matrix](ICARUS_ADAPTER_STATUS.md) and
 [archived panel checkpoint](archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md). The core four controls
@@ -264,7 +261,7 @@ All rows must have current evidence before a restart is called ready.
 | Accuracy comparison | Reproducible before/after metric on matched real inputs/configuration; regression explained and required behavior verified | Open |
 | Futures and firms | Exact contract economics/feeds, supported paper/read-only account connection, effective program policy, fees/risk/reconciliation tests and visible access | Open |
 | Recovery rehearsal | Isolated stop/start, saved config and journal recovery, failure handling, panel refresh and rollback observed without altering the owner's running system | Open |
-| Hosted and operator verification | Required checks on the proposed release head, fresh disposition of earlier rejected jobs, actual PC/runtime evidence | Exact candidate checks pass except two pending Windows engine jobs; PC not connected |
+| Hosted and operator verification | Required checks on the proposed release head, fresh disposition of earlier rejected jobs, actual PC/runtime evidence | Historical row from the earlier checkpoint: two Windows jobs were pending there. Both later passed at source `1283551` (runs `40183899072`, `40183897492`); rerun the exact current PR #462 head, and owner-PC/phone evidence is still outstanding. |
 
 Local suite success does not remove these gates. Live broker arming remains
 disabled. Resetting or flattening positions is not a panel refresh.

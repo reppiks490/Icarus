@@ -1,6 +1,6 @@
 # ICARUS dashboard adapter status
 
-This inventory separates a visible dashboard tab from its Python adapter. A tab is only a view; a connected adapter routes data/actions to a particular runtime or explicitly to shared evidence. This matrix describes source candidate `5160a55368fc5c7e5a61dcf53c85193c028042ab` for PR #462. The full local suite exited 0 with 4,331 cases collected. Exact-head hosted checks on this new commit are pending; the previous source's Windows, Linux, browser, contract, configuration, federation and historical-context checks do not substitute for those runs. Install only after the new exact-head checks pass and the owner completes the PC procedure.
+This inventory separates a visible dashboard tab from its Python adapter. A tab is only a view; a connected adapter routes data/actions to a particular runtime or explicitly to shared evidence. This matrix describes the PR #462 release tree `f4a4a2800069bcefc3661b38d0b4d134ae775326`, whose runtime source is `1283551fbec56113da656d998ff4c04866c1624e`. At runtime source `1283551`, both full Linux/Windows runs (`40183899072`, `40183897492`) passed; the Windows restart-persistence/private-intake and portfolio contracts, browser checks, and federation/configuration/intelligence contracts passed. The release tree additionally includes a current-main catalog receipt and documentation updates. Confirm required checks on the current PR #462 head before installation, then complete the separate owner-PC procedure.
 
 | Surface | Adapter state | Scope and actual behavior |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ In a CC context, the read-only set (`brain`, `research`, `parallax`, `pantheon`,
 
 The dashboard can render a panel while its native data is empty or stale. NEXUS/AION `UNAVAILABLE`, `STALE`, `DEGRADED`, or unknown provider-SLO fields must stay visible as such. A 200 panel route proves the adapter returned a response, not that a provider is fresh or entitled. Broker adaptation, broker qualification, order execution, and live trading remain outside this restart.
 
-Focused evidence in the candidate includes `tests_engine/test_workspace_research_panels.py`, `test_workspace_intelligence_panels.py`, `test_workspace_golive.py`, `test_workspace_access.py`, `test_subsystem_connections.py`, `test_subsystem_connections_api.py`, and `test_subsystem_connections_browser.py`. The hosted exact-head results must also pass before installing the restart source. Owner-PC observation is a separate operator verification in [the restart guide](PRIME_AS_IS_RESTART.md).
+Focused evidence in the candidate includes `tests_engine/test_workspace_research_panels.py`, `test_workspace_intelligence_panels.py`, `test_workspace_golive.py`, `test_workspace_access.py`, `test_subsystem_connections.py`, `test_subsystem_connections_api.py`, and `test_subsystem_connections_browser.py`. Hosted checks validate the release code; owner-PC observation is a separate operator verification in [the restart guide](PRIME_AS_IS_RESTART.md).
 
 ## Offline provider archive consumption
 
