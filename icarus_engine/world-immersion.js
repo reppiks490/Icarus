@@ -2,7 +2,7 @@
   'use strict';
   const root=document.documentElement;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,radarTether=null,navPreview=null,inspectionField=null,inspectedPanel=null,inspectionKey=null,topologyHighlightTarget=null,topologyHighlightKey=null,inspectionTimer=0,topologyTimer=0,navPreviewTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
+  let scrollFrame=0,pointerFrame=0,viewObserver=null,viewMutation=null,viewResizeObserver=null,depthFrame=null,focusOrbit=null,pointerLens=null,ambient=null,topology=null,sectionRadar=null,radarTether=null,navPreview=null,inspectionField=null,inspectedPanel=null,inspectionKey=null,topologyHighlightTarget=null,topologyHighlightKey=null,scrollFocusPanel=null,scrollFocusId=null,radarActiveId=null,inspectionTimer=0,topologyTimer=0,navPreviewTimer=0,viewFlashTimer=0,viewGateTimer=0,chapterTimer=0,focusTimer=0,scrollEnergyTimer=0,lastScrollY=0,lastScrollAt=0,lastScrollFocusAt=0,lastPointerClientX=null,lastPointerClientY=null,currentView='overview',currentPhase='crown',viewHistory=[],initialized=false;
   const readoutCache=new Map(),readoutTimers=new WeakMap(),panelActivityTimers=new WeakMap(),topologyActivityTimers=new WeakMap();
   let refreshFrame=0;
 
@@ -79,6 +79,9 @@
     const max=Math.max(1,doc.scrollHeight-window.innerHeight);
     const y=Math.max(0,window.scrollY||doc.scrollTop||0);
     const now=performance.now();
+    // Read scroll-linked panel geometry before changing world CSS/classes. This
+    // keeps every scroll frame from forcing layout after its own style writes.
+    updateScrollFocus();
     if(lastScrollAt&&Math.abs(y-lastScrollY)>.5&&motionAllowed()){
       const dt=Math.max(8,now-lastScrollAt),velocity=Math.abs(y-lastScrollY)/dt;
       const energy=Math.max(0,Math.min(1,velocity/2.4));
@@ -105,7 +108,6 @@
     const phase=depth<.08?'crown':depth<.45?'descent':depth<.78?'depth':'abyss';
     root.dataset.scrollPhase=phase;
     updateDepthFrame(phase,depth);
-    updateScrollFocus();
   }
   function queueScroll(){
     if(!scrollFrame)scrollFrame=requestAnimationFrame(writeScrollDepth);
@@ -316,14 +318,14 @@
     });
     document.body.appendChild(sectionRadar);ensureRadarTether();
   }
-  function positionRadarTether(activeId){
+  function positionRadarTether(activeId,geometry=null){
     ensureRadarTether();
     if(!radarTether||!sectionRadar||activeId==null||!motionAllowed()||root.dataset.visualResolved!=='rich'||window.innerWidth<1250){
       radarTether?.classList.remove('active');return;
     }
     const panel=document.querySelector(`#view [data-world-topology-node="${activeId}"]`);
     if(!panel?.isConnected){radarTether.classList.remove('active');return;}
-    const p=panel.getBoundingClientRect(),r=sectionRadar.getBoundingClientRect();
+    const p=geometry?.panelRect||panel.getBoundingClientRect(),r=geometry?.radarRect||sectionRadar.getBoundingClientRect();
     if(p.bottom<0||p.top>window.innerHeight||r.width<1){radarTether.classList.remove('active');return;}
     const right=Math.min(window.innerWidth-8,r.left-5);
     let left=Math.min(window.innerWidth-8,Math.max(0,p.right+5));
@@ -350,7 +352,7 @@
   function rebuildSectionRadar(points){
     ensureSectionRadar();if(!sectionRadar)return;
     const host=sectionRadar.querySelector('[data-world-radar-nodes]'),count=sectionRadar.querySelector('[data-world-radar-count]');
-    host.replaceChildren();if(count)count.textContent=String(points.length).padStart(2,'0');
+    host.replaceChildren();radarActiveId=null;if(count)count.textContent=String(points.length).padStart(2,'0');
     for(const p of points.slice(0,12)){
       const item=document.createElement('button');item.type='button';item.dataset.radarNode=String(p.index);item.dataset.kind=p.el.dataset.worldPanelKind||'instrument';
       item.dataset.worldPanelKey=p.el.dataset.worldPanelKey||'';
@@ -360,10 +362,14 @@
       item.append(dot,label);host.appendChild(item);
     }
   }
-  function updateSectionRadar(activeId){
+  function updateSectionRadar(activeId,geometry=null){
     if(!sectionRadar)return;
-    sectionRadar.querySelectorAll('[data-radar-node]').forEach(el=>el.classList.toggle('active',String(activeId??'')===el.dataset.radarNode));
-    positionRadarTether(activeId);
+    const next=activeId==null?null:String(activeId);
+    if(next!==radarActiveId){
+      sectionRadar.querySelectorAll('[data-radar-node]').forEach(el=>el.classList.toggle('active',next===el.dataset.radarNode));
+      radarActiveId=next;
+    }
+    positionRadarTether(activeId,geometry);
   }
   function topologyPath(a,b){
     const dx=b.x-a.x,dy=b.y-a.y,curve=Math.max(-42,Math.min(42,dx*.08));
@@ -413,6 +419,9 @@
       node.setAttribute('cx',p.x.toFixed(1));node.setAttribute('cy',p.y.toFixed(1));node.setAttribute('r','2.2');
       node.dataset.node=String(p.index);nodeLayer.appendChild(node);
     }
+    if(scrollFocusPanel&&!elements.includes(scrollFocusPanel)){
+      scrollFocusPanel.classList.remove('world-scroll-focus');scrollFocusPanel=null;scrollFocusId=null;
+    } else scrollFocusId=scrollFocusPanel?.dataset.worldTopologyNode??null;
     updateScrollFocus();
     // Topology is decorative and can be built/rebuilt after pointer interaction.
     // Preserve an existing target, or reconcile against the physical cursor when
@@ -444,23 +453,36 @@
     updateSectionRadar(id);
   }
   function updateScrollFocus(){
+    const now=performance.now();
+    if(now-lastScrollFocusAt<200)return;
+    lastScrollFocusAt=now;
     const panels=[...document.querySelectorAll('#view [data-world-topology-node]')].slice(0,18);
-    for(const panel of panels)panel.classList.remove('world-scroll-focus');
-    topology?.querySelectorAll('.scroll-active').forEach(el=>el.classList.remove('scroll-active'));
-    if(!topology||!motionAllowed()||window.innerWidth<1100||!panels.length){updateSectionRadar(null);return;}
+    if(!topology||!motionAllowed()||window.innerWidth<1100||!panels.length){
+      if(scrollFocusId!==null){scrollFocusPanel?.classList.remove('world-scroll-focus');topology?.querySelectorAll('.scroll-active').forEach(el=>el.classList.remove('scroll-active'));scrollFocusPanel=null;scrollFocusId=null;}
+      updateSectionRadar(null);return;
+    }
     const targetY=window.innerHeight*.48;
-    let best=null,bestDistance=Infinity;
+    let best=null,bestRect=null,bestDistance=Infinity;
     for(const panel of panels){
       const r=panel.getBoundingClientRect();
       if(r.bottom<0||r.top>window.innerHeight)continue;
       const distance=Math.abs((r.top+r.bottom)/2-targetY);
-      if(distance<bestDistance){best=panel;bestDistance=distance;}
+      if(distance<bestDistance){best=panel;bestRect=r;bestDistance=distance;}
     }
-    if(!best){updateSectionRadar(null);return;}
-    best.classList.add('world-scroll-focus');
-    const id=best.dataset.worldTopologyNode;
-    topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('scroll-active'));
-    updateSectionRadar(id);
+    const id=best?.dataset.worldTopologyNode??null;
+    const radarRect=best&&sectionRadar?sectionRadar.getBoundingClientRect():null;
+    if(id!==scrollFocusId||best!==scrollFocusPanel){
+      scrollFocusPanel?.classList.remove('world-scroll-focus');
+      best?.classList.add('world-scroll-focus');
+      topology?.querySelectorAll('.scroll-active').forEach(el=>el.classList.remove('scroll-active'));
+      if(id!==null)topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('scroll-active'));
+      scrollFocusPanel=best;scrollFocusId=id;
+    } else if(id!==null&&!topology.querySelector('.scroll-active')){
+      // A topology rebuild replaces its SVG nodes while retaining the focused
+      // panel. Restore the matching edge highlight without touching panel layout.
+      topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('scroll-active'));
+    }
+    updateSectionRadar(id,best?{panelRect:bestRect,radarRect}:null);
   }
   function pulseTopologyFromPanel(panel,activityNodes){
     if(!topology||!panel?.isConnected||!motionAllowed())return;

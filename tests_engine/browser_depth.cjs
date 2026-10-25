@@ -379,6 +379,7 @@ if(longEnough){
  assert.equal(await page.locator('.world-depth-frame').getAttribute('data-chapter'),'abyss');
  if(await page.locator('.world-section-radar').isVisible()) assert.ok(parseFloat(await page.locator('.world-section-radar').evaluate(el=>el.style.getPropertyValue('--radar-scroll')))>75);
  await page.waitForFunction(()=>document.querySelectorAll('#view .world-scroll-focus').length>0);
+ await page.waitForFunction(()=>document.querySelectorAll('.world-topology .scroll-active').length>0);
  assert.ok((await page.locator('.world-topology .scroll-active').count())>0);
  await page.screenshot({path:`${output}/depth-lower-page.png`});
  await page.evaluate(()=>window.scrollTo({top:0,left:0,behavior:'instant'}));
