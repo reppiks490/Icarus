@@ -1,15 +1,12 @@
-# Archived panel restart notes
+# Previous panel restart notes — superseded
 
-The former per-panel Git Bash restart blocks are archived at
-[`archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md`](archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md).
-Use one engine and one current operator procedure for Main, CC1–CC4, and Connections:
-[Prime as-is restart](PRIME_AS_IS_RESTART.md).
+Use the single current operator procedure for Main, CC1–CC4, and Connections:
+[Prime as-is restart](PRIME_AS_IS_RESTART.md). Its paper-only commands, default migration and verification checks replace all earlier per-panel instructions.
 
-The current asset defaults are recorded in
-[Highly Important Restart Info](HIGHLY_IMPORTANT_RESTART_INFO.md): every Main and saved selected-CC
-asset inherits captured Main NQ inputs except ETH / COINBASE:ETHUSD, which uses a 30-minute chart,
-session filter off, and quantity input 25. SOL follows NQ.
+The superseded per-panel commands are preserved at
+[`archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md`](archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md)
+for historical reference only. Do not use them for a current restart.
 
-The [adapter status matrix](ICARUS_ADAPTER_STATUS.md) distinguishes visible panels, selected-runtime
-read adapters, and the remaining write/automation boundaries. The old commands are preserved as
-historical evidence only and must not be used for a current restart.
+Current asset defaults are in [Highly Important Restart Info](HIGHLY_IMPORTANT_RESTART_INFO.md).
+The [adapter status matrix](ICARUS_ADAPTER_STATUS.md) distinguishes panels from connected adapters
+and remaining write/automation boundaries.

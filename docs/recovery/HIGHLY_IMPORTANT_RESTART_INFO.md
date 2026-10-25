@@ -4,8 +4,8 @@ Use only the [current Prime as-is restart](PRIME_AS_IS_RESTART.md). It includes 
 
 | Assets | Strategy/chart baseline | Special settings |
 | --- | --- | --- |
-| Every Main/selected-CC asset except ETH | Actual current Main NQ inputs and chart/session settings | Preserve instrument-specific contract economics; SOL follows NQ |
-| ETH / COINBASE:ETHUSD | Same strategy settings as current Main NQ | 30-minute chart, session filter off, quantity input 25 |
+| Every Main/selected-CC asset except ETH and SOL | Actual current Main NQ inputs and chart/session settings | Preserve instrument-specific contract economics |
+| ETH / COINBASE:ETHUSD and SOL / COINBASE:SOLUSD | Same strategy settings as current Main NQ | 30-minute chart, session filter off, quantity input 25 |
 
 The migration captures live Main NQ when available or validates saved Main NQ plus its preset when stopped. It never silently substitutes built-in stock settings. Saved selections, journals, and CC on/off state are preserved. The 35-symbol list and commands are in the current restart guide.
 

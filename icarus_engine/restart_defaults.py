@@ -26,7 +26,7 @@ RECEIPT_FILE = "restart-defaults-receipt.json"
 DEFAULT_PRESET = "NQ-20m-ultracoded"
 _CHART_KEYS = ("timeframe", "chart_type", "fill_on", "security_source")
 _MAX_JSON = 2 * 1024 * 1024
-EXCEPTION_ASSETS = frozenset({"ETH"})
+EXCEPTION_ASSETS = frozenset({"ETH", "SOL"})
 
 
 def _bytes(value):
@@ -140,7 +140,10 @@ def owner_default_overrides(base_dir, symbol):
     baseline = template["baseline"]
     result = copy.deepcopy(baseline["inputs"])
     meta = {**baseline["chart"], "session": baseline["session"]}
-    if str(symbol).upper() in {"ETH", "ETHUSD", "COINBASE:ETHUSD"}:
+    if str(symbol).upper() in {
+        "ETH", "ETHUSD", "COINBASE:ETHUSD",
+        "SOL", "SOLUSD", "COINBASE:SOLUSD",
+    }:
         result.update(qty_contracts=25, use_session=False)
         meta.update(timeframe="30", session="eth")
     result["_meta"] = meta

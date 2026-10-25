@@ -1,4 +1,4 @@
-"""Owner-requested, stopped-state NQ defaults and the explicit ETH exception."""
+"""Owner-requested NQ defaults and explicit ETH/SOL exceptions."""
 import copy
 import json
 from pathlib import Path
@@ -58,7 +58,7 @@ def test_plan_uses_actual_saved_nq_precedence_and_has_no_side_effects(state):
     assert before == {p.relative_to(state): p.read_bytes() for p in state.rglob("*") if p.is_file()}
 
 
-def test_apply_copies_all_strategy_values_preserves_specs_journals_and_eth_exception(state, monkeypatch):
+def test_apply_copies_nq_values_and_preserves_both_crypto_exceptions(state, monkeypatch):
     monkeypatch.setattr(defaults, "ensure_stopped", lambda *args, **kwargs: None)
     original_specs = copy.deepcopy(REGISTRY)
     plan = defaults.plan_defaults(state)
@@ -67,7 +67,7 @@ def test_apply_copies_all_strategy_values_preserves_specs_journals_and_eth_excep
     for symbol in ("NQ", "ES", "BTC", "SOL", "ETH"):
         inputs, meta, _ = resolve_inputs(copy.deepcopy(REGISTRY[symbol]), str(state), "nq", "NQ-20m-ultracoded")
         expected = dict(plan["baseline"]["inputs"])
-        if symbol == "ETH":
+        if symbol in {"ETH", "SOL"}:
             expected.update(qty_contracts=25, use_session=False)
             assert meta["timeframe"] == "30"
         else:
@@ -79,18 +79,21 @@ def test_apply_copies_all_strategy_values_preserves_specs_journals_and_eth_excep
     assert profile["name"] == "Keep this" and profile["config_revision"] == 9
     assert profile["inputs"] == plan["baseline"]["inputs"]
     assert profile["asset_overrides"]["ES"]["inputs"] == {}
-    assert profile["asset_overrides"]["SOL"]["inputs"] == {}
-    assert profile["asset_overrides"]["SOL"]["chart"] == {}
+    assert profile["asset_overrides"]["SOL"]["inputs"] == {"qty_contracts": 25, "use_session": False}
+    assert profile["asset_overrides"]["SOL"]["chart"]["timeframe"] == "30"
     assert profile["asset_overrides"]["ETH"]["inputs"] == {"qty_contracts": 25, "use_session": False}
     assert profile["asset_overrides"]["ETH"]["chart"]["timeframe"] == "30"
-    assert receipt["asset_exceptions"] == {"ETH": {"qty_contracts": 25, "use_session": False, "timeframe": "30"}}
+    assert receipt["asset_exceptions"] == {
+        "ETH": {"qty_contracts": 25, "use_session": False, "timeframe": "30"},
+        "SOL": {"qty_contracts": 25, "use_session": False, "timeframe": "30"},
+    }
     assert (state / "command_centers/runtime-power.json").read_bytes() == b'keep power exactly'
     assert (state / "command_centers/cc1.sqlite3").read_bytes() == b'keep journal exactly'
     assert REGISTRY == original_specs
     assert Path(receipt["backup_directory"]).is_dir()
 
 
-def test_every_main_asset_resolves_to_nq_defaults_with_only_eth_exception(state, monkeypatch):
+def test_every_main_asset_resolves_to_nq_defaults_with_eth_and_sol_exceptions(state, monkeypatch):
     from icarus_engine.workspace_universe import dashboard_assets
 
     monkeypatch.setattr(defaults, "ensure_stopped", lambda *args, **kwargs: None)
@@ -104,7 +107,7 @@ def test_every_main_asset_resolves_to_nq_defaults_with_only_eth_exception(state,
             copy.deepcopy(REGISTRY[symbol]), str(state), "nq", defaults.DEFAULT_PRESET
         )
         expected = dict(baseline)
-        if symbol == "ETH":
+        if symbol in {"ETH", "SOL"}:
             expected.update(qty_contracts=25, use_session=False)
             assert meta["timeframe"] == "30", symbol
         else:
@@ -121,15 +124,11 @@ def test_second_application_is_idempotent_and_template_supplies_future_assets(st
     assert defaults.apply_plan(plan)["status"] == "UNCHANGED"
     assert before == {p.relative_to(state): p.read_bytes() for p in state.rglob("*") if p.is_file()}
     assert defaults.owner_default_overrides(state, "ES")["qty_contracts"] == 7
-    sol = defaults.owner_default_overrides(state, "SOL")
-    assert sol["qty_contracts"] == 7 and sol["use_session"] == plan["baseline"]["inputs"]["use_session"]
-    assert sol["_meta"]["timeframe"] == plan["baseline"]["chart"]["timeframe"]
-    assert sol["use_entry_window"] == plan["baseline"]["inputs"]["use_entry_window"]
-    for alias in ("ETH", "ETHUSD", "COINBASE:ETHUSD"):
+    for alias in ("ETH", "ETHUSD", "COINBASE:ETHUSD", "SOL", "SOLUSD", "COINBASE:SOLUSD"):
         special = defaults.owner_default_overrides(state, alias)
         assert special["qty_contracts"] == 25 and special["use_session"] is False
         assert special["_meta"]["timeframe"] == "30"
-    for alias in ("SOL", "SOLUSD", "COINBASE:SOLUSD"):
+    for alias in ("ES", "MES"):
         ordinary = defaults.owner_default_overrides(state, alias)
         assert ordinary["qty_contracts"] == 7
         assert ordinary["_meta"]["timeframe"] == plan["baseline"]["chart"]["timeframe"]
@@ -279,7 +278,7 @@ def test_future_main_and_cc_assets_and_missing_profiles_use_real_startup_default
             original=copy.deepcopy(REGISTRY[symbol])
             spec,values,_=portfolio._resolved(copy.deepcopy(original))
             expected=dict(baseline['inputs'])
-            if symbol == 'ETH':
+            if symbol in {'ETH','SOL'}:
                 expected.update(qty_contracts=25,use_session=False)
                 assert spec.chart_tf=='30' and spec.calendar=='crypto'
             else:
@@ -337,7 +336,9 @@ def test_verified_helper_can_capture_before_checkout_and_apply_on_actual_python3
     assert applied.returncode==0,applied.stdout+applied.stderr
     assert json.loads(applied.stdout)['status']=='APPLIED'
     assert json.loads((state/'inputs.ES.json').read_text())['tp1_pts']==81
-    assert json.loads((state/'inputs.SOL.json').read_text())['qty_contracts']==12
+    sol_settings=json.loads((state/'inputs.SOL.json').read_text())
+    assert sol_settings['qty_contracts']==25 and sol_settings['use_session'] is False
+    assert sol_settings['_meta']['timeframe']=='30'
 
 
 def test_prepare_uses_active_current_nq(workspace_http,state):
@@ -348,7 +349,10 @@ def test_prepare_uses_active_current_nq(workspace_http,state):
     assert result['overview']=={'timeframe':parent.runners['NQ'].spec.chart_tf,
         'session':parent.runners['NQ'].spec.session,
         'qty_contracts':parent.runners['NQ'].inputs_base.qty_contracts,
-        'asset_exceptions':{'ETH':{'timeframe':'30','use_session':False,'qty_contracts':25}}}
+        'asset_exceptions':{
+            'ETH':{'timeframe':'30','use_session':False,'qty_contracts':25},
+            'SOL':{'timeframe':'30','use_session':False,'qty_contracts':25},
+        }}
     capture=Path(result['capture_file'])
     assert json.loads(capture.read_text())['baseline']['inputs']==parent.runners['NQ'].inputs_base.to_dict()
     assert 'api-owner' not in json.dumps(result)
