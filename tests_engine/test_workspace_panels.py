@@ -256,7 +256,6 @@ def test_panel_startup_is_nonblocking_and_isolated(workspace_http, monkeypatch):
 @pytest.mark.parametrize('cleanup_failure', [False, True])
 def test_off_waits_for_selected_panel_worker_without_blocking_sibling(workspace_http, monkeypatch, cleanup_failure):
     import threading
-    import time
     server, _, request = workspace_http
     registry = server.workspace_panels
     assert request('/api/command-centers/cc1/panels/commissioning')[0] == 200
@@ -278,6 +277,8 @@ def test_off_waits_for_selected_panel_worker_without_blocking_sibling(workspace_
     try:
         assert entered.wait(2)
         assert request('/admin/command-centers/cc1/runtime', body={'enabled': False, 'expected_revision': 0})[0] == 202
+        with server.workspace_power._lock:
+            off_worker = server.workspace_power._workers['cc1']
         assert next(r for r in server.workspace_power.snapshot()['workspaces'] if r['id']=='cc1')['runtime_state'] == 'STOPPING'
         selected.journal.closed_paper_profit()
         assert request('/status/public')[0] == 200
@@ -286,9 +287,8 @@ def test_off_waits_for_selected_panel_worker_without_blocking_sibling(workspace_
         release.set()
         initializer.join(5)
     expected = 'ERROR' if cleanup_failure else 'OFF'
-    deadline = time.monotonic()+3
-    while time.monotonic()<deadline and next(r for r in server.workspace_power.snapshot()['workspaces'] if r['id']=='cc1')['runtime_state']!=expected:
-        time.sleep(.01)
+    off_worker.join(timeout=10)
+    assert not off_worker.is_alive(), 'selected workspace OFF worker did not finish after the blocked panel tick was released'
     assert next(r for r in server.workspace_power.snapshot()['workspaces'] if r['id']=='cc1')['runtime_state']==expected
     assert service._thread is None or not service._thread.is_alive()
 
