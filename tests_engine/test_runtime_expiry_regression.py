@@ -33,9 +33,9 @@ def test_selected_status_snapshots_only_selected_workspace(workspace_http, monke
     original = manager._profile_snapshot
     touched = []
 
-    def observed(profile_id, now):
+    def observed(profile_id, now, **kwargs):
         touched.append(profile_id)
-        return original(profile_id, now)
+        return original(profile_id, now, **kwargs)
 
     monkeypatch.setattr(manager, "_profile_snapshot", observed)
     code, payload, _ = request("/api/command-centers/cc1/status")

@@ -72,6 +72,7 @@ from .golive import report as golive_report
 from .agent import report as agent_report
 from .briefing import report as briefing_report
 from .runtime import FlattenUnavailableError, Portfolio, _clean, _read_json, apply_spec_meta, preset_path
+from .subsystem_connections import NativeSubsystemConnections, capture_portfolio
 from .workspace_context import WorkspaceContextError, guard_workspace_request
 from .strategy.meta import load_meta
 from .advisory import MAX_BODY_BYTES, strict_json
@@ -94,7 +95,7 @@ from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
 from .performance_proof import PerformanceProofStore
-from .access_control import AccessRegistry
+from .access_control import AccessRegistry, AccessUnavailable
 from .latency_telemetry import LatencyTelemetry
 from .source_reliability import SourceReliabilityStore
 from .qualification_receipts import (
@@ -227,7 +228,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         raise ValueError("shared_dashboard must be a boolean")
     html_path = Path(__file__).parent / "dashboard.html"
 
-    def dashboard_html(workspace_id):
+    def workspace_bootstrap(workspace_id):
         if workspace_id not in {"main", "cc1", "cc2", "cc3", "cc4"}:
             raise ValueError("unknown dashboard context")
         capabilities = {"paper_only": workspace_id != "main", "execution_authorized": False,
@@ -239,11 +240,18 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                      f'const icContext={encoded};Object.freeze(icContext.capabilities);Object.freeze(icContext);'
                      'Object.defineProperty(window,"IcarusWorkspace",{value:icContext,writable:false,configurable:false});'
                      '</script>')
+        return bootstrap.encode("utf-8")
+
+    def dashboard_html(workspace_id):
         html = html_path.read_bytes()
         marker = b"<!-- ICARUS_WORKSPACE_BOOTSTRAP -->"
         if html.count(marker) != 1:
             raise RuntimeError("dashboard context bootstrap marker is unavailable")
-        return brand.render(html.replace(marker, bootstrap.encode("utf-8")))
+        return brand.render(html.replace(marker, workspace_bootstrap(workspace_id)))
+
+    def legacy_dashboard_html(workspace_id="main"):
+        html = (html_path.parent / "workspace-dashboard.html").read_bytes()
+        return html.replace(b"<head>", b"<head>" + workspace_bootstrap(workspace_id), 1)
 
     access_registry = AccessRegistry(port.base_dir or os.getcwd(), token)
     meta = load_meta()
@@ -257,6 +265,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     performance_proof = PerformanceProofStore(port.base_dir)
     latency_telemetry = LatencyTelemetry()
     source_reliability = SourceReliabilityStore(port.base_dir)
+    subsystem_connections = NativeSubsystemConnections(
+        port.base_dir, workspace_id="main", snapshot_supplier=lambda: capture_portfolio(port))
     qualification_receipts = QualificationReceiptStore(port.base_dir, REQUIRED_CANDIDATE_GATES)
     # Bind one collector to the existing live runners; Portfolio.make_runner
     # propagates the same sink to assets added later.
@@ -271,8 +281,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     workspace_panels = WorkspacePanels(command_centers, workspace_api)
     from .workspace_jobs import ScopedWorkspaceJobs, WorkspaceJobError
     workspace_jobs = ScopedWorkspaceJobs(command_centers)
-    if start:
-        command_centers.start()
+    from .workspace_power import WorkspacePowerControls, WorkspacePowerError
+    workspace_power = WorkspacePowerControls(command_centers, on_disabled=workspace_panels.suspend, on_enabled=workspace_panels.activate,
+                                            busy=workspace_jobs.has_active)
+    command_centers.runtime_power = workspace_power
 
     try:
         from .account_connections import ConnectionManager
@@ -284,7 +296,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
     def workspace_snapshot(profile_id):
         """Filter runner state while retaining the existing all-ledger accounting."""
-        state = copy.deepcopy(command_centers.snapshot())
+        state = copy.deepcopy(command_centers.snapshot(nonblocking=True))
         rows = state.get("profiles", [])
         profile = next((row for row in rows if row.get("id") == profile_id), None)
         if profile is None:
@@ -1320,28 +1332,70 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         with config_jobs_lock:
             return dict(row), True, False
 
+    class ClientRequestDisconnected(Exception):
+        """Private signal emitted only by the owned client request stream."""
+
+    class RequestInput:
+        """Identify disconnected client line reads without catching route errors."""
+        def __init__(self, stream):
+            self.stream = stream
+            self.disconnected = False
+
+        def __getattr__(self, name):
+            return getattr(self.stream, name)
+
+        def readline(self, *args):
+            try:
+                return self.stream.readline(*args)
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                self.disconnected = True
+                raise ClientRequestDisconnected() from None
+
     class H(BaseHTTPRequestHandler):
         server_version = "icarus"
         sys_version = ""
         protocol_version = "HTTP/1.1"
         timeout = 30                                              # idle connections must not hold a thread forever
 
+        def setup(self):
+            super().setup()
+            self.rfile = RequestInput(self.rfile)
+
+        def handle(self):
+            try:
+                return super().handle()
+            except ClientRequestDisconnected:
+                # Stop before partial headers can dispatch or send 100 Continue.
+                # Only our input stream emits this; upstream errors stay visible.
+                self.close_connection = True
+            except AccessUnavailable:
+                # A locked/corrupt authority is not a bad credential. Return a
+                # bounded unavailable receipt without a second auth attempt.
+                self.close_connection = True
+                self._json(503, {"detail": "Access registry is temporarily unavailable",
+                                 "error": "ACCESS_AUTHORITY_UNAVAILABLE"})
+
         def log_message(self, *a: Any) -> None:  # quiet
             pass
 
         def _send(self, code: int, body: bytes, ctype: str = "application/json", extra: Dict[str, str] | None = None) -> None:
-            self.send_response(code)
-            self.send_header("Content-Type", ctype + ("; charset=utf-8" if ctype.startswith("text") else ""))
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("X-Frame-Options", "DENY")
-            self.send_header("X-Content-Type-Options", "nosniff")
-            self.send_header("Referrer-Policy", "no-referrer")
-            self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-src https://www.youtube-nocookie.com; frame-ancestors 'none'")
-            for k, v in (extra or {}).items():
-                self.send_header(k, v)
-            self.end_headers()
-            self.wfile.write(body)
+            try:
+                self.send_response(code)
+                self.send_header("Content-Type", ctype + ("; charset=utf-8" if ctype.startswith("text") else ""))
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Frame-Options", "DENY")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("Referrer-Policy", "no-referrer")
+                self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-src https://www.youtube-nocookie.com; frame-ancestors 'none'")
+                for k, v in (extra or {}).items():
+                    self.send_header(k, v)
+                self.end_headers()
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                # The response consumer is gone. A second HTTP error response
+                # cannot reach it; close this connection, not the runtime.
+                self.close_connection = True
 
         def _json(self, code: int, obj: Any) -> None:
             self._send(code, dumps_safe(obj))
@@ -1365,7 +1419,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
         def _workspace_context_ok(self, path, method):
             try:
-                guard_workspace_request(self.headers, path, method, self.server.server_port)
+                guard_workspace_request(self.headers, self.path, method, self.server.server_port)
             except WorkspaceContextError as ex:
                 if method != "GET":
                     self._drain_body()
@@ -1398,6 +1452,22 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             q = parse_qs(p.query)
             if not self._workspace_context_ok(p.path, "GET"):
                 return
+            if p.path == "/api/workspace-runtime":
+                if p.query:
+                    return self._json(400, {"detail": "runtime power metadata accepts no selectors"})
+                if not self._auth():
+                    return self._json(401, {"detail": "authentication required"})
+                return self._json(200, workspace_power.snapshot())
+            if p.path == "/workspace_power_ui.js":
+                return self._send(200, (html_path.parent / "workspace_power_ui.js").read_bytes(), "text/javascript")
+            if p.path == "/subsystem-connections-ui.js":
+                return self._send(200, (html_path.parent / "subsystem-connections-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/api/subsystem-connections":
+                if not self._auth():
+                    return self._json(401, {"detail": "authentication required"})
+                if p.query:
+                    return self._json(400, {"detail": "subsystem connections accept no selectors"})
+                return self._json(200, subsystem_connections.snapshot())
             if p.path == "/api/market-universe":
                 from .market_universe import snapshot as market_universe_snapshot
                 try:
@@ -1514,7 +1584,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 except (OSError, ValueError, TypeError):
                     return self._json(503, {"detail": "account connection unavailable", "execution_authorized": False})
             if p.path == "/connections":
-                return self._send(200, (html_path.parent / "workspace-dashboard.html").read_bytes(), "text/html")
+                return self._send(200, legacy_dashboard_html(), "text/html")
             if p.path == "/connections-ui.js":
                 script = html_path.parent / "connections-ui.js"
                 if not script.is_file():
@@ -1632,7 +1702,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(404, {"detail": "unknown dashboard"})
                 if shared_dashboard and target in workspace_ids:
                     return self._send(200, dashboard_html(target), "text/html")
-                return self._send(200, (html_path.parent / "workspace-dashboard.html").read_bytes(), "text/html")
+                return self._send(200, legacy_dashboard_html(target if target in workspace_ids else "main"), "text/html")
             if p.path == "/paper-pnl-ui.js":
                 return self._send(200, (html_path.parent / "paper-pnl-ui.js").read_bytes(), "text/javascript")
             if p.path == "/workspace-performance-ui.js":
@@ -1640,7 +1710,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             if p.path == "/workspace-dashboard.js":
                 return self._send(200, (html_path.parent / "workspace-dashboard.js").read_bytes(), "text/javascript")
             if p.path == "/api/command-centers":
-                snapshot = command_centers.snapshot()
+                snapshot = command_centers.snapshot(nonblocking=True)
                 snapshot["input_meta"] = meta
                 return self._json(200, snapshot)
             if p.path == "/":
@@ -2259,6 +2329,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 over = _read_json(os.path.join(port.base_dir, f"inputs.{r.symbol}.json"))
                 return self._json(200, {"asset": r.symbol, "effective": r.inputs.to_dict(), "base": r.inputs_base.to_dict(), "sources": r.cfg.sources,
                                         "overrides": {k: v for k, v in over.items() if not k.startswith("_")}, "preset": r.cfg.preset, "pts_scale": r.pts_scale,
+                                        "session": r.spec.session,
                                         "instrument": {
                                             "kind": r.spec.kind,
                                             "continuous_symbol": r.spec.tv_symbol if r.spec.kind == "futures" else None,
@@ -2326,11 +2397,19 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
             raw = self.rfile.read(n) if n else b""
             try:
                 panel_action = p.path.startswith("/admin/command-centers/") and "/panels/" in p.path
-                body = strict_json(raw) if panel_action or p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/", "/admin/ascendancy/", "/admin/execution-cost/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
+                runtime_power_action = bool(re.fullmatch(r"/admin/command-centers/cc[1-4]/runtime", p.path))
+                body = strict_json(raw) if panel_action or runtime_power_action or p.path.startswith(("/admin/research/", "/admin/integrity/", "/admin/parallax/", "/admin/dreamstate/", "/admin/possibility/", "/admin/autopilot/", "/admin/engine-control", "/admin/pantheon/", "/admin/sibyl/", "/admin/apex/", "/admin/learning/", "/admin/qualification-receipts/", "/admin/ascendancy/", "/admin/execution-cost/")) else (json.loads(raw, parse_constant=_no_json_constants) if raw else {})
             except ValueError as ex:
                 return self._json(400, {"detail": f"bad JSON body: {ex}"})
             if not isinstance(body, dict):
                 return self._json(400, {"detail": "JSON body must be an object"})
+            if runtime_power_action:
+                if p.query:
+                    return self._json(400, {"detail": "runtime power uses only its canonical workspace route"})
+                try:
+                    return self._json(202, workspace_power.request(p.path.split('/')[3], body))
+                except WorkspacePowerError as ex:
+                    return self._json(ex.status, {"detail": str(ex), "execution_authorized": False})
             if p.path == "/admin/account-connections" or p.path.startswith("/admin/account-connections/"):
                 if account_connections is None:
                     return self._json(503, {"detail": "account connections module unavailable", "execution_authorized": False})
@@ -2410,6 +2489,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                                             "execution_authorized": False})
             if p.path == "/admin/access/add":
                 try:
+                    if set(body) - {"label"}:
+                        raise ValueError("access creation accepts only a label")
                     user = access_registry.add(body.get("label", ""))
                     return self._json(201, {"ok": True, "user": user, "note": "Copy this access token now; it is shown only once."})
                 except (ValueError, TypeError) as ex:
@@ -2418,6 +2499,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(409, {"detail": f"could not add user: {type(ex).__name__}"})
             if p.path == "/admin/access/kick":
                 try:
+                    if set(body) - {"id"}:
+                        raise ValueError("access revocation accepts only an id")
                     kicked = access_registry.kick(str(body.get("id", "")))
                     return self._json(200 if kicked else 404, {"ok": kicked, "detail": "access revoked" if kicked else "user not found"})
                 except ValueError as ex:
@@ -3313,7 +3396,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         try:
                             for r in targets:
                                 port.rewarm_asset(r.symbol, vals, bool(body.get("persist", True)) if vals is not None else False,
-                                                  reset=reset, chart=chart, **kwargs)
+                                                  reset=reset, chart=chart, _publish_views=False, **kwargs)
                                 applied.append(r)
                         except Exception as apply_ex:
                             port.equity_epoch = equity_epoch_before
@@ -3345,6 +3428,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                             r.live_from_ts = int(cutover)
                             r.live_closed_start = len(r.em.closed)
                         port.equity_epoch = cutover
+                        # Publish only the fully committed batch. Cached readers
+                        # retain the old captured values while any later target
+                        # is replaying or might still roll the batch back.
+                        for r in targets:
+                            r.publish_read_views()
                     done = [r.symbol for r in targets]
                     return self._json(200, {"ok": True, "note": f"configuration applied and re-warmed {done}", "assets": done,
                                             "chart": chart or None})
@@ -3410,8 +3498,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     class ResearchHTTPServer(ThreadingHTTPServer):
         def _close_background_services(self):
             closers = (
+                access_registry.close,
+                workspace_power.close,
                 workspace_panels.close,
-                command_centers.stop,
+                subsystem_connections.close,
                 lambda: autopilot.close(),
                 lambda: ascendancy_autopilot.close(),
                 lambda: ascendancy_native_validation.close(),
@@ -3438,7 +3528,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
         def serve_forever(self, poll_interval=.5):
             background = bool(getattr(self, "background_workers_enabled", True))
             if background:
+                access_registry.start()
+                subsystem_connections.start()
                 workspace_panels.start()
+                workspace_power.start()
                 research.start_background()
                 autopilot.start_background()
                 loop_intelligence_sync.start()
@@ -3463,8 +3556,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
 
     srv = ResearchHTTPServer(("127.0.0.1", http_port), H)
     srv.shared_dashboard = shared_dashboard
+    srv.access_registry = access_registry
     srv.command_centers = command_centers
     srv.workspace_jobs = workspace_jobs
+    srv.workspace_power = workspace_power
     srv.account_connections = account_connections
     srv.research = research
     srv.loop_intelligence_sync = loop_intelligence_sync
@@ -3477,6 +3572,7 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
     srv.performance_proof = performance_proof
     srv.latency_telemetry = latency_telemetry
     srv.source_reliability = source_reliability
+    srv.subsystem_connections = subsystem_connections
     srv.qualification_receipts = qualification_receipts
     srv.autopilot = autopilot
     srv.pantheon = pantheon

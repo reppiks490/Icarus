@@ -1,5 +1,9 @@
 # Icarus recovery status
 
+**Current bounded takeover:** the owner appointed this chat current Prime while the original Prime is stopped. The [Prime as-is restart handoff](PRIME_AS_IS_RESTART.md) records the combined candidate, preserved state, installation and observation boundary. Historical checkpoints below retain their original scope and test counts. Full-system NO_GO remains.
+
+PR #471 code commit `b0d67889143221087e5f7045cae9109ede0af031` includes a lock-serialized commissioning shutdown fix and a regression test for close-during-immediate-tick. The former exact head's Windows run failed in a timing-sensitive selected-workspace shutdown test; the fixture now isolates lifecycle completion from the full 35-asset computation. Local engine tests pass 4,269/4,269 (5 skipped, 111 subtests); focused commissioning/workspace-panel tests pass 51/51. Linux, Windows, browser, contract, configuration, historical-context, and federation checks all pass on the code commit. A docs-only follow-up is being published to the PR; verify its latest exact-head checks before install. Owner-PC restart remains unobserved until the documented Windows procedure is completed.
+
 **Current operator commands: [START_HERE.md](../../START_HERE.md).** The owner has
 requested a limited as-is paper launch despite remaining full-readiness gaps.
 The tested launcher preserves a chosen existing private root and requires explicit
@@ -10,12 +14,13 @@ Icarus 2. A fully qualified system restart has not been performed. Source inspec
 engineering tests, hosted automation and the owner's PC runtime are separate
 evidence levels. No source-only result establishes that the PC is repaired.
 
-**Latest panel delivery:** [per-panel completion and Git Bash restarts](ICARUS_PANEL_RESTARTS.md)
-documents Possibility, Chronofold, Commissioning and Engine Control for all four
-selected workspaces. The other eleven subsystem adapters remain open. Icarus 2's
-owner-assisted receipt026 records the earlier `38d5328` paper application starting
-on the PC with successful main health probes; this is separate from installing
-the new panel source or proving sustained operation.
+**Latest panel delivery:** [adapter status matrix](ICARUS_ADAPTER_STATUS.md) and
+[archived panel checkpoint](archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md). The core four controls
+are selected-runtime adapters; the other listed subsystem surfaces have selected
+read adapters, with their mutation/automation limits explicit in the matrix.
+Icarus 2's owner-assisted receipt026 records the earlier `38d5328` paper
+application starting on the PC with successful main health probes; this is
+separate from installing the new panel source or proving sustained operation.
 
 The owner's current two-worker direction supersedes the old five-name selection
 board for this workstream. Claims and updates remain on the existing
@@ -352,12 +357,12 @@ and log hashes, prior canceled visual result and separate Icarus2 browser proof.
 
 ## Next-worker handoff
 
-The current four-panel batch and its verification/restart limits are tracked in
-[ICARUS_PANEL_RESTARTS.md](ICARUS_PANEL_RESTARTS.md) and the
+The historical four-panel batch and its verification/restart limits are tracked in
+[the archived panel notes](archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md) and the
 `workspace_first_four_panels_followup` entry in the evidence inventory. New
 services use each selected runtime and its own subsystem state; their analytics
 read cached market buffers without opening provider sessions. Source remains on
-the recovery branch. This batch does not close the other eleven adapters. The final
+the recovery branch. That historical batch did not close the other eleven adapters; the current adapter matrix records their read paths and remaining write/automation limits. The final
 full runtime suite, including required Chromium cases, passed **3,895 tests, four
 skipped, 111 subtests** in462.60s, exit0, with the eight changed code/test files
 frozen at `2c1b627`. Earlier248 component,92 routing/context and37 final panel

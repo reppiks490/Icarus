@@ -133,6 +133,18 @@ def test_selected_samplers_start_capture_and_close_independently(workspace_http)
     registry = server.workspace_panels
     try:
         registry.start()
+        import time
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            with registry._lock:
+                ready = len(registry._runtimes) == 4 and all(
+                    bundle.__dict__.get('commissioning') is not None and
+                    bundle.commissioning._thread is not None and bundle.commissioning._thread.is_alive()
+                    for bundle in registry._runtimes.values())
+            if ready:
+                break
+            time.sleep(.01)
+        assert ready
         for index, workspace in enumerate(('cc1', 'cc2', 'cc3', 'cc4'), 1):
             service = registry._runtimes[workspace].commissioning
             assert service._thread.is_alive()
@@ -212,3 +224,87 @@ assert.equal(new URL(calls[2].url).search,'?asset=ES','Server must be able to re
     result = subprocess.run([node, "-e", script, str(Path(__file__).resolve().parents[1] / "icarus_engine/workspace-client.js")],
                             text=True, capture_output=True, timeout=10)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_panel_startup_is_nonblocking_and_isolated(workspace_http, monkeypatch):
+    import threading
+    from icarus_engine import workspace_panels
+    server, _, request = workspace_http
+    registry = server.workspace_panels
+    entered, release, returned = (threading.Event() for _ in range(3))
+    original = workspace_panels.RuntimePanels.__init__
+    def blocked(self, manager, api, profile_id, portfolio):
+        if profile_id == 'cc1':
+            entered.set()
+            assert release.wait(5)
+        original(self, manager, api, profile_id, portfolio)
+    monkeypatch.setattr(workspace_panels.RuntimePanels, '__init__', blocked)
+    worker = threading.Thread(target=lambda: (registry.start(), returned.set()), daemon=True)
+    worker.start()
+    try:
+        assert entered.wait(2)
+        assert returned.wait(.3), 'panel startup must not hold the HTTP serving thread'
+        assert request('/api/workspace-runtime')[0] == 200
+        assert request('/status/public')[0] == 200
+        assert request('/api/command-centers/cc2/panels/commissioning')[0] == 200
+    finally:
+        release.set()
+        worker.join(5)
+        registry.close()
+
+
+@pytest.mark.parametrize('cleanup_failure', [False, True])
+def test_off_waits_for_selected_panel_worker_without_blocking_sibling(workspace_http, monkeypatch, cleanup_failure):
+    import threading
+    import time
+    server, _, request = workspace_http
+    registry = server.workspace_panels
+    assert request('/api/command-centers/cc1/panels/commissioning')[0] == 200
+    service = registry._runtimes['cc1'].commissioning
+    selected = server.command_centers.portfolios['cc1']
+    if cleanup_failure:
+        from types import SimpleNamespace
+        def failed_close():
+            raise RuntimeError('fixture selected intelligence close error')
+        registry._runtimes['cc1'].__dict__['intelligence'] = SimpleNamespace(close=failed_close)
+    entered, release = threading.Event(), threading.Event()
+    def blocked():
+        entered.set()
+        assert release.wait(5)
+        return {"captures": [], "settlement": {"settled": 0, "outcomes": []}, "errors": {}}
+    monkeypatch.setattr(service, 'tick', blocked)
+    initializer = threading.Thread(target=registry.start, daemon=True)
+    initializer.start()
+    try:
+        assert entered.wait(2)
+        assert request('/admin/command-centers/cc1/runtime', body={'enabled': False, 'expected_revision': 0})[0] == 202
+        assert next(r for r in server.workspace_power.snapshot()['workspaces'] if r['id']=='cc1')['runtime_state'] == 'STOPPING'
+        selected.journal.closed_paper_profit()
+        assert request('/status/public')[0] == 200
+        assert request('/api/command-centers/cc2/panels/commissioning')[0] == 200
+    finally:
+        release.set()
+        initializer.join(5)
+    expected = 'ERROR' if cleanup_failure else 'OFF'
+    deadline = time.monotonic()+3
+    while time.monotonic()<deadline and next(r for r in server.workspace_power.snapshot()['workspaces'] if r['id']=='cc1')['runtime_state']!=expected:
+        time.sleep(.01)
+    assert next(r for r in server.workspace_power.snapshot()['workspaces'] if r['id']=='cc1')['runtime_state']==expected
+    assert service._thread is None or not service._thread.is_alive()
+
+
+def test_retired_panel_generation_cannot_replace_current_bundle(workspace_http):
+    from icarus_engine.workspace_api import WorkspaceAPIError
+    server, _, request = workspace_http
+    registry, manager = server.workspace_panels, server.command_centers
+    retired = manager.portfolios['cc1']
+    current = manager.portfolios['cc2']
+    manager.portfolios['cc1'] = current
+    try:
+        with pytest.raises(WorkspaceAPIError, match='off or changing state'):
+            registry._bundle('cc1', retired)
+        assert 'cc1' not in registry._runtimes
+    finally:
+        manager.portfolios['cc1'] = retired
+    assert request('/api/command-centers/cc1/panels/commissioning')[0] == 200
+    assert registry._runtimes['cc1'].port._portfolio is retired

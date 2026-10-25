@@ -34,6 +34,7 @@ include = ["icarus_engine*", "icarus_bridge*", "icarus_plant*", "icarus_agent*",
 
 [tool.setuptools.package-data]
 icarus_engine = ["*.html", "*.js", "*.css", "*.json", "worlds/*.webp", "strategy/*.json"]
+"icarus_engine.native_subsystems" = ["source_manifest.json", "ATTRIBUTION.md"]
 icarus_bridge = ["*.html"]
 
 [tool.pytest.ini_options]

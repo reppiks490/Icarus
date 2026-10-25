@@ -39,6 +39,87 @@ REQUESTED_FUTURES_MICROS = tuple(
 REQUESTED_FUTURES_SYMBOLS = REQUESTED_FUTURES_FAMILIES + REQUESTED_FUTURES_MICROS
 
 
+class _WorkspaceReadWriteLock:
+    """Let independent observations share a workspace while edits stay exclusive."""
+
+    def __init__(self):
+        self._condition = threading.Condition(threading.RLock())
+        self._writer = None
+        self._write_depth = 0
+        self._readers = {}
+        self._waiting_writers = 0
+
+    def acquire(self, blocking=True, timeout=-1):
+        """Acquire the exclusive configuration/lifecycle side of the lock."""
+        ident = threading.get_ident()
+        deadline = None if timeout is None or timeout < 0 else time.monotonic() + timeout
+        with self._condition:
+            if self._writer == ident:
+                self._write_depth += 1
+                return True
+            own_reads = self._readers.get(ident, 0)
+            self._waiting_writers += 1
+            try:
+                while self._writer is not None or sum(self._readers.values()) > own_reads:
+                    if not blocking:
+                        return False
+                    remaining = None if deadline is None else deadline - time.monotonic()
+                    if remaining is not None and remaining <= 0:
+                        return False
+                    self._condition.wait(remaining)
+                self._writer = ident
+                self._write_depth = 1
+                return True
+            finally:
+                self._waiting_writers -= 1
+                self._condition.notify_all()
+
+    def release(self):
+        ident = threading.get_ident()
+        with self._condition:
+            if self._writer != ident:
+                raise RuntimeError("cannot release a workspace lock owned by another thread")
+            self._write_depth -= 1
+            if self._write_depth == 0:
+                self._writer = None
+                self._condition.notify_all()
+
+    def acquire_read(self, blocking=True, timeout=-1):
+        """Acquire a shared observation lease, respecting waiting writers."""
+        ident = threading.get_ident()
+        deadline = None if timeout is None or timeout < 0 else time.monotonic() + timeout
+        with self._condition:
+            while (self._writer is not None and self._writer != ident) or (
+                    self._waiting_writers and ident not in self._readers and self._writer != ident):
+                if not blocking:
+                    return False
+                remaining = None if deadline is None else deadline - time.monotonic()
+                if remaining is not None and remaining <= 0:
+                    return False
+                self._condition.wait(remaining)
+            self._readers[ident] = self._readers.get(ident, 0) + 1
+            return True
+
+    def release_read(self):
+        ident = threading.get_ident()
+        with self._condition:
+            count = self._readers.get(ident, 0)
+            if not count:
+                raise RuntimeError("cannot release a workspace read lock not owned by this thread")
+            if count == 1:
+                del self._readers[ident]
+            else:
+                self._readers[ident] = count - 1
+            self._condition.notify_all()
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, _kind, _value, _traceback):
+        self.release()
+
+
 def requested_futures_metadata():
     return {
         "family_count": len(REQUESTED_FUTURES_FAMILIES),
@@ -208,13 +289,24 @@ class SharedFeed:
 class WorkspacePortfolio(Portfolio):
     def __init__(self, *args, workspace: Dict[str, Any], **kwargs):
         self.workspace = workspace
+        self._workspace_power_activation_lock = threading.Lock()
         super().__init__(*args, **kwargs)
 
     def _resolved(self, spec, workspace=None):
         workspace = self.workspace if workspace is None else workspace
         override = workspace.get("asset_overrides", {}).get(spec.symbol, {})
-        chart = validate_chart_config({**workspace["chart"], **override.get("chart", {})})
-        values = {**workspace["inputs"], **override.get("inputs", {})}
+        from .restart_defaults import read_default_template
+        policy = read_default_template(self.base_dir)
+        # Owner template exceptions also apply when an asset is added later.
+        # Explicit per-asset edits remain the last configuration layer.
+        exception = (policy or {}).get("asset_exceptions", {}).get(spec.symbol)
+        chart = validate_chart_config({**workspace["chart"],
+                                       **({"timeframe": exception["timeframe"]} if exception else {}),
+                                       **override.get("chart", {})})
+        values = {**workspace["inputs"],
+                  **({"qty_contracts": exception["qty_contracts"],
+                      "use_session": exception["use_session"]} if exception else {}),
+                  **override.get("inputs", {})}
         preset = override.get("preset", self.preset)
         if override.get("preset") and not Path(preset_path(self.base_dir, preset)).is_file():
             raise ValueError(f"workspace preset {preset!r} not found")
@@ -262,6 +354,13 @@ class WorkspacePortfolio(Portfolio):
         return super()._refresh_continuous_feeds(now)
 
     def _run(self, runner):
+        power_gate = getattr(self, "_workspace_power_gate", None)
+        if power_gate is not None:
+            while not power_gate.wait(0.05):
+                if self._stop.is_set():
+                    return
+            if self._stop.is_set():
+                return
         # Transaction-created workers may exist before every sibling thread has
         # started. They cannot warm up, poll or write the ledger until committed.
         gate = getattr(runner, "_workspace_start_gate", None)
@@ -271,7 +370,71 @@ class WorkspacePortfolio(Portfolio):
                     return
             if runner._removed or self._stop.is_set():
                 return
-        return super()._run(runner)
+        if not self._warmup_with_retry(runner):
+            return
+        # OFF and startup overlay admission share a dedicated lock. The native
+        # loader must retain its durable-writer -> portfolio -> runner order;
+        # pre-locking runners here would deadlock concurrent startup overlays.
+        with self._workspace_power_activation_lock:
+            if self._stop.is_set() or runner._removed:
+                return
+            try:
+                from .activation_runtime import load_startup_overlay
+                load_startup_overlay(self, runner)
+            except Exception as error:
+                runner.errors += 1
+                runner.last_error = f"startup overlay failed: {type(error).__name__}: {error}"
+                runner.runtime_error = runner.last_error
+                self.journal.log("ERROR", f"[{runner.symbol}] {runner.last_error}")
+        interval = self.poll_sec if runner.spec.feed == "coinbase" else max(self.poll_sec, 15.0)
+        while not self._stop.is_set() and not runner._removed:
+            try:
+                if not runner.rewarming:
+                    runner.poll()
+                    self._publish_runner_read_views(runner)
+            except Exception as error:
+                runner.errors += 1
+                runner.last_error = f"{type(error).__name__}: {error}"
+                runner.runtime_error = runner.last_error
+                self.journal.log("ERROR", f"[{runner.symbol}] poll: {runner.last_error}")
+            self._stop.wait(interval)
+
+    def _sampler(self):
+        gate = getattr(self, "_workspace_power_gate", None)
+        if gate is not None:
+            while not gate.wait(0.05):
+                if self._stop.is_set():
+                    return
+            if self._stop.is_set():
+                return
+        return super()._sampler()
+
+    def start(self):
+        self.journal.start_display_publisher(since_ts=self.started)
+        if not hasattr(self, "_workspace_power_gate"):
+            return super().start()
+        # Provider preparation may block. Cancellation is checked after every
+        # call; no workers can poll or sample until the controller publishes.
+        groups = {}
+        for runner in self.runner_list():
+            if runner.spec.kind == "futures" and callable(getattr(runner.feed, "prepare_live", None)):
+                group = groups.setdefault(id(runner.feed), (runner.feed, []))
+                group[1].append(runner.spec.ticker)
+        for feed, tickers in groups.values():
+            if self._stop.is_set():
+                return
+            feed.prepare_live(tickers)
+            if self._stop.is_set():
+                return
+            self._prepare_depth_context(feed, tickers)
+        with self._lock:
+            if self._stop.is_set():
+                return
+            for symbol in list(self.order):
+                self._spawn(self.runners[symbol])
+            self._sampler_thread = threading.Thread(target=self._sampler, daemon=True,
+                                                     name=f"equity-sampler-{self.workspace['id']}")
+            self._sampler_thread.start()
 
     def reconfigure(self, candidate: Dict[str, Any], *, persist=None, force_symbols=None) -> Dict[str, Any]:
         requested = _validate_assets(candidate["assets"])
@@ -347,6 +510,14 @@ class WorkspacePortfolio(Portfolio):
                 self.runners = {symbol: previous.get(symbol, staged.get(symbol)) for symbol in requested}
                 self.order = requested
                 self.workspace = copy.deepcopy(candidate)
+                # Publish the committed selected configuration, including the
+                # first WARMING view for additions, before releasing its gate.
+                # Unchanged siblings retain their existing captured views.
+                for symbol in requested:
+                    if symbol in changed_symbols or symbol in staged:
+                        runner = self.runners[symbol]
+                        with runner.lock:
+                            runner.publish_read_views()
             except Exception:
                 for runner in additions:
                     runner._removed = True
@@ -415,7 +586,7 @@ class PaperWorkspaceManager:
         self.root = Path(parent.base_dir or os.getcwd()) / "command_centers"
         self.root.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
-        self._configuration_locks = {profile_id: threading.RLock() for profile_id in _IDS}
+        self._configuration_locks = {profile_id: _WorkspaceReadWriteLock() for profile_id in _IDS}
         self._closing_journals: set[int] = set()
         self._feeds = {name: SharedFeed(feed) for name, feed in parent.feeds.items()}
         self.profiles: Dict[str, Dict[str, Any]] = {}
@@ -427,15 +598,25 @@ class PaperWorkspaceManager:
             raise ValueError("unknown command center profile")
         return self._configuration_locks[profile_id]
 
+    def read_lock(self, profile_id):
+        if profile_id not in self.profiles:
+            raise ValueError("unknown command center profile")
+        return self._configuration_locks[profile_id]
+
     def _path(self, profile_id):
         if profile_id not in _IDS:
             raise ValueError("unknown command center profile")
         return self.root / f"{profile_id}.json"
 
     def _load_profiles(self):
+        from .restart_defaults import read_default_template
+        policy = read_default_template(self.parent.base_dir)
         for default in _PROFILE_DEFAULTS:
             path = self._path(default["id"])
             profile = copy.deepcopy(default)
+            if not path.exists() and policy is not None:
+                profile["inputs"] = copy.deepcopy(policy["baseline"]["inputs"])
+                profile["chart"] = copy.deepcopy(policy["baseline"]["chart"])
             if path.exists():
                 with path.open("r", encoding="utf-8") as fh:
                     saved = json.load(fh)
@@ -471,28 +652,46 @@ class PaperWorkspaceManager:
             os.fsync(fh.fileno())
         os.replace(tmp, path)
 
+    def create_portfolio(self, profile_id, *, cancelled=None, created=None):
+        """Build one unpublished runtime; the caller owns startup and cleanup."""
+        cancelled = cancelled or (lambda: False)
+        # Retain the canonical profile identity used by legacy callers and
+        # replay preset selection; release the selected lock before any I/O.
+        with self.configuration_lock(profile_id):
+            profile = self.profiles[profile_id]
+        if cancelled():
+            raise InterruptedError("workspace startup cancelled")
+        journal = Journal(str(self.root / f"{profile_id}.sqlite3"))
+        portfolio = None
+        try:
+            if cancelled():
+                raise InterruptedError("workspace startup cancelled")
+            portfolio = WorkspacePortfolio(
+                journal, str(self.parent.base_dir), poll_sec=self.parent.poll_sec,
+                profile=self.parent.profile, preset=self.parent.preset,
+                warmup_bars=self.parent.warmup_bars, pts_ref_symbol=self.parent.pts_ref_symbol,
+                feeds=self._feeds, workspace=profile,
+            )
+            portfolio.pts_ref_price = self.parent.pts_ref_price
+            if created is not None:
+                created(portfolio)
+            for symbol in profile["assets"]:
+                if cancelled():
+                    raise InterruptedError("workspace startup cancelled")
+                portfolio.add_asset(copy.deepcopy(REGISTRY[symbol]), start=False)
+            if cancelled():
+                raise InterruptedError("workspace startup cancelled")
+            return portfolio
+        except Exception:
+            if portfolio is None or created is None:
+                journal.close()
+            raise
+
     def start(self):
         try:
-            for profile_id, profile in self.profiles.items():
-                journal = Journal(str(self.root / f"{profile_id}.sqlite3"))
-                try:
-                    portfolio = WorkspacePortfolio(
-                        journal, str(self.parent.base_dir), poll_sec=self.parent.poll_sec,
-                        profile=self.parent.profile, preset=self.parent.preset,
-                        warmup_bars=self.parent.warmup_bars, pts_ref_symbol=self.parent.pts_ref_symbol,
-                        feeds=self._feeds, workspace=profile,
-                    )
-                except Exception as constructor_error:
-                    try:
-                        journal.close()
-                    except Exception as cleanup_error:
-                        raise constructor_error from cleanup_error
-                    raise
-                portfolio.pts_ref_price = self.parent.pts_ref_price
+            for profile_id in self.profiles:
+                portfolio = self.create_portfolio(profile_id)
                 self.portfolios[profile_id] = portfolio
-                for symbol in profile["assets"]:
-                    spec = copy.deepcopy(REGISTRY[symbol])
-                    portfolio.add_asset(spec, start=False)
                 portfolio.start()
         except Exception as start_error:
             try:
@@ -669,27 +868,41 @@ class PaperWorkspaceManager:
         ]
         return {"feeds": feeds, "adapters": adapters, "execution_authorized": False}
 
-    def _profile_snapshot(self, profile_id, now):
-        # Never wait behind another workspace's replay. A busy record exposes
-        # committed settings and explicit unavailable valuation, no candidate inputs.
-        lock = self.configuration_lock(profile_id)
-        acquired = lock.acquire(blocking=False)
+    def _profile_snapshot(self, profile_id, now, *, nonblocking=False):
+        # Read alongside independent observations, but never wait behind or
+        # expose a partially committed configuration.
+        lock = self.read_lock(profile_id)
+        # Snapshots must preserve their bounded contract even while shutdown or
+        # reconfiguration owns the exclusive side of the lock.
+        acquired = lock.acquire_read(blocking=False)
         try:
             profile = copy.deepcopy(self.profiles[profile_id])
             portfolio = self.portfolios.get(profile_id)
             try:
                 if portfolio is not None and not acquired:
                     raise RuntimeError("workspace configuration is changing")
-                status = portfolio.status(nonblocking=True) if portfolio else {"assets": [], "all_warm": False}
+                status = portfolio.status(nonblocking=nonblocking) if portfolio else {"assets": [], "all_warm": False}
             except RuntimeError:
                 # One initial/busy runner must not disconnect every workspace's
                 # overview or turn missing open marks into known zeroes.
                 status = {"assets": [], "all_warm": False, "view_stale": True,
                           "snapshot_unavailable": True}
             readable = portfolio if acquired and not status.get("snapshot_unavailable") else None
-            runners = readable.runner_list() if readable else []
+            runners = (tuple(readable.runners.values())
+                       if nonblocking and isinstance(getattr(readable, "runners", None), dict)
+                       else readable.runner_list() if readable else [])
             effective = runners[0].inputs_base.to_dict() if runners else {}
-            closed = portfolio.journal.closed_paper_profit(as_of_ts=now) if portfolio else {"realized_pnl": 0.0, "closed_pieces": 0, "last_close_ts": None}
+            # Lifecycle retirement closes the journal under this same selected
+            # configuration lock. Busy snapshots must not retain a closing DB.
+            closed = (portfolio.journal.closed_paper_profit(as_of_ts=now, nonblocking=nonblocking)
+                      if portfolio and acquired else
+                      {"realized_pnl": None, "closed_pieces": None, "last_close_ts": None})
+            realized_lineage = {
+                "realized_snapshot_ts": closed.get("view_captured_at", now if portfolio and acquired else None),
+                "realized_view_stale": bool(closed.get("view_stale", not (portfolio and acquired))),
+                "realized_view_reason": closed.get("reason"),
+            }
+            status.update(realized_lineage)
             missing_marks = []
             for asset in status.get("assets", []):
                 if asset.get("position"):
@@ -714,7 +927,11 @@ class PaperWorkspaceManager:
             marks_complete = (len(marks) == len(open_assets) == position_count
                               and not status.get("view_stale", False))
             ledger = {"id": profile_id, "currency": "USD", "runtime_available": portfolio is not None,
-                            "snapshot_ts": now, "realized_pnl": closed["realized_pnl"] if portfolio else None,
+                            # This is the assembled valuation receipt. The
+                            # realized component retains its own source clock;
+                            # fresh marks may follow an unchanged closure book.
+                            "snapshot_ts": now, **realized_lineage,
+                            "realized_pnl": closed["realized_pnl"] if portfolio else None,
                             "open_pnl": status.get("open_profit", 0.0) if portfolio and not status.get("view_stale", False) else None,
                             "open_positions": position_count,
                       "oldest_open_mark_ts": min(marks) if marks and marks_complete else None}
@@ -729,17 +946,17 @@ class PaperWorkspaceManager:
             return row, ledger
         finally:
             if acquired:
-                lock.release()
+                lock.release_read()
 
-    def snapshot(self):
-        return self._snapshot()
+    def snapshot(self, *, nonblocking=False):
+        return self._snapshot(nonblocking=nonblocking)
 
-    def _snapshot(self):
+    def _snapshot(self, *, nonblocking=False):
         now = int(time.time())
         rows = []
         ledgers = []
         for profile_id in self.profiles:
-            row, ledger = self._profile_snapshot(profile_id, now)
+            row, ledger = self._profile_snapshot(profile_id, now, nonblocking=nonblocking)
             rows.append(row)
             ledgers.append(ledger)
         accounting = validate_paper_pnl(ledgers, as_of_ts=now)

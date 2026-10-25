@@ -76,7 +76,7 @@ jobs:
           ICARUS_REQUIRE_WORKSPACE_BROWSER: "1"
           ICARUS_BROWSER_OUTPUT: /tmp/icarus-ui-previews
         run: |
-          python -m pytest tests_engine/test_workspace_dashboard_browser.py tests_engine/test_workspace_performance_browser.py -q
+          python -m pytest tests_engine/test_workspace_dashboard_browser.py tests_engine/test_workspace_performance_browser.py tests_engine/test_runtime_layout_browser.py tests_engine/test_connections_layout_browser.py -q
           python -m pytest tests_engine/test_workspace_api.py -k 'real_browser or settings_ or cached_page' -q
 
       - name: Start feed-free ICARUS preview

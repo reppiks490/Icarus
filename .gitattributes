@@ -1,2 +1,4 @@
 # The fixture manifest pins the generator's exact Git bytes across platforms.
 tests_engine/fixtures/federation_v2/build_fixtures.py text eol=lf
+# Native attribution verifies the pinned upstream Git bytes, including on Windows.
+icarus_engine/native_subsystems/_divine/** text eol=lf

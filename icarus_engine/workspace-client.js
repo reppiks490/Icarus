@@ -22,8 +22,10 @@
     '/api/market-universe','/api/system/audit','/api/agent','/api/integrity',
     '/api/research/sources','/api/research/records','/api/research/source-watch',
     '/api/commands','/api/corpus-consumption','/api/corpus-expansion','/api/account-connections',
-    '/api/prop-firm-catalog','/api/evolution','/api/evidence-lab','/healthz']);
+    '/api/prop-firm-catalog','/api/evolution','/api/evidence-lab','/api/access','/healthz']);
   const sharedPath = path => sharedPaths.has(path)||path.startsWith('/api/market-history/');
+  const sharedActions = new Set(['/admin/access/add','/admin/access/kick']);
+  const accessPath = path => /^\/(api|admin)\/access(?:[;/]|$)/.test(path);
 
   function create(bootstrap, options={}) {
     if (!object(bootstrap)||!['main','cc1','cc2','cc3','cc4'].includes(bootstrap.id))
@@ -110,6 +112,23 @@
     }
     function fields(value, allowed) {
       if (!object(value)||Object.keys(value).some(key=>!allowed.includes(key))) fail('INVALID_REQUEST','Unknown fields or conflicting scope selectors');
+    }
+    function accessRequest(url, method, body, path) {
+      if (!accessPath(url.pathname)) return false;
+      if (path.split(/[?#]/,1)[0]!==url.pathname)
+        fail('INVALID_REQUEST','An exact native Access path is required',400);
+      if (!(method==='GET'&&url.pathname==='/api/access'||method==='POST'&&sharedActions.has(url.pathname)))
+        fail('UNAVAILABLE','This shared Access operation is unavailable',503);
+      if (url.search||url.hash) fail('INVALID_REQUEST','Shared Access does not accept query selectors',400);
+      if (method==='GET'&&body!==undefined) fail('INVALID_REQUEST','The shared Access reader does not accept a body',400);
+      if (method==='POST') {
+        let data;
+        try { data=JSON.parse(body); } catch (_) { fail('INVALID_REQUEST','An explicit JSON Access action is required',400); }
+        const field=url.pathname==='/admin/access/add'?'label':'id';
+        fields(data,[field]);
+        if (!Object.hasOwn(data,field)) fail('INVALID_REQUEST','The Access action requires '+field,400);
+      }
+      return true;
     }
     function bound(value, fallback, low, high) {
       value=value??fallback;
@@ -239,6 +258,7 @@
     }
     async function shared(path) {
       const url=pathURL(path);
+      accessRequest(url,'GET',undefined,path);
       if (!sharedPath(url.pathname)) fail('UNAVAILABLE','This service has no shared read-only adapter',503);
       return json(url.pathname+url.search,{validate:false,channel:'shared:'+url.pathname+url.search});
     }
@@ -246,12 +266,13 @@
       const generation=lifecycle;
       current(generation,init.signal);
       const url=pathURL(path), method=String(init.method||'GET').toUpperCase();
-      let selected=false, isShared=false, target=url.pathname+url.search, options={...init,method};
+      const sharedAccess=accessRequest(url,method,init.body,path);
+      let selected=false, isShared=sharedAccess, target=url.pathname+url.search, options={...init,method};
       if (scoped) {
         const foreign=/^\/(api|admin)\/command-centers\/([^/]+)/.exec(url.pathname);
         if (foreign&&foreign[2]!==context.id) fail('INVALID_REQUEST','Another workspace requires full-page navigation',409);
         selected=url.pathname===api||url.pathname.startsWith(api+'/')||url.pathname===admin||url.pathname.startsWith(admin+'/');
-        isShared=method==='GET'&&sharedPath(url.pathname);
+        isShared=sharedAccess||method==='GET'&&sharedPath(url.pathname);
         if (!selected&&!isShared) {
           if (method==='GET') {
             const panel=url.pathname.startsWith('/api/')?url.pathname.slice(5):'unavailable';

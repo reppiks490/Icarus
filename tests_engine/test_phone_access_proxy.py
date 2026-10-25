@@ -34,6 +34,9 @@ class _StubHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Set-Cookie", "upstream=private")
+        if self.path == "/api/command-centers/cc1/export/NQ.csv":
+            self.send_header("X-Icarus-Workspace", "cc1")
+            self.send_header("X-Icarus-Config-Revision", "7")
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
@@ -186,9 +189,62 @@ def test_allows_preflight_from_the_hosted_phone_site_without_contacting_upstream
     assert payload == b""
     assert headers["Access-Control-Allow-Origin"] == PHONE_ORIGIN
     assert headers["Access-Control-Allow-Methods"] == "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS"
-    assert headers["Access-Control-Allow-Headers"] == "authorization, content-type"
+    assert {value.strip().lower() for value in headers["Access-Control-Allow-Headers"].split(",")} == {
+        "authorization", "content-type", "x-icarus-workspace", "x-icarus-config-revision",
+    }
     assert headers["Vary"] == "Origin"
     assert sum(map(len, phone_proxy["records"].values())) == before
+
+
+@pytest.mark.parametrize(("method", "path"), [
+    ("GET", "/api/workspace-runtime"),
+    ("POST", "/admin/command-centers/cc1/panels/engine-control"),
+])
+def test_workspace_preflight_allows_context_and_revision_headers(phone_proxy, method, path):
+    before = sum(map(len, phone_proxy["records"].values()))
+    status, headers, payload = _request(
+        phone_proxy["port"], "OPTIONS", path,
+        headers={
+            "Origin": PHONE_ORIGIN,
+            "Access-Control-Request-Method": method,
+            "Access-Control-Request-Headers": "authorization, x-icarus-workspace, x-icarus-config-revision",
+        },
+    )
+
+    assert status == 204
+    assert payload == b""
+    assert headers["Access-Control-Allow-Origin"] == PHONE_ORIGIN
+    assert {value.strip().lower() for value in headers["Access-Control-Allow-Headers"].split(",")} == {
+        "authorization", "content-type", "x-icarus-workspace", "x-icarus-config-revision",
+    }
+    assert "Access-Control-Allow-Credentials" not in headers
+    assert sum(map(len, phone_proxy["records"].values())) == before
+
+
+def test_workspace_csv_exposes_identity_headers_to_the_hosted_phone_site(phone_proxy):
+    path = "/api/command-centers/cc1/export/NQ.csv"
+    status, headers, payload = _request(
+        phone_proxy["port"], "GET", path,
+        headers={
+            "Origin": PHONE_ORIGIN,
+            "Authorization": f"Bearer {_TOKEN}",
+            "X-Icarus-Workspace": "cc1",
+            "X-Icarus-Config-Revision": "7",
+        },
+    )
+
+    assert status == 200
+    assert payload == f"engine:{path}".encode()
+    assert headers["Access-Control-Allow-Origin"] == PHONE_ORIGIN
+    assert headers["X-Icarus-Workspace"] == "cc1"
+    assert headers["X-Icarus-Config-Revision"] == "7"
+    assert {value.strip().lower() for value in headers.get("Access-Control-Expose-Headers", "").split(",")} == {
+        "x-icarus-workspace", "x-icarus-config-revision",
+    }
+    assert "Access-Control-Allow-Credentials" not in headers
+    forwarded = phone_proxy["records"]["engine"][-1]["headers"]
+    assert forwarded["X-Icarus-Workspace"] == "cc1"
+    assert forwarded["X-Icarus-Config-Revision"] == "7"
 
 
 def test_rejects_untrusted_cross_origin_requests(phone_proxy):

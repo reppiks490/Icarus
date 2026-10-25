@@ -11,6 +11,29 @@ arguments=()
 for argument in "$@"; do
   if [[ "$argument" == '--setup' ]]; then setup=true; else arguments+=("$argument"); fi
 done
+
+# Refuse an empty main universe before installing packages or invoking plant.
+# A flag alone can carry an empty shell variable and otherwise starts zero runners.
+has_feed=false; has_assets=false; help=false; assets_value=''
+for ((argument_index=0; argument_index<${#arguments[@]}; argument_index++)); do
+  argument="${arguments[argument_index]}"
+  case "$argument" in
+    --feed|--feed=*) has_feed=true ;;
+    --assets) has_assets=true; assets_value="${arguments[argument_index+1]:-}" ;;
+    --assets=*) has_assets=true; assets_value="${argument#--assets=}" ;;
+    --help|-h) help=true ;;
+    --bridge) echo 'This paper launcher does not start the account bridge.' >&2; exit 1 ;;
+  esac
+done
+if ! $help && { ! $has_feed || ! $has_assets; }; then
+  echo 'Specify --feed file|yahoo|databento and --assets YOUR,MAIN,SYMBOLS explicitly. See START_HERE.md.' >&2
+  exit 1
+fi
+if ! $help && [[ -z "${assets_value//[[:space:],]/}" || "$assets_value" == --* ]]; then
+  echo 'Specify --assets with a non-empty comma-separated symbol list, for example --assets NQ,ES.' >&2
+  exit 1
+fi
+
 if $setup; then
   if [[ ! -f .venv/pyvenv.cfg ]]; then
     if command -v py >/dev/null 2>&1; then bootstrap=(py -3)
@@ -25,20 +48,14 @@ if ! $setup && [[ -n "${ICARUS_PYTHON:-}" ]]; then python_command=("$ICARUS_PYTH
 elif [[ -x .venv/Scripts/python.exe ]]; then python_command=(.venv/Scripts/python.exe)
 elif [[ -x .venv/bin/python ]]; then python_command=(.venv/bin/python)
 else echo 'Run this command again with --setup to create the checkout .venv.' >&2; exit 1; fi
-if $setup; then "${python_command[@]}" -m pip install -e '.[bridge,ml,databento]' 'cryptography>=44,<47'; fi
-
-has_feed=false; has_assets=false; help=false
-for argument in "${arguments[@]}"; do
-  case "$argument" in
-    --feed|--feed=*) has_feed=true ;;
-    --assets|--assets=*) has_assets=true ;;
-    --help|-h) help=true ;;
-    --bridge) echo 'This paper launcher does not start the account bridge.' >&2; exit 1 ;;
-  esac
-done
-if ! $help && { ! $has_feed || ! $has_assets; }; then
-  echo 'Specify --feed file|yahoo|databento and --assets YOUR,MAIN,SYMBOLS explicitly. See START_HERE.md.' >&2
-  exit 1
+if $setup; then
+  # On Python 3.10/3.11 pip selects stdlib distutils. Importing setuptools
+  # afterwards can assert while trying to replace that same module. Keep the
+  # matching build tools in this venv and scope the workaround to setup only.
+  # Python 3.12+ has no stdlib distutils and must use setuptools' local copy.
+  setup_distutils="$("${python_command[@]}" -c 'import sys; print("stdlib" if sys.version_info < (3,12) else "local")')"
+  SETUPTOOLS_USE_DISTUTILS="$setup_distutils" "${python_command[@]}" -m pip install --upgrade pip 'setuptools>=68' wheel
+  SETUPTOOLS_USE_DISTUTILS="$setup_distutils" "${python_command[@]}" -m pip install --no-build-isolation -e '.[bridge,ml,databento]' 'cryptography>=44,<47'
 fi
 
 "${python_command[@]}" -c '

@@ -36,6 +36,18 @@
   const node = (tag, value, cls) => { const el=document.createElement(tag); if(value!=null)el.textContent=String(value); if(cls)el.className=cls; return el; };
   const fail = error => { text('#snapshot-notice', error.message || String(error)); $('#snapshot-notice').classList.add('error'); };
   let state=null, baseline='', dirty=false, pending=false, sequence=0, chartSequence=0;
+  const poweredOff = () => !!window.IcarusWorkspacePower?.isOff(id);
+  let wasOff = true;
+  window.addEventListener('icarus:workspace-power', () => {
+    const off = poweredOff();
+    if (off) {
+      state=null; sequence++; chartSequence++; clearAccounting();
+      $('#price-chart').getContext('2d').clearRect(0,0,960,360);
+      text('#snapshot-notice', 'Paper workers are off or changing state.');
+      text('#chart-note', 'No current workspace observations.');
+    } else if (wasOff) { void refresh(); }
+    wasOff=off;
+  });
   document.querySelector(`nav a[href="/dashboards/${id}"]`).setAttribute('aria-current','page');
   async function get(path) { return IcarusPaperPnl.fetchJson(path); }
   async function admin(suffix, body) {
@@ -84,6 +96,7 @@
     renderConfig(data);loadChart();
   }
   async function loadChart() {
+    if(poweredOff())return;
     const current=++chartSequence,symbol=$('#chart-asset').value,canvas=$('#price-chart'),ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
     if(!symbol){text('#chart-note','No selected workspace runner or observed bars.');return;}
     try{const chart=await get(`/api/command-centers/${id}/chart/${encodeURIComponent(symbol)}?n=240`);if(current!==chartSequence)return;
@@ -95,7 +108,7 @@
       text('#chart-note',`${symbol} · ${bars.length} observed bars · ${new Date(bars[0][0]*1000).toISOString()} — ${new Date(bars.at(-1)[0]*1000).toISOString()} · selected workspace chart closes`);
     }catch(error){if(current===chartSequence)text('#chart-note',`Chart unavailable: ${error.message}`);}
   }
-  async function loadCorpus(){const target=$('#corpus-sources');try{const evidence=await get('/api/corpus-consumption');target.replaceChildren(node('p',evidence.status,'note'));for(const corpus of evidence.corpora||[]){const item=node('article',null,'source');item.append(node('h3',corpus.cache_name));item.append(node('p',`${corpus.dataset_count} datasets · ${corpus.retained_rows} retained rows · Historical: ${corpus.historical===true?'yes':'unknown'}`));item.append(node('p',`Latest closed source bar: ${Number.isFinite(corpus.latest_bar_closed_ts)?new Date(corpus.latest_bar_closed_ts*1000).toISOString():'unknown'} · source age ${Number.isFinite(corpus.age_seconds)?Math.floor(corpus.age_seconds/86400)+' days':'unknown'}`));item.append(node('p',`Native run ${corpus.run_id} · artifact ${corpus.artifact_id}`));const details=node('details');details.append(node('summary','Receipt and workspace consumption'));details.append(node('pre',JSON.stringify({receipt_sha256:corpus.receipt_sha256,paper_warmup_used:corpus.paper_warmup_used,workspace:corpus.workspaces?.find?.(row=>row.id===id)||corpus.workspaces?.[id]},null,2)));item.append(details);target.append(item);}}catch(error){target.replaceChildren(node('p',`Corpus evidence unavailable: ${error.message}`,'error'));} await loadExpansion(target);}
+  async function loadCorpus(){if(poweredOff())return;const target=$('#corpus-sources');try{const evidence=await get('/api/corpus-consumption');target.replaceChildren(node('p',evidence.status,'note'));for(const corpus of evidence.corpora||[]){const item=node('article',null,'source');item.append(node('h3',corpus.cache_name));item.append(node('p',`${corpus.dataset_count} datasets · ${corpus.retained_rows} retained rows · Historical: ${corpus.historical===true?'yes':'unknown'}`));item.append(node('p',`Latest closed source bar: ${Number.isFinite(corpus.latest_bar_closed_ts)?new Date(corpus.latest_bar_closed_ts*1000).toISOString():'unknown'} · source age ${Number.isFinite(corpus.age_seconds)?Math.floor(corpus.age_seconds/86400)+' days':'unknown'}`));item.append(node('p',`Native run ${corpus.run_id} · artifact ${corpus.artifact_id}`));const details=node('details');details.append(node('summary','Receipt and workspace consumption'));details.append(node('pre',JSON.stringify({receipt_sha256:corpus.receipt_sha256,paper_warmup_used:corpus.paper_warmup_used,workspace:corpus.workspaces?.find?.(row=>row.id===id)||corpus.workspaces?.[id]},null,2)));item.append(details);target.append(item);}}catch(error){target.replaceChildren(node('p',`Corpus evidence unavailable: ${error.message}`,'error'));} await loadExpansion(target);}
   async function loadExpansion(target){
     try{
       const proof=await get('/api/corpus-expansion'),item=node('article',null,'source');
@@ -116,7 +129,7 @@
     $('#pause').disabled=true;$('#flatten').disabled=true;
   }
   setInterval(()=>{if(state&&!IcarusPaperPnl.read(state)){clearAccounting();}},1000);
-  async function refresh(){const request=++sequence;try{const data=await get(`/api/command-centers/${id}`);if(request===sequence)render(data);}catch(error){if(request!==sequence)return;state=null;chartSequence++;$('#price-chart').getContext('2d').clearRect(0,0,960,360);text('#chart-note','Workspace snapshot unavailable; chart cleared.');clearAccounting();$('#pause').disabled=true;$('#flatten').disabled=true;fail(error);}loadCorpus();}
+  async function refresh(){if(poweredOff())return;const request=++sequence;try{const data=await get(`/api/command-centers/${id}`);if(request===sequence)render(data);}catch(error){if(request!==sequence)return;state=null;chartSequence++;$('#price-chart').getContext('2d').clearRect(0,0,960,360);text('#chart-note','Workspace snapshot unavailable; chart cleared.');clearAccounting();$('#pause').disabled=true;$('#flatten').disabled=true;fail(error);}loadCorpus();}
   $('#refresh').addEventListener('click',refresh);$('#chart-asset').addEventListener('change',loadChart);
   async function action(suffix,body){if(pending)return;pending=true;try{await admin(suffix,body);await refresh();}catch(error){fail(error);}finally{pending=false;if(state)render(state);}}
   $('#pause').addEventListener('click',()=>action('/pause',{paused:!state?.profile?.status?.paused}));
@@ -214,5 +227,5 @@
   $('#a200-history').addEventListener('click',readEquityHistory);
   $('#a200-refresh').addEventListener('click',loadEquityCatalog);
   loadEquityCatalog();
-  refresh();setInterval(()=>{if(!document.hidden&&!pending)refresh();},15000);
+  Promise.resolve(window.IcarusWorkspacePower?.ready).then(()=>refresh());setInterval(()=>{if(!document.hidden&&!pending)refresh();},15000);
 })();
