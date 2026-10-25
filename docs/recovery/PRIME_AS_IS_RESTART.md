@@ -115,6 +115,11 @@ Keep this launcher window open. The launcher prints its source path, Python inte
 In a second Git Bash window:
 
 ```bash
+set -euo pipefail
+HEALTH_PY="$HOME/Icarus-as-is/.venv/Scripts/python.exe"
+test -x "$HEALTH_PY"
+export ICARUS_EXPECTED_ASSETS="${ICARUS_ASSETS:-NQ,ES,YM,GC,SI,BTC}"
+
 check_http() {
   local label="$1" url="$2" code
   code="$(curl --noproxy 127.0.0.1 --max-time 10 -sS -o /dev/null -w '%{http_code}' "$url")"
@@ -122,11 +127,31 @@ check_http() {
   [[ "$code" == 200 ]]
 }
 ready=false
-for attempt in {1..30}; do
-  if curl --noproxy 127.0.0.1 --max-time 3 -fsS http://127.0.0.1:8791/healthz; then ready=true; break; fi
+health_json=''
+warm_deadline=$((SECONDS + 300))
+while (( SECONDS < warm_deadline )); do
+  health_json="$(curl --noproxy 127.0.0.1 --max-time 3 -fsS http://127.0.0.1:8791/healthz 2>/dev/null || true)"
+  if [[ -n "$health_json" ]] && printf '%s' "$health_json" | "$HEALTH_PY" -c '
+import json, os, sys
+try:
+    health = json.load(sys.stdin)
+    expected = sorted(os.environ["ICARUS_EXPECTED_ASSETS"].split(","))
+    actual = sorted(health.get("assets", []))
+except (ValueError, TypeError, KeyError):
+    raise SystemExit(1)
+raise SystemExit(0 if health.get("ok") is True and health.get("warm") is True and actual == expected else 1)
+'; then
+    ready=true
+    break
+  fi
   sleep 1
 done
-if [[ "$ready" != true ]]; then echo 'Engine health did not become ready; inspect the launcher and logs.' >&2; exit 1; fi
+if [[ "$ready" != true ]]; then
+  printf 'Engine did not report warm:true with the expected assets within five minutes. Last /healthz response: %s\n' "${health_json:-<no response>}" >&2
+  echo 'Keep the launcher open and inspect Icarus/logs/engine.log; do not start a second engine.' >&2
+  exit 1
+fi
+printf 'Warm engine health: %s\n' "$health_json"
 check_http Main http://127.0.0.1:8791/
 check_http 'Public status' http://127.0.0.1:8791/status/public
 for panel in cc1 cc2 cc3 cc4 connections; do
@@ -134,7 +159,7 @@ for panel in cc1 cc2 cc3 cc4 connections; do
 done
 ```
 
-Expected HTTP responses are 200 for health, Main, public status, and each dashboard. Confirm `/healthz` reports the intended active six assets and inspect `warm`; a 200 with `warm:false` means the server answered but its data is not warm, so it is not a fully observed/warmed restart. The public status route is `/status/public` (`/api/status` is not the route). Open Main and each CC/Connections URL in the PC browser; check that each page renders and that CC toggles affect only the selected paper workspace. Keep one dashboard tab open during the initial lag check.
+The verification waits up to five minutes for `/healthz` to report `warm:true` and the expected active asset set before checking HTTP 200 for Main, public status, and each dashboard. If it does not warm in that window, keep the launcher open and inspect its log instead of refreshing repeatedly or starting a second engine. The public status route is `/status/public` (`/api/status` is not the route). Open Main and each CC/Connections URL in the PC browser; check that each page renders and that CC toggles affect only the selected paper workspace. Keep one dashboard tab open during the initial lag check.
 
 Re-run the defaults verifier from the first launcher window or another Git Bash window:
 

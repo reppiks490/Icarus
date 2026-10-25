@@ -9,7 +9,7 @@ Use only the [current Prime as-is restart](PRIME_AS_IS_RESTART.md). It includes 
 
 The migration captures live Main NQ when available or validates saved Main NQ plus its preset when stopped. It never silently substitutes built-in stock settings. Saved selections, journals, and CC on/off state are preserved. The 35-symbol list and commands are in the current restart guide.
 
-The restart remains paper-only. `execution_authorized=false`; no broker adaptation or live order path is started. Green automated checks do not certify the owner's PC has restarted. Run the procedure locally and verify health, public status, all dashboard routes, asset count, and warm state.
+The restart remains paper-only. `execution_authorized=false`; no broker adaptation or live order path is started. Green automated checks do not certify the owner's PC has restarted. The local verification waits up to five minutes for `warm:true` and the expected active asset set; HTTP 200 alone is not warm readiness. Then verify public status and every dashboard route.
 
 The selected-workspace Intuition Ω bridge is included in the current #462 candidate: the Learning page reports read-only source/ledger state and imports only after an owner click, with workspace/revision checks. The Learning page no longer polls every five seconds. Require current exact-head checks before installing this candidate.
 
