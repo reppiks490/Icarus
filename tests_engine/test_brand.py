@@ -64,6 +64,9 @@ def test_one_command_renames_everything(tmp_path):
     changed = brand.rename(tmp_path, "HELIOS: THE WINGS OF ICARUS")
     assert sorted(changed) == sorted(brand.STATIC_FILES)
     assert brand.check(tmp_path, "HELIOS: THE WINGS OF ICARUS") == []
+    readme = (tmp_path / "README.md").read_text(encoding="utf-8")
+    assert readme.startswith("# Maintainer workspace\n\n> [!CAUTION]")
+    assert "# HELIOS: THE WINGS OF ICARUS\n" in readme
     assert NAME not in (tmp_path / "icarus_engine/brand.py").read_text(encoding="utf-8")
     with pytest.raises(ValueError):
         brand.rename(tmp_path, 'bad "quote"')

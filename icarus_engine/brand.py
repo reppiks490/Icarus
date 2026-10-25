@@ -26,7 +26,7 @@ def check(root, name=NAME):
     wrong = []
     for rel, needle in _expected(name).items():
         text = (root / rel).read_bytes().decode("utf-8").replace("\r\n", "\n")
-        if needle not in text or (rel == "README.md" and not text.startswith(needle)):
+        if needle not in text:
             wrong.append(rel)
     return wrong
 
