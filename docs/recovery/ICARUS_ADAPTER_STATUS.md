@@ -1,6 +1,6 @@
 # ICARUS dashboard adapter status
 
-This inventory separates a visible dashboard tab from its Python adapter. A tab is only a view; a connected adapter routes data/actions to a particular runtime or explicitly to shared evidence. This matrix describes restart code candidate `b0d67889143221087e5f7045cae9109ede0af031`; all hosted exact-head checks on that code commit passed. A documentation-only follow-up is being published, and its exact-head checks must pass before installation.
+This inventory separates a visible dashboard tab from its Python adapter. A tab is only a view; a connected adapter routes data/actions to a particular runtime or explicitly to shared evidence. This matrix describes integrated restart candidate `36b3c1f6f931d74b480661ea931af19245058d5d`; its exact integrated PR #462 hosted checks are pending.
 
 | Surface | Adapter state | Scope and actual behavior |
 | --- | --- | --- |
@@ -27,14 +27,8 @@ The dashboard can render a panel while its native data is empty or stale. NEXUS/
 
 Focused evidence in the candidate includes `tests_engine/test_workspace_research_panels.py`, `test_workspace_intelligence_panels.py`, `test_workspace_golive.py`, `test_workspace_access.py`, `test_subsystem_connections.py`, `test_subsystem_connections_api.py`, and `test_subsystem_connections_browser.py`. The hosted exact-head results must also pass before installing the restart source. Owner-PC observation is a separate operator verification in [the restart guide](PRIME_AS_IS_RESTART.md).
 
-## Offline provider archive consumption remains incomplete
+## Offline provider archive consumption
 
-The separate [Icarus-engine PR #216](https://github.com/reppiks490/Icarus-engine/pull/216) has successful metadata-only reads for FMP, Tiingo, FRED, and AlphaVantage's supplemental and native archive profiles. Its Massive, Twelve Data, and EODHD profiles still fail closed while reading the pinned checkpoint snapshots:
+This is separate from live feed connectivity. The stale [Icarus-engine PR #216](https://github.com/reppiks490/Icarus-engine/pull/216) was stacked on a closed base and is closed as superseded with its branch retained. Its five unique files were reconstructed from current Engine main in [Icarus-engine PR #249](https://github.com/reppiks490/Icarus-engine/pull/249), candidate `555894961766f1019bd2ff1b869089f760bb09e2`. Local validation passes 107 focused archive tests and the full Engine suite (1,455 tests and 17 subtests). Exact-head CI passed on Python 3.11/3.12/3.13 and all core/CLI/MCP contracts. Exact-current-main offline workflow run [40171645677](https://github.com/reppiks490/Icarus-engine/actions/runs/40171645677) passed all eight profiles and their metadata receipt and payload-cleanup checks.
 
-| Profile | Safe diagnostic | Current result |
-| --- | --- | --- |
-| Massive | Checkpoint expands beyond the 512 MB diagnostic ceiling | Not consumed |
-| Twelve Data | 42.5 MB checkpoint exceeds the 32 MB intake bound and JSON structure limit | Not consumed |
-| EODHD | 63.3 MB checkpoint exceeds the 32 MB intake bound | Not consumed |
-
-The limits were not widened. These archives are not counted as connected or usable until an exact, bounded checkpoint projection or streaming consumer passes the offline receipt checks. No provider requests or execution authority are used by this work.
+The workflow uses immutable retained archives and emits metadata-only receipts. It blocks provider network requests, exports no raw values, and grants no execution authority. It does not establish current provider freshness or live-feed connectivity. PR #249 is ready for review; this adapter is qualified for those eight offline archives only.

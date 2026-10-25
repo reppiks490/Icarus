@@ -2,11 +2,12 @@
 
 **Purpose.** Restore the current Icarus paper runtime on the owner's Windows PC, keep its existing private state, and make the dashboards observable. This procedure never enables live trading or starts a broker bridge.
 
-**Release gate.** Do not execute the new-source restart until PR #471 has green Linux, Windows, browser, contract, historical-context, and federation checks on its latest exact head. Its prior head (`4fc4650`) failed the Windows suite in a selected-workspace shutdown test. That test now returns a bounded tick result after its synchronization point, and a separate regression test exposed and verifies a fix for a real race that could start a sampler after `close()`. Candidate `b0d67889143221087e5f7045cae9109ede0af031` passes 4,269 local engine tests (5 skipped, 111 subtests), 51 focused commissioning/workspace-panel tests, and all hosted checks, including Linux, Windows, browser, contract, configuration, history, and federation. A docs-only follow-up is being published to PR #471, so verify the latest exact head is green before install. Cloud tests cannot run commands on the owner's PC or certify PC uptime.
+**Release gate.** PR #471's latest exact-head Linux, Windows, contract, configuration, historical-context, federation, and both browser jobs passed (runs `40170191547`, `40170191544`, `40170191553`, `40170191559`, `40170191568`, `40170191571`, and `40170191594`). Integrated source candidate `36b3c1f6f931d74b480661ea931af19245058d5d` merges Icarus main `105c1e66b05ad0954627bf63dc9e0e689dc9a34b` with restart candidate `a4ebd699997096d0495c276162ad9592ab8c6148`. Its focused local integration suite passed 476 tests with one expected skip; exact integrated PR #462 hosted checks have not run yet. Do not install until those exact-head checks pass. Earlier head `4fc4650` exposed a Windows selected-workspace shutdown race; its bounded shutdown and sampler-close fixes are included here. Cloud tests cannot run commands on the owner's PC or certify PC uptime.
 
-- Integrated restart candidate: [PR #471](https://github.com/reppiks490/Icarus/pull/471)
+- Integrated restart candidate: [PR #462](https://github.com/reppiks490/Icarus/pull/462)
+- Latest restart source and owner-default changes: [PR #471](https://github.com/reppiks490/Icarus/pull/471)
 - Dashboard scroll and restart-gate fixes: [PR #474](https://github.com/reppiks490/Icarus/pull/474), merged into #471.
-- Restart code candidate: `b0d67889143221087e5f7045cae9109ede0af031` (release gate pending Windows engine completion).
+- Restart code candidate: `36b3c1f6f931d74b480661ea931af19245058d5d` (release gate pending exact-head hosted checks).
 - Owner machine: `C:\Users\tripl\Icarus-as-is` (Git Bash: `~/Icarus-as-is`)
 - Private state: `C:\Users\tripl\Icarus` (Git Bash: `~/Icarus`)
 - Paper-only; `execution_authorized=false`.
@@ -28,8 +29,8 @@ Run in Git Bash on the owner's PC. Leave any currently running Icarus launcher o
 set -euo pipefail
 export ICARUS_HOME="$HOME/Icarus"
 export ICARUS_TOKEN="${ICARUS_TOKEN:-icarus}"
-RELEASE_COMMIT="b0d67889143221087e5f7045cae9109ede0af031"
-RELEASE_BRANCH="prime/as-is-restart-20261022"
+RELEASE_COMMIT="36b3c1f6f931d74b480661ea931af19245058d5d"
+RELEASE_BRANCH="icarus1/restart-readiness-20261020"
 cd "$HOME/Icarus-as-is"
 
 # Fetch the exact candidate branch. Do not use a stale PR ref as the release gate.
@@ -48,7 +49,7 @@ else
 fi
 
 # Capture before changing the active checkout or stopping its server.
-PY="$PWD/.venv/Scripts/python.exe"
+PY="$HOME/Icarus-as-is/.venv/Scripts/python.exe"
 test -x "$PY"
 cd "$CANDIDATE"
 "$PY" -m icarus_engine.restart_defaults \
@@ -145,4 +146,4 @@ If an HTTP probe fails, the launcher exits, `warm` stays false, or the dashboard
 
 ## Prior notes and evidence boundary
 
-The old per-panel restart instructions are physically archived at [archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md](archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md); use this single procedure. Restart defaults, Windows path/port checks, canceled-request handling, and scroll-churn have automated evidence. The exact PR #471 head must pass all required hosted checks before this candidate is installed. A successful cloud check is not proof of owner-PC restart, sustained uptime, provider freshness, phone pairing, or zero future runtime errors. This release is paper-only and excludes live trading, broker adaptation, and order execution.
+The old per-panel restart instructions are physically archived at [archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md](archive/restarts/2026-10-25/pre-final/ICARUS_PANEL_RESTARTS.md); use this single procedure. Restart defaults, Windows path/port checks, canceled-request handling, and scroll-churn have automated evidence. The exact integrated PR #462 head must pass all required hosted checks before installation. This is paper-only and excludes live trading, broker adaptation, and order execution. A successful cloud check is not proof of owner-PC restart, sustained uptime, provider freshness, phone pairing, or zero future runtime errors.
