@@ -12,7 +12,7 @@
   },
   "chatgpt_tokens_used": 0,
   "checkpoint_status": "ENCRYPTED_AES256_GCM",
-  "completed_at_utc": "2026-10-26T14:14:20.664773+00:00",
+  "completed_at_utc": "2026-10-26T20:27:41.667707+00:00",
   "databento_excluded": true,
   "execution_authorized": false,
   "paid_model_calls": 0,
@@ -23,7 +23,7 @@
         {
           "asset_specific": false,
           "failure_code": "401",
-          "operation": "intrinio:get:/etfs"
+          "operation": "intrinio:get:/securities"
         }
       ],
       "collected_pages": 0,
@@ -39,7 +39,7 @@
   },
   "raw_payloads_public": false,
   "requests": 1,
-  "run_id": "providers-40337728136-1-intrinio",
+  "run_id": "providers-40395796419-1-intrinio",
   "schema_version": "icarus-provider-collection-cycle-v1",
-  "started_at_utc": "2026-10-26T14:14:18.615667+00:00"
+  "started_at_utc": "2026-10-26T20:27:41.354291+00:00"
 }
