@@ -11,7 +11,7 @@
     "unresolved_operations": 0
   },
   "chatgpt_tokens_used": 0,
-  "completed_at_utc": "2026-10-26T14:14:20.675523+00:00",
+  "completed_at_utc": "2026-10-26T20:27:39.656574+00:00",
   "databento_excluded": true,
   "execution_authorized": false,
   "paid_model_calls": 0,
@@ -32,7 +32,7 @@
   },
   "raw_payloads_public": false,
   "requests": 0,
-  "run_id": "providers-40337728136-1-fred",
+  "run_id": "providers-40395796419-1-fred",
   "schema_version": "icarus-provider-collection-cycle-v1",
-  "started_at_utc": "2026-10-26T14:14:20.675199+00:00"
+  "started_at_utc": "2026-10-26T20:27:39.656256+00:00"
 }
