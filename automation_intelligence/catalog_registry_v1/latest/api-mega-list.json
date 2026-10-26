@@ -4,7 +4,7 @@
   "execution_authorized": false,
   "import_summary": {
     "catalog_id": "api-mega-list",
-    "duplicate_groups": 783,
+    "duplicate_groups": 356,
     "execution_authorized": false,
     "imported_entries": 11021,
     "parse_failures": 15,
@@ -17,7 +17,7 @@
   },
   "parser_revision": "catalog-registry-v3",
   "production_decision_authorized": false,
-  "retrieved_at": "2026-10-21T09:34:05.530191Z",
+  "retrieved_at": "2026-10-26T10:27:26.414088Z",
   "snapshot_id": "f142e7b5852f4b5bf10bbd3dba1a66c63ee910872f0b34fa5b165d422da545ae",
   "status": "SUCCESS",
   "upstream_commit": "b7c914f5abd7d0f7562bd1f2036411d3c8f7c29e",
