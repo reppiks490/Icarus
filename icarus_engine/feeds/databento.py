@@ -293,7 +293,7 @@ class Databento:
 
     @classmethod
     def _ohlcv_record(cls, record: Any) -> Bar:
-        return Bar(
+        bar = Bar(
             cls._ts_sec(record),
             cls._price(record, "open"),
             cls._price(record, "high"),
@@ -301,6 +301,11 @@ class Databento:
             cls._price(record, "close"),
             float(getattr(record, "volume", 0) or 0),
         )
+        if not math.isfinite(bar.v) or bar.v < 0:
+            raise ValueError("invalid Databento volume")
+        if bar.h < max(bar.o, bar.c, bar.l) or bar.l > min(bar.o, bar.c, bar.h):
+            raise ValueError("invalid Databento OHLC geometry")
+        return bar
 
     @classmethod
     def _trade_record(cls, record: Any) -> TradeTick:
