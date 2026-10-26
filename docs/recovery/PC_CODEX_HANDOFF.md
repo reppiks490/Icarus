@@ -1,7 +1,7 @@
 # Local Codex takeover — 26 October 2026
 
 Open Codex on the Windows PC at `C:\Users\tripl\Icarus-as-is`. Give it this file
-and `cloud-audit-20261026/README.md`. Codex should perform the commands directly;
+and `cloud-audit-20261026/README.md` / `ROOT_TRIAGE.md`. Codex should perform the commands directly;
 the owner does not need to manage the task inventory manually.
 
 This is a preparation handoff. It does not certify all historical branches,
@@ -13,6 +13,7 @@ Live broker arming remains disabled.
 
 - Application branch: `codex/icarus-cloud-readiness-20261026` in `reppiks490/Icarus`.
 - Standalone Engine: `codex/icarus-engine-cloud-readiness-20261026`, PR #260.
+- Optional Divine engine-client security fix: `codex/icarus-loopback-client-20261026`, Divine Providence PR #61.
 - Cooperation evidence: `codex/icarus-cloud-coordination-20261026`, owner-actions PR #71.
 
 Check the actual PR head and hosted checks before using a candidate. These are

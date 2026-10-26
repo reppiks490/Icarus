@@ -4,9 +4,9 @@ This package is an audit record and continuation queue, not a full-system readin
 
 ## Verified changes
 
-- Main Icarus full suite: 4,499 passed, 3 native Windows skips, 4,502 total completed results. Earlier failed browser cases were investigated; three exact cases passed after two narrow harness corrections. The automatic status/chart-deadline test remains intact.
+- Main Icarus full suite: 4,510 passed, 3 native Windows skips, 4,513 total completed results. Earlier failed browser cases were investigated; three exact cases passed after two narrow harness corrections. The automatic status/chart-deadline test remains intact.
 - Engine provider-path repair: 65 offline transport/core collection tests passed. Provider authentication, entitlement and current collection require separate receipts.
-- FileFeed rejects incompatible/cross-boundary aggregation; Databento rejects impossible OHLC geometry and invalid volume, preserving valid negative prices. Nine of eleven new tests failed before repair; all115 bar/Databento tests pass after repair. Final-head full/hosted verification remains pending.
+- FileFeed rejects incompatible/cross-boundary aggregation; Databento rejects impossible OHLC geometry and invalid volume, preserving valid negative prices. Nine of eleven new tests failed before repair; all115 bar/Databento tests pass after repair. The final runtime rerun passed4510/3; final-head hosted checks remain pending.
 - Export manifest excludes itself, uses relative paths, and verified after relocation. CSS-only changes now trigger the visual gate.
 - All 518 current Icarus remote branches were fetched. Fetching establishes object availability, not completed code review. Historical deleted branches require retained objects or external records.
 
@@ -23,6 +23,9 @@ This package is an audit record and continuation queue, not a full-system readin
 5. Finish the remaining 19 agent tasks or perform them directly. Run native Windows contracts and inspect actual UI on the connected owner PC before a restart signoff.
 
 ## Reports
+
+- [Latest root triage and verified repairs](ROOT_TRIAGE.md)
+- [Pinned official DBN fixture validation](external-fixtures/databento-dbn/README.md)
 
 - [agent-07-csv-lab](agent-07-csv-lab.md)
 - [agent-14-orderbook](agent-14-orderbook.md)

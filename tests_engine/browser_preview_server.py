@@ -18,7 +18,7 @@ def main() -> None:
         portfolio,
         int(os.environ.get("ICARUS_BROWSER_PREVIEW_PORT", "8879")),
         # The dashboard starts with this local default in the isolated preview.
-        token="browser-preview-test-token",
+        token=os.environ.get("ICARUS_BROWSER_PREVIEW_TOKEN", "browser-preview-test-token"),
         start=False,
     )
 

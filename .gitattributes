@@ -2,6 +2,8 @@
 tests_engine/fixtures/federation_v2/build_fixtures.py text eol=lf
 # Research snapshot hashes pin the upstream CSV bytes, including CRLF records.
 icarus_engine/data/research_context/*.csv -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Official parser fixtures and their license retain the manifest's exact bytes.
+docs/recovery/cloud-audit-20261026/external-fixtures/databento-dbn/* -text
 # Native attribution verifies the pinned upstream Git bytes, including on Windows.
 icarus_engine/native_subsystems/_divine/** text eol=lf
 # Provider context verifies its pinned snapshot byte-for-byte on every platform.

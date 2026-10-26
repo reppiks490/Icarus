@@ -341,5 +341,67 @@
     "reports_complete": 31,
     "usage_limit_failures": 4,
     "not_launched": 15
-  }
+  },
+  "root_work": [
+    {
+      "scope": "application runtime and bar integrity",
+      "state": "local-verified",
+      "runtime_head": "a83a18377f289daa10f3931e887ce57ac5f58af0",
+      "tests": {
+        "passed": 4510,
+        "skipped": 3,
+        "exit": 0
+      },
+      "pr": "https://github.com/reppiks490/Icarus/pull/485"
+    },
+    {
+      "scope": "authenticated preview contexts",
+      "state": "local-verified",
+      "contracts": [
+        "shadow",
+        "depth",
+        "cinema",
+        "worlds"
+      ],
+      "browser_errors": 0,
+      "write_requests": 0
+    },
+    {
+      "scope": "Engine transport resource guard",
+      "state": "published-local-verified",
+      "tests": {
+        "passed": 1489,
+        "skipped": 0
+      },
+      "pr": "https://github.com/reppiks490/Icarus-engine/pull/260"
+    },
+    {
+      "scope": "Divine loopback credential guard",
+      "state": "published-local-verified",
+      "tests": {
+        "passed": 185,
+        "skipped": 3
+      },
+      "pr": "https://github.com/reppiks490/divine-providence/pull/61"
+    },
+    {
+      "scope": "official DBN parser fixtures",
+      "state": "offline-consumed",
+      "files": 4,
+      "normalized_records": 8,
+      "execution_authorized": false
+    },
+    {
+      "scope": "current branch object availability",
+      "state": "fetched-ancestry-indexed",
+      "Icarus_refs": 518,
+      "Engine_refs": 200,
+      "content_review_complete": false
+    },
+    {
+      "scope": "PC takeover",
+      "state": "source-and-instructions-prepared",
+      "native_PC_verification_complete": false
+    }
+  ]
 }
