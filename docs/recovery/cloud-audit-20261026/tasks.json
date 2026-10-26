@@ -425,6 +425,13 @@
       "state": "fetched-not-fully-reviewed",
       "Icarus_pr_heads": 481,
       "Engine_pr_heads": 194
+    },
+    {
+      "scope": "dedicated visual gate dependency order",
+      "state": "local-verified",
+      "required_presentation_checks": 141,
+      "skipped": 0,
+      "chromium_installed_before_checks": true
     }
   ]
 }

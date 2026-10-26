@@ -14,11 +14,21 @@ CSS = ROOT / "icarus_engine" / "experience-ui.css"
 
 
 def test_topology_rebuild_retains_scroll_highlight_inside_scroll_throttle():
-    playwright = pytest.importorskip("playwright.sync_api")
+    try:
+        from playwright import sync_api as playwright
+    except ImportError:
+        if os.environ.get("ICARUS_REQUIRE_WORKSPACE_BROWSER") == "1":
+            raise
+        pytest.skip("optional Playwright unavailable")
     with playwright.sync_playwright() as runtime:
-        browser = runtime.chromium.launch(
-            headless=True, executable_path=os.environ.get("ICARUS_BROWSER_BINARY") or shutil.which("chromium"),
-        )
+        try:
+            browser = runtime.chromium.launch(
+                headless=True, executable_path=os.environ.get("ICARUS_BROWSER_BINARY") or shutil.which("chromium"),
+            )
+        except playwright.Error as error:
+            if os.environ.get("ICARUS_REQUIRE_WORKSPACE_BROWSER") == "1":
+                raise
+            pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
         try:
             page = browser.new_page(viewport={"width": 1440, "height": 800}, reduced_motion="no-preference")
             page.set_content('<div id="tabs"></div><main id="view">' + ''.join(

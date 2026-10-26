@@ -33,3 +33,7 @@ Official databento/dbn Apache2 parser fixtures were downloaded and consumed offl
 ## Agent accounting
 
 35 agents launched,31 reports completed,4 hit account usage limit. Fifteen more agents have not launched. Root continues implementation; these counts must not be described as50 completed agents or full-system completion.
+
+## Dedicated browser gate ordering
+
+Chromium installation now precedes required presentation checks, with ICARUS_REQUIRE_WORKSPACE_BROWSER=1. All141 checks pass with the browser required. Ordinary unit environments retain explicit optional-browser handling, while the dedicated visual gate cannot silently skip the regression.
