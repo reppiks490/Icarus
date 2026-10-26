@@ -1,0 +1,316 @@
+{
+  "authority": "OFFLINE_PARSER_COMPATIBILITY_ONLY",
+  "execution_authorized": false,
+  "files": [
+    {
+      "file": "test_data.mbo.dbn",
+      "status": "DECODED",
+      "records": 2,
+      "types": [
+        "MBOMsg"
+      ],
+      "normalized_records": [
+        {
+          "ts_event": 1609160400,
+          "ts_event_ns": 1609160400000429831,
+          "ts_recv_ns": 1609160400000704060,
+          "schema": "mbo",
+          "type": "MBOMsg",
+          "action": 67,
+          "side": 65,
+          "size": 1,
+          "order_id": 647784973705,
+          "sequence": 1170352,
+          "flags": 128,
+          "instrument_id": 5482,
+          "price": 3722.75
+        },
+        {
+          "ts_event": 1609160400,
+          "ts_event_ns": 1609160400000431665,
+          "ts_recv_ns": 1609160400000711344,
+          "schema": "mbo",
+          "type": "MBOMsg",
+          "action": 67,
+          "side": 65,
+          "size": 1,
+          "order_id": 647784973631,
+          "sequence": 1170353,
+          "flags": 128,
+          "instrument_id": 5482,
+          "price": 3723.0
+        }
+      ]
+    },
+    {
+      "file": "test_data.mbo.v3.dbn",
+      "status": "DECODED",
+      "records": 2,
+      "types": [
+        "MBOMsg"
+      ],
+      "normalized_records": [
+        {
+          "ts_event": 1609160400,
+          "ts_event_ns": 1609160400000429831,
+          "ts_recv_ns": 1609160400000704060,
+          "schema": "mbo",
+          "type": "MBOMsg",
+          "action": 67,
+          "side": 65,
+          "size": 1,
+          "order_id": 647784973705,
+          "sequence": 1170352,
+          "flags": 128,
+          "instrument_id": 5482,
+          "price": 3722.75
+        },
+        {
+          "ts_event": 1609160400,
+          "ts_event_ns": 1609160400000431665,
+          "ts_recv_ns": 1609160400000711344,
+          "schema": "mbo",
+          "type": "MBOMsg",
+          "action": 67,
+          "side": 65,
+          "size": 1,
+          "order_id": 647784973631,
+          "sequence": 1170353,
+          "flags": 128,
+          "instrument_id": 5482,
+          "price": 3723.0
+        }
+      ]
+    },
+    {
+      "file": "test_data.mbp-10.dbn",
+      "status": "DECODED",
+      "records": 2,
+      "types": [
+        "MBP10Msg"
+      ],
+      "normalized_records": [
+        {
+          "ts_event": 1609160400,
+          "ts_event_ns": 1609160400000429831,
+          "ts_recv_ns": 1609160400000704060,
+          "schema": "mbp-10",
+          "type": "MBP10Msg",
+          "action": 67,
+          "side": 65,
+          "size": 1,
+          "depth": 9,
+          "sequence": 1170352,
+          "flags": 128,
+          "instrument_id": 5482,
+          "price": 3722.75,
+          "levels": [
+            {
+              "bid_px": 3720.25,
+              "ask_px": 3720.5,
+              "bid_sz": 24,
+              "ask_sz": 10,
+              "bid_ct": 15,
+              "ask_ct": 8
+            },
+            {
+              "bid_px": 3720.0,
+              "ask_px": 3720.75,
+              "bid_sz": 31,
+              "ask_sz": 34,
+              "bid_ct": 18,
+              "ask_ct": 24
+            },
+            {
+              "bid_px": 3719.75,
+              "ask_px": 3721.0,
+              "bid_sz": 32,
+              "ask_sz": 39,
+              "bid_ct": 23,
+              "ask_ct": 25
+            },
+            {
+              "bid_px": 3719.5,
+              "ask_px": 3721.25,
+              "bid_sz": 39,
+              "ask_sz": 28,
+              "bid_ct": 26,
+              "ask_ct": 17
+            },
+            {
+              "bid_px": 3719.25,
+              "ask_px": 3721.5,
+              "bid_sz": 50,
+              "ask_sz": 33,
+              "bid_ct": 35,
+              "ask_ct": 19
+            },
+            {
+              "bid_px": 3719.0,
+              "ask_px": 3721.75,
+              "bid_sz": 42,
+              "ask_sz": 45,
+              "bid_ct": 28,
+              "ask_ct": 33
+            },
+            {
+              "bid_px": 3718.75,
+              "ask_px": 3722.0,
+              "bid_sz": 44,
+              "ask_sz": 55,
+              "bid_ct": 35,
+              "ask_ct": 40
+            },
+            {
+              "bid_px": 3718.5,
+              "ask_px": 3722.25,
+              "bid_sz": 64,
+              "ask_sz": 59,
+              "bid_ct": 39,
+              "ask_ct": 38
+            },
+            {
+              "bid_px": 3718.25,
+              "ask_px": 3722.5,
+              "bid_sz": 53,
+              "ask_sz": 49,
+              "bid_ct": 32,
+              "ask_ct": 35
+            },
+            {
+              "bid_px": 3718.0,
+              "ask_px": 3722.75,
+              "bid_sz": 67,
+              "ask_sz": 44,
+              "bid_ct": 39,
+              "ask_ct": 26
+            }
+          ]
+        },
+        {
+          "ts_event": 1609160400,
+          "ts_event_ns": 1609160400000435673,
+          "ts_recv_ns": 1609160400000750544,
+          "schema": "mbp-10",
+          "type": "MBP10Msg",
+          "action": 67,
+          "side": 66,
+          "size": 1,
+          "depth": 1,
+          "sequence": 1170356,
+          "flags": 128,
+          "instrument_id": 5482,
+          "price": 3720.0,
+          "levels": [
+            {
+              "bid_px": 3720.25,
+              "ask_px": 3720.5,
+              "bid_sz": 24,
+              "ask_sz": 10,
+              "bid_ct": 15,
+              "ask_ct": 8
+            },
+            {
+              "bid_px": 3720.0,
+              "ask_px": 3720.75,
+              "bid_sz": 30,
+              "ask_sz": 34,
+              "bid_ct": 17,
+              "ask_ct": 24
+            },
+            {
+              "bid_px": 3719.75,
+              "ask_px": 3721.0,
+              "bid_sz": 32,
+              "ask_sz": 39,
+              "bid_ct": 23,
+              "ask_ct": 25
+            },
+            {
+              "bid_px": 3719.5,
+              "ask_px": 3721.25,
+              "bid_sz": 39,
+              "ask_sz": 28,
+              "bid_ct": 26,
+              "ask_ct": 17
+            },
+            {
+              "bid_px": 3719.25,
+              "ask_px": 3721.5,
+              "bid_sz": 50,
+              "ask_sz": 33,
+              "bid_ct": 35,
+              "ask_ct": 19
+            },
+            {
+              "bid_px": 3719.0,
+              "ask_px": 3721.75,
+              "bid_sz": 42,
+              "ask_sz": 45,
+              "bid_ct": 28,
+              "ask_ct": 33
+            },
+            {
+              "bid_px": 3718.75,
+              "ask_px": 3722.0,
+              "bid_sz": 44,
+              "ask_sz": 55,
+              "bid_ct": 35,
+              "ask_ct": 40
+            },
+            {
+              "bid_px": 3718.5,
+              "ask_px": 3722.25,
+              "bid_sz": 64,
+              "ask_sz": 59,
+              "bid_ct": 39,
+              "ask_ct": 38
+            },
+            {
+              "bid_px": 3718.25,
+              "ask_px": 3722.5,
+              "bid_sz": 53,
+              "ask_sz": 49,
+              "bid_ct": 32,
+              "ask_ct": 35
+            },
+            {
+              "bid_px": 3718.0,
+              "ask_px": 3722.75,
+              "bid_sz": 67,
+              "ask_sz": 44,
+              "bid_ct": 39,
+              "ask_ct": 26
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "test_data.ohlcv-1m.dbn",
+      "status": "DECODED",
+      "records": 2,
+      "types": [
+        "OHLCVMsg"
+      ],
+      "normalized_records": [
+        {
+          "ts": 1609160400,
+          "o": 372025.0,
+          "h": 372150.0,
+          "l": 372025.0,
+          "c": 372100.0,
+          "v": 353.0
+        },
+        {
+          "ts": 1609160460,
+          "o": 372100.0,
+          "h": 372150.0,
+          "l": 372100.0,
+          "c": 372150.0,
+          "v": 152.0
+        }
+      ]
+    }
+  ]
+}

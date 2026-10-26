@@ -1,0 +1,3614 @@
+{
+  "observed_at_utc": "2026-10-26T21:52:30.097951+00:00",
+  "coverage": "Fetched current remote refs; ancestry classification, not branch content audit",
+  "repositories": [
+    {
+      "repo": "reppiks490/Icarus",
+      "candidate": "a83a18377f289daa10f3931e887ce57ac5f58af0",
+      "non_shallow": true,
+      "branch_count": 518,
+      "ancestor_count": 224,
+      "branches": [
+        {
+          "branch": "atlas/github-native-data-federation",
+          "sha": "5f7c77e48bb96a33902f3e5ad2f6e1e0a413d088",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "atlas/github-native-handoff-policy-fix-20261016",
+          "sha": "b3af961b097950dd3ac697d2f6c1f613b3cfba2e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "atlas/icarus-futures-canonical-20261016",
+          "sha": "f566e0835db0aacdcd427b1b62388ab253840c91",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "atlas/icarus-system-convergence-20261016",
+          "sha": "cfa97333bbccbb0a62da4802b3d9b495f9ec347d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "atlas/shared-data-access-bootstrap",
+          "sha": "df82731057a20c72e5bcccb775cccf8416954580",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "atlas/shared-data-access-bootstrap-v2",
+          "sha": "78a32f20d7faad7208c3cc015e4672939cd4df87",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-agent-sync-20260930",
+          "sha": "bef7ae620f65fe7500fdf04f00e4486d2ca66339",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-continuous-learning-mainline-20261001",
+          "sha": "b81b89439a8afdb2e4df21dcfc5d5da6537966a9",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-evidence-cores-20261001",
+          "sha": "98666a6eff86ec67e304cf631229be40ecfa81d7",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-evidence-green-main-20261001",
+          "sha": "682f502509382e044d2ae5c2004972c948bea9aa",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-evidence-integration-20261001",
+          "sha": "e2eecda3ef61ee540f2ec8d6f923e33b7849367b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-evidence-mainline-20261001b",
+          "sha": "d806366c0f5a76c4a2f8ff4701d2adf8b657da68",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-evidence-receipt-20261001",
+          "sha": "30cae3f8904ad3a5353103f177706d50cd18a8ac",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-evidence-wiring-20261001",
+          "sha": "9bf4d44be3ec3d4822d56a88a1b24a259cdeb961",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-evidence-wiring-mainline-20261001b",
+          "sha": "6719a93e2534ebb4320d652e049584459439e93d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-evidence-wiring-v2-20261001",
+          "sha": "25d50349dd17b5819d48f924801afbf82819092d",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-fabric-20260930",
+          "sha": "4a1d5f557ef8caa7565db21df2554260c5b0b95b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-proof-doc-current-main-20261002",
+          "sha": "30cb9c5af04d73139c3b45dd9ad1d347120f246e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-proof-doc-reconcile-20261002",
+          "sha": "d8bafa206af17b33830b0db13e5158c62dfa78f4",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-research-learning-20260930",
+          "sha": "ecdc665f696f6cb014b034006815f189ff5e49c5",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/adaptive-brain-research-learning-mainline-20260930",
+          "sha": "d563cdae0caf66d264fcd379e50bd2fae0ec3706",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/aether-claim-echo-20261001",
+          "sha": "7a66c368d4a10f6a11d8f166027bd9059e9723da",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/aether-claim-echo-reconcile-20261002",
+          "sha": "54adaec50a05a9b7a72fd24e1119663120e6c37e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/apex-evidence-support-reconcile-20261002",
+          "sha": "2e047d2645a8cbc2ca9f42731d5e4d65b05eee47",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/apex-omega-current-main-20261001",
+          "sha": "4d8b64a2facc3ac67fd16a1daf3c41ae616151f0",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/apex-omega-design-20261001",
+          "sha": "ae1f1369b35efe624c2cb8d3c13da5efe9d22658",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/apex-omega-implementation-20261001",
+          "sha": "871bf58b4162a50657b8610f7ac0b142658de9d5",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/apex-support-metrics-reconcile-20261002",
+          "sha": "b4dc81a8d4a1791a8515c715aa1a77d4f87fb759",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-active-stack-ui-20261002",
+          "sha": "da4b810a98329e67837e622313d15ad07fdc3420",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-athena-research-ui-20261001",
+          "sha": "3be956bf380fe180b91587bdd10f14ddc9807375",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-bootstrap-ui-bundle-current-main-20261001",
+          "sha": "00d17605d4b2a23771192c7eadc48f7ba0e0f28d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-bootstrap-uncertainty-ui-current-main-20261001",
+          "sha": "9be88769ce895180521b341018e54fc2f80c522e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/argus-bootstrap-uncertainty-ui-current-main-v2-20261001",
+          "sha": "288e1cbfcc049853f6a9a6b0725ccb05009e9fcc",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/argus-causal-windows-ui-event-20261001",
+          "sha": "927346d7ec5f0c6c52845c99b1f4ad32673ac566",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-cluster-ui-bundle-current-main-20261002",
+          "sha": "5bf5f9bfec6bdf231955c42201bde31e68e86b86",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-depth-impact-ui-event-20261001",
+          "sha": "f42270746f3cc8665ecfeb8f97431b5564a04d34",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-execution-evidence-ui-20261001",
+          "sha": "c19a7364ddfdf059950063917d0da192c0f1c2c6",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/argus-execution-evidence-ui-current-main-20261001",
+          "sha": "940a3fdb54be3e0b3c669c29483f1235123fa90e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-flow-dynamics-ui-event-20261001",
+          "sha": "2e1064e55bfd98a71695376314aac572006c96ba",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-impact-athena-bridge-ui-current-main-20261001",
+          "sha": "77849e863cc3874089e969c8f5393355f97c94c4",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-impact-calibration-ui-20261001",
+          "sha": "c9cdedbb936981e54f06e96e4b799547f541f41c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-impact-study-ui-current-main-20261001",
+          "sha": "50ffb3a59e1a30f062dba171ea2c5635528030c1",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-liquidity-dynamics-ui-event-20261001",
+          "sha": "7b7f596f823526426bbc4625270cb0e5797dc67e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/argus-liquidity-dynamics-ui-event-mainline-20261001",
+          "sha": "f5b2d0a1cb3610dc0913e14be514ed3c3639453a",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/argus-liquidity-dynamics-ui-event-mainline-r2-20261001",
+          "sha": "dabe9c19517459dfeec1efd8f0ea9c5fc0c7a3a4",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-liquidity-field-ui-event-20261001",
+          "sha": "70308fe89a274f188a9df1d6489d9dd61d04cbf9",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-load-ui-bundle-current-main-20261002",
+          "sha": "d6b126d1c3398141c85e6feb4e1eb8318cc1b74c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-orderblock-lifecycle-ui-event-20261001",
+          "sha": "108af5b20cdb8fd68bfed58d968cd2f94b525e8b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-orderblock-study-ui-event-20261001",
+          "sha": "42d7582911077c6352e48809b1e33032dc1f84ca",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-orderblock-survival-ui-event-20261001",
+          "sha": "5227bb71748131b69d1bb862794ff425d00e561f",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-study-v2-ui-20261001",
+          "sha": "3a46ddedfb3f556b677a1bf0c0c79b49aaac1f9e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-survival-uncertainty-ui-current-main-20261001",
+          "sha": "a58803247a560313223fd52a77abdc29bc54dead",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-survival-uncertainty-ui-event-20261001",
+          "sha": "0a7c2cc4f0237e26a58824e258cdc1411ba24ccc",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/argus-tail-ui-bundle-current-main-20261002",
+          "sha": "6b3724e14b9e48ec845818afcb5ce0da665a6b73",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/argus-tail-ui-bundle-current-main-v2-20261002",
+          "sha": "fc2bfaee50ed26379ec49b7cb614c0b94ae1f141",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/argus-transfer-ui-bundle-current-main-20261001",
+          "sha": "2e5d62f749786bb70cb23b6912faa56dfd908a94",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/ascension-v022-ui-event-20261001",
+          "sha": "c6fb3f370b3e5fcbcf278da71550303480445b88",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/ascension-v022-ui-event-mainline-20261001",
+          "sha": "1b0403c342566d610d7a0425fa95fcec793c2286",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/asset-adder-ux-final",
+          "sha": "09553c51a98f2ff72b052d067bd49a09c8700a9f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/automatic-loop-intelligence-sync",
+          "sha": "335a8d0693b83f17bbebd99202f25382a566672b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/background-launch-hardening",
+          "sha": "69f4787e44d7302861f096263dc9ac1769630ddc",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/backtest-cache-capability-ui",
+          "sha": "9f4d992562dbb9219a57da55bd8f1942dcff9c9a",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/beyond-ib-delivery-plane-impl-20261012",
+          "sha": "d071bc63a475e74a55286db1dd8c3b8a52a2236e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/beyond-ib-delivery-plane-spec-20261012",
+          "sha": "1730794326412cb6290ee12a32003c59ebbe7c52",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/beyond-ib-intelligence-fabric-20261012",
+          "sha": "01d29ce037698d930e8511a7e748b7132f187248",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/beyond-ib-live-gateway-impl-20261013",
+          "sha": "46118f49200f0acf20c4a00471601e7924850fe9",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/beyond-ib-live-gateway-spec-20261013",
+          "sha": "f3b02e5734fefef2c723ca671d02d8739247fdb3",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/beyond-ib-live-gateway-verify-20261013",
+          "sha": "393a50d6541af459441f69cd0b865178b275d277",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/beyond-ib-live-gateway-verify2-20261013",
+          "sha": "37f03078838be8c0f135bb94eff834b97232340a",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/beyond-ib-semantic-work-impl-20261013",
+          "sha": "2f3bc95b756f4d192386ee93694ce0effe3ee75e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/beyond-ib-semantic-work-spec-20261013",
+          "sha": "bf95f99ad661d7744cfa7715212de7fb0b918083",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/calculation-basis-visibility",
+          "sha": "11beba4a020fbeb03db339393186e93a6284b030",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/calibration-effective-samples-20261001",
+          "sha": "ed10221eb7ba88e05fd61aeb675ef2b3ea64ccec",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/calibrator-drift-retirement-20261001",
+          "sha": "07400a25bce29d5e1771198831af38b6f2a9df97",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/candidate-qualification-failclosed-reconcile-20261002",
+          "sha": "88bce9f9144d9402641faf4c89d4e3855ee351b2",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/candidate-qualification-integration-20261001",
+          "sha": "ad86fdcb089e4545a5aa6da62620201e66680163",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/candidate-qualification-integration-mainline-20261001b",
+          "sha": "14c10a7a9ced717aa7ab653f6cda4049dc43f883",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/candidate-qualification-latest-main-20261001b",
+          "sha": "70d0758ea2b76dcd74ced9fac31c7792bf55bcbe",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/candidate-qualification-live-main-20261001",
+          "sha": "bf5ddc206d7faa593d6ce3175459a92089fc502c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/candidate-qualification-mainline-20261001",
+          "sha": "df5c31cb232e8265620d057b5ffe5e43e64eceb6",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/candidate-qualification-mainline-20261001-r2",
+          "sha": "6f601f1d5b1faf755de2010d9acde0ee22c57b56",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/candidate-qualification-proof-ledger-20261001",
+          "sha": "72b28737578189e7365cd1a44e1ca2ac462d363b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/candidate-qualification-receipts-20261001",
+          "sha": "a4b9f9c8a9abdb7f4630552d3b64fff94bb4af0e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/causal-evidence-graph-20261001",
+          "sha": "d502c74cd4cb476cbbff7efa3e30791f0fbbc269",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/causal-ml-fabric-receipt-current-main-20261001",
+          "sha": "4368d1b686471495cf7f4873dc883d2600083144",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/champion-challenger-core-20261001",
+          "sha": "e3dfadf382b85d1416daad4c25fa8c9d95aa9107",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/chronofold-causal-navigation-20261001",
+          "sha": "be0a36d4bf0e1f9fa9ad96c4ad5b1215a277a13c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/chronofold-mainline-20261001",
+          "sha": "51ce0a17fccdae3431f1d08bdc0dbd5f922e76ee",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/continuous-learning-fabric-20261001",
+          "sha": "abc85dad5a9494b04ad16845fc1d425e65a909fa",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/continuous-learning-knowledge-refresh-20261002",
+          "sha": "a9de65d8263dbb6aad97847a2899f6cb35e17240",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/continuous-learning-verified-receipt-20261001",
+          "sha": "a736453f9320ac6a4da9d18ddf7ba0b357c686d8",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/cross-repo-federation-20261002",
+          "sha": "d9b371df80da7091354e0ec80076ee2c019d63c8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/data-integrity-final-receipt-20260930",
+          "sha": "4fdc9b293a46070c8749595d5ad9ecdc1aaa4c65",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/data-integrity-mainline-20260930",
+          "sha": "2448edb122b56679394b22834f6e1c78d372b3e6",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/data-integrity-mainline-20260930-v2",
+          "sha": "f143bc0ed07e8da06ec3b303d818774534f94634",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/data-integrity-receipt-20260930",
+          "sha": "1cdea9e5bfb0c8d43fd57ab9ea493791efe1a4ad",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/databento-adapter",
+          "sha": "8816f3cc672ed848072b8634bffbe9fb04631783",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/databento-consolidation-final",
+          "sha": "016b8e94927fc306e67fd347026ad38022d50550",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/databento-corpus-20261004",
+          "sha": "4965ccbbc5dfb529b8ef704be164eb2d6b9bd2f1",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/databento-hardening-2",
+          "sha": "2f9d57085684bd242d2faf20053e187c16126549",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/databento-market-data-adapter",
+          "sha": "e293f7ff59ac82d557c35ea4c8f6b6178ca5d03c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/databento-postmerge-audit",
+          "sha": "8f6058ad3d3a26f921773307b589f145df2b1382",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/databento-postmerge-hardening",
+          "sha": "7ed631b85eae870b4329860baf576388359a6042",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/databento-postmerge-ui-docs",
+          "sha": "e7e02280e3da4751beaa1eb03aaef298bd7546b0",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/databento-snapshot-serialization",
+          "sha": "03be23244e3215508b99d6ffaeda118580fb14e8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/divine-providence-federation-20261002",
+          "sha": "268cd04b7cd821f45f340ddade5f3267326e377c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/divine-providence-federation-receipt-20261002",
+          "sha": "904cf09a06fa0dd0b0eaf4b13b8f5974a5fa46cb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/divine-providence-mesh-federation-20261002",
+          "sha": "1c5206d6610b9c2a28bf7aa1304cc42e0d84eb47",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/dreamstate-v4-effective-revision-20261001",
+          "sha": "44cb72869f724a20024d7e0c4423c65d424384f6",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/economic-event-trader-panel",
+          "sha": "02dd8850e9ff68341416b45b1982b8d3fd5620cf",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/engine-brain-federation-contract-20261002",
+          "sha": "d996b4969b9d7c704a94402f301a0e031cf1da19",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/engine-config-hardening-20260930",
+          "sha": "fb84e963c4f00d0162178bc2804a6689ad5a4590",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/engine-timeframe-ha-config",
+          "sha": "2eda148dabbd641c9f62725abd2d290c2eca0464",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/evidence-lab-canonical-coherence-20261002",
+          "sha": "1fad113aa1ce4ab88eeb3f88a6070a66473bc020",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/evidence-lab-canonical-current-main-20261002",
+          "sha": "d31ea02006e9371dce9c53fcda579e7db14628ad",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/evidence-lab-federation-20261002",
+          "sha": "aae3d2e688dc8e17825d21790abd34de1790e984",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/evolution-contract-current-main-20261002",
+          "sha": "7c430176e110bdab188aea0af593ba5f6c1ba8bc",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/evolution-contract-sync-20261002",
+          "sha": "f36f0576c6d5bee242c6c892a7ef635d52809a32",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/evolution-contract-sync-current-main-20261002",
+          "sha": "8af7cadc7c93127a2763f4868906dc8bf1b2a863",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/evolution-monotonic-state-20261002",
+          "sha": "143aa6f2381eeea17b2eda938033e87865b46544",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/evolution-monotonic-state-current-main-20261002",
+          "sha": "ffadf96e11a90c40206b67de25b6825bcc365a96",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/evolution-rejection-current-main-20261002",
+          "sha": "99e3e2bc33a2069997f3260726139f574da30363",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/evolution-rejection-current-main-v2-20261002",
+          "sha": "04a94f8c052e06cd272edc787ea828768e5ec33e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/evolution-rejection-dedupe-20261002",
+          "sha": "033cc0a0df908e56d4ad133f13c8ca3bc0ad657b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/evolution-rejection-dedupe-current-main-20261002",
+          "sha": "4b65de0160eaa198efde48d9563f8f362821e36f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/evolution-rejection-dedupe-current-main-v2-20261002",
+          "sha": "c1a92429e45bf4e9526fb0cd433ad4f44c083e77",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/external-data-orchestration-20261006",
+          "sha": "72b4a0f768fdf58c047d6103eda36b2ab50d59d4",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/external-evidence-fabric-plan-20261006",
+          "sha": "d49df2d8a3ba6dc00dc20bc3a40355d645de74da",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/fix-psi-evidence-clock-20261001",
+          "sha": "d2b0a91751a451a6ee27410030557203c3e4d8fe",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/historical-packet-projection-proof-20261002",
+          "sha": "22b3ab04ca63d65103d19c11f0c59dca7b2a7fd1",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/historical-packet-provenance-witness-20261002",
+          "sha": "51c497a8f8bd56c4a586872a06deb99970dfc82e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/historical-packet-provenance-witness-mainline-20261002",
+          "sha": "020d30a6ceba488fb02a2622e8e168081d05d106",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/historical-session-provenance-20261002",
+          "sha": "9e6c7712b46ee9e0b354cab6745de9830a1347a3",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/historical-trade-memory-20261001",
+          "sha": "ada102c73c1d9324a1286f0e42719f5a115d24c9",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/icarus-control-plane-handoff-20260924",
+          "sha": "c91b4845e081af9c9cf55a14b6929cac16cc4d9b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/icarus-control-plane-runtime-20260924",
+          "sha": "463c021bb7a5d8afdb4421f886bcdc2d7556efbb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/icarus-data-vintage-20260924",
+          "sha": "de459a7f4947ec4f631c8532995c68c3bd9044b3",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/icarus-mcp-integrity-panel-20260930",
+          "sha": "6b79a58d27b79e85f45f7a10de701f904e7761ad",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/icarus-plant-cli-contract-20260924",
+          "sha": "a998cf7d2edae8150fcd78ceddfe9c60dc8c665e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/icarus-plant-root-cli-regression-20260925",
+          "sha": "3a7da656b5e20a7b8aaa628b2b203d3e2ccaee51",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/icarus-post-databento-cleanup",
+          "sha": "d593157bfa378e187eeb62ad7277f4a3f0449912",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/icarus-psi-mainline-20261001",
+          "sha": "0d086aeda57879d0736bc9bd6d4c78fcf8475112",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/icarus-psi-oracle-20261001",
+          "sha": "9937b68435c980be1a6a25e76e60da90896d4818",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/ignore-databento-corpus-20261004",
+          "sha": "9d35c76a45d15cd424ca08d7062194e55e9e91ed",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/janus-build-state-twin-v1-20261001",
+          "sha": "d087f8f382697ea1db8e26da684e8ca6b2754436",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/label-conditioned-calibration-20261001",
+          "sha": "e4326193509abcd3e88be2d63ba685ccc4d2d358",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/latency-telemetry-core-20261001",
+          "sha": "c9655f5a489af52ce55914a3e4c4f9b1e0375992",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/learning-evidence-fusion-20261001",
+          "sha": "c470a919e1775f7290096bf82186e77cbe556b33",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/learning-health-heartbeat-20261001",
+          "sha": "07dd8463a005faf1c8843b8b861fbcdeb11d3216",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/live-decision-latency-instrumentation-20261001",
+          "sha": "cac92b17c53389f93f1c3d517ebb253559bb4be4",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/live-engine-gate-peer-packet-fix-20261002",
+          "sha": "9d4c1780ef5d56f0d19a8b4fa8141e3ab4145c71",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/live-peer-packet-sync-20261002",
+          "sha": "8d9c5993b8a686954c84f41aabf56a8d9309601a",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/live-peer-packet-sync-mainline-20261002",
+          "sha": "dab7a4d6c95eccc18730c8cb48ae7fb914b71659",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/manifest-chart-timeframe-linkage-20261002",
+          "sha": "06f83a58baadf7f62cbbda5b74217ca595fca744",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/manifest-link-reconciliation-20261002",
+          "sha": "a170def93db97079078c89baa8468e74aed6716f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/manifest-linked-historical-config-20261002",
+          "sha": "01d148faaa43ffc76a78a4bb097666354eeedddb",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/manifest-linked-historical-config-final-20261002",
+          "sha": "63f0511481876df4b417bc430472eada4a9732aa",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/manifest-linked-historical-config-mainline-20261002",
+          "sha": "88811e1ef800a0eb5b3ba69b894a081466e9acc1",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/manifest-linked-historical-config-rebased-20261002",
+          "sha": "ed7183986087bad7a2dd1aa1f989fe6427ef3a47",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/manifest-session-linkage-20261002",
+          "sha": "720a600a204ebc0585f51be66972962fdceca254",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/manifest-unsupported-provenance-failclosed-20261002",
+          "sha": "a57b49c95dfee662daf960242d4eb01344804cd7",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/market-data-ui-integration-20261001",
+          "sha": "6ee713cf44cae65dea58ba4dc6243a4198106b34",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/mesh-live-federation-20261002",
+          "sha": "0716b95e97565367970f9bc866956222a2b14520",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/mesh-live-federation-current-main-20261002",
+          "sha": "2aa926151e897b30dd02e1c2525275ddb12a95fe",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/native-empirical-federation-20261002",
+          "sha": "0c8c7b7e17a21444a7f01405b127f1fbe9116229",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/native-empirical-federation-reconcile-20261002",
+          "sha": "318d8a908dff04298db9f5eea6c2af793337d76c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/overlap-aware-calibration-20261001",
+          "sha": "22ec82d9e73b77c0aefc618224c32a63463b5192",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/overlap-aware-credibility-20261002",
+          "sha": "030405956d4b2a5ee7dbaf0ddc3911015319ceda",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/overview-command-center-20261005",
+          "sha": "22173a71c4a5d8cf363d9eb57b71f1cb8488c24d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-aether-20261001",
+          "sha": "19c0dc31c52cd1ff4502a1cca56636d5049680cd",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-aether-causal-residual-v9-20261001",
+          "sha": "bd1b4acd9aa72b0be3718e404d509d0c4d95c825",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-aether-hardening-20261001",
+          "sha": "987f83cd59eb32d40d33370272e1e1d25a23b02e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/pantheon-aether-hardening-v2-20261001",
+          "sha": "85a7a46f0bc2cc8cc765ed902631db1b43a63f26",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/pantheon-aether-hardening-v3-20261001",
+          "sha": "1898e370c9cf80c6439cb7aee84578c0002cc9a0",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-aether-hardening-v4-20261001",
+          "sha": "a3ebc912c58f46d24ea0227ec13e2b94e62a8521",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/pantheon-aether-hardening-v5-20261001",
+          "sha": "39102faf7f97792951ba1bf46231ca89daec3584",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/pantheon-aether-hardening-v6-20261001",
+          "sha": "992aa81053a3913c9d52e34ac4adfee026f76716",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/pantheon-aether-hardening-v7-20261001",
+          "sha": "cd678bdbdf08996ea6d0ad15b4c6d49400905b18",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/pantheon-aether-hardening-v8-20261001",
+          "sha": "6cca91d738f8665f6deebf2fd9a4085d13a96b7f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/pantheon-apex-ancestry-20261001",
+          "sha": "5b2cc7901acd49b2239a1e23127eff61706016b8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/pantheon-aporia-20261002",
+          "sha": "d4c7c7c59a9de9d429bf38c839c264f66840a462",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-atlas-20261001",
+          "sha": "3abf9540177425db866d1f05b82573da8bdeb41f",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-autognosis-20261002",
+          "sha": "5e2c56b45f74fb49dda0c75170109018e4424e27",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-axiom-20261001",
+          "sha": "63d581b4709e2f87f61768eb4a9db5022ca00320",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-echo-20261001",
+          "sha": "bb14ca7b37df5f31dd410b8cef766bdcff8d1f06",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-echo-apex-lineage-20261001",
+          "sha": "24b62c7fd8f819c9ce96086d41a7c9a4f3cec360",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-echo-brain-registry-20261001",
+          "sha": "49145546754b1394590b1b5ca777c981fb3915b7",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-echo-fail-closed-20261001",
+          "sha": "0be0d3b888ed90a5861ddaf3fb23f7da7cbf824f",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-kairos-20261001",
+          "sha": "dfed99b032cecc3fc446e3e5d592f40024be02d4",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/pantheon-kairos-reconcile-20261002",
+          "sha": "7ccc1a6e367ac4954f61b180c5e545f0387fe455",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-lethe-20261001",
+          "sha": "6f1bd0947907ae3c3fcb5354da2dc5a6b1c669f7",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-lethe-provenance-20261001",
+          "sha": "2cda9167389345c12e290e3b7578c16c7481a35e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-prism-20261001",
+          "sha": "756e81e7f620ac3bbe72d8efe7bdfd8dcd7ebe50",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-sibyl-provenance-20261001",
+          "sha": "5a4eeb14567c0e9d913a4fcdcd7df267ed593b35",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/pantheon-sibyl-provenance-reconcile-20261002",
+          "sha": "963a2c40ddca906cecf40a75ebc2b30527c3a176",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-veritas-20261001",
+          "sha": "6e8aae4cef672b49c8e0bfa1e14235eaaed65895",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-veritas-reconcile-sol-20261001",
+          "sha": "4299e6373d385d49df834e5cc14761db9b15e1ec",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/pantheon-veritas-sol-20261001",
+          "sha": "f49ea211ba0859de1699533948c7062c79761a65",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-20261001",
+          "sha": "04ea51e7eb635261ca591152f42f4c2f6fe1b3ec",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-final-20261001",
+          "sha": "da691c4b4194a7b7d7e1f46a27c44fa45c02b0ec",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-mainline-20261001",
+          "sha": "54bccb6d47b90bb0a881cc9ba247a580c5c8b335",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v2-20261001",
+          "sha": "ff0a024e475f470cc5ca8b426d693304d31f7693",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v2-atomic-20261001",
+          "sha": "6a2112a19f4609137fe9ce33f3506d0d27b5946e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v2-final-20261001",
+          "sha": "12b1fc4c356bd30a6c77d019c109467b25f08897",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v2-live-fix-20261001",
+          "sha": "9febab6b2799ce5d2338ab9489baa476845e32fa",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v2-mainline-20261001",
+          "sha": "ce53d8874624de8b63d64e8b428d70af1c5c16d2",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v2-reconciled-20261001",
+          "sha": "31857fd723d082663e8e3caba386b89ed3926e29",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v3-live-main-20261001",
+          "sha": "604e58b8f3efe6e6c427a48f48da414f3cc08ab2",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v3-live-main-r2-20261001",
+          "sha": "fda7fe8692f0bd4c5097ad0043b16d88d8babb67",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v3-live-main-r3-20261001",
+          "sha": "2456f1064b1ec1b509d44f0150279c3608b92a15",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v3-robustness-20261001",
+          "sha": "6462aad680da135db3aab500a21cf81d6ac50c8b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v4-atomic-main-20261001",
+          "sha": "2df92df44a221b30d65492b9c8cbbdffc4d43fe7",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v4-current-main-r2-20261001",
+          "sha": "3ca796578bad0830e763a714962451fa5b609776",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v4-dependence-20261001",
+          "sha": "6dd6edd95804923d6d348a6c4994e94cc230e831",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v4-final-main-20261001",
+          "sha": "13e61402f4a3a97ee855df929ff7e98102d30c33",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v4-live-main-20261001",
+          "sha": "63b37508778ebd859c048ae5550e5868ae5a4a5a",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/parallax-dreamstate-v5-distributional-20261001",
+          "sha": "2b442d18b9e163064a74584954a4ef0c67bf6c45",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/peer-historical-context-20261002",
+          "sha": "aab23eb415f1f1e282bb0b9166eede4da4dfc280",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-lane-witness-consumer-20261002",
+          "sha": "8640ddc86b6d3869bbbbea39e42214b2b1daccac",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-lane-witness-consumer-mainline-20261002",
+          "sha": "060ae53d978a8358072a839075fce50de0e76f57",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-packet-freshness-enforcement-20261002",
+          "sha": "37a82c179f2dc97ab8f3ad39f5048c1f7aede9c8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-roundtrip-ack-consumer-20261003",
+          "sha": "70ab67f46dde2368b785555f79b11ad7b68bbfd4",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-source-ancestry-runtime-20261002",
+          "sha": "49c4d5725570b45cbc8f0a4ef55c372f54a0cb2e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-source-contract-witness-consumer-20261002",
+          "sha": "4ad3677f0fc791d17db764735d53574db8afcb66",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-source-contract-witness-consumer-current-main-20261002",
+          "sha": "e132735acc03ca6fcc26cfa76449597fe4448b3a",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-source-contract-witness-consumer-mainline-20261002",
+          "sha": "5d7ff514039e2c1599059124629a7178f61d949c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/performance-proof-brain-native-20261001",
+          "sha": "fb43bbddb353583fa9bbe71f2379577af0ebd5ef",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/performance-proof-core-20261001b",
+          "sha": "10e9388671c0090f89ca6690b6317d64f279d5a3",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/performance-proof-current-main-20261001",
+          "sha": "2b6f10be478b351ac1520ebef4f024dbf4a196b5",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/performance-proof-kernel-20261001",
+          "sha": "b15be246d0b6e671beb5626e9f7d19eea5374eb9",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/performance-proof-reconciled-20261001",
+          "sha": "3d4eee8dfa3237d6ac5008dca45f8ba8c30fa867",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/performance-settlement-backlog-20261001",
+          "sha": "a7bad9369af7ef6d9abaf97303c5362c812ccaf6",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/performance-settlement-ops-20261001",
+          "sha": "ef2c11dae0554773868075e08b4301d8476e102b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/persist-engine-federation-acceptance-20261002",
+          "sha": "80c0e6fe6945ef3362600781fee1fee497602a60",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/plant-env-restart-consistency",
+          "sha": "d270e99922a2f4b56fa10a192c358f932168a6ac",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/private-satellite-ci-hold-20261002",
+          "sha": "f1f99d8599bb8999b0d57b5b018b4cbc047f7b8f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/prometheus-ascension-cli-ui-event-20261001",
+          "sha": "73c24f1176da89d34d6a1c3f45056fccd994847d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/prometheus-ascension-runtime-event-20261001",
+          "sha": "ff9471835d809abf98ecb1570a7e2627a7e813d3",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/prometheus-ascension-runtime-event-r2-20261001",
+          "sha": "d689b3cb8d0141654af8f1c124634627a4332209",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/prometheus-ascension-runtime-ui-event-20261001",
+          "sha": "f26d1df9545bb6000073a4ec71318f633ae4b93f",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/proper-score-diagnostics-20261002",
+          "sha": "8dee9a6c78bc2e2de4846e65abeae244e93a20e0",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/proper-score-diagnostics-mainline-20261002",
+          "sha": "6ed61a99455e85c49a70a274320a991347df9f36",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/provenance-class-hardening-20261002",
+          "sha": "6a9d3082d1244458dc77eea4b410df7764a2798c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/psi-900bar-warm-reconcile-20261002",
+          "sha": "dc27b0f0b5eea72d40eced3d6c6b25fc625640f0",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/psi-calibration-learning-ui-20261001",
+          "sha": "fe25721bd26fc393dbe26271e41cf0b30aba16e2",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/psi-complete-reconciled-20261001",
+          "sha": "349a44ef83758561a01f18909f6055522d5678cf",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/psi-complete-reconciled-v2-20261001",
+          "sha": "2cf0d60b45bbe37c6ca25ed2e822b6986d851502",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/psi-durable-evidence-20261001",
+          "sha": "3752a45109fa41539d779e4a2e9b4f02f6d216b7",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/psi-durable-evidence-v2-20261001",
+          "sha": "1d5fe0e148f94b9f66daf9cef50a6fed0d7e25eb",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/psi-durable-evidence-v3-20261001",
+          "sha": "24f02b788d8eabd4d181243507b4a6c491ddd5ae",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/psi-empirical-calibration-20261001",
+          "sha": "51191d41ac53c573ce777887b442d4df4cd02bb7",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/psi-event-time-maturity-20261001",
+          "sha": "c394fb91071becb120041d4712bbee946a6e2436",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/psi-main-workflow-ui-20261001",
+          "sha": "4b0642b8458bfaac82fef18f0a1de04f1a2072e1",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/psi-ui-usable-20261001",
+          "sha": "5bcd901127ddbd29ca6d147d88128dd72142f0d3",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/psi-windows-receipt-clock-fix-20261001",
+          "sha": "260ed5da977fadec68919d6d52ba2e18fd29f07b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/psi-windows-receipt-clock-fix-v2-20261001",
+          "sha": "20591084d0686abe1a6588596c05d884790e2620",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/qualification-settlement-live-main-20261001",
+          "sha": "a305dfe8b7865e13a4e095e677c703e7a0d0fa14",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/qualification-settlement-mainline-20261001",
+          "sha": "ca0f909dad6fa58207a012dab5bb536f31e5e021",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/qualification-settlement-reconcile-20261002",
+          "sha": "70fb9dedfb28c707bff2b8e604f199779634d8be",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/qualification-shadow-promotion-20261001",
+          "sha": "37480b562f965eba36411914b293d32e094c1a59",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/real-subminute-tick-adapter",
+          "sha": "b2f109d38bb8106a92be08fe6152013b82c45747",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/rebase-ignore-databento-corpus-20261004",
+          "sha": "687f8c2c3151e0fd0d0f2404370f3948c4f42fd4",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/reconcile-evolution-296-20261004",
+          "sha": "3f1c7218eadbb3743e0044556d01b97f1f662e33",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/reconcile-evolution-321-20261004b",
+          "sha": "00682aa603daef985c2296369697fcc9e7c68883",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/reconcile-psi-297-20261004",
+          "sha": "51838bdf838b7b698d3f126ab541f4b941406e39",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/reject-unsupported-continuous-futures",
+          "sha": "7c01de1cb648995358541718d7b6e7f66862bac7",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/remove-dead-expiry-ui",
+          "sha": "d0dc0664b081bc2d9005d48934770b1caa7b9165",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/repair-current-main-ci-20261001",
+          "sha": "1564ef00494df61fd80bdd9c0f868286b6681d3e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/research-gate-receipts-20261001",
+          "sha": "97bdfad559ad7e7b03527ff0e2bd6e0ed7776d1b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/revision-conditioned-calibration-20261001",
+          "sha": "138bcc1f3a7d693bd893f7c0c3f40a9dbf6608d5",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/scientific-commissioning-20261001",
+          "sha": "f6422d6b5b4021f177d79eb24c704bb0294c3089",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/scoped-credibility-scorecards-20261001",
+          "sha": "8c04331aeca0dfe89762beaad77dbea56b7e842c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/scoped-credibility-scorecards-20261002",
+          "sha": "b6dd54c8be0980f0c499be71209543ceee6df230",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/semantic-trade-proof-mainline-20261002",
+          "sha": "7e81e021b86bb3973d1de2a149cb0199879b591b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/semantic-trade-twin-proof-20261002",
+          "sha": "d8e230bb42d8f846c3d0bc882b659e2131e42ee8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/semantic-work-review-fixes",
+          "sha": "fe232dc888f2e10addc5f7037b5f1af23f13d714",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/shadow-calibration-models-20261001",
+          "sha": "5cbf6d63d0d763fc546b4f8cce1b2b40955313d2",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/sibyl-future-lightcone-20261001",
+          "sha": "0dedca5443f50916a5fe7fa60dcb652802f5ec1e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/sibyl-reconcile-v2-20261001",
+          "sha": "71fd52b23af16b70c4f2c211895b8313d6825e15",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/sibyl-v2-reconcile-20261001",
+          "sha": "719f84386a6fd7eef6fa7e12f1eae79b01c18651",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/source-reliability-current-main-20261001",
+          "sha": "b04834f9cce760e7cdaf39341c0f16ed173ed97c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/source-reliability-integration-20261001",
+          "sha": "da1e2400ca7edcd066feb22c8ec5b411bab95c7b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/source-reliability-memory-20261001",
+          "sha": "a7e3812cea4c5f39f740b70f10b2be9ab85d24a4",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/system-audit-dashboard",
+          "sha": "b7b4884931dca28027aa1ae791f2c5f1943dc31f",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/system-intelligence-panel",
+          "sha": "0e770ca4df21c8f2a56b610c58e6fc638ebd0844",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/system-intelligence-receipt-refresh",
+          "sha": "8e3572edeea8c58a6d92302345324d280a011047",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/trade-experience-learning-20261001",
+          "sha": "556e99addf9b98f408ef632a410aa4d919899670",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/trade-outcome-learning-20261001",
+          "sha": "cbfdb63ddc4ce4bd7f1f5f129ff90cec6b939489",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/ui-control-surface-hardening-20261001",
+          "sha": "6228a1e037de771d87587bfd5c6243c8c848a3aa",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/ui-control-surface-hardening-rebase-20261001",
+          "sha": "51d9e1d6f3741c4cffe3d6c86e2d5ca0ed440ec3",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/ui-control-surface-hardening-rebase2-20261001",
+          "sha": "9d7a2720a1182f54e7db64401b95b83c513e2cd5",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/ui-control-surface-hardening-rebase3-20261001",
+          "sha": "b6708902996222ccdc1270c681dc9cf222588f0b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/ui-evolution-day3-20261006",
+          "sha": "a72509e2cd5f35b5c28b7c409a5ba7e3119d2ff3",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/ui-immersion-phase-2-20261004",
+          "sha": "aab4a4f78d6e7a83fd35961239a0b47ed5ea16e0",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/windows-drop-settle-fix-20260930",
+          "sha": "6e14b408f5a928d549bd82d193c1af9766830fe7",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/xlsx-strategy-history-ingestion-20261002",
+          "sha": "ce92e3cd97356129bde7ea4099d47a47d60cec31",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/zero-cost-adaptive-incubator-20260930",
+          "sha": "280d66af19b33d4cad61bf8f2d187d953b7d089c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/zero-cost-adaptive-incubator-mainline-20260930",
+          "sha": "ad7d2aa40f07c8c96d51f92c31fa914b688b199b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-futures-execution",
+          "sha": "a471a1fc25d9b2ea89944a265dfabf91cc87e9b2",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/a200-dst-cadence-fix-20261016",
+          "sha": "868a0763049fc73e5fab73b948a5d5279b196ba1",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/a200-dst-cadence-main-20261016",
+          "sha": "8f405847896a02d7324dfa05c1ffd851f4a72a8e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/a200-gap-entitlement-correction",
+          "sha": "bda5f20ee52d596d4003874ab891994f5881f12c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/a200-history-security-bounds-20261016",
+          "sha": "ed575240ad580cda1b458e0464af68671c7482e0",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/a200-ledger-validation-20261016",
+          "sha": "7a926dccd75478de896fd1002876112ca1c61e92",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/a200-probe-provider-scope-20261016",
+          "sha": "cde027ab7e46ed5bba716be149dba757cf20335c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/a200-provider-scope-final-20261016",
+          "sha": "cde027ab7e46ed5bba716be149dba757cf20335c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/a200-receipt-boundary-review-20261018",
+          "sha": "016715683d5029e52e1a1e4d578231694dfb17f4",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/a200-runtime-bridge-plan-20261016",
+          "sha": "0e772ec4541cc3b26e34da13de3a7832a614e3c0",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/a200-runtime-pulse-20261016",
+          "sha": "881d285f9bee9491128aaf220cf162354ccf179c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/a200-schedule-cadence-guard-20261015",
+          "sha": "42fb3790e537480ea4e0262e1cbc49510793dc28",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/a200-yahoo-fail-closed-20261016",
+          "sha": "ecffe15e9cf4d3e833856b5996cd7f8c47c8e2b2",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/aion-parallax-handoff",
+          "sha": "463c021bb7a5d8afdb4421f886bcdc2d7556efbb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/automatic-market-context-champions",
+          "sha": "5508785339803e1ee74aa3ef1981782bbbc88ad2",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/automatic-market-feed",
+          "sha": "3ad31dffb8b47a3da3174c916fd5f25db5c84c9b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/brain-clock-integrity-20261010",
+          "sha": "282db0d92708e10fc56a7605be7b2b8390843ef9",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/brain-journal-parent-symlink-20261016",
+          "sha": "3c7a37210e3a56e861f6f37d0e4f8cf7c441fc42",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/brain-journal-parent-symlink-main-20261016",
+          "sha": "139e559662ddae843e0d4012a9b6fef1d8eca662",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/brain-status-freshness-20261008",
+          "sha": "21952d27116d00c6bc53d61c3656a49e782b27c3",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/brand-readme-check-20261025",
+          "sha": "7de45fff46b014a132bcd925a0fc42201254258b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/bridge-background-20261004",
+          "sha": "4e535f297067dc95b84fd8a57a682241134a4ffa",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/broker-fee-reconciliation-20261016",
+          "sha": "76f1196e864e02423b172d9a6f321ba315d58126",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/broker-propfirm-baseline-refresh-20261016",
+          "sha": "979973e837b94c4c663c5ef2fda3583b58826009",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/c02-current-main-integration-20261015",
+          "sha": "3e2ef806b35883db6a8b143cb75b8c657f23d261",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/c02-process-journal-draft-20261011",
+          "sha": "8b7cf387d23b3e6043304b501db5a107aff10da6",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/c03-utc-order-draft-20261011",
+          "sha": "da3357f155717fc3cf265c2afe10b7893e963060",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/capability-discovery-current-main-20261015",
+          "sha": "b3a76d32bf7e229fce850c96c5e716d7aa1c3c7d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/champion-market-context-feed",
+          "sha": "ef3ffcdd89f4423ba0571a0ec1bf7c7e08716ac2",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/champion-paper-activation",
+          "sha": "708e831e4ed112e2f462022145c7e1f65ea0f898",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/champion-stopping-point-20261017",
+          "sha": "5a2db92671ad2e1cabaebfc09742020a652ef67e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/cl-static-candidate-test-20261016",
+          "sha": "735d4440c9662bf74670c4a0cb5fa436a6c63577",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/command-center-stack-421",
+          "sha": "17c7aebdebe1477a5972c299e8125f85a044151d",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/concurrent-paper-workspaces-20261015",
+          "sha": "6d667bd613699add0b29b01915f760fb6885324a",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/continuation-config-jobs-20261003",
+          "sha": "eace4f41d75d540a5c0f93da60709045c805cf10",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/continuous-futures-source-integrity-20261016",
+          "sha": "da98fe7078e575c73c2ea64606b0ccaa8f5ba4c0",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/corpus-consumer-plane-20261018",
+          "sha": "7b42eaa528d3137e87f8ae10ea0896944eb4b62b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/dashboard-historical-trade-visibility-20261015",
+          "sha": "e52ce3aff3b56a881ecff2f1ec3d32fc20220db9",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/dashboard-scroll-layout-20261025",
+          "sha": "0b988f939fb1c237574d5373dd2928e4a281b2dc",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/databento-catalog-identities-20261016",
+          "sha": "8e0b8d9b3e8ca905e62d21ffaa9817baaed2639d",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/databento-runtime-gate-tests-20261016",
+          "sha": "e77dae0fb1d3860be677f6d2761e1bf75d065513",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/discovery-operation-provenance-20261018",
+          "sha": "763ed6770a233ba0d0794bbd1caefffe9ea16044",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/docs-selected-futures-history-20261016",
+          "sha": "538949929d76d985284bfd08116c0a5434d33f85",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/dual-crypto-restart-defaults-20261025",
+          "sha": "f57766fe8eb491bc4e2bda6d0328991128abf491",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/dual-crypto-restart-defaults-rebased-20261025",
+          "sha": "03341aedbe3da941c774d1b95e01abb0cc699463",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/evolution-status-evidence-20261008",
+          "sha": "c4522b6a081ad1194bdcc84e7cd221ecd8d6ce5d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/exotic-research-loop",
+          "sha": "64d3e322e033e49a5a33d073fec9a386af07290b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/fail-closed-history-source-20261015",
+          "sha": "d825830859f90c7cd14a63144c30aa18054a3652",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/federation-artifact-attempt-20261025",
+          "sha": "3ee6e42940f9261e6a4f96b17557b83f987018e0",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/fix-cinema-settings-viewport-20261016",
+          "sha": "17b5540ad6477943ad2fc85dc520c6ee0831806b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/fix-registry-trailing-slash-20261015",
+          "sha": "88b3343b6d8b7f6faae77c35a76f3e41f847ed81",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/four-workspace-delivery-20261018",
+          "sha": "e96da3f466f6e027983dfbbc6e29a2e24ff55efa",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/futures-calendar-coverage-20261016",
+          "sha": "3250e42043c21f593e120532c5e440b5821a614b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/futures-convergence-review-20261017",
+          "sha": "63e238f4aedf06744b0581281727cdafb7f0e0a1",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/futures-four-dashboard-performance-20261019",
+          "sha": "0b5068372f2b8fce39bf3503f3bdc395ec083b9d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/futures-registry-identity-test-20261016",
+          "sha": "2aa7c1479e3b97c1d3cbece0806b606ea1b8ff60",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/futures-stop-point-20261017",
+          "sha": "606f0f70d255a34d81e4140bad433b12c8a8c19f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/gru-trusted-source-current-main-20261017",
+          "sha": "714ad75606fc0cb3b7679987c6b654c6beff8e3d",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/historical-closure-qualification-20261003",
+          "sha": "cbeec45a613e9dea4513aa1852b2c051dcf3616f",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/holdout-claim-before-labels-20261016",
+          "sha": "d3ff4cd1de3856025813009319dd7960d1179866",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/holdout-csv-error-followup-20261016",
+          "sha": "110aaa87ad4c301394daa6de778ab2ec0bc9d2f8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/ibkr-callback-quarantine-20261016",
+          "sha": "4586725b12d077c4b2d9ab936a7c58747e2933da",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/ibkr-orderref-guard-20261015",
+          "sha": "0097cd9f07ccdab58d14b6a112448caa04c82d68",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/ibkr-paper-adapter-20261015",
+          "sha": "7484a63b41d76a5331c4b046c77c96583b1fd93d",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/icarus-access-analyzer",
+          "sha": "475712eafc15f009abaaa7bd3773c84596df24c1",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/icarus-eclipse-loom",
+          "sha": "2124285e9135265693a01bcbaa2d081bc3acc06c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/icarus-phase4b-4e",
+          "sha": "352a9bda02cd46df1c9d148bc35bd1b03bdf19af",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/icarus-three-worlds",
+          "sha": "89847583850f0211764d76f3e0fe1827d0a6b523",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/icarus-total-immersion",
+          "sha": "32a5329ae5e92f1b58454348f83db28f2c5a99bb",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/icarus-ui-base-sync-20261014",
+          "sha": "31d9d8c0612ac3685fb2af6ec4feecc0548c2cbd",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/icarus-ui-integration-20261014",
+          "sha": "ae21e409e8fb5b52b04e1edd9da0f2679455f5a0",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/icarus-world-depth",
+          "sha": "44fb1a495c28516725d4dc1b2cc9fc0b81e83402",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/identical-feature-columns-20261004",
+          "sha": "14defd1e61ca6c809fabc6f6aad252b90cb3a338",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/intuition-receipt-integrity-20261019",
+          "sha": "90fb938124162d63fe7dc392cd336e3eb048cec2",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/ml-d9d4db8",
+          "sha": "f897686b7c0d7fa5c4448daaeb46ff5b22fb199d",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/mobile-federation-gate-20261025",
+          "sha": "3d4e73e53d348a07577398e046f7868378f6a4e3",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/mobile-observer-current-release-20261025",
+          "sha": "5ea96ad1151526969037155d6948dfbf662ed916",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/mobile-observer-rebased-20261025",
+          "sha": "c46d39b61d56d494c3c674952fb1573b1b762865",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/native-contract-validation-20261003",
+          "sha": "4a5b89cb132bd3d3e0fb0cf7ffd635508cb0c655",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/paper-workspace-api-integration",
+          "sha": "99765c343a25c392f2daf3a180dd32ebb53ec154",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/paper-workspace-http-snapshot-acceptance",
+          "sha": "b9a4423ce7295566eeefbee6af49ca41c09848c1",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/phone-access-bridge",
+          "sha": "6945a53ec64657fe8a71ab936e22fa9d3d4efdb5",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/phone-proxy-auth-audit-20261016",
+          "sha": "52cfbe5bb64b7f9c84c0759fd10ae60bd14d42f7",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/prime-restart-docs-20261025",
+          "sha": "a33ad37bd33b484b19990e4919db5a9c09ca6b2f",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/provider-corpus-consumption-20261019",
+          "sha": "46e9306e71e1ece82d7e7eee9c1daa2111c73755",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/provider-operation-success-receipts-20261016",
+          "sha": "5bf345cdae6a09d3b4e0b4bddce75f42d4fb4902",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/real-price-shadow-twin-v1",
+          "sha": "cfcea78e1dbf2ea931c84780bd754e12265f4073",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/reference-cosmic-animation-20261013",
+          "sha": "7d502ea31b1ef814987368730d424e82f76cf290",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/restart-postmerge-verification-20261025",
+          "sha": "19eddc6a1c0537faf0d9ca42310ef244c1ce8b38",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/rt01-admin-flatten-evidence-20261015",
+          "sha": "7da30ad83f3a0f819f571c1c5ff7b3286d2731e7",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/rt01-excursion-payload-followup",
+          "sha": "423d19dfd336791926f00200599d5b1b1e56fcf8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/rt01-excursion-producer-20261016",
+          "sha": "632f5481a1695b173fda26a2c43ec2ff7b070a91",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/rt01-excursion-producer-cleanup-20261016",
+          "sha": "207efedd0437ba1ef910acf7456facf2b8cae017",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/rt01-excursions-20261015",
+          "sha": "db9888109585244ed193d83cd7e1bc51275c13c8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/rt01-feed-freshness",
+          "sha": "d9c5ce5bf62f910e81c6d8a7949260ffef061319",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/rt01-http-status-current-20261016",
+          "sha": "e193bfd29407393a90f472d9d28765b24d330409",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/rt01-shadow-dashboard-20261015",
+          "sha": "ca75790ad234b48e211a78030a983939aec556e5",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/rt01-style-panel-viewport-20261016",
+          "sha": "882c8825bdae9f80f3a7cf2ca49db2c7328eac9a",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/rt01-valid-aggregate-only-20261016",
+          "sha": "2f71ea689d6c2240ee698ccb1cd161beaae9818d",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/shadow-dashboard-fixed-overlay-20261016",
+          "sha": "ae5feba74b390822ca483a9a907016cac0526b3e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/shared-chat-reconciliation-20261003",
+          "sha": "6748da0b5eee454191cdcd1b6571684a625e0be3",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/source-time-integrity-20261003",
+          "sha": "b41ae3275d0bb485586e35ce9189acb53430de8c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/subsystem-reality-matrix-20261016",
+          "sha": "659a17fa169773e6f1160af5165325cd94265b54",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/system-index-paper-readiness-20261016",
+          "sha": "75079156357070dfa6f20d8fbe22354e27a795a7",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/takeover-verification-receipt-20261003",
+          "sha": "eb29a82582f597f76897da667beb9f634c563584",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/task-completion-test-clock-20261017",
+          "sha": "a9217cc16086130a30883162903bccb3f67e9357",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/test-a200-probe-integrity-20261015",
+          "sha": "a5235049541975fdd73331d7c5287b410d421241",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/test-chart-history-pagination-20261015",
+          "sha": "2cb00f3e04f3698d30d346bbd833774cd5d57446",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/test-combined-paper-pnl-ui-20261015",
+          "sha": "2a6d34e4ee2621a0023c39dd07255bbca7390838",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/test-paper-workspace-isolation",
+          "sha": "3a7c2297fdab212ed1148cd905e7b0b6a9306cde",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/test-phone-access-proxy-20261015",
+          "sha": "c97456c89a474bde255915eeb7c13bf5014f6038",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/ui-replay-responsiveness-20261003",
+          "sha": "0834e4d83f2c065c000f4bef7efbc50718f7f10f",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/unusual-whales-intake-20261008",
+          "sha": "f0603fa9f87a3dda07b16478e7de51b651e6af3b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/windows-background-console-20261003",
+          "sha": "9811f11333df3dd25fee6fad1e90b371552ac5e8",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/windows-journal-test-fixture-20261016",
+          "sha": "112754896b5e3ba43a91b0979350b15183d354c4",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/yahoo-hour-history-20261016",
+          "sha": "894d4029da03462b95307371c81ce4ee201470c9",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "commands-list",
+          "sha": "30a72624634b474c9ca303ff926355fa0b5dc004",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "design/capability-data-discovery-registry-2026-10-11",
+          "sha": "71a726a3678d87b4c5b72350d944b71c38c3919f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-autonomous-governor-20261002",
+          "sha": "0fb333e05d03eef32ad524ac032c9c2e54ae9fb7",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "feat/ascendancy-autonomy-current-main-20261002",
+          "sha": "d38952213ed0a24800e2083511c242f6834a66bb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "feat/ascendancy-current-main",
+          "sha": "be5cee67880ac66c348f3c5509e59e15bfa7771a",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-current-main-rebase-20261002",
+          "sha": "44fbe6c57ee7736f0780df747d29b976e256fbd6",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-current-provenance-main-20261002",
+          "sha": "318e8be711198cbe7c389a648bf50b97d64de50d",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-federated-intake-20261002",
+          "sha": "9395f12d68850102abcb5b5d1b1548d922858dba",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-federated-intake-current-main-20261002",
+          "sha": "269159ede16dbafe4cf3b914a57dc1622277e4c0",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-federated-intake-loop-20261002",
+          "sha": "0cd93f4fa25b1f269987256ec409c59dded9f235",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-federated-research-seeds-20261002",
+          "sha": "7cc427a3a741c09fd1a248874282da29b245acb8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-final-current-main-20261002",
+          "sha": "514c3f1e529867a83d57ab8516f63006a1775319",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-final-main",
+          "sha": "b5b31a114ac9c8dd146cfc1b75f0507eb13e0539",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-foundry-evaluator-current-main",
+          "sha": "faf21e2c3b26daa7ceb0121c53fd479b902bc307",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-genome-core-current-main",
+          "sha": "4e091d5d611fa0de678cab4a0a20b15261928ec6",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-genome-core-current-main-v2",
+          "sha": "897f52583f902b56cf622b6a72d2793dd6f04b51",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-invention-current-main",
+          "sha": "904e34e9a42f6b103e2fd33f0585827037666247",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-mechanism-contribution-current-main",
+          "sha": "db72eed2c537c003834619e5e730a42c6d6528a8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-mechanism-contribution-current-main-v2",
+          "sha": "c82c79221ccb0fddb18cf2e1b28bc089aa6dc0cd",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-port-current-main-v2",
+          "sha": "d1be408e2611d29fd2c07738dd62ef209dc04ddb",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-rebase-current-main-20261002",
+          "sha": "93961e425310b801ef3ec506272c7ec0fc269bb6",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-unknowns-current-main",
+          "sha": "f6441986ea9e35947bedf5ae25df8712934b63a3",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/ascendancy-unknowns-current-main-v2",
+          "sha": "dcba21b9469fe62e1b2ff0b1a6499f72aff675b9",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/capability-data-discovery-registry-foundation",
+          "sha": "39cdb5e8c180e599bc2d6fa265358c619a7641de",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "feat/command-center-desktop-current",
+          "sha": "352ed13e50b55ec2f1eb3b9680c24582dca3e9da",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/engine-brain-federation-consumer-20261002",
+          "sha": "470443f9e9c2ffd250ce13f87bc61718d816fcce",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/historical-engine-context-consumer-current-main",
+          "sha": "8b5b895844bd7ea4b15dfad679d007581003fe6a",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/live-engine-federation-gate-20261002",
+          "sha": "5bf3c682ad4b14c0c192a5fa6d2244b22dd2b324",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/live-engine-federation-gate-20261002-v2",
+          "sha": "4dd0e9b06b35e5e1ea1aa128a2637ae9b306a9b4",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/live-engine-federation-gate-current-main",
+          "sha": "47673eddaed7c70e5b0cf818c03bc62753230bc3",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/unified-intelligence-spine",
+          "sha": "788479122448ade58e94964e784b2a6dcbde1197",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feature/deep-learning-challenger-20261015",
+          "sha": "527d6efce40c3718c7d8c1c4dfa51ae56247d136",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "field-agent",
+          "sha": "52f263dea1dbb4557faa7a6fb073755ecca14270",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "fix/access-registry-windows-lock",
+          "sha": "e7424bc35bafeb3078fb8cbb2fba2c8b82e6b88b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "fix/close-server-sqlite-handles",
+          "sha": "a9bd59a5c3d1646182ec990b3b8356ec5c160473",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "fix/performance-proof-windows-lock",
+          "sha": "39d24bd86ca21c8b05abe8e70a9552b45b57d7d4",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "fix/psi-evidence-windows-lock",
+          "sha": "c227aef0a47c0a2f3bbc27f59daf6ea0bc20b023",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "fix/qualification-receipts-windows-lock",
+          "sha": "31c9069bb68969284647c23a46c18f72545f19d9",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "fix/source-reliability-windows-lock",
+          "sha": "093d9eaefe7af0a806f8f6b4c77f16b09ec0830a",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "fix/status-public",
+          "sha": "ef424c4fbc28e8f45ba30362694feba76b0c73f0",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "free-gaps",
+          "sha": "26c757febd89d290a157ac8d48bb140173649436",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "free-gaps-2",
+          "sha": "4a7a916bece8bfb1193ab9f086bc2798fed6a07f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "golive-panel",
+          "sha": "a73ed6d95eeaf629bb4f7642a0f0fbaa6f2c74a3",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "grok-sign",
+          "sha": "b78d21a53996422db8dc8831478ff5bfd5417df2",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "icarus-empirical-qualification-handoff-20260924",
+          "sha": "463c021bb7a5d8afdb4421f886bcdc2d7556efbb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "icarus-handoff-2026-09-24",
+          "sha": "463c021bb7a5d8afdb4421f886bcdc2d7556efbb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "icarus-loop-integration-2026-09-24",
+          "sha": "463c021bb7a5d8afdb4421f886bcdc2d7556efbb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "icarus/assurance-archive-20260924",
+          "sha": "463c021bb7a5d8afdb4421f886bcdc2d7556efbb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "icarus/integration-handoff-20260924-1829",
+          "sha": "463c021bb7a5d8afdb4421f886bcdc2d7556efbb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "icarus/masterbuild-handoff-2026-09-24",
+          "sha": "42394642d26cda91bddadf1bbd6d9c88eab0f9b6",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "icarus1/restart-readiness-20261020",
+          "sha": "9a44dc1c6d20088bac1df013e6ec09e80446d30e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "icarus1/runtime-expiry-verification-base-20261022",
+          "sha": "1163865ea0260ccea2712fe591db24c7c965de15",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "icarus2/corpus-default-fixture-20261021",
+          "sha": "aa6aaf1053b90de80c6432244d4fe34c01d511aa",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "icarus2/dashboard-immersion-performance-20261022",
+          "sha": "fb732c09b446a1dac1d45f34ca9f7d3f056243b4",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "icarus2/empty-assets-startup-guard-20261022",
+          "sha": "bfe90692497cf8404ab5e944ca1a18b4559194c2",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "icarus2/restart-persistence-regression-20261021",
+          "sha": "dd052a8c4a46ac2811856a28eba735acd633e68e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "icarus2/restart-readiness-immersion-fix-20261022",
+          "sha": "5fea33504c4a2dff115dfcb0bc4d9e1183fa3c2e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "integration/chatgpt-icarus-fabric-2026-09-24",
+          "sha": "463c021bb7a5d8afdb4421f886bcdc2d7556efbb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "integration/icarus-capability-fabric-20260924",
+          "sha": "463c021bb7a5d8afdb4421f886bcdc2d7556efbb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "integration/omnivision-main-20261001",
+          "sha": "ecb65313a004c40e417f6b84aa304988b99b704b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "integration/operator-qualification-main-20261001",
+          "sha": "635493e179db1cc51054a0213540fc98f48aea1c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "main",
+          "sha": "54aa3d8237659fe38f3e1fd2306b462c6e04125b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "mobile/icarus-foundation-20261001",
+          "sha": "d26f37aea67273037b525bc43426a5834f8bc04b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "opus/causal-event-asof",
+          "sha": "f6a560a8e67010ff187a047c13972b366e951d42",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "opus/data-integrity",
+          "sha": "1efda0e3cb512ac52bbc2d2675684d7dc39976d2",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "opus/rename-divine-providence",
+          "sha": "4682be0ebdbda5a9785230e57f312eacb8f26d6d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "opus/review-fixes",
+          "sha": "506f00c6220bbff5fa334b44fed601aff75e4f96",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "opus/slots-2-4",
+          "sha": "c7a898696a72cbab7fda1fa3e8dfc888bfce613e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "opus/study-slot01",
+          "sha": "98d701444279a1676bf897c841a322b403ed6ae6",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "opus/temporal-integrity",
+          "sha": "7f52ef2688d0e6f10b3253c378749f34c388e762",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "opus/test-isolation",
+          "sha": "080e9d0daad29486891df46448344e9f44faa8e6",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "opus/xgb-slot1",
+          "sha": "232ea462a94cd7b3a8aa574e588a8843f5338974",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "paid-next",
+          "sha": "28ab182a0207c4aad579351ee8305b723920b741",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "paper-export",
+          "sha": "3a6e2a3b7ad577185e4156404f6dd8ef9b1b53fc",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "paper-ro",
+          "sha": "7a3397c98b61c4be34d5c3b7724d68604faf0356",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "plant",
+          "sha": "12fc21df6191297f4a83ade80b2b4bc0b9c5dc89",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "plant-finish",
+          "sha": "58e308f226b410451ece44a7e3ae262783c487a6",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "plant-p0",
+          "sha": "3478e0cfe9ba0db29f2ba1994c7f04b3da120d2f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "plant-ps1-hotfix",
+          "sha": "c1287ab6fb270a8b64c294c85bd0cfc6dc0c2dba",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "plant-windows",
+          "sha": "5a2836b42dd653df67cc1b5d92315aa0c12b9acc",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "prime/as-is-restart-20261022",
+          "sha": "a4ebd699997096d0495c276162ad9592ab8c6148",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "prime/restart-windows-gates-20261025",
+          "sha": "801c13bae20e3c205da86b44e9a3e6ffbbcd206b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "research/intuition-omega-episodic-v1",
+          "sha": "4c12fad1d5fa25d63cffe0886d979815058059dc",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/icarus-evolution-panel-20260930",
+          "sha": "fe25a361d61ae029acbcdb6186ea3341a6e29d6f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/icarus-system-evolution-20260930",
+          "sha": "61a4fd1edf0d35177688c961e7897f4b97666812",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/mcp-causal-integrity-verified-20261001",
+          "sha": "c7ccc4b364f617150562f764ff44f0b42599d807",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/mcp-evolution-cctp-receipt-20261001",
+          "sha": "2c7cb0032c45954d2dee71603f74c3c9a066092b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/mcp-evolution-panel-20260930",
+          "sha": "104d3f84cfba8e4711c41294a6a0abe06c8ae591",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "sol/mcp-evolution-panel-verified-receipt-20261001",
+          "sha": "6ba492198a20bed24d4c322e26dfd1d1c1ae05e4",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "sol/mcp-integrity-repairs-current-main-20261001",
+          "sha": "95cb7fa05910b84b00bc98158e9ecb46cbfd99a6",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/oracle-psi-current-main-20261001",
+          "sha": "7112f6e19899e2c37c4620d12fcc077315140481",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/parallax-decision-integrity-20261001",
+          "sha": "019bba2736b5e6c6241b33312d901d3913caa891",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "sol/parallax-dreamstate-v2-current-main-20261001",
+          "sha": "2470e4a3cf5425aabac4e0fee0621a816a2f5b10",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/parallax-dreamstate-v2-current-main-v2-20261001",
+          "sha": "d115ec94114c3fb3513e285e1509f4d226045f18",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/parallax-dreamstate-v2-live-main-20261001",
+          "sha": "2a82620862569ea03661825647751158f14e5308",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/psi-durable-replay-current-main-20261001",
+          "sha": "6bf206b159ca0bbfd5f8bb5426d124a1ce608566",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/psi-durable-replay-current-main-v3-20261001",
+          "sha": "422ba35974c059da3433bc0512b14838d0f10b93",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/psi-durable-replay-mainline-v2-20261001",
+          "sha": "42ee8b025243d7f209b46002a33368be4ad3901a",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/psi-integrity-repair-current-main-20261001",
+          "sha": "f381fa839d2b8e0aa946d2c967288a965669029c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "sol/sibyl-current-main-v2-20261001",
+          "sha": "adf3f3f7e1c30a5705a9d7f8c966c5c64c936702",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/sibyl-live-main-v3-20261001",
+          "sha": "6eb002585e8f310d91109aa0054df62711cb5c1d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "sol/subsystem-fabric-verified-receipt-20261001",
+          "sha": "50aa5dd20a2e412388eecdd9c424d34090758ebc",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/system-evolution-ledger-20260930",
+          "sha": "287fe616976a2e01a2bf1fed972115615d853888",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "sol/system-intelligence-panel-20260930",
+          "sha": "ffdbb14dd6a6312a9cceaf1aba7b5cd619c7253b",
+          "ancestor_of_candidate": false
+        }
+      ]
+    },
+    {
+      "repo": "reppiks490/Icarus-engine",
+      "candidate": "0f49b38ed983740a8db417f97319d550e1e6fcfb",
+      "non_shallow": true,
+      "branch_count": 200,
+      "ancestor_count": 105,
+      "branches": [
+        {
+          "branch": "Icarus-branch",
+          "sha": "704df4988821783239574435d7bd0847e7767122",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "agent/robustness-guardian-20260928T200632Z",
+          "sha": "c818cf57b78bfbb35243e0a53b1bfea7e80a9583",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "agent/robustness-guardian-20260928T220348Z",
+          "sha": "5b4a99ef98d7196a494c762b58948762467ba664",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "atlas/central-coordination-adoption-20261016",
+          "sha": "7daa7f1dbe6b980679c4e6de29daa29ec422752d",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "atlas/coordination-dashboard",
+          "sha": "4b4861138f88e1f87fba19427daa80c826ba0df7",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "atlas/coordination-mirror-durability",
+          "sha": "4dad5f3e701c564a85894548164130173faad281",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "atlas/credential-discoverability-fix",
+          "sha": "12ac86805fbee43c150952d656dc13672f28a595",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "atlas/credential-discoverability-fix-v2",
+          "sha": "dc0fc1bd9e088e3541d3ac111b61fb7044efafb2",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "atlas/data-health-accuracy",
+          "sha": "dfd873e122398a9787e0c4de5bc54c878a7fa21f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "atlas/data-health-accuracy-20261016",
+          "sha": "57a847f2ca98ee14b4d7080ec9c1aff3e520ab03",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "atlas/full-system-agent-context",
+          "sha": "2bf9ff15c2332c49d93c3ccf24e12a7135037e4e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "atlas/futures-universe-expansion-20261016",
+          "sha": "c93c8c3c0f6dfcad6f0fb85638d335e6cd106f08",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "atlas/github-native-credentials",
+          "sha": "f3ef53152d2b36b70f9a4f2c404f017d31c9f54d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "atlas/hourly-research-schedule-fallbacks-20261016",
+          "sha": "90eca3b547336c7c1c4929352e1d49767e74688a",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "atlas/hourly-research-schedule-fallbacks-rebased-20261016",
+          "sha": "42e1278545cf04a5fe9e4e794e59c9d32b59dd59",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "atlas/ingestion-surface-closure",
+          "sha": "9a9311d901313887059db3755a473ab97a6d8cea",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "atlas/multichat-coordination-adoption",
+          "sha": "c53e9f2eea7ba26920c1c99891c45314062ded19",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "atlas/native-provider-coverage",
+          "sha": "c673eb6341f7687453b2689b41b607ee9192989f",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "atlas/vendor-panel-vault-20261016",
+          "sha": "817bdc208399a79cd854f26fbfaa27a0ef7ae4c6",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "audit/scheduler-topology-v1",
+          "sha": "c41ff1ee4ddeeb013fdc7353286e738771b27078",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "automation/alpha-synthesis-20260928T202500Z",
+          "sha": "41c81f05bca85e0a5a7bcb53a34b9342a71d8aeb",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "automation/omega-native-v2",
+          "sha": "50a762e4944d731b9cf18a28d970f00dc5781b37",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/bls-calendar-cloud-fallback",
+          "sha": "8baf0189af59ba7910db0c0862ddd69e5cf893b5",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/bls-official-snapshot-fallback",
+          "sha": "fc1266deb0a135fb2cdec4f75bd7b6935c58def3",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/board-refresh-20261015",
+          "sha": "55f73bbcd7a3e645ba398a71ef93e4b224f5b903",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/brain-consumer-contract-20261002",
+          "sha": "d8a37050f65287fef8dd5ab6268a2b1645d4ddde",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/brain-federation-strict-events-20261002",
+          "sha": "5ff50f66403183b86b3e10a0a01caece8dc316db",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/canonical-acceptance-roundtrip-20261003",
+          "sha": "b68c2b248caa1057260c9dcbca174fbdabd4055c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/canonical-acceptance-roundtrip-mainline-20261003",
+          "sha": "f0d5f931b8b4e8466f0fe1b476c7db8ae5da22df",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/cftc-panel-integrity",
+          "sha": "d76715189de69017f9ec138250f654197244e9e0",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/cftc-positioning-fabric",
+          "sha": "8edde7af40a12a269b166f50ad0476ec2c0b63c5",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/cl-databento-corpus-20261004",
+          "sha": "ea645287091fdb3f3541a0715c0bc7871c3f9d6e",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/cross-repo-federation-20261002",
+          "sha": "dd0e167e053166df7506acc8d3abf2e649dfc8fb",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/cross-repo-federation-v2-20261002",
+          "sha": "f4985ff8e6f729f1ca99256c623c6e0012021930",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/databento-corpus-expansion-20261004",
+          "sha": "054adb1b6ed9460fb97b75f1c6a193d693a2111b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/databento-depth-corpus-20261004",
+          "sha": "dde051772a94859d6cf4c9ad932fe28d25094fd2",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/databento-depth-corpus-v2-20261004",
+          "sha": "618a3c4d6aefd7d4e7bb47abac5aa7844924dc2c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/databento-dual-lane-20261004",
+          "sha": "340bdc1b85d75ae70792852c54a7a82210d7eaab",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/databento-scheduled-cost-guard-20261004",
+          "sha": "8ad1d7eb08305011a43d32dc0c696bc0bd69ecdf",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/databento-third-lane-20261004",
+          "sha": "f8511e50df3e0ab5d045228e8fff4094aa9d3f48",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/deeper-warmup-history-20261001",
+          "sha": "5e1d548d871ddd4aab096b0331b4b10a68e4d2b9",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/dual-plane-durability-20260929",
+          "sha": "dbccca8215dd8935af442f8145e82427220ddc43",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/economic-events-ui-feed",
+          "sha": "fdf0af293583dbfdf6de7a7ac834f265e3cba996",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/external-data-fabric-20261004",
+          "sha": "fadae7526f2f19b0c66853195a666a95bdee76f8",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/external-data-fabric-20261006",
+          "sha": "3158e898abc1ef1662e61bb241e79337bc681a72",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/external-data-fabric-optimize-20261004",
+          "sha": "db00d7413f2021d4c05a15be1ce3e40fa354f059",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/federation-event-corpus-guard-20261002",
+          "sha": "23fc3d38f0608a8a899ef79785c9b1d21ec18425",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/fred-alfred-live-integrity",
+          "sha": "99ffeab3775893d607297055be387f3a517c2570",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/fred-alfred-pit-fabric",
+          "sha": "4b57f3c79be8ea16934a0ac00b1dc95902f9b5e7",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/github-native-ai-plane-design-20260930",
+          "sha": "cd6f46a86a5e9bbddac447d0f48a505e858924d8",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/github-native-ai-plane-implementation-20260930",
+          "sha": "a8ca16258984197c299eb4b00ec228b8e49b4b5c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/github-native-ai-push-fallback-20260930",
+          "sha": "bc3dae47c288d0c9ee7524e299acb00a7d2caafe",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/guest-sandbox-access-20261019",
+          "sha": "1f89b6ad93b8ba73196c82e48eb4f6bb03aac788",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/historical-artifact-blob-binding-20261002",
+          "sha": "9d03981e808abdd999bc9ce6ffb9f44755577ea1",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/historical-packet-projection-contract-20261002",
+          "sha": "03a2bd2f972a1e475c5f91b5a4d4bc563b129ad8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/icarus-assurance-v3-20261001",
+          "sha": "1de04fa6ec528700325627eef5440b9517fd1f8c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/icarus-completion-gate-20261001",
+          "sha": "54ff6562ebe0b771203b93f95c3fc14142a9ed26",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/icarus-foundation-v2-20261001",
+          "sha": "8ddb95b524528bd2c5b1ce554056994f6acf92d4",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/icarus-mcp-control-panel-20260930",
+          "sha": "9e5b25e8ff3455ba6e1fb3c35b4278dc147eaca3",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/ignore-databento-corpus-engine-20261004",
+          "sha": "f47203ad3f771866a96f883f52e4e1212386a9de",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/live-peer-packet-20261002",
+          "sha": "ebf1dad814727c6c91d691a76675eef91c591a15",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/local-gguf-output-file-fix-20260930",
+          "sha": "3c2fb5dd255346872ffc508dfd4629479534c995",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/nq-exact-private-history-20261001",
+          "sha": "aafcc7ff09fbb8629a9d031e29ae2d675389296b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/nq-rth-report-witness-20261001",
+          "sha": "74b8d1b500ffec288556e26a15d321992e5c9f49",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/nq-rth-trade-reference-20261001",
+          "sha": "b7d59328feafc54d5ac3c1bc10b7de2c43ba55ae",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/official-economic-event-clock",
+          "sha": "13caa31de8dc09e78fad93971ce0a1fe2a477c6e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/peer-contract-source-witnesses-20261002",
+          "sha": "a29020e192091c383f89a6f34ba06bbee339a587",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-export-self-trigger-20261002",
+          "sha": "db550f7e32767d5d45b3994c92ed8b368231d049",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-export-workflow-pytest-fix-20261002",
+          "sha": "02981f7b375a6dd8c99fdd4e42599faa033162da",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-lane-source-witnesses-20261002",
+          "sha": "da0fc04f2a3854b2bcba09b73c86621d12990a7c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-packet-freshness-contract-20261002",
+          "sha": "bd121eee2b45fcd18a5e143a17033393fdd1eff6",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-packet-input-revision-proof-20261002",
+          "sha": "1350491260da9a9eb5902c0c443cbedead14c087",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-packet-scheduled-refresh-20261002",
+          "sha": "b999985d687a049c704b331e3c654aa6adef5003",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-packet-source-proof-20261002",
+          "sha": "00a39aa6ef8d40149c26b8135dd45c2e712765fa",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/peer-refresh-independent-clocks-20261002",
+          "sha": "3a054c686c2e7d11acafa1b39d61fe977761fea4",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/r13-main-heartbeat-watchdog-20260930",
+          "sha": "f2a463083602dcf3878ea06fd2c57422421c1c66",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/real-price-shadow-twin-spec-20261014",
+          "sha": "811022f5aa84d6f1d5d3a809ff2dd64a0b77b041",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/rebase-cl-databento-corpus-20261004b",
+          "sha": "2233bcd8dfc01908a7c748f6adc85f53d591c08b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/recording-transcription-20261015",
+          "sha": "936b8ffacaf47ed173460deb4b76cc35faa8cdbc",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/replay-timeframe-readiness-20261001",
+          "sha": "4bd31008ed6903b9afad7021718d3ce47c9e3d4f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/restored-five-liveness-race-fix-20261001",
+          "sha": "60d12fe57c80488de993796249f8b5072bcdd7ce",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/review-status-20261015",
+          "sha": "0164438dc6fd4a96c00f5606f4a158d43ab1de16",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/runtime-parity-source-export-20261001",
+          "sha": "c5d5f012ff4a31a7f6617b26b817144c32c35afd",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/sec-edgar-cloud-fallback",
+          "sha": "46027d9f34a43c62d235c43656ff11c78c7c6cff",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/sec-edgar-declared-agent",
+          "sha": "faace090003040533de3f3cba7566688a4d9aa26",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/sec-edgar-event-fabric",
+          "sha": "4fd36c6e736bac5625e028297115b720d1dfb120",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/treasury-fiscal-fabric",
+          "sha": "910d5d723463fdd7c340b40dda4900986d623f49",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/treasury-panel-integrity",
+          "sha": "084b85012e83d48f4f040b762d95c335c3c64513",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/v2-canary-demotion-watchdog-hardening-20261001",
+          "sha": "375be3ca3f31f001d400bf805146df384c646602",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/v3-batch-persist-race-hardening-20261001",
+          "sha": "ca0cb591e457a6bfbfd4e774525762e5efb4c322",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/v3-final-connection-hardening-20260930",
+          "sha": "136a0262a0d6c8bb0a777458fb3d424d29ef1cbd",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/v3-liveness-current-main-20261002",
+          "sha": "690b479c8dc5c7d6a833cf43ece08735c221fd44",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/v3-liveness-reconciliation-semantics-20260930",
+          "sha": "0e404032c3411b91c96ea4a06f705b8a57b51b6d",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/v3-local-gguf-canary-20260930",
+          "sha": "601d77abb0ed1e681b0122c24ca5d28070bdaceb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/v3-openai-wif-fallback-20260930",
+          "sha": "000526c2cf3700ae79484854f31a54e8dacbddd7",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/v3-runtime-import-fix-20260930",
+          "sha": "6d7422b6ff298d62625c265464e699e433b8ef41",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/v3-wakeup-hardening-20260930",
+          "sha": "de64c9183a8a4b8aeb0ca2a2b04fc6d7a8900728",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/v3-zero-cost-auto-cutover-20260930",
+          "sha": "97ca416451441c5da7396d8341c0a2a841001f7c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/v3-zero-cost-auto-cutover-rebased-20260930",
+          "sha": "57d3213a33716ef82319cc22f11d2ba0fccffebb",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/v3-zero-cost-native-liveness-20260930",
+          "sha": "4b324324189e692e60b2703c084930d841bbc215",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "chatgpt/v3-zero-cost-native-liveness-clean-20260930",
+          "sha": "4a883e06a6e34035ae450772a659933bd5c8d209",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/watchdog-main-push-fallback-20260930",
+          "sha": "e9739d7924ced8914df1bcef258df1a784949d59",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/watchdog-schedule-hardening-20260930",
+          "sha": "5b3f8043856ee1128e1cfc1215daf965f6bc44b2",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chatgpt/watchdog-smoke-trigger-20260929",
+          "sha": "d14635185368ee8c14c88cbc7881384948a04b82",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "chore/agent-loop-bindings-v1",
+          "sha": "f25fe243981eeb78e9d95b43256338be8bf1ba04",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "claude/atlas-replies",
+          "sha": "42c68bf30390a6294e13020c92eb15f94ed92ffe",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/atlas-secret-inventory-audit",
+          "sha": "af69cc408a6d90d2d95ceeab322a5e4a77f353d8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "claude/cl-boos-external",
+          "sha": "fbbda57b712fcb29d820577793c52cc9b6aa7691",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-databento-budget-split",
+          "sha": "a000c64cd3d2a6fb2c5925749be9c60fdd67fb03",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-databento-fit-cap",
+          "sha": "4fdc85464b550db6eaf1a2090b35ab1079dacff7",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-databento-forward",
+          "sha": "d5c77ff9e3529768fb7386484101bb6114b903af",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-databento-history",
+          "sha": "bd7ea0b883ba37749f3d3592ae810c5322573a2a",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-depth-sweep-r7",
+          "sha": "3e158277e58451ae51b6a389c65ef127f5781d40",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-event-envelope-repair",
+          "sha": "6308d873d48f5d9b5091ca45cdb929c76ba38262",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-history-auth-stop",
+          "sha": "d435b8eeda1044de6ae35c1a9ca3e9e105957669",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-hypotheses",
+          "sha": "e7520d7c1c857c10431af92ed45ee9f2da7fa840",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-lab",
+          "sha": "d685f90de040eda46f37b680e0312bbf6f8f7eac",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-peer-refresh",
+          "sha": "be2cc687be73445e8f01d1cdef9caf7f3da7c949",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-pr2-reconcile",
+          "sha": "d2f4510a32492e1cdde3a66fd59b560e727aa912",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl-r2-edge",
+          "sha": "687bc8b6186d3f22768cf7153eeaa4340416cdb9",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/cl84-port",
+          "sha": "ad73dfff313ae2eb66d6f3bda9e74077e183e059",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "claude/coord-replies-20261011",
+          "sha": "bf6ec95286c46c66ef0488fa2f2dc04c7935861c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/j01-federation-spec",
+          "sha": "d69c95c1dbeee077cdc21c616cb739cace41777d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "claude/r01-c2-prereg",
+          "sha": "72f5bdb866d134bdef12adc06bbb22837a9f8a3c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "claude/r01-fr1-code",
+          "sha": "dfb18e96805faa905b687eaa4633d349a9f82eb2",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "claude/research-restore",
+          "sha": "f04ae692a54eff04f9098961bcd8e578cd25d9ca",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "claude/verification-conversation-ebkh15",
+          "sha": "97677beff56d310749b156a282d338d6e2de719a",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/animation-reference-coordination-20261013",
+          "sha": "9cc734a0d1c4c2acefea9f77697d4a08cc4cced7",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/animation-reference-implementation-claim-20261013",
+          "sha": "68933decef3dbc35c5322cfe64f8ff2d926b22c4",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/assurance-finite-series-20261009",
+          "sha": "cf1d7b8abc3ca8b66c06b69a744990619f63d55b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/atlas-research-allocation-20261011",
+          "sha": "ba05a182b4aa947d81b26b6c4063e33adec9f147",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/coordination-atlas-resume-20261011",
+          "sha": "30c05e89f0beeacc1b00688eb810c45958e9682c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/coordination-reviews-20261011",
+          "sha": "afa5fd577125ff44b98f07ef3ce1bc2957bb4f5a",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/corpus-native-workflow-20261018",
+          "sha": "ced31fcfcdf75e4ff2f4181315f462aa5d59a76b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/databento-corpus-account-guard-20261018",
+          "sha": "4df2dc1c8064385768311516e1e829d4ff36fa67",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/engine-watchdog-heartbeat-closure-20261003",
+          "sha": "ef07cf2ea01bfc38db80fdd3568fdf0ddd90495b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/fr1-c2-takeover-coordination-20261025",
+          "sha": "3f25ba1d57f9da27b0f903e0da0d314b8146d089",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/fr1-outer-single-writer-20261025",
+          "sha": "a03195a7ec269b6c1e9fdb9519ad597383276978",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/fr1-review-repair-20261017",
+          "sha": "15401aac4d51d70d031309f0b6520c00bd163bcc",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/hybrid-complete-backlog-health-20261008",
+          "sha": "7b6021f4a2bff45a8387c5dfaf92b3bb113ccc9c",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/hybrid-oldest-evidence-recovery-20261008",
+          "sha": "261acf4d5c6d82baa38238b78d26a2e291a71bb9",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/icarus-cl84-current-main-20261025",
+          "sha": "c11131ac26cb09521f8b0d26bca556fe203f36ea",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/icarus-engine-cloud-readiness-20261026",
+          "sha": "6b9d3099124fb79e5992fe6a5036bc949c4d9b34",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/icarus-open-adapter-audit-20261025",
+          "sha": "2f1e963f2809542086c329d96d3b179ecb377a78",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/icarus-provider-intake-current-main-20261025",
+          "sha": "555894961766f1019bd2ff1b869089f760bb09e2",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/intrinio-repository-scope-20261016",
+          "sha": "2aa33e01e3aba280b4585fb02637e6a5d66bdcd4",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/j01-contract-v2-declaration-20261014",
+          "sha": "1eeb5d36a1eee3eccd2963d068a1c4f0d50680f7",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/j01-document-contract-metadata-20261014",
+          "sha": "fe80be16dfcc9784fd5a034e4d164b712712bdc0",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/j01-spec-review-fixes-20261014",
+          "sha": "2e9bb88edaf958a4e4ed1217f5fd5b8387eeec57",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/peer-background-git-20261003",
+          "sha": "a39d250ff4f657a9526da6038c388c5f0f368ce2",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/peer-export-concurrency-20261003",
+          "sha": "946ba800f439cb71bbcf7aa78365f13cac8fd71b",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/peer-export-producer-completions-20261008",
+          "sha": "74182cc4bb8413ef72a39382691b70056271b995",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/peer-repair-envelope-20261003",
+          "sha": "b811972c65fb6e3fe221801023a329a13003bd30",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/provider-data-hardening-20261016",
+          "sha": "12dcdd3e428238630ac3bd433078c7c3765aaa7b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/provider-private-workflow-20261019",
+          "sha": "60b7af12904e97d43d6d7ce172ce2564d5e75bb4",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/provider-recovery-test-dependencies-20261008",
+          "sha": "8fbddc0a874fc47c6b0e2023c7c06ce2c23f5df6",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/provider-restore-private-output-20261008",
+          "sha": "f5c36a7891dcf864382d7f07a52b7c33d30ef923",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/recording-c-halfsecond-20261015",
+          "sha": "a562bd96eae555454c34b5241e2a96be0c139e84",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/sentinel-dedicated-freshness-20261018",
+          "sha": "91e3e105b2b6b1b0ed39e43a3c61c316a56a4abe",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/sentinel-row-refresh-fingerprint",
+          "sha": "37c6817ccb903abc15e0fa554ce60b654235ee64",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/shared-corpus-access-20261016-b81d",
+          "sha": "616e0622b5b595668d5a7ef34dfe40d71e2ae777",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/source-data-qualification-20261003",
+          "sha": "cdef87bbe66735f5424f042f54ecddc7c8ccebf5",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/status-sync",
+          "sha": "a4aa423ce3f60838b6cf1630cc6070b70017f52e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/transcribe-all-four-oct15-20261015",
+          "sha": "aa410bd97fd2efdabe633f434411765573426511",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "codex/transcripts-followup-main-20261015",
+          "sha": "7b606594a8e66400a4a2d6dbed36e186c54097f7",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "codex/u01-animation-delivery-20261014",
+          "sha": "8599989bad4e1096efe9972af82374fc382e742d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "copilots-updates",
+          "sha": "bad51c357db5cfd4efc0bb786b71fae8554fdbf6",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "design/aion-daedalus-prime-20260928",
+          "sha": "a5e7f263d8c75115a2eb368a52a9c3ecb5b43cd9",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "evidence/historical-hybrid-prompt-snapshots-20261004",
+          "sha": "4990827ef9bd0cac2bad8a23f72d70d6fd9f240e",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "feat/historical-context-contract-current-main",
+          "sha": "980745e5bb834ff209216d22ce4ff86e60efa30c",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/historical-context-federation-contract-20261002",
+          "sha": "c8523c0f47998b20f6fa88cb89c147791be4705f",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/interrepo-historical-evidence-20261002",
+          "sha": "0af9cb86ec6055df4e3e3b4aa0d728849c87ad94",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/interrepo-historical-evidence-current-main",
+          "sha": "da87a34546dc56bd574cb80e675f3fe3578978c8",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feat/interrepo-intelligence-bridge-20261002",
+          "sha": "c1144393ddfecf52d39268a820d1a3a964a3a874",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feature/account-wide-hybrid-loop-fabric-v1",
+          "sha": "68fbafe57711eba9a49267664d067cc5420c7250",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "feature/agent-fabric-apex-v1",
+          "sha": "d2dc0465575fc7dbf8fcfe71b02c9d641d299069",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feature/agent-persistence-v3",
+          "sha": "a29d649ae277c34d97f4281db13bd1f5c7bf9262",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feature/aion-daedalus-prime-v2",
+          "sha": "a2512270fc87dcc6cc5d7939a9a0f7fcf54cb3d7",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feature/apex-council-20260929T034349Z-correlation-quorum",
+          "sha": "82e8abc0bcaddae5d437476af324e80283c69f06",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "feature/max-pine-evolution-v1",
+          "sha": "4d93ffff352a58336a9afba44830d9123c09dcf5",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "feature/max-pine-evolution-v2",
+          "sha": "4d93ffff352a58336a9afba44830d9123c09dcf5",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "fix/agent-evidence-binding-v1",
+          "sha": "20982710dfa4c5a18de327b91ca8706f1e4ae8f7",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "fix/agent-evidence-binding-v2",
+          "sha": "b7d8ffabd67011d50022e6b1b4ff081dda99ed0b",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "fix/hybrid-durable-due-slot-recovery-v12",
+          "sha": "943e8d68b7500b5051f0948e64e808b149e32783",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "fix/restored-five-alpha-scheduler-binding-20261001",
+          "sha": "4ea3abd796cc2caa36a94ede7ac4b8bd348f8ca5",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "fix/restored-five-csv-mirror-verification-20261001",
+          "sha": "97d448789a5d647a82911d106b0b6e4357d9f417",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "fix/restored-five-fallback-evidence-semantic-20261001",
+          "sha": "25b7c7beaf0dc8c9ff14aee05e1e0a0ef95cf8c5",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "fix/restored-five-watchdog-fallback-20261001",
+          "sha": "a6cc393429be841b475b3c9d6b1a44c6633e18e6",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "fix/robustness-hard-gates-v2",
+          "sha": "78059c0c39465cdbdb0b4a058a6a733d6b0fee07",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "fix/robustness-hard-gates-v3",
+          "sha": "d766a4703cc3403f9009b5fcb0e227d9e3aee229",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "icarus2/restart-data-guards-20261021",
+          "sha": "a02c781c4aba1c1139dd8806691239f72ece89a0",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "integration/current-main-provider-guards-20261023",
+          "sha": "03101ab1f5e34c0a75f1c77d98c5eafcb9f71f00",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "main",
+          "sha": "882913386aa45cc0ab2f3685f99332106c52a043",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "max-pine-architecture",
+          "sha": "396fb4c12064f8c14a634553c30e325b5e26188d",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "max-pine-implementation",
+          "sha": "add4d62211aadfa09924db589842c9bb94943c20",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "prime/current-main-corpus-consumer-20261025",
+          "sha": "acea1d47749bd066a0b6a6e6418b3d32174cdebc",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "prime/current-main-provider-guards-20261025",
+          "sha": "1f2eb428f2dffe5026451826f71e0e349c58c558",
+          "ancestor_of_candidate": false
+        },
+        {
+          "branch": "repair/hybrid-loop-dispatch-trigger",
+          "sha": "698633f8942fa25d2d435e0f5cd45b70100fd0ee",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "repair/hybrid-single-dispatch-owner",
+          "sha": "a79e3857fd7f9365339c37e1c978e43201b2120a",
+          "ancestor_of_candidate": true
+        },
+        {
+          "branch": "repair/integrate-hybrid-into-native-plane",
+          "sha": "37c2b84579df5ac3cc8178d90673f99bede3a10a",
+          "ancestor_of_candidate": true
+        }
+      ]
+    }
+  ]
+}

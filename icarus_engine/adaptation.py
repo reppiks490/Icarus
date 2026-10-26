@@ -57,13 +57,16 @@ class AdaptationScheduler:
             self._transaction.active = False
             con.close()
 
-    def _read(self):
+    def _read(self, *, with_capture=False):
         if self.path.exists():
-            state = json.loads(self.path.read_text(encoding="utf-8"))
+            with self.path.open(encoding="utf-8") as stream:
+                state = json.load(stream)
+                captured = os.fstat(stream.fileno()).st_mtime
             if isinstance(state, dict) and isinstance(state.get("config"), dict):
                 state["config"] = {**DEFAULT_CONFIG, **state["config"]}
-            return state
-        return {"config": dict(DEFAULT_CONFIG), "assets": {}, "cursor": 0, "active": None}
+            return (state, captured) if with_capture else state
+        state = {"config": dict(DEFAULT_CONFIG), "assets": {}, "cursor": 0, "active": None}
+        return (state, None) if with_capture else state
 
     def _write(self, state):
         temp = self.path.with_name(self.path.name + "." + self._owner + ".tmp")
@@ -112,9 +115,26 @@ class AdaptationScheduler:
             self._write(state)
         return self.status()
 
-    def status(self):
-        with self._mutex, self._locked():
-            state = self._read()
+    def status(self, *, nonblocking=False):
+        if nonblocking:
+            # _write publishes with os.replace. A display reader can inspect
+            # the last complete durable state while a tick owns its writer
+            # transaction; it must not reserve another SQLite writer.
+            acquired = self._mutex.acquire(blocking=False)
+            try:
+                state, captured = self._read(with_capture=True)
+            finally:
+                if acquired:
+                    self._mutex.release()
+            state = {**state, "view_cached": True, "view_stale": not acquired,
+                     "view_captured_at": captured,
+                     "view_available": captured is not None,
+                     "view_basis": ("last atomically published adaptation state" if captured is not None
+                                    else "default configuration; no persisted scheduler state"),
+                     "view_freshness": "persisted state only; in-progress cross-process work is not observed"}
+        else:
+            with self._mutex, self._locked():
+                state = self._read()
         active = state.get("active")
         if active and active.get("owner") != self._owner:
             uncertain = active.get("stage") in ("study_intent", "analysis_intent")

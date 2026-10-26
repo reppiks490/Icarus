@@ -15,7 +15,7 @@
   }
 
   async function control(action,target){
-    const token=localStorage.getItem('icarus-engine-token')||'icarus';
+    const token=IcarusClient.getToken();
     const body={action,reason:'commissioning-panel'};
     if(target)body.target=target;
     const r=await IcarusClient.request('/admin/engine-control',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body)});
@@ -61,7 +61,7 @@
     const requestAsset=selected;
     loading=true; pendingLoad=false;
     try{
-      const token=localStorage.getItem('icarus-engine-token')||'icarus';
+      const token=IcarusClient.getToken();
       const q=requestAsset?'?asset='+encodeURIComponent(requestAsset):'';
       const r=await IcarusClient.request('/api/commissioning'+q,{cache:'no-store',headers:{'Authorization':'Bearer '+token}});
       const d=await r.json();

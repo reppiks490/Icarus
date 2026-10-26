@@ -30,6 +30,10 @@
   }
   if (!['cc1','cc2','cc3','cc4'].includes(id)) return;
   const $ = selector => document.querySelector(selector);
+  const workspaceToken = () => $('#owner-token')?.value.trim() || '';
+  Object.defineProperty(window, 'IcarusWorkspaceAuth', {
+    value: Object.freeze({getToken:workspaceToken}), writable:false, configurable:false,
+  });
   const text = (selector, value) => { $(selector).textContent = String(value ?? 'Unavailable'); };
   const number = value => typeof value === 'number' && Number.isFinite(value) ? value : null;
   const money = value => number(value) == null ? 'Unavailable' : value.toLocaleString(undefined,{style:'currency',currency:'USD'});
@@ -51,7 +55,7 @@
   document.querySelector(`nav a[href="/dashboards/${id}"]`).setAttribute('aria-current','page');
   async function get(path) { return IcarusPaperPnl.fetchJson(path); }
   async function admin(suffix, body) {
-    const token=$('#owner-token').value;
+    const token=workspaceToken();
     if(!token)throw new Error('Owner access token is required to change this paper workspace.');
     const reply=await fetch(`/admin/command-centers/${id}${suffix}`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body)});
     const data=await reply.json(); if(!reply.ok)throw new Error(data.detail||data.error||`HTTP ${reply.status}`); return data;
@@ -268,7 +272,7 @@
   async function readEquityHistory() {
     if(equityBusy||!equityCatalog)return;
     const instrument=equityCatalog.instruments.find(row=>row.instrument_id===$('#a200-instrument').value);
-    const token=$('#owner-token').value;
+    const token=workspaceToken();
     if(!token){text('#a200-history-note','Enter the access token above before requesting selected research history.');return;}
     if(!instrument)return;
     clearEquityHistory();const current=equityRead;

@@ -27,7 +27,7 @@ fi
 
 echo
 echo "Starting  icarus-plant start --assets NQ --offline"
-echo "Dashboard on this machine: http://127.0.0.1:8791/  token: icarus"
+echo "Dashboard on this machine: http://127.0.0.1:8791/  authentication uses ICARUS_TOKEN from the process or private plant .env"
 echo "Ctrl+C to stop."
 echo
 exec "$PY" -m icarus_plant start --assets NQ --offline

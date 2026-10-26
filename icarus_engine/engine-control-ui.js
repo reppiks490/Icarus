@@ -152,7 +152,7 @@ async function loadEngineControl(){
   engineControlLoading=true;
   engineControlPendingLoad=false;
   try{
-    const token=localStorage.getItem('icarus-engine-token')||'';
+    const token=IcarusClient.getToken();
     const r=await IcarusClient.request('/api/engine-control',{cache:'no-store',headers:{'Authorization':'Bearer '+token}});
     const data=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(data.detail||data.error||('HTTP '+r.status));

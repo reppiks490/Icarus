@@ -13,6 +13,53 @@ DASHBOARD = ROOT / "icarus_engine" / "dashboard.html"
 CSS = ROOT / "icarus_engine" / "experience-ui.css"
 
 
+def test_topology_rebuild_retains_scroll_highlight_inside_scroll_throttle():
+    try:
+        from playwright import sync_api as playwright
+    except ImportError:
+        if os.environ.get("ICARUS_REQUIRE_WORKSPACE_BROWSER") == "1":
+            raise
+        pytest.skip("optional Playwright unavailable")
+    with playwright.sync_playwright() as runtime:
+        try:
+            browser = runtime.chromium.launch(
+                headless=True, executable_path=os.environ.get("ICARUS_BROWSER_BINARY") or shutil.which("chromium"),
+            )
+        except playwright.Error as error:
+            if os.environ.get("ICARUS_REQUIRE_WORKSPACE_BROWSER") == "1":
+                raise
+            pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
+        try:
+            page = browser.new_page(viewport={"width": 1440, "height": 800}, reduced_motion="no-preference")
+            page.set_content('<div id="tabs"></div><main id="view">' + ''.join(
+                f'<section class="asset" style="height:180px"><h2>Instrument {i}</h2></section>'
+                for i in range(12)
+            ) + '</main>')
+            page.add_style_tag(path=str(CSS))
+            page.evaluate("""() => Object.assign(document.documentElement.dataset, {
+                world:'divine', experience:'cinematic', motion:'live', visualResolved:'rich'
+            })""")
+            page.add_script_tag(path=str(IMMERSION))
+            page.wait_for_function("()=>document.querySelector('.world-topology circle')")
+            page.evaluate("""async()=>{
+                const fixed=performance.now()+10000;
+                Object.defineProperty(performance,'now',{configurable:true,value:()=>fixed});
+                window.dispatchEvent(new Event('scroll'));
+                await new Promise(requestAnimationFrame);
+                await new Promise(requestAnimationFrame);
+            }""")
+            page.wait_for_function("()=>document.querySelector('.world-topology .scroll-active')")
+            page.evaluate("""()=>{
+                window.previousTopologyNode=document.querySelector('.world-topology circle');
+                IcarusWorldImmersion.refresh();
+            }""")
+            page.wait_for_function("()=>document.querySelector('.world-topology circle')!==previousTopologyNode")
+            assert page.locator('.world-topology .scroll-active').count() > 0
+            assert page.locator('#view .world-scroll-focus').count() > 0
+        finally:
+            browser.close()
+
+
 def test_immersion_runtime_has_no_market_or_control_io():
     source = IMMERSION.read_text(encoding="utf-8")
     forbidden = (
@@ -225,7 +272,9 @@ def test_scroll_focus_bounds_layout_reads_without_disabling_scroll_feedback():
               await new Promise(resolve=>setTimeout(resolve,120));
               const grownMax=document.documentElement.scrollHeight-window.innerHeight;
               scrollTo({top:grownMax*.5,behavior:'instant'});
-              await new Promise(resolve=>setTimeout(resolve,250));
+              const phaseDeadline=performance.now()+2000;
+              while(document.documentElement.dataset.scrollPhase!=='depth'&&performance.now()<phaseDeadline)
+                await new Promise(resolve=>requestAnimationFrame(resolve));
               return {reads:geometryReadsBeforeGrowth,focusFeedback,scrollHeightReads:window.__documentScrollHeightReads,
                 readsBeforeGrowth,bottomPhase,growthPhase:document.documentElement.dataset.scrollPhase,
                 maxScroll:grownMax};

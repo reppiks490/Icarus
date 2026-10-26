@@ -1,0 +1,128 @@
+{
+  "schema_version": "icarus.market-context.v1",
+  "snapshot_retrieved_on": "2026-10-26",
+  "snapshot_description": "CSV snapshots from DataHub's EIA-backed packages. Only the daily oil and Henry Hub series are exposed as research context.",
+  "catalog": {
+    "sources": [
+      {
+        "id": "sp500-constituents",
+        "name": "S&P 500 constituents",
+        "source_url": "https://datahub.io/core/s-and-p-500-companies",
+        "status": "UNAVAILABLE",
+        "active_series": 0,
+        "reason": "The catalog URL returned 404 during review; no constituent file was available."
+      },
+      {
+        "id": "sp500-financials",
+        "name": "S&P 500 company financial snapshots",
+        "source_url": "https://datahub.io/core/s-and-p-500-companies-financials",
+        "status": "QUARANTINED",
+        "active_series": 0,
+        "reason": "Yahoo-derived values lack per-field as-of times; constituent membership is stale and upstream reuse rights need review."
+      },
+      {
+        "id": "sp500-monthly",
+        "name": "S&P 500, Shiller and FRED monthly history",
+        "source_url": "https://datahub.io/core/s-and-p-500",
+        "status": "QUARANTINED",
+        "active_series": 0,
+        "reason": "Upstream rights are unclear; from July 2023 only the index level is extended and other fields are zero sentinels. PE10 is also zero for the first 120 months."
+      },
+      {
+        "id": "vix-daily",
+        "name": "CBOE VIX history",
+        "source_url": "https://datahub.io/core/finance-vix",
+        "status": "QUARANTINED",
+        "active_series": 0,
+        "reason": "Upstream reuse rights are unclear; OHLC repeats close through June 11, 2004 and the reviewed snapshot ends September 22, 2026."
+      },
+      {
+        "id": "nyse-other-listings",
+        "name": "NYSE and other listings",
+        "source_url": "https://datahub.io/core/nyse-other-listings",
+        "status": "QUARANTINED",
+        "active_series": 0,
+        "reason": "The Nasdaq Trader source carries terms that require review; listings are identity metadata, not price or tradability evidence."
+      },
+      {
+        "id": "nasdaq-listings",
+        "name": "NASDAQ listings",
+        "source_url": "https://datahub.io/core/nasdaq-listings",
+        "status": "QUARANTINED",
+        "active_series": 0,
+        "reason": "The Nasdaq source carries terms that require review; test issues and footer rows also need filtering before any candidate-catalog use."
+      },
+      {
+        "id": "oil-prices",
+        "name": "EIA Brent and WTI spot prices",
+        "source_url": "https://datahub.io/core/oil-prices",
+        "status": "ACTIVE_RESEARCH_CONTEXT",
+        "active_series": 2,
+        "reason": "Daily EIA spot observations have explicit dates and public-domain reuse guidance; they remain separate from futures contracts."
+      },
+      {
+        "id": "natural-gas",
+        "name": "EIA Henry Hub natural gas spot price",
+        "source_url": "https://datahub.io/core/natural-gas",
+        "status": "ACTIVE_RESEARCH_CONTEXT",
+        "active_series": 1,
+        "reason": "Daily EIA spot observations have explicit dates and public-domain reuse guidance; one historical price cell is missing and is preserved as missing."
+      },
+      {
+        "id": "gold-prices",
+        "name": "Gold price history",
+        "source_url": "https://datahub.io/core/gold-prices",
+        "status": "QUARANTINED",
+        "active_series": 0,
+        "reason": "Upstream rights and mixed source provenance need review; the pre-1960 monthly rows repeat annual averages and are not monthly observations."
+      }
+    ]
+  },
+  "datasets": [
+    {
+      "id": "eia-brent-daily",
+      "name": "Europe Brent spot price",
+      "filename": "eia-brent-daily.csv",
+      "sha256": "d08bf18c7c38c27f096e9272233c8f876e58da0607ebf2978fe1801022167479",
+      "unit": "USD/barrel",
+      "frequency": "daily business-day observations",
+      "source": "U.S. Energy Information Administration",
+      "source_url": "https://www.eia.gov/dnav/pet/pet_pri_spt_s1_d.htm",
+      "snapshot_url": "https://datahub.io/core/oil-prices/r/brent-daily.csv",
+      "snapshot_retrieved_on": "2026-10-26",
+      "datahub_updated_on": "2026-10-22",
+      "upstream_license": "EIA states that U.S. government data is public domain; source and date attribution are retained.",
+      "catalog_status": "ACTIVE_RESEARCH_CONTEXT"
+    },
+    {
+      "id": "eia-wti-daily",
+      "name": "Cushing, Oklahoma WTI spot price",
+      "filename": "eia-wti-daily.csv",
+      "sha256": "59fa39e32b6d950c2aae364506b4899e2e5ecea6b2c2f95d4e69796f926639cd",
+      "unit": "USD/barrel",
+      "frequency": "daily business-day observations",
+      "source": "U.S. Energy Information Administration",
+      "source_url": "https://www.eia.gov/dnav/pet/pet_pri_spt_s1_d.htm",
+      "snapshot_url": "https://datahub.io/core/oil-prices/r/wti-daily.csv",
+      "snapshot_retrieved_on": "2026-10-26",
+      "datahub_updated_on": "2026-10-22",
+      "upstream_license": "EIA states that U.S. government data is public domain; source and date attribution are retained.",
+      "catalog_status": "ACTIVE_RESEARCH_CONTEXT"
+    },
+    {
+      "id": "eia-natural-gas-daily",
+      "name": "Henry Hub natural gas spot price",
+      "filename": "eia-natural-gas-daily.csv",
+      "sha256": "c00405c1d478dae3b9c9f7014d64723d14bb888ddfd0019e06361b2b4ab8df2d",
+      "unit": "USD/MMBtu",
+      "frequency": "daily business-day observations",
+      "source": "U.S. Energy Information Administration",
+      "source_url": "https://www.eia.gov/dnav/ng/hist/rngwhhdD.htm",
+      "snapshot_url": "https://datahub.io/core/natural-gas/r/daily.csv",
+      "snapshot_retrieved_on": "2026-10-26",
+      "datahub_updated_on": "2026-10-22",
+      "upstream_license": "EIA states that U.S. government data is public domain; source and date attribution are retained.",
+      "catalog_status": "ACTIVE_RESEARCH_CONTEXT"
+    }
+  ]
+}

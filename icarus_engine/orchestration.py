@@ -45,6 +45,7 @@ class WorkflowJournal:
         self.path = Path(root) / "workflow.sqlite3"
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.budget = budget or Budget()
+        self._last_status = None
         with self._connect() as con:
             con.executescript("""
                 CREATE TABLE IF NOT EXISTS workflows (
@@ -66,6 +67,20 @@ class WorkflowJournal:
         con.execute("PRAGMA journal_mode=WAL")
         con.execute("BEGIN IMMEDIATE")
         try:
+            yield con
+            con.commit()
+        except BaseException:
+            con.rollback()
+            raise
+        finally:
+            con.close()
+
+    @contextmanager
+    def _read_connect(self, timeout=0.025):
+        con = sqlite3.connect(str(self.path), timeout=timeout, isolation_level=None)
+        con.row_factory = sqlite3.Row
+        try:
+            con.execute("BEGIN")
             yield con
             con.commit()
         except BaseException:
@@ -126,14 +141,27 @@ class WorkflowJournal:
             result["stages"].append(item)
         return result
 
-    def status(self):
+    def status(self, *, nonblocking=False):
         day = datetime.now(timezone.utc).date().isoformat()
-        with self._connect() as con:
-            used = con.execute("SELECT count(*),coalesce(sum(reserved_tokens),0) FROM workflow_stages WHERE day=?", (day,)).fetchone()
-            rows = con.execute("SELECT id,status,created,updated,error,cancelled FROM workflows ORDER BY created DESC LIMIT 32").fetchall()
-        return {"budget": asdict(self.budget), "utc_day": day, "reserved_calls": used[0],
-                "reserved_tokens": used[1], "jobs": [dict(row) for row in rows],
-                "budget_unit": "conservative input bytes plus maximum output tokens; not a dollar estimate"}
+        try:
+            connect = self._read_connect if nonblocking else self._connect
+            with connect() as con:
+                used = con.execute("SELECT count(*),coalesce(sum(reserved_tokens),0) FROM workflow_stages WHERE day=?", (day,)).fetchone()
+                rows = con.execute("SELECT id,status,created,updated,error,cancelled FROM workflows ORDER BY created DESC LIMIT 32").fetchall()
+        except sqlite3.OperationalError as exc:
+            if not nonblocking or not any(word in str(exc).lower() for word in ("locked", "busy")):
+                raise
+            if self._last_status is not None:
+                return {**self._last_status, "view_stale": True,
+                        "view_freshness": "Analysis journal busy; showing last committed status"}
+            return {"budget": asdict(self.budget), "utc_day": day, "reserved_calls": None,
+                    "reserved_tokens": None, "jobs": [], "status": "BUSY", "view_stale": True,
+                    "budget_unit": "conservative input bytes plus maximum output tokens; not a dollar estimate"}
+        result = {"budget": asdict(self.budget), "utc_day": day, "reserved_calls": used[0],
+                  "reserved_tokens": used[1], "jobs": [dict(row) for row in rows],
+                  "budget_unit": "conservative input bytes plus maximum output tokens; not a dollar estimate"}
+        self._last_status = result
+        return result
 
     def run_stage(self, job, stage, context, provider, call):
         if provider not in advisory._PROVIDERS:
@@ -221,8 +249,18 @@ class AnalysisService:
             row["error"] = "No worker in this process; it may be interrupted or owned by another process. No automatic retry."
         return row
 
-    def status(self):
-        status = self.journal.status()
+    def status(self, *, nonblocking=False):
+        status = self.journal.status(nonblocking=nonblocking)
+        if nonblocking:
+            status = {**status, "jobs": [dict(item) for item in status["jobs"]]}
+            with self._lock:
+                threads = dict(self._threads)
+            for item in status["jobs"]:
+                worker = threads.get(item["id"])
+                if item["status"] in ("running", "queued") and (worker is None or not worker.is_alive()):
+                    item["status"] = "unowned"
+                    item["error"] = "No worker in this process; it may be interrupted or owned by another process. No automatic retry."
+            return status
         rows = []
         for item in status["jobs"]:
             current = self.job(item["id"])

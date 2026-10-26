@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import secrets
 import sqlite3
 import threading
@@ -13,6 +14,35 @@ from pathlib import Path
 
 class AccessUnavailable(RuntimeError):
     """Authority could not be read; this is not an invalid credential."""
+
+
+_OWNER_TOKEN_ENV_NAMES = ("ICARUS_TOKEN", "ICARUS_ADMIN_TOKEN", "ADMIN_TOKEN")
+_PLACEHOLDER_OWNER_TOKENS = frozenset({
+    "icarus", "replace-me", "replace-me-too", "change-me", "change-me-too", "changeme", "your-token",
+})
+
+
+def _usable_owner_token(value: object) -> str:
+    token = str(value or "").strip()
+    return "" if token.casefold() in _PLACEHOLDER_OWNER_TOKENS else token
+
+
+def configured_owner_token(environ=None) -> str:
+    """Return an explicitly configured non-placeholder owner token, with legacy env aliases."""
+    environment = os.environ if environ is None else environ
+    for name in _OWNER_TOKEN_ENV_NAMES:
+        token = _usable_owner_token(environment.get(name, ""))
+        if token:
+            return token
+    return ""
+
+
+def resolve_owner_token(token=None) -> str:
+    """Resolve an explicit token or configured environment token and fail closed."""
+    resolved = configured_owner_token() if token is None else _usable_owner_token(token)
+    if not resolved:
+        raise ValueError("Set a unique non-placeholder ICARUS_TOKEN before starting Icarus")
+    return resolved
 
 
 class AccessRegistry:
@@ -55,14 +85,15 @@ class AccessRegistry:
 
     @contextmanager
     def _db(self, *, readonly=False):
-        # Authentication must never queue behind activity writers. Read-only
-        # connections retain the committed SQLite authority on every request;
-        # even an exclusive lock fails closed promptly rather than timing out
-        # the entire dashboard or trusting a cached, revoked credential.
+        # A reserved activity writer does not block read-only authentication,
+        # but rollback-journal commits briefly need an exclusive lock. Allow
+        # those commits a bounded read retry budget, including when a writer
+        # is descheduled under load. Persistent locks still fail closed promptly;
+        # every successful read uses committed authority, never cached tokens.
         target = self.path.absolute().as_uri() + "?mode=ro" if readonly else self.path
         db = None
         try:
-            db = sqlite3.connect(target, timeout=.05, uri=readonly)
+            db = sqlite3.connect(target, timeout=.2 if readonly else .05, uri=readonly)
             db.row_factory = sqlite3.Row
             yield db
             db.commit()

@@ -21,7 +21,7 @@ def test_commissioning_server_dashboard_and_control_wiring():
     assert "commissioning.close()" in server
 
     assert '<script src="/commissioning-ui.js"></script>' in dashboard
-    assert "view==='commissioning'" in dashboard
+    assert "['commissioning','Commissioning']" in dashboard
     assert "view === 'commissioning'" in dashboard
     assert "wireCommissioning()" in dashboard
 

@@ -374,7 +374,7 @@ let state = {training: {run_count: 1, needs_requalification_count: 1}};
 const context = {window: {}, document: {querySelector: () => panel},
   localStorage: {getItem: () => 'synthetic-test-token'},
   fetch: async path => ({ok: true, json: async () => path === '/api/learning' ? state : {}})};
-context.IcarusClient={request:context.fetch};
+context.IcarusClient={getToken:()=> 'synthetic-test-token',request:context.fetch};
 vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), context);
 (async () => {
   await context.window.loadLearning();

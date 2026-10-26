@@ -7,6 +7,7 @@ const output=process.env.ICARUS_BROWSER_OUTPUT||'/tmp/icarus-cinema-previews';mk
 const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader'],...(process.env.ICARUS_BROWSER_BINARY?{executablePath:process.env.ICARUS_BROWSER_BINARY}:{})});
 const context=await browser.newContext({viewport:{width:1440,height:1000}});
 const page=await context.newPage(),errors=[],writes=[];
+await require('./browser_preview_auth.cjs').authenticatePreview(context);
 async function stableCanvasFrame(canvas){
  let previous=await canvas.evaluate(c=>c.toDataURL()),stable=0;
  for(let attempt=0;attempt<20;attempt++){

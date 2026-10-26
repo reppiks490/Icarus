@@ -1,0 +1,53 @@
+{
+  "schema": "icarus.external-parser-fixtures.v1",
+  "source_repo": "databento/dbn",
+  "source_commit": "82f76c1de6f5c8a1f4b3711fac423f88a3f91d67",
+  "retrieved_at_utc": "2026-10-26T21:55:46.976598+00:00",
+  "upstream_repository_license": "Apache-2.0",
+  "authority": "SDK_TEST_FIXTURES_ONLY",
+  "execution_authorized": false,
+  "complete_orderbook": false,
+  "live_data": false,
+  "files": [
+    {
+      "file": "LICENSE",
+      "source_path": "LICENSE",
+      "bytes": 9694,
+      "sha256": "d3174ad63e721d4c9dccb8ad4320848992d314369bc46319720b5802c9153fe9",
+      "git_blob": "91e18a62b67551a4d427e2eaee0d33dcab94e141",
+      "url": "https://github.com/databento/dbn/blob/82f76c1de6f5c8a1f4b3711fac423f88a3f91d67/LICENSE"
+    },
+    {
+      "file": "test_data.mbo.dbn",
+      "source_path": "tests/data/test_data.mbo.dbn",
+      "bytes": 465,
+      "sha256": "31403d17bf9801842acf59bca668e6b8f19ff4b5d70dce05f0fe70d995fc70d6",
+      "git_blob": "3c9e8f57d158e850c1a730fd43b83105335b14e6",
+      "url": "https://github.com/databento/dbn/blob/82f76c1de6f5c8a1f4b3711fac423f88a3f91d67/tests/data/test_data.mbo.dbn"
+    },
+    {
+      "file": "test_data.mbo.v3.dbn",
+      "source_path": "tests/data/test_data.mbo.v3.dbn",
+      "bytes": 472,
+      "sha256": "d2a526d952f845ab8f03ceac42ec828a2541e0b5e2e8a64df2e8bbaa1e898184",
+      "git_blob": "de0f31d1073e5259a29b12da7a1a9e001263dbb4",
+      "url": "https://github.com/databento/dbn/blob/82f76c1de6f5c8a1f4b3711fac423f88a3f91d67/tests/data/test_data.mbo.v3.dbn"
+    },
+    {
+      "file": "test_data.mbp-10.dbn",
+      "source_path": "tests/data/test_data.mbp-10.dbn",
+      "bytes": 1089,
+      "sha256": "c59a27672b5727fc63513a2807ddc115f8b78401c4f834c07ba7859b75758dcb",
+      "git_blob": "68cb12276e2b8f7fbf22bc1e240a8c8eae4a3816",
+      "url": "https://github.com/databento/dbn/blob/82f76c1de6f5c8a1f4b3711fac423f88a3f91d67/tests/data/test_data.mbp-10.dbn"
+    },
+    {
+      "file": "test_data.ohlcv-1m.dbn",
+      "source_path": "tests/data/test_data.ohlcv-1m.dbn",
+      "bytes": 465,
+      "sha256": "7242d417fd872627d03255e1ceb38fdf230b1580a994e59bdfcccbd7922e2353",
+      "git_blob": "1351d5b385be723dc0a5cdfcbf39d4246b676f77",
+      "url": "https://github.com/databento/dbn/blob/82f76c1de6f5c8a1f4b3711fac423f88a3f91d67/tests/data/test_data.ohlcv-1m.dbn"
+    }
+  ]
+}

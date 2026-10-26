@@ -211,8 +211,8 @@
     const el = document.querySelector('#brainPanel');
     if (!el) return;
     try {
-      const tok = localStorage.getItem('icarus-engine-token') || 'icarus';
-      const r = await IcarusClient.request('/api/brain', {cache:'no-store', headers:{'Authorization':'Bearer '+tok}});
+      const tok = IcarusClient.getToken();
+      const r = await IcarusClient.request('/api/brain', {cache:'no-store', timeoutMs:45000, headers:{'Authorization':'Bearer '+tok}});
       const b = await r.json();
       if (!r.ok) throw new Error(b.detail || ('HTTP '+r.status));
       renderBrain(b);
@@ -226,7 +226,11 @@
     if (timer) clearInterval(timer);
     timer = setInterval(() => {
       if ((location.hash || '#overview').slice(1) === 'brain') loadBrain();
-    }, 5000);
+    // Brain is a full evidence projection and can include a large immutable
+    // event graph. Avoid regenerating it every few seconds while it is still
+    // being read; the client coalesces overlapping requests, and this cadence
+    // keeps the view current without turning rendering into a hot path.
+    }, 45000);
   }
 
   window.brainHtml = brainHtml;

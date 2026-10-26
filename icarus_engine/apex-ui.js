@@ -162,7 +162,7 @@
     const el = document.querySelector('#apexPanel');
     if (!el) return;
     try {
-      const token = localStorage.getItem('icarus-engine-token') || 'icarus';
+      const token = IcarusClient.getToken();
       const input = document.querySelector('#apexAsset');
       if (input && input.value.trim()) selectedAsset = input.value.trim().toUpperCase();
       const qs = selectedAsset ? '?asset=' + encodeURIComponent(selectedAsset) : '';

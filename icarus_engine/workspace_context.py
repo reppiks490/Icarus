@@ -5,7 +5,8 @@ WORKSPACES = frozenset(("cc1", "cc2", "cc3", "cc4"))
 SHARED_READS = frozenset((
     "/api/input-meta", "/api/presets", "/api/commands", "/api/command-centers",
     "/api/market-universe", "/api/system/audit", "/api/agent", "/api/integrity",
-    "/api/research/sources", "/api/research/records", "/api/research/source-watch",
+    "/api/research/sources", "/api/research/records", "/api/research/source-watch", "/api/research/market-context",
+    "/api/overview/command-center", "/api/provider-corpus",
     "/api/corpus-consumption", "/api/corpus-expansion", "/api/discovery-registry",
     "/api/account-connections", "/api/workspace-runtime",
     "/api/prop-firm-catalog", "/api/evolution", "/api/evidence-lab", "/api/access", "/healthz",
