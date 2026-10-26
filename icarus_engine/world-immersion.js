@@ -471,7 +471,8 @@
     if(scrollFocusPanel&&!elements.includes(scrollFocusPanel)){
       scrollFocusPanel.classList.remove('world-scroll-focus');scrollFocusPanel=null;scrollFocusId=null;
     } else scrollFocusId=scrollFocusPanel?.dataset.worldTopologyNode??null;
-    updateScrollFocus();
+    // Reconcile replacement SVG nodes in this task, even during a scroll throttle.
+    updateScrollFocus(true);
     // Topology is decorative and can be built/rebuilt after pointer interaction.
     // Preserve an existing target, or reconcile against the physical cursor when
     // the pointer arrived before graph node IDs existed.
@@ -501,9 +502,9 @@
     topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('active'));
     updateSectionRadar(id);
   }
-  function updateScrollFocus(){
+  function updateScrollFocus(force=false){
     const now=performance.now();
-    if(now-lastScrollFocusAt<200)return;
+    if(force!==true&&now-lastScrollFocusAt<200)return;
     lastScrollFocusAt=now;
     const view=document.getElementById('view');
     const panels=[...topologyPanelGeometry.values()].filter(point=>point.el.isConnected).slice(0,18);

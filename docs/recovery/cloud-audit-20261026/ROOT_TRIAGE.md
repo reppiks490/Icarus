@@ -12,6 +12,10 @@ The numbered reports describe inspected source snapshots. A report is not eviden
 - Hosted-preview correction: isolated CJS browser contexts now receive the preview token only on the exact preview origin. Shadow, depth, cinema and worlds all passed in Chromium with empty error/write arrays; no forced click or authentication bypass was added.
 - Agent10 loopback credential transport: confirmed on fresh Divine main and repaired in [PR61](https://github.com/reppiks490/divine-providence/pull/61). Twelve new regressions pass; full suite185 passed/3 platform skips. The separate Observatory Windows-assessment finding remains open.
 
+- Final hosted topology race: a graph rebuild could replace SVG nodes inside the ordinary200ms scroll throttle and leave highlights missing. Forced reconciliation now applies only after rebuilds; ordinary scrolling remains throttled. A deterministic browser regression failed before repair and passes afterward. The12 focused world checks and all4 real Chromium contracts pass against the correction. Python runtime code is unchanged from the4510/3 full run.
+- Strict historical handshake correctly rejected a2482-second-old peer packet (limit1800). Existing native Engine exporter run40414528326 refreshed the real source packet; consumer run40412921045 then passed unchanged. Historical market timestamps and research-only authority were preserved; no expiry gate or producer policy was relaxed.
+- Retained PR source heads are now available locally:481 application and194 Engine refs, including PR1 in both. See retained-pr-history.json. This recovers retained deleted branches for review; it does not establish a complete content audit.
+
 ## Reclassified or still open
 
 - Agent04 peer export trigger finding: the existing replay/contract tests explicitly require scheduled-only research producer completions. The proposed trigger expansion was reverted. Do not widen this policy solely to make every completion refresh a packet; any intended policy change needs its own reviewed contract and loop/authority tests.

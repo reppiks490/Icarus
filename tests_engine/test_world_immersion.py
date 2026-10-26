@@ -13,6 +13,43 @@ DASHBOARD = ROOT / "icarus_engine" / "dashboard.html"
 CSS = ROOT / "icarus_engine" / "experience-ui.css"
 
 
+def test_topology_rebuild_retains_scroll_highlight_inside_scroll_throttle():
+    playwright = pytest.importorskip("playwright.sync_api")
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch(
+            headless=True, executable_path=os.environ.get("ICARUS_BROWSER_BINARY") or shutil.which("chromium"),
+        )
+        try:
+            page = browser.new_page(viewport={"width": 1440, "height": 800}, reduced_motion="no-preference")
+            page.set_content('<div id="tabs"></div><main id="view">' + ''.join(
+                f'<section class="asset" style="height:180px"><h2>Instrument {i}</h2></section>'
+                for i in range(12)
+            ) + '</main>')
+            page.add_style_tag(path=str(CSS))
+            page.evaluate("""() => Object.assign(document.documentElement.dataset, {
+                world:'divine', experience:'cinematic', motion:'live', visualResolved:'rich'
+            })""")
+            page.add_script_tag(path=str(IMMERSION))
+            page.wait_for_function("()=>document.querySelector('.world-topology circle')")
+            page.evaluate("""async()=>{
+                const fixed=performance.now()+10000;
+                Object.defineProperty(performance,'now',{configurable:true,value:()=>fixed});
+                window.dispatchEvent(new Event('scroll'));
+                await new Promise(requestAnimationFrame);
+                await new Promise(requestAnimationFrame);
+            }""")
+            page.wait_for_function("()=>document.querySelector('.world-topology .scroll-active')")
+            page.evaluate("""()=>{
+                window.previousTopologyNode=document.querySelector('.world-topology circle');
+                IcarusWorldImmersion.refresh();
+            }""")
+            page.wait_for_function("()=>document.querySelector('.world-topology circle')!==previousTopologyNode")
+            assert page.locator('.world-topology .scroll-active').count() > 0
+            assert page.locator('#view .world-scroll-focus').count() > 0
+        finally:
+            browser.close()
+
+
 def test_immersion_runtime_has_no_market_or_control_io():
     source = IMMERSION.read_text(encoding="utf-8")
     forbidden = (

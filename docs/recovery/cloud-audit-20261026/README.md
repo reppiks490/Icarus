@@ -10,6 +10,8 @@ This package is an audit record and continuation queue, not a full-system readin
 - Export manifest excludes itself, uses relative paths, and verified after relocation. CSS-only changes now trigger the visual gate.
 - All 518 current Icarus remote branches were fetched. Fetching establishes object availability, not completed code review. Historical deleted branches require retained objects or external records.
 
+- Later frontend-only topology correction:12 focused world tests and all4 Chromium contracts passed. The full4510/3 run covers the unchanged Python runtime; final-head hosted checks remain separate. A stale federation packet was refreshed by the native exporter and the unchanged strict consumer passed.
+
 ## Agent coverage
 
 50 agents were requested; 35 were launched in batches of six. 31 produced reports, four hit the account usage limit, and 15 have not been launched. These facts are recorded in `tasks.json`. Reports are source-review findings; candidate defects require reproduction before being treated as confirmed. No report establishes that every GitHub repository has been searched or that every corpus is downloaded.
