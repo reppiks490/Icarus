@@ -84,6 +84,12 @@ def common_page(workspace_http, scope="cc1", token="api-owner", *, viewport=None
             browser.close()
 
 
+def set_view_and_wait(page, panel, selector):
+    """Wait for the requested view's DOM after browser view transitions."""
+    page.evaluate("async panel=>{await refresh();setView(panel)}", panel)
+    page.locator(selector).wait_for(state="attached", timeout=10000)
+
+
 @pytest.mark.parametrize("scope,price", [("main", 900), ("cc1", 100), ("cc2", 200), ("cc3", 300), ("cc4", 400)])
 def test_common_core_uses_selected_status_chart_and_trade_source(workspace_http, scope, price):
     with common_page(workspace_http, scope) as (page, _):
@@ -135,7 +141,7 @@ def test_common_input_draft_conflict_preserves_edits_and_original_revision(works
 def test_common_unrelated_config_completion_does_not_discard_or_rebase_draft(workspace_http):
     _,_,request=workspace_http
     with common_page(workspace_http) as (page,base):
-        page.evaluate("setView('inputs')")
+        page.evaluate("async()=>{await refresh();setView('inputs')}")
         page.wait_for_function("()=>inState.asset==='NQ'")
         page.evaluate('inState.edits.tp1_pts=77')
         assert request('/admin/command-centers/cc1/assets/NQ/config',body={'inputs':{'tp1_pts':12},'expected_revision':0})[0]==200
@@ -254,7 +260,7 @@ def test_common_chart_and_trade_failure_remove_cached_observations(workspace_htt
 
 
 def test_common_late_failed_refresh_cannot_erase_new_selected_observation(workspace_http):
-    with common_page(workspace_http) as (page, base):
+    with common_page(workspace_http, pause_periodic=True) as (page, base):
         page.evaluate("async()=>{await refresh()}")
         held=[]
         page.route(base+'/api/command-centers/cc1/status',lambda route:held.append(route))
@@ -315,6 +321,7 @@ def test_common_backtest_job_and_csv_retain_accepted_source_revision(workspace_h
 def test_common_linked_panels_never_request_parent_runtime_readers(workspace_http):
     from icarus_engine.workspace_context import SHARED_READS
     with common_page(workspace_http) as (page,_):
+        page.evaluate("async()=>{await refresh()}")
         reads=[]
         page.on('request',lambda req:reads.append(urlparse(req.url).path) if req.method=='GET' else None)
         for panel in ['brain','research','sources','market-data','evolution','parallax','possibility',
@@ -335,7 +342,7 @@ def test_common_commissioning_direct_post_uses_real_selected_endpoint(workspace_
         held=[]
         page.route(re.compile(r'.*/(?:api/commissioning|api/command-centers/cc1/panels/commissioning).*'),lambda route:held.append(route))
         page.on('dialog',lambda dialog:dialog.dismiss())
-        page.evaluate("setView('commissioning')")
+        page.evaluate("async()=>{await refresh();setView('commissioning')}")
         with page.expect_response(lambda res:res.request.method=='POST') as submitted:
             page.evaluate("()=>document.querySelector('#scTick').onclick()")
         assert urlparse(submitted.value.url).path=='/admin/command-centers/cc1/panels/engine-control'
@@ -351,6 +358,7 @@ def test_common_commissioning_direct_post_uses_real_selected_endpoint(workspace_
 def test_common_selected_panel_controls_and_shared_evidence_are_labeled(workspace_http):
     with common_page(workspace_http) as (page,base):
         held=[]
+        page.evaluate("async()=>{await refresh()}")
         page.route(base+'/api/command-centers/cc1/panels/engine-control',lambda route:held.append(route))
         page.evaluate("setView('engine-control')")
         assert 'CC1' in page.locator('[data-workspace-scope-note]').inner_text()
@@ -371,7 +379,7 @@ def test_completed_subsystem_panels_render_real_selected_responses(workspace_htt
     # Request deadlines stay real; concurrent-busy behavior has separate checks.
     with common_page(workspace_http,pause_periodic=True) as (page,_):
         with page.expect_response(lambda res:urlparse(res.url).path=='/api/command-centers/cc1/panels/'+panel) as response:
-            page.evaluate('panel=>setView(panel)',panel)
+            page.evaluate('async panel=>{await refresh();setView(panel)}',panel)
         assert response.value.status==200
         assert response.value.json()['workspace_id']=='cc1'
         page.locator(selector).wait_for(state='visible')
@@ -383,7 +391,7 @@ def test_completed_panel_controls_stay_read_only_for_viewer(workspace_http):
     _,_,request=workspace_http
     viewer=request('/admin/access/add',body={'label':'panel-viewer'})[1]['user']['token']
     with common_page(workspace_http,token=viewer) as (page,_):
-        page.evaluate("setView('commissioning')")
+        page.evaluate("async()=>{await refresh();setView('commissioning')}")
         page.wait_for_function("()=>document.querySelector('#scTick')?.disabled===true")
         assert page.locator('#scRefresh').is_enabled()
     assert request('/admin/command-centers/cc1/panels/engine-control',token=viewer,
@@ -401,7 +409,7 @@ def test_common_persisted_performance_component_uses_selected_journal(workspace_
                             ('REMOVED',scope+'-persisted',1,1,100.0,now-60,101.0,now-1,profit,1))
         journal.con.commit()
     with common_page(workspace_http,scope) as (page,_):
-        page.evaluate("setView('performance')")
+        set_view_and_wait(page, 'performance', '#workspace-performance')
         assert page.locator('#workspace-performance').count()==1
         page.wait_for_function("()=>document.querySelector('#performance-count').textContent==='1'")
         assert str(profit)+'.00' in page.locator('#performance-realized').inner_text()
@@ -417,7 +425,7 @@ def test_common_evidence_preserves_corpus_catalog_and_connections(workspace_http
             'cache_name':'fixture_corpus','dataset_count':1,'retained_rows':100,'historical':True,
             'workspaces':{key:{'input_tag':key+'-only'} for key in ['cc1','cc2','cc3','cc4']}}]})
     with common_page(workspace_http,scope) as (page,_):
-        page.evaluate("setView('evidence')")
+        set_view_and_wait(page, 'evidence', '#workspace-evidence')
         assert page.locator('#workspace-evidence').count()==1
         page.wait_for_function("()=>document.querySelector('#corpus-sources').textContent.includes('fixture_corpus')")
         page.wait_for_function("()=>document.querySelector('#a200-instrument').options.length===200")
@@ -442,7 +450,7 @@ def test_common_equity_history_is_explicit_and_retains_receipt_authority(workspa
                 'receipt':{'instrument_id':instrument,'provider':'yahoo','receipt_id':'b'*64,'checksum_sha256':'a'*64},
                 'bars':[{'ts':start+i*3600,'o':100,'h':102,'l':99,'c':100+i,'v':10} for i in range(2)]}))
         page.route('**/api/market-history/**',history)
-        page.evaluate("setView('evidence')")
+        page.evaluate("async()=>{await refresh();setView('evidence')}")
         page.wait_for_function("()=>document.querySelector('#a200-instrument').options.length===200")
         assert reads==[]
         page.locator('#evidenceReadHistory').click()
@@ -461,7 +469,7 @@ def test_common_equity_history_requires_owner_both_in_ui_and_server(workspace_ht
     _,_,request=workspace_http
     viewer=request('/admin/access/add',body={'label':'shared-evidence-viewer'})[1]['user']['token']
     with common_page(workspace_http,token=viewer) as (page,_):
-        page.evaluate("setView('evidence')")
+        page.evaluate("async()=>{await refresh();setView('evidence')}")
         page.wait_for_function("()=>document.querySelector('#a200-instrument').options.length===200")
         assert page.locator('#evidenceReadHistory').is_disabled()
     assert request('/api/market-history/not-a-catalog-id?start_ts=1&end_ts=60&interval_seconds=60',token=viewer)[0]==403
@@ -483,6 +491,50 @@ def test_actual_five_dashboard_routes_share_main_source_and_bind_server_identity
     assert code==200 and 'src="/workspace-dashboard.js"' in connections
 
 
+@pytest.mark.parametrize("viewport", [{"width": 390, "height": 844}, {"width": 1440, "height": 1000}])
+def test_financial_data_panel_connects_eia_context_and_quarantine_catalog(workspace_http, viewport):
+    with common_page(workspace_http, "cc1", viewport=viewport) as (page, _):
+        set_view_and_wait(page, "sources", "#marketContextTable")
+        page.wait_for_function("()=>document.querySelector('#marketContextStatus')?.textContent.includes('3 active series')")
+        table = page.locator("#marketContextTable").inner_text()
+        page.locator("#marketContextCatalog").locator("xpath=../summary").click()
+        catalog = page.locator("#marketContextCatalog").inner_text()
+        normalized_table = table.lower()
+        assert "brent" in normalized_table and "115.22" in table
+        assert "wti" in normalized_table and "107.89" in table
+        assert "henry hub" in normalized_table and "3.1" in table
+        assert "2026-10-20" in table
+        assert "research context only" in page.locator("#marketContextNote").inner_text().lower()
+        normalized_catalog = catalog.lower()
+        assert "pre-1960 monthly rows" in normalized_catalog and "repeat annual averages" in normalized_catalog
+        assert "unavailable" in catalog.lower()
+        assert page.evaluate("document.documentElement.scrollWidth<=innerWidth")
+        assert not page.icarus_errors, page.icarus_errors
+
+
+def test_market_context_load_error_has_a_working_retry(workspace_http):
+    with common_page(workspace_http) as (page, base):
+        state = {"failing": True, "attempts": 0}
+
+        def fail_until_retry(route):
+            state["attempts"] += 1
+            if state["failing"]:
+                route.fulfill(status=503, content_type="application/json", body='{"detail":"snapshot temporarily unavailable"}')
+            else:
+                route.continue_()
+
+        page.route("**/api/research/market-context*", fail_until_retry)
+        set_view_and_wait(page, "sources", "#marketContextTable")
+        page.wait_for_timeout(1000)
+        assert state["attempts"] > 0, page.locator("#marketContextStatus").inner_text()
+        assert "temporarily unavailable" in page.locator("#marketContextStatus").inner_text()
+        state["failing"] = False
+        page.locator("#marketContextRetry").click()
+        page.wait_for_function("()=>document.querySelector('#marketContextStatus')?.textContent.includes('3 active series')")
+        assert state["attempts"] >= 2
+        assert "115.22" in page.locator("#marketContextTable").inner_text()
+
+
 @pytest.mark.parametrize('scope,price',[('main',900),('cc1',100),('cc2',200),('cc3',300),('cc4',400)])
 @pytest.mark.parametrize('viewport',[{'width':390,'height':844},{'width':1440,'height':1000}])
 def test_actual_common_dashboard_desktop_mobile_components_and_source(workspace_http,scope,price,viewport,tmp_path):
@@ -495,7 +547,7 @@ def test_actual_common_dashboard_desktop_mobile_components_and_source(workspace_
         output=Path(os.environ.get('ICARUS_BROWSER_OUTPUT',str(tmp_path)));output.mkdir(parents=True,exist_ok=True)
         page.screenshot(path=str(output/('common-'+scope+'-'+str(viewport['width'])+'.png')),full_page=True)
         for panel,selector in [('performance','#workspace-performance'),('evidence','#workspace-evidence'),('inputs','#inGroups'),('market-data','#mdHealth')]:
-            page.evaluate('panel=>setView(panel)',panel)
+            set_view_and_wait(page, panel, selector)
             assert page.locator(selector).count()==1,(scope,panel)
         page.wait_for_function("()=>document.querySelector('#mdHealth').textContent.includes('UNOBSERVED')")
         if scope!='main':assert page.locator('#mdSnapshot').is_disabled()
@@ -525,7 +577,7 @@ def test_actual_query_state_and_full_navigation_cannot_reselect_workspace(worksp
 def test_automatic_poll_does_not_discard_inflight_manual_status(workspace_http, scope):
     # The former guard tracked only automatic polls, so a tick could obsolete
     # a still-valid explicit refresh even while its response was in flight.
-    with common_page(workspace_http, scope) as (page, base):
+    with common_page(workspace_http, scope, pause_periodic=True) as (page, base):
         page.evaluate("async()=>{await refresh()}")
         path = "/status/public" if scope == "main" else "/api/command-centers/cc1/status"
         held = []
@@ -583,7 +635,7 @@ def test_shared_access_keeps_typing_across_runtime_polls_and_reloads_explicitly(
 ])
 def test_native_read_only_panels_render_without_arming_actions(workspace_http, panel, selector):
     with common_page(workspace_http) as (page, _):
-        page.evaluate("panel=>setView(panel)", panel)
+        page.evaluate("async panel=>{await refresh();setView(panel)}", panel)
         page.wait_for_selector(selector)
         page.wait_for_function("selector=>{const el=document.querySelector(selector);return el&& !/loading[.\u2026]|Loading|waiting for.*state/i.test(el.innerText)}", arg=selector)
         assert 'read-only' in page.locator('[data-workspace-scope-note]').inner_text()
@@ -815,7 +867,9 @@ def test_main_automatic_status_survives_a_chart_deadline_and_chart_recovers(work
           void refreshCharts();
         }""")
         try:
-            page.wait_for_function("()=>document.querySelector('#ch-NQ')?.textContent.includes('Request deadline exceeded')",timeout=14000)
+            # The HTTP/client deadline is 10s; allow slower hosted Chromium enough
+            # scheduling margin before declaring that the deadline failed to surface.
+            page.wait_for_function("()=>document.querySelector('#ch-NQ')?.textContent.includes('Request deadline exceeded')",timeout=25000)
             state=page.evaluate('()=>({lost:flowLostStatus,count:last?.assets.length,age:Date.now()-lastStatusAt})')
             assert not state['lost'] and state.get('count')==35 and state['age']<4000, state
             assert len(statuses)>=3, statuses
@@ -840,3 +894,83 @@ from tests_engine.test_subsystem_connections_browser import (  # noqa: E402,F401
 from tests_engine.test_subsystem_connections_api import (  # noqa: E402,F401
     test_native_subsystems_page_renders_actual_cached_native_receipts,
 )
+
+
+def test_dashboard_navigation_is_keyboard_operable_and_labeled(workspace_http):
+    with common_page(workspace_http, "main") as (page, _):
+        nav = page.get_by_role("navigation", name="Icarus dashboard views")
+        assert nav.count() == 1
+        sources = page.locator('#tabs button[data-v="sources"]')
+        assert sources.count() == 1
+        sources.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("() => document.querySelector('#tabs [data-v=\"sources\"]')?.getAttribute('aria-current')==='page'")
+        assert page.locator("#marketContextTable").count() == 1
+        assert not page.icarus_errors
+
+
+@pytest.mark.parametrize("invalid_route", ["not-a-panel", "asset:UNKNOWN"])
+def test_invalid_dashboard_hash_recovers_to_overview(workspace_http, invalid_route):
+    with common_page(workspace_http, "main") as (page, _):
+        page.evaluate("route => { location.hash = route; }", invalid_route)
+        for _ in range(40):
+            if page.evaluate("location.hash") == "#overview":
+                break
+            page.wait_for_timeout(50)
+        assert page.evaluate("location.hash") == "#overview"
+        page.locator('#tabs [data-v="overview"][aria-current="page"]').wait_for()
+        assert page.locator("#view > *").count() > 0
+        assert not page.icarus_errors
+
+
+def test_token_dialog_controls_are_above_sticky_dashboard_navigation(workspace_http):
+    with common_page(workspace_http, "main") as (page, _):
+        page.locator("#btnControls").click()
+        close = page.locator("#closeCtl")
+        assert close.is_visible()
+        topmost = close.evaluate("""el => {
+          const r=el.getBoundingClientRect();
+          return document.elementFromPoint(r.left+r.width/2,r.top+r.height/2) === el;
+        }""")
+        assert topmost, "the sticky header is covering a Token dialog control"
+        close.click()
+        assert "open" not in (page.locator("#ctl").get_attribute("class") or "").split()
+
+
+def test_clean_profile_validates_token_before_persisting(workspace_http):
+    playwright = pytest.importorskip("playwright.sync_api")
+    server, _, _ = workspace_http
+    base = f"http://127.0.0.1:{server.server_port}"
+    with playwright.sync_playwright() as runtime:
+        try:
+            browser = runtime.chromium.launch(
+                headless=True,
+                executable_path=os.environ.get("ICARUS_BROWSER_BINARY") or shutil.which("chromium"),
+            )
+        except playwright.Error as error:
+            if os.environ.get("ICARUS_REQUIRE_WORKSPACE_BROWSER") == "1":
+                raise
+            pytest.skip("optional Chromium unavailable: " + str(error).splitlines()[0])
+        try:
+            page = browser.new_page(reduced_motion="reduce")
+            page_errors = []
+            page.on("pageerror", lambda error: page_errors.append(str(error)))
+            page.add_init_script("localStorage.removeItem('icarus-engine-token');sessionStorage.setItem('icarus-intro-seen','1')")
+            page.route("**/*", lambda route: route.continue_() if route.request.url.startswith(base + "/") else route.abort())
+            page.goto(base + "/", wait_until="load")
+            page.wait_for_function("() => document.querySelector('#ctl')?.classList.contains('open')")
+            assert page.evaluate("localStorage.getItem('icarus-engine-token')") is None
+
+            page.locator("#token").fill("invalid-test-token")
+            page.locator("#saveTok").click()
+            page.wait_for_function("() => document.querySelector('#ctlOut')?.textContent.includes('rejected')")
+            assert page.evaluate("localStorage.getItem('icarus-engine-token')") is None
+
+            page.locator("#token").fill("api-owner")
+            page.locator("#saveTok").click()
+            page.wait_for_function("() => localStorage.getItem('icarus-engine-token') === 'api-owner'")
+            page.wait_for_function("() => !document.querySelector('#ctl')?.classList.contains('open')")
+            page.wait_for_function("() => last?.assets?.some(asset => asset.symbol === 'NQ')")
+            assert not page_errors
+        finally:
+            browser.close()

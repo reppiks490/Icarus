@@ -1,0 +1,345 @@
+{
+  "goal": "Icarus source, data, adapter, automation and PC takeover readiness",
+  "concurrency_limit": 7,
+  "policy": "6 agents plus root; bounded briefs, separate reports; no live broker arming",
+  "tasks": [
+    {
+      "id": 1,
+      "scope": "history",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-01-history.md"
+    },
+    {
+      "id": 2,
+      "scope": "data",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-02-data.md"
+    },
+    {
+      "id": 3,
+      "scope": "adapters",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-03-adapters.md"
+    },
+    {
+      "id": 4,
+      "scope": "automation",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-04-automation.md"
+    },
+    {
+      "id": 5,
+      "scope": "browser",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-05-browser.md"
+    },
+    {
+      "id": 6,
+      "scope": "pc",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-06-pc.md"
+    },
+    {
+      "id": 7,
+      "scope": "csv-lab",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-07-csv-lab.md"
+    },
+    {
+      "id": 8,
+      "scope": "research-os",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-08-research-os.md"
+    },
+    {
+      "id": 9,
+      "scope": "causal",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-09-causal.md"
+    },
+    {
+      "id": 10,
+      "scope": "divine",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-10-divine.md"
+    },
+    {
+      "id": 11,
+      "scope": "ideas",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-11-ideas.md"
+    },
+    {
+      "id": 12,
+      "scope": "transport",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-12-transport.md"
+    },
+    {
+      "id": 13,
+      "scope": "mbp",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-13-mbp.md"
+    },
+    {
+      "id": 14,
+      "scope": "orderbook",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-14-orderbook.md"
+    },
+    {
+      "id": 15,
+      "scope": "torq",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-15-torq.md"
+    },
+    {
+      "id": 16,
+      "scope": "realtime",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-16-realtime.md"
+    },
+    {
+      "id": 17,
+      "scope": "sp500",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-17-sp500.md"
+    },
+    {
+      "id": 18,
+      "scope": "stacks",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-18-stacks.md"
+    },
+    {
+      "id": 19,
+      "scope": "dbn",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-19-dbn.md"
+    },
+    {
+      "id": 20,
+      "scope": "cme",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-20-cme.md"
+    },
+    {
+      "id": 21,
+      "scope": "sec",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-21-sec.md"
+    },
+    {
+      "id": 22,
+      "scope": "yahoo",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-22-yahoo.md"
+    },
+    {
+      "id": 23,
+      "scope": "symbols",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-23-symbols.md"
+    },
+    {
+      "id": 24,
+      "scope": "news",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-24-news.md"
+    },
+    {
+      "id": 25,
+      "scope": "indexes",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-25-indexes.md"
+    },
+    {
+      "id": 26,
+      "scope": "quant",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-26-quant.md"
+    },
+    {
+      "id": 27,
+      "scope": "optimizer",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-27-optimizer.md"
+    },
+    {
+      "id": 28,
+      "scope": "observability",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-28-observability.md"
+    },
+    {
+      "id": 29,
+      "scope": "rea",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-29-rea.md"
+    },
+    {
+      "id": 30,
+      "scope": "skills",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-30-skills.md"
+    },
+    {
+      "id": 31,
+      "scope": "context",
+      "state": "report-complete",
+      "agent_launched": true,
+      "report": "agent-31-context.md"
+    },
+    {
+      "id": 32,
+      "scope": "source-provenance",
+      "state": "agent-usage-limit",
+      "agent_launched": true
+    },
+    {
+      "id": 33,
+      "scope": "workspace-isolation",
+      "state": "agent-usage-limit",
+      "agent_launched": true
+    },
+    {
+      "id": 34,
+      "scope": "runtime-lifecycle",
+      "state": "agent-usage-limit",
+      "agent_launched": true
+    },
+    {
+      "id": 35,
+      "scope": "auth-boundaries",
+      "state": "agent-usage-limit",
+      "agent_launched": true
+    },
+    {
+      "id": 36,
+      "scope": "panel-connectivity",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 37,
+      "scope": "ingestion-normalization",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 38,
+      "scope": "historical-replay",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 39,
+      "scope": "scheduling",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 40,
+      "scope": "artifact-contracts",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 41,
+      "scope": "workflow-checksums",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 42,
+      "scope": "windows-launch",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 43,
+      "scope": "restart-migration",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 44,
+      "scope": "phone-access",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 45,
+      "scope": "branch-recovery",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 46,
+      "scope": "licensing",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 47,
+      "scope": "dependency-security",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 48,
+      "scope": "data-consumer-evidence",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 49,
+      "scope": "pc-transfer",
+      "state": "queued",
+      "agent_launched": false
+    },
+    {
+      "id": 50,
+      "scope": "final-evidence",
+      "state": "queued",
+      "agent_launched": false
+    }
+  ],
+  "agent_counts": {
+    "requested": 50,
+    "launched": 35,
+    "reports_complete": 31,
+    "usage_limit_failures": 4,
+    "not_launched": 15
+  }
+}

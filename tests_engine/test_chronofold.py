@@ -6,14 +6,17 @@ import time
 import pytest
 
 from icarus_engine.chronofold import ChronofoldEngine, _entropy, _ridge_fit
+from icarus_engine.possibility import PossibilityEngine
 
 
 class Port:
     def __init__(self):
         self.i = 0
+        self.status_calls = 0
         self.runners = {"NQ": SimpleNamespace(), "ES": SimpleNamespace()}
 
     def status(self):
+        self.status_calls += 1
         i = self.i
         self.i += 1
         return {
@@ -27,13 +30,29 @@ class Port:
 
 
 class Possibility:
-    def snapshot(self, symbol):
+    def snapshot(self, symbol, *, status=None):
         return {
             "information_wave": {"score": 35.0},
             "latent_pressure_engine": {"latent_pressure": 0.25},
             "phase_transition": {"event_horizon": 0.2},
             "data_health": {"microstructure": {"depth": True}},
         }
+
+
+def test_supplied_market_frame_flows_through_chronofold_and_possibility():
+    port = Port()
+    frame = port.status()
+    engine = ChronofoldEngine(
+        port,
+        possibility=PossibilityEngine(port, scenarios=96),
+        scenarios=32,
+        horizon=4,
+    )
+
+    result = engine.snapshot("NQ", status=frame)
+
+    assert result["asset"] == "NQ"
+    assert port.status_calls == 1
 
 
 def test_empty_port_fails_closed():

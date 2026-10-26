@@ -288,6 +288,7 @@ class AdvisoryLedger:
         if type(max_event_age_seconds) is not int or not 60 <= max_event_age_seconds <= 366 * 86400:
             raise AdvisoryError("event age limit must be 60 seconds to 366 days")
         self.max_event_age_seconds = max_event_age_seconds
+        self._last_status = None
         for source, hosts in self.allowed_sources.items():
             _identity(source, "source")
             if not isinstance(hosts, (list, tuple)) or not hosts or any(
@@ -329,6 +330,21 @@ class AdvisoryLedger:
         try:
             con.execute("PRAGMA foreign_keys=ON")
             con.execute("BEGIN IMMEDIATE")
+            yield con
+            con.commit()
+        except BaseException:
+            con.rollback()
+            raise
+        finally:
+            con.close()
+
+    @contextmanager
+    def _read_connect(self, timeout=0.025):
+        """Open a bounded, deferred read transaction for dashboard snapshots."""
+        con = sqlite3.connect(self.path, timeout=timeout)
+        con.row_factory = sqlite3.Row
+        try:
+            con.execute("BEGIN")
             yield con
             con.commit()
         except BaseException:
@@ -590,14 +606,33 @@ class AdvisoryLedger:
             ids = [r[0] for r in con.execute("SELECT proposal_id FROM advisory_proposals ORDER BY created DESC LIMIT ?", (limit,))]
             return [self._proposal(con, proposal_id, now) for proposal_id in ids]
 
-    def status(self, now=None):
-        with self._connect() as con:
-            counts = {name: con.execute(f"SELECT COUNT(*) FROM advisory_{name}").fetchone()[0]
-                      for name in ("events", "proposals", "reviews", "rejections")}
-        return {"schema_version": SCHEMA_VERSION, "counts": counts, "execution_enabled": False,
-                "providers": {provider: {"configured": bool(os.environ.get(key) and os.environ.get(model))}
-                              for provider, (_, key, model) in _PROVIDERS.items()},
-                "allowed_sources": sorted(self.allowed_sources), "proposals": self.list_proposals(now=now)}
+    def status(self, now=None, *, nonblocking=False):
+        now = _now(now)
+        providers = {provider: {"configured": bool(os.environ.get(key) and os.environ.get(model))}
+                     for provider, (_, key, model) in _PROVIDERS.items()}
+        try:
+            connect = self._read_connect if nonblocking else self._connect
+            with connect() as con:
+                counts = {name: con.execute(f"SELECT COUNT(*) FROM advisory_{name}").fetchone()[0]
+                          for name in ("events", "proposals", "reviews", "rejections")}
+                rows = con.execute("SELECT proposal_id FROM advisory_proposals ORDER BY created DESC LIMIT 50").fetchall()
+                proposals = [self._proposal(con, row[0], now) for row in rows]
+        except sqlite3.OperationalError as exc:
+            if not nonblocking or not any(word in str(exc).lower() for word in ("locked", "busy")):
+                raise
+            if self._last_status is not None:
+                return {**self._last_status, "view_stale": True,
+                        "view_freshness": "Advisory ledger busy; showing last committed status"}
+            return {"schema_version": SCHEMA_VERSION,
+                    "counts": {"events": None, "proposals": None, "reviews": None, "rejections": None},
+                    "execution_enabled": False, "providers": providers,
+                    "allowed_sources": sorted(self.allowed_sources), "proposals": [],
+                    "status": "BUSY", "view_stale": True}
+        result = {"schema_version": SCHEMA_VERSION, "counts": counts, "execution_enabled": False,
+                  "providers": providers, "allowed_sources": sorted(self.allowed_sources),
+                  "proposals": proposals}
+        self._last_status = result
+        return result
 
     def review(self, proposal_id, provider, now=None):
         if provider not in _PROVIDERS:

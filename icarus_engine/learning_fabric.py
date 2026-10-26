@@ -246,6 +246,7 @@ class LearningFabric:
         self._thread: threading.Thread | None = None
         self._closed = False
         self._closed_status: dict[str, Any] | None = None
+        self._last_status: dict[str, Any] | None = None
         self._native: dict[str, Any] = {}
         self._last_history_scan = 0.0
         self._conn = sqlite3.connect(self.path, timeout=30.0, check_same_thread=False)
@@ -4965,13 +4966,43 @@ class LearningFabric:
             **_authority(),
         }
 
-    def status(self) -> dict[str, Any]:
+    def status(self, *, nonblocking=False) -> dict[str, Any]:
         if self._closed:
             return json.loads(json.dumps(self._closed_status or {"status": "CLOSED"}))
-        snap = self.snapshot()
-        snap["background"] = {
-            "running": bool(self._thread and self._thread.is_alive()),
-            "cycle_seconds": self._config["cycle_seconds"],
-            "last_history_scan_epoch": self._last_history_scan or None,
-        }
-        return snap
+
+        def stale():
+            if self._last_status is not None:
+                view = json.loads(json.dumps(self._last_status))
+                view["view_stale"] = True
+                view["view_freshness"] = "Learning store busy; showing last committed status"
+                return view
+            return {"schema_version": _SCHEMA, "status": "BUSY", "view_stale": True,
+                    "execution_authorized": False,
+                    "authority": {"research_only": True, "automatic_production_promotion": False,
+                                  "automatic_execution": False}}
+
+        acquired = self._lock.acquire(timeout=0.025) if nonblocking else False
+        if nonblocking and not acquired:
+            return stale()
+        old_busy_timeout = None
+        try:
+            if nonblocking:
+                old_busy_timeout = self._conn.execute("PRAGMA busy_timeout").fetchone()[0]
+                self._conn.execute("PRAGMA busy_timeout=25")
+            snap = self.snapshot()
+            snap["background"] = {
+                "running": bool(self._thread and self._thread.is_alive()),
+                "cycle_seconds": self._config["cycle_seconds"],
+                "last_history_scan_epoch": self._last_history_scan or None,
+            }
+            self._last_status = json.loads(json.dumps(snap))
+            return snap
+        except sqlite3.OperationalError as exc:
+            if not nonblocking or not any(word in str(exc).lower() for word in ("locked", "busy")):
+                raise
+            return stale()
+        finally:
+            if old_busy_timeout is not None:
+                self._conn.execute(f"PRAGMA busy_timeout={int(old_busy_timeout)}")
+            if nonblocking and acquired:
+                self._lock.release()

@@ -42,7 +42,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $Assets = if ($env:ICARUS_ASSETS) { $env:ICARUS_ASSETS } else { 'NQ,BTC,MNQ,MES,ES,YM,MYM,RTY,M2K,GC,MGC,SI,SIL,PL,PA,MBT' }
 Write-Host ('Starting plant  --assets ' + $Assets + '   (Yahoo/Coinbase, no --offline)')
-Write-Host 'Dashboard on THIS PC:  http://127.0.0.1:8791/   token: icarus'
+Write-Host 'Dashboard on THIS PC:  http://127.0.0.1:8791/   authentication uses ICARUS_TOKEN from the process or private plant .env'
 Write-Host 'Leave this window open.  Ctrl+C to stop.'
 Write-Host ''
 

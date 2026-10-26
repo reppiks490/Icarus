@@ -355,8 +355,10 @@ class PossibilityEngine:
                 "production_decision_authorized": False,
             }
 
-    def snapshot(self, asset: str | None = None) -> dict[str, Any]:
-        market = self.port.status()
+    def snapshot(self, asset: str | None = None, *, status=None) -> dict[str, Any]:
+        market = self.port.status() if status is None else status
+        if not isinstance(market, Mapping):
+            return self._empty("portfolio status unavailable")
         rows = [x for x in (market.get("assets") or []) if isinstance(x, Mapping)]
         if not rows:
             return self._empty("no running assets")

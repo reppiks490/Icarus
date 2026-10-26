@@ -1,0 +1,7 @@
+Read-only source audit; no tests, network, or source changes. Paths below are relative to `/workspace/publish/`.
+
+- **P1 — forming candle admitted without source clock.** `Icarus/icarus_engine/runtime.py:1320` and `Icarus-engine/icarus_engine/runtime.py:831` synthesize missing `regularMarketTime` as the latest bar’s end, then accept that bar as closed. Yahoo explicitly includes a forming aligned minute. Missing clock therefore permits premature strategy replay; Engine also persists that row (`runtime.py:856`). Fail closed or exclude the newest bar.
+- **P2 — malformed response aborts the batch.** Both `icarus_engine/feeds/yahoo.py` implementations (`Icarus:114`, `Icarus-engine:98`) check only close-array length before indexing open/high/low. A shorter companion array raises `IndexError`, contradicting Icarus’s malformed-row skipping contract and stopping warm-up/polling.
+- **P2 — displayed delay freezes after failed requests.** Both `_feed_delay_at` methods (`Icarus/runtime.py:1278`, `Icarus-engine/runtime.py:781`) return the previous successful poll’s stored lag. Repeated failures leave the delay label unchanged while observations age; calculate against retained `feed_time` at rendering.
+
+Verified wiring: epoch timestamps feed session-aware calendars; OHLC uses raw quotes without roll adjustment. Icarus retains Yahoo `=F` identity; Engine selects month contracts. Engine ingests warm-up/poll rows into SQLite; Icarus’s Yahoo path retains in-memory replay only, with no persistent bar-cache ingestion.

@@ -118,13 +118,15 @@ def cmd_backtest(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
+    from .access_control import resolve_owner_token
     from .server import serve
+    args.token = resolve_owner_token()
     journal = Journal(_journal_path(args))
     port = _portfolio(args, journal)
     journal.log("INFO", f"ICARUS Engine starting: {port.order} tf={args.tf or 'preset/default'} preset={args.preset} profile={args.profile} fills={args.fill_on or 'preset/real'} real_price_shadow={bool(getattr(args, 'shadow_real_fills', False))}")
     port.start()
     print(f"\nICARUS ENGINE  assets={port.order}  tf={args.tf or 'preset/default'}  preset={args.preset}")
-    print(f"  dashboard : http://127.0.0.1:{args.port}/     admin token: {args.token}")
+    print(f"  dashboard : http://127.0.0.1:{args.port}/     authentication token configured")
     print(f"  data dir  : {_base_dir()}  db={journal.path}")
     if getattr(args, "shadow_real_fills", False):
         print("  research  : same-decision standard-real-bar shadow emulator enabled; no broker authority")
@@ -375,7 +377,6 @@ def main(argv: Optional[list] = None) -> int:
     s = sub.add_parser("run", help="live paper trading + dashboard")
     common(s)
     s.add_argument("--port", type=int, default=8791)
-    s.add_argument("--token", default="icarus")
     s.add_argument("--poll", type=float, default=5.0)
     s.add_argument("--open", action="store_true")
     s.set_defaults(fn=cmd_run)
@@ -438,6 +439,10 @@ def main(argv: Optional[list] = None) -> int:
     c.set_defaults(fn=cmd_databento_corpus)
 
     args = p.parse_args(argv)
+    if args.cmd == "run":
+        from .access_control import configured_owner_token
+        if not configured_owner_token():
+            p.error("Set a unique non-placeholder ICARUS_TOKEN (or legacy ICARUS_ADMIN_TOKEN/ADMIN_TOKEN) before starting Icarus")
     if getattr(args, "preset", None) == "":
         args.preset = None
     return int(args.fn(args) or 0)

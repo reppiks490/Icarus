@@ -225,7 +225,9 @@ def test_scroll_focus_bounds_layout_reads_without_disabling_scroll_feedback():
               await new Promise(resolve=>setTimeout(resolve,120));
               const grownMax=document.documentElement.scrollHeight-window.innerHeight;
               scrollTo({top:grownMax*.5,behavior:'instant'});
-              await new Promise(resolve=>setTimeout(resolve,250));
+              const phaseDeadline=performance.now()+2000;
+              while(document.documentElement.dataset.scrollPhase!=='depth'&&performance.now()<phaseDeadline)
+                await new Promise(resolve=>requestAnimationFrame(resolve));
               return {reads:geometryReadsBeforeGrowth,focusFeedback,scrollHeightReads:window.__documentScrollHeightReads,
                 readsBeforeGrowth,bottomPhase,growthPhase:document.documentElement.dataset.scrollPhase,
                 maxScroll:grownMax};

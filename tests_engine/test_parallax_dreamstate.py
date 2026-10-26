@@ -1387,7 +1387,7 @@ def test_parallax_dreamstate_are_visible_in_trader_interface():
     server = (repo / "icarus_engine" / "server.py").read_text(encoding="utf-8")
 
     assert '/parallax-ui.js' in dashboard
-    assert 'data-v="parallax">PARALLAX / DREAMSTATE</span>' in dashboard
+    assert "['parallax','PARALLAX / DREAMSTATE']" in dashboard
     assert "wireParallax()" in dashboard
     assert "/api/parallax" in ui
     assert "/api/dreamstate" in ui

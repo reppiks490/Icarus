@@ -20,8 +20,9 @@
     ? value : fail('INVALID_IDENTITY','Invalid workspace configuration revision');
   const sharedPaths = new Set(['/api/input-meta','/api/presets','/api/command-centers',
     '/api/market-universe','/api/system/audit','/api/agent','/api/integrity',
-    '/api/research/sources','/api/research/records','/api/research/source-watch',
-    '/api/commands','/api/corpus-consumption','/api/corpus-expansion','/api/account-connections',
+    '/api/research/sources','/api/research/records','/api/research/source-watch','/api/research/market-context',
+    '/api/commands','/api/overview/command-center','/api/discovery-registry','/api/provider-corpus',
+    '/api/corpus-consumption','/api/corpus-expansion','/api/account-connections',
     '/api/prop-firm-catalog','/api/evolution','/api/evidence-lab','/api/access','/healthz']);
   const sharedPath = path => sharedPaths.has(path)||path.startsWith('/api/market-history/');
   const sharedActions = new Set(['/admin/access/add','/admin/access/kick']);
@@ -38,7 +39,7 @@
     if (!Number.isFinite(timeout)||timeout<=0||timeout>120000) fail('INVALID_CONTEXT','Invalid request deadline');
     const context=freeze(JSON.parse(JSON.stringify({id:bootstrap.id,capabilities:bootstrap.capabilities||{}})));
     const scoped=context.id!=='main', api=`/api/command-centers/${context.id}`, admin=`/admin/command-centers/${context.id}`;
-    const latest=new Map(), jobs=new Map(), active=new Set();
+    const latest=new Map(), jobs=new Map(), active=new Set(), pendingReads=new Map();
     let observedRevision=-1, closed=false, lifecycle=0;
     const token=typeof options.token==='function'?options.token:()=>'';
     function current(generation, signal) {
@@ -62,6 +63,11 @@
     }
     async function network(path, init, consume, channel=null, acceptHttpErrors=false) {
       if (closed) fail('CANCELLED','The page client is closed');
+      const requestTimeout=init.timeoutMs??timeout;
+      if (!Number.isFinite(requestTimeout)||requestTimeout<=0||requestTimeout>120000)
+        fail('INVALID_REQUEST','Invalid request deadline');
+      const fetchInit={...init};
+      delete fetchInit.timeoutMs;
       const generation=lifecycle;
       const url=pathURL(path), controller=new AbortController(), external=init.signal;
       if (external?.aborted) fail('CANCELLED','Request cancelled');
@@ -73,11 +79,14 @@
       let timer, cancel;
       const cancelled=new Promise((_,reject)=>{
         cancel=(code='CANCELLED')=>{controller.abort();reject(new WorkspaceClientError(code,code==='TIMEOUT'?'Request deadline exceeded':'Request cancelled'));};
-        timer=setTimeout(()=>cancel('TIMEOUT'),timeout);
+        timer=setTimeout(()=>cancel('TIMEOUT'),requestTimeout);
       });
       const abort=()=>cancel(); active.add(cancel); external?.addEventListener('abort',abort,{once:true});
       try {
-        const work=Promise.resolve().then(()=>options.fetch(url.href,{cache:'no-store',...init,headers,signal:controller.signal})).then(async response=>{
+        const work=Promise.resolve().then(()=>options.fetch(url.href,{cache:'no-store',...fetchInit,headers,signal:controller.signal})).then(async response=>{
+          if (response.status===401&&typeof options.onUnauthorized==='function') {
+            try { options.onUnauthorized(); } catch (_) { /* auth UI must not break request handling */ }
+          }
           if (!response.ok&&!acceptHttpErrors) {
             const data=await response.json().catch(()=>null);
             if (object(data)&&'workspace_id' in data) {
@@ -276,7 +285,7 @@
       if (!sharedPath(url.pathname)) fail('UNAVAILABLE','This service has no shared read-only adapter',503);
       return json(url.pathname+url.search,{validate:false,channel:'shared:'+url.pathname+url.search});
     }
-    async function request(path, init={}) {
+    async function requestOnce(path, init={}) {
       const generation=lifecycle;
       current(generation,init.signal);
       const url=pathURL(path), method=String(init.method||'GET').toUpperCase();
@@ -336,13 +345,32 @@
       }
       return response;
     }
+    async function request(path, init={}) {
+      // Share only simultaneous read work. Every consumer receives its own body;
+      // completed observations, mutations and independently cancelled reads are never cached.
+      if (String(init.method||'GET').toUpperCase()!=='GET'||init.body!==undefined||init.signal)
+        return requestOnce(path,init);
+      const headers=new Headers(init.headers||{}), bearer=token();
+      if (bearer&&!headers.has('Authorization')) headers.set('Authorization','Bearer '+bearer);
+      const options={...init,headers};
+      const key=JSON.stringify([lifecycle,pathURL(path).href,{...init,headers:[...headers]}]);
+      let pending=pendingReads.get(key);
+      if (!pending) {
+        pending=requestOnce(path,options);
+        pendingReads.set(key,pending);
+        const clear=()=>{if(pendingReads.get(key)===pending)pendingReads.delete(key);};
+        pending.then(clear,clear);
+      }
+      return (await pending).clone();
+    }
     function href(asset=null) {
       const path=scoped?`/dashboards/${context.id}`:'/';
       return path+(asset===null?'':'?asset='+symbol(asset));
     }
-    function cancelPending() { lifecycle++; latest.clear(); for (const cancel of active) cancel(); }
+    function cancelPending() { lifecycle++; latest.clear(); pendingReads.clear(); for (const cancel of active) cancel(); }
     function close() { closed=true; cancelPending(); }
-    return Object.freeze({context,read,configure,backtest,rewarm,control,job,compare,csv,shared,request,href,cancelPending,close});
+    return Object.freeze({context,read,configure,backtest,rewarm,control,job,compare,csv,shared,request,href,
+      getToken:()=>{const value=token();return typeof value==='string'?value.trim():'';},cancelPending,close});
   }
   globalThis.IcarusWorkspaceClient=Object.freeze({create,WorkspaceClientError});
 })();

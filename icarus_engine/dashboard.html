@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>@BRAND@</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='29' fill='%233987e5'/%3E%3Cpath d='M32 12v40M12 32h40' stroke='%23fff' stroke-width='4'/%3E%3C/svg%3E">
 <style>
 :root {
   color-scheme: light;
@@ -48,7 +49,8 @@ a { color:var(--s1) }
 .badge.armed { color:var(--good-text); border-color:var(--good) } .badge.paused { color:#fff; background:var(--crit); border-color:var(--crit) } .badge.warm { color:var(--warn); border-color:var(--warn) }
 .icon-btn { padding:5px 9px }
 .tabs { display:flex; gap:4px; padding:0 22px 8px; flex-wrap:wrap; align-items:center }
-.tab { padding:6px 12px; border-radius:8px 8px 0 0; border:1px solid transparent; border-bottom:none; cursor:pointer; color:var(--ink-2); font-size:13px; text-decoration:none }
+.tab { appearance:none; background:transparent; font:inherit; line-height:inherit; text-align:left; padding:6px 12px; border-radius:8px 8px 0 0; border:1px solid transparent; border-bottom:none; cursor:pointer; color:var(--ink-2); font-size:13px; text-decoration:none }
+.tab:focus-visible { outline:2px solid var(--s1); outline-offset:2px }
 .tab:hover { background:var(--surface-2) } .tab.active { background:var(--page); border-color:var(--ring); color:var(--ink); font-weight:600 }
 .tab b.s { font-weight:700 } .tab .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; background:var(--axis) } .tab .dot.long { background:var(--good) } .tab .dot.short { background:var(--crit) } .tab .dot.closed { background:var(--warn) }
 .tab.util { margin-left:auto } .tab.util ~ .tab.util { margin-left:0 }
@@ -103,7 +105,7 @@ tr.new { animation:flash 1.4s ease-out } @keyframes flash { from { background:va
 .empty { color:var(--muted); padding:14px 6px; font-size:13px }
 .log { font:12px/1.5 ui-monospace,Consolas,"Cascadia Mono",monospace; max-height:420px; overflow:auto; white-space:pre-wrap; color:var(--ink-2) } .log .WARN{color:var(--warn)} .log .ERROR{color:var(--crit)}
 .tag { font-size:10px; padding:1px 6px; border-radius:999px; background:var(--surface-2); color:var(--muted); border:1px solid var(--ring) } .tag.live { color:var(--good-text); border-color:var(--good) }
-.modal { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:flex-start; justify-content:center; z-index:30; overflow:auto; padding:30px 12px } .modal.open { display:flex }
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:flex-start; justify-content:center; z-index:120; overflow:auto; padding:30px 12px } .modal.open { display:flex }
 .modal .box { background:var(--surface); border:1px solid var(--ring); border-radius:14px; padding:18px 20px; width:min(720px, 96vw) }
 .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px }
 .hud { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:8px; margin-top:10px } .hud .tile .v { font-size:15px }
@@ -154,7 +156,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
       <button class="icon-btn" id="btnTheme" title="Toggle theme">◐</button>
     </div>
   </div>
-  <div class="tabs" id="tabs"></div>
+  <nav class="tabs" id="tabs" aria-label="Icarus dashboard views"></nav>
 </div>
 
 <div class="wrap" id="view"></div>
@@ -162,7 +164,7 @@ pre.cli { background:var(--surface-2); border:1px solid var(--ring); border-radi
 
 <div class="modal" id="ctl"><div class="box" style="width:min(520px,92vw)">
   <h3 style="margin:0 0 6px">Icarus access token</h3>
-  <div class="small muted">Enter your owner token or individual viewer token. Viewer tokens provide read-only dashboard access. Kept in this browser only.</div>
+  <div class="small muted">Enter your owner token or individual viewer token. Viewer tokens provide read-only dashboard access. Saved in this browser’s local storage.</div>
   <div class="row"><input id="token" type="password" placeholder="access token" style="width:260px"><button id="saveTok">Save</button><span id="ctlOut" class="small muted"></span></div>
   <div class="row" style="justify-content:flex-end"><button id="closeCtl">Close</button></div>
 </div></div>
@@ -178,6 +180,7 @@ Object.defineProperty(window, 'IcarusClient', {
     origin: location.origin,
     fetch: window.fetch.bind(window),
     token: () => localStorage.getItem('icarus-engine-token') || '',
+    onUnauthorized: () => window.dispatchEvent(new Event('icarus:auth-required')),
   }),
   writable: false,
   configurable: false,
@@ -250,20 +253,49 @@ let view = solo ? 'asset:' + params.get('asset').toUpperCase() : (location.hash.
 const root = document.documentElement; const savedTheme = localStorage.getItem('icarus-theme') || 'dark';
 root.dataset.theme = window.IcarusExperience ? savedTheme : (savedTheme === 'light' ? 'light' : 'dark');
 $('#btnTheme').onclick = () => { root.dataset.theme = root.dataset.theme==='dark'?'light':'dark'; localStorage.setItem('icarus-theme', root.dataset.theme); if (last) { lastView=null; render(last); } };
-const tokKey = 'icarus-engine-token'; if (!localStorage.getItem(tokKey)) localStorage.setItem(tokKey, 'icarus'); $('#token').value = localStorage.getItem(tokKey);
+const tokKey = 'icarus-engine-token'; $('#token').value = localStorage.getItem(tokKey) || '';
 const nativeFetch = window.fetch.bind(window);
+function promptForAuthentication() {
+  const modal=$('#ctl');
+  if(modal.classList.contains('open'))return;
+  const hadToken=!!IcarusClient.getToken();
+  if(hadToken){localStorage.removeItem(tokKey);$('#token').value='';}
+  $('#ctlOut').textContent=hadToken?'Saved access token was rejected. Enter a valid owner or viewer token.':'Authentication required. Enter your owner or viewer token.';
+  modal.classList.add('open');
+  $('#token').focus({preventScroll:true});
+}
+window.addEventListener('icarus:auth-required',promptForAuthentication);
 window.fetch = (input, init={}) => {
   const inputUrl = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
   const requestUrl = new URL(inputUrl, location.href);
   if (requestUrl.origin !== location.origin) return nativeFetch(input, init);
   const headers = new Headers(typeof input === 'string' ? undefined : input.headers);
   new Headers(init.headers || {}).forEach((value, key) => headers.set(key, value));
-  if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + (localStorage.getItem(tokKey) || ''));
+  const bearer=IcarusClient.getToken();
+  if (bearer&&!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + bearer);
   headers.set('X-Icarus-Workspace', window.IcarusClient.context.id);
-  return nativeFetch(input, {...init, headers});
+  return nativeFetch(input, {...init, headers}).then(response=>{
+    if(response.status===401)window.dispatchEvent(new Event('icarus:auth-required'));
+    return response;
+  });
 };
 $('#btnControls').onclick = () => $('#ctl').classList.add('open'); $('#closeCtl').onclick = () => $('#ctl').classList.remove('open');
-$('#saveTok').onclick = () => { localStorage.setItem(tokKey, $('#token').value.trim()); $('#ctlOut').textContent='token saved'; };
+$('#saveTok').onclick = async () => {
+  const button=$('#saveTok'), candidate=$('#token').value.trim();
+  if(!candidate){$('#ctlOut').textContent='Enter an access token before saving.';return;}
+  button.disabled=true;$('#ctlOut').textContent='Validating access token…';
+  try{
+    const response=await nativeFetch('/api/access',{cache:'no-store',headers:{'Authorization':'Bearer '+candidate,'X-Icarus-Workspace':IcarusClient.context.id}});
+    const data=await response.json().catch(()=>null);
+    if(!response.ok||!['owner','viewer'].includes(data?.me?.role))throw new Error('access token rejected (HTTP '+response.status+')');
+    localStorage.setItem(tokKey,candidate);
+    $('#ctlOut').textContent='Token validated and saved.';
+    $('#ctl').classList.remove('open');
+    window.dispatchEvent(new Event('icarus:token-updated'));
+    if(typeof refresh==='function')refresh();
+  }catch(error){$('#ctlOut').textContent=error?.message||'access token rejected';}
+  finally{button.disabled=false;}
+};
 function toast(msg, bad) { let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id='toast'; t.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);padding:10px 16px;border-radius:10px;z-index:60;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.3);max-width:90vw'; document.body.appendChild(t); }
   t.dataset.kind = bad ? 'error' : 'ok'; t.setAttribute('role', bad ? 'alert' : 'status'); t.style.background = bad ? 'var(--crit)' : 'var(--s1)'; t.style.color='#fff'; t.textContent = msg; t.style.display='block';
   t.classList.remove('world-toast-active'); void t.offsetWidth; t.classList.add('world-toast-active');
@@ -281,7 +313,7 @@ function operationMessage(path, receipt, error=null) {
   return error ? 'request failed: '+(error.message||String(error)) : (j.note||'ok');
 }
 async function admin(path, body, quiet, draft=null) {
-  const tok = localStorage.getItem(tokKey) || $('#token').value.trim();
+  const tok = IcarusClient.getToken();
   if (!tok) {
     $('#ctl').classList.add('open');
     if (!quiet) toast('admin token required', true);
@@ -494,12 +526,27 @@ function setView(v) {
 window.setView = setView;
 function tabsHtml(A) {
   if (solo) return `<span class="tab active"><b class="s">${esc(params.get('asset').toUpperCase())}</b> · solo view</span><a class="tab" href="${IcarusClient.href()}">← all assets</a>`;
-  const t = [`<span class="tab ${view==='overview'?'active':''}" data-v="overview">Overview</span>`];
-  A.forEach(a => { const pos = a.position||0; t.push(`<span class="tab ${view==='asset:'+a.symbol?'active':''}" data-v="asset:${a.symbol}"><span class="dot ${pos>0?'long':pos<0?'short':(a.market&&a.market.open===false?'closed':'')}"></span><b class="s">${esc(a.continuous_symbol||a.symbol)}</b> <span class="muted small tnum">${px(a.price)}</span></span>`); });
-  t.push(`<span class="tab" data-v="add" title="Add an asset">＋</span>`);
-  t.push(`<span class="tab util ${view==='subsystems'?'active':''}" data-v="subsystems">Subsystems</span>`);
-  t.push(`<span class="tab util ${view==='system'?'active':''}" data-v="system">System</span><span class="tab util ${view==='access'?'active':''}" data-v="access">Access</span><span class="tab util ${view==='golive'?'active':''}" data-v="golive">Go-live</span><span class="tab util ${view==='agent'?'active':''}" data-v="agent">Agent</span><span class="tab util ${view==='command-centers'?'active':''}" data-v="command-centers">Command Center</span><span class="tab util ${view==='performance'?'active':''}" data-v="performance">Performance</span><span class="tab util ${view==='evidence'?'active':''}" data-v="evidence">Evidence &amp; catalog</span><span class="tab util ${view==='inputs'?'active':''}" data-v="inputs">Inputs</span><span class="tab util ${view==='backtest'?'active':''}" data-v="backtest">Backtest</span><span class="tab util ${view==='research'?'active':''}" data-v="research">Research</span><span class="tab util ${view==='sources'?'active':''}" data-v="sources">Financial &amp; data</span><span class="tab util ${view==='market-data'?'active':''}" data-v="market-data">Market Data</span><span class="tab util ${view==='brain'?'active':''}" data-v="brain">Adaptive Brain</span><span class="tab util ${view==='evolution'?'active':''}" data-v="evolution">MCP Evolution</span><span class="tab util ${view==='parallax'?'active':''}" data-v="parallax">PARALLAX / DREAMSTATE</span><span class="tab util ${view==='possibility'?'active':''}" data-v="possibility">ICARUS Ψ</span><span class="tab util ${view==='pantheon'?'active':''}" data-v="pantheon">PANTHEON / AETHER</span><span class="tab util ${view==='sibyl'?'active':''}" data-v="sibyl">SIBYL Ω</span><span class="tab util ${view==='apex'?'active':''}" data-v="apex">APEX Ω</span><span class="tab util ${view==='ascendancy'?'active':''}" data-v="ascendancy">ASCENDANCY</span><span class="tab util ${view==='learning'?'active':''}" data-v="learning">Learning Fabric</span><span class="tab util ${view==='chronofold'?'active':''}" data-v="chronofold">ICARUS Ξ</span><span class="tab util ${view==='commissioning'?'active':''}" data-v="commissioning">Commissioning</span><span class="tab util ${view==='integrity'?'active':''}" data-v="integrity">Data Integrity</span><span class="tab util ${view==='engine-control'?'active':''}" data-v="engine-control">Engine Control</span><span class="tab util ${view==='commands'?'active':''}" data-v="commands">Commands</span><span class="tab util ${view==='log'?'active':''}" data-v="log">Log</span><span class="tab util ${view==='autopilot'?'active':''}" data-v="autopilot">Tactical Autopilot</span>`);
+  const button=(value,label,extra='',title='')=>`<button type="button" class="${['tab',extra,view===value?'active':''].filter(Boolean).join(' ')}" data-v="${esc(value)}"${view===value?' aria-current="page"':''}${title?` title="${esc(title)}"`:''}>${label}</button>`;
+  const t = [button('overview','Overview')];
+  A.forEach(a => { const pos = a.position||0, value='asset:'+a.symbol; t.push(button(value,`<span class="dot ${pos>0?'long':pos<0?'short':(a.market&&a.market.open===false?'closed':'')}"></span><b class="s">${esc(a.continuous_symbol||a.symbol)}</b> <span class="muted small tnum">${px(a.price)}</span>`)); });
+  t.push(button('add','＋','','Add an asset'));
+  const utilities=[
+    ['subsystems','Subsystems'],['system','System'],['access','Access'],['golive','Go-live'],['agent','Agent'],
+    ['command-centers','Command Center'],['performance','Performance'],['evidence','Evidence &amp; catalog'],
+    ['inputs','Inputs'],['backtest','Backtest'],['research','Research'],['sources','Financial &amp; data'],
+    ['market-data','Market Data'],['brain','Adaptive Brain'],['evolution','MCP Evolution'],
+    ['parallax','PARALLAX / DREAMSTATE'],['possibility','ICARUS Ψ'],['pantheon','PANTHEON / AETHER'],
+    ['sibyl','SIBYL Ω'],['apex','APEX Ω'],['ascendancy','ASCENDANCY'],['learning','Learning Fabric'],
+    ['chronofold','ICARUS Ξ'],['commissioning','Commissioning'],['integrity','Data Integrity'],
+    ['engine-control','Engine Control'],['commands','Commands'],['log','Log'],['autopilot','Tactical Autopilot']
+  ];
+  t.push(...utilities.map(([value,label])=>button(value,label,'util')));
   return t.join('');
+}
+const DASHBOARD_VIEWS = new Set(['overview','add','subsystems','system','access','golive','agent','command-centers','performance','evidence','inputs','backtest','research','sources','market-data','brain','evolution','parallax','possibility','pantheon','sibyl','apex','ascendancy','learning','chronofold','commissioning','integrity','engine-control','commands','log','autopilot']);
+function isKnownDashboardView(candidate, assets) {
+  if (DASHBOARD_VIEWS.has(candidate)) return true;
+  return candidate.startsWith('asset:') && assets.some(asset=>asset.symbol===candidate.slice(6));
 }
 function systemLoopClass(status) {
   const s = String(status || 'UNKNOWN').toUpperCase();
@@ -511,7 +558,7 @@ function systemLoopOk(status) { return systemLoopClass(status) === 'b'; }
 async function loadAccess() {
   const target = $('#accessBody'); if (!target) return;
   const sequence=++accessLoadSeq;
-  const tok = localStorage.getItem(tokKey) || '';
+  const tok = IcarusClient.getToken();
   try {
     const r = await IcarusClient.request('/api/access', {headers:{'Authorization':'Bearer '+tok},cache:'no-store'});
     const d = await r.json(); if (!r.ok) throw new Error(d.detail||('HTTP '+r.status));
@@ -553,16 +600,17 @@ function repositoryAuditCard(a, compact=false) {
   return `<section class="card c12" id="repoAuditCard">
     <h2>System Intelligence <span class="sub">${esc(a.repository||'')} · local diagnostic snapshot · ${esc(a.recorded_at||'time unknown')}</span></h2>
     <div class="tiles" style="margin-top:0">
-      <div class="tile"><div class="k">Repository audit</div><div class="v"><span class="chip ${cls}">${esc(stat.toUpperCase())}</span></div></div>
+      <div class="tile"><div class="k">Recorded repository audit</div><div class="v"><span class="chip ${cls}">${esc(stat.toUpperCase())}</span></div></div>
       <div class="tile"><div class="k">Loop receipts</div><div class="v ${loopBad?'neg':'pos'}">${loops.length ? loopGood+'/'+loops.length : '—'}</div></div>
       <div class="tile"><div class="k">MCP activity</div><div class="v tnum">${events.length}</div></div>
       <div class="tile"><div class="k">Loop auto-sync</div><div class="v ${syncClass}">${esc(syncState.toUpperCase())}</div><div class="small muted">${sync.last_success_at ? 'last '+esc(sync.last_success_at) : 'no successful sync yet'}</div></div>
-      <div class="tile"><div class="k">Main SHA</div><div class="v tnum" style="font-size:14px">${esc(String(m.sha||'—').slice(0,12))}</div></div>
+      <div class="tile"><div class="k">Recorded main SHA</div><div class="v tnum" style="font-size:14px">${esc(String(m.sha||'—').slice(0,12))}</div></div>
       <div class="tile"><div class="k">Linux</div><div class="v">${esc(String(m.linux||'unknown').toUpperCase())}</div></div>
       <div class="tile"><div class="k">Windows</div><div class="v">${esc(String(m.windows||'unknown').toUpperCase())}</div></div>
-      <div class="tile"><div class="k">Current-head failures</div><div class="v tnum ${(s.current_head_failures||0)>0?'neg':'pos'}">${s.current_head_failures ?? '—'}</div></div>
+      <div class="tile"><div class="k">Recorded-head failures</div><div class="v tnum ${(s.current_head_failures||0)>0?'neg':'pos'}">${s.current_head_failures ?? '—'}</div></div>
       <div class="tile"><div class="k">Unresolved</div><div class="v tnum">${s.unresolved ?? '—'}</div></div>
     </div>
+    <div class="small muted" style="margin-top:8px">Stored repository evidence for the recorded revision; this snapshot does not verify the running checkout.</div>
     ${compact ? compactLoops + lastEvent : `
       <div class="small muted" style="margin-top:10px">${esc(a.note||'')}${issueLink ? ' · '+issueLink : ''} · diagnostic only · execution_authorized=false</div>
       <div class="small muted" style="margin-top:6px"><b>Automatic loop ingest:</b> ${esc(syncState.toUpperCase())} · every ${esc(sync.interval_seconds||'—')}s · last attempt ${esc(sync.last_attempt_at||'—')}${(sync.errors||[]).length ? ' · '+esc((sync.errors||[]).join(' | ')) : ''}</div>
@@ -1285,6 +1333,11 @@ function renderBacktest() {
 
 function render(d) {
   last = d; const A = d.assets||[];
+  if(!solo&&!isKnownDashboardView(view,A)) {
+    view='overview';
+    if(location.hash!=='#overview') history.replaceState(history.state,'','#overview');
+    lastView=null;
+  }
   const feedAge = Math.min(...A.map(a => a.poll_age ?? 1e9)); const anyErr = A.some(a => a.last_error && a.poll_age==null);
   $('#beat').className = 'dot ' + (anyErr ? 'dead' : feedAge < 60 ? 'live' : feedAge < 300 ? 'stale' : 'dead');
   const set = (n, cls) => { $(`.node[data-n="${n}"]`).className = 'node ' + cls; };
@@ -1298,14 +1351,13 @@ function render(d) {
     const st = String(ra?.status || 'unknown').toLowerCase();
     const ls = ra?.loops || [], loopBad = ls.filter(x => !systemLoopOk(x.status)).length;
     const healthy = st === 'green' && (!ls.length || loopBad === 0);
-    rh.textContent = healthy ? 'SYS ✓' : (st === 'red' || loopBad) ? 'SYS !' : 'SYS ?';
+    rh.textContent = healthy ? 'SYS HISTORY ✓' : (st === 'red' || loopBad) ? 'SYS !' : 'SYS ?';
     rh.className = 'badge ' + (healthy ? 'armed' : (st === 'red' || loopBad) ? 'paused' : 'warm');
-    rh.title = ra ? `System Intelligence ${ra.recorded_at||''} · repo ${st} · loops ${ls.length-loopBad}/${ls.length} verified · main ${String(ra.main?.sha||'').slice(0,12)}` : 'System Intelligence unavailable';
+    rh.title = ra ? `Stored System Intelligence (not running-checkout verification) ${ra.recorded_at||''} · repo ${st} · loops ${ls.length-loopBad}/${ls.length} verified · main ${String(ra.main?.sha||'').slice(0,12)}` : 'System Intelligence unavailable';
   }
   const tabsMarkup=tabsHtml(A),tabs=$('#tabs');
   if(tabs._markup!==tabsMarkup){tabs.innerHTML=tabsMarkup;tabs._markup=tabsMarkup;}
   const viewAsset = view.startsWith('asset:') ? A.find(a => a.symbol === view.slice(6)) : null;
-  if (view.startsWith('asset:') && !viewAsset && !solo) view = 'overview';
   const rebuild = lastView !== view;
   if(rebuild)disposeWorkspaceView();
   if (view === 'overview') {
@@ -1369,7 +1421,7 @@ function render(d) {
   else if (view === 'sibyl') { if(typeof sibylHtml!=='function') $('#view').innerHTML='<section class="card c12">SIBYL Ω requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = sibylHtml(); wireSibyl(); } else loadSibyl(); }
   else if (view === 'apex') { if(typeof apexHtml!=='function') $('#view').innerHTML='<section class="card c12">APEX Ω requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = apexHtml(); wireApex(); } else loadApex(); }
   else if (view === 'ascendancy') { if(typeof ascendancyHtml!=='function') $('#view').innerHTML='<section class="card c12">ASCENDANCY requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = ascendancyHtml(); wireAscendancy(); } else loadAscendancy(); }
-  else if (view === 'learning') { if(typeof learningHtml!=='function') $('#view').innerHTML='<section class="card c12">Learning Fabric requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = learningHtml(); wireLearning(); } else loadLearning(); }
+  else if (view === 'learning') { if(typeof learningHtml!=='function') $('#view').innerHTML='<section class="card c12">Learning Fabric requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = learningHtml(); wireLearning(); } }
   else if (view === 'chronofold') { if(typeof chronofoldHtml!=='function') $('#view').innerHTML='<section class="card c12">ICARUS Ξ Chronofold requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = chronofoldHtml(A); wireChronofold(); } else loadChronofold(); }
   else if (view === 'commissioning') { if(typeof commissioningHtml!=='function') $('#view').innerHTML='<section class="card c12">Scientific Commissioning requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = commissioningHtml(A); wireCommissioning(); } else loadCommissioning(); }
   else if (view === 'integrity') { if(typeof integrityHtml!=='function') $('#view').innerHTML='<section class="card c12">Data Integrity requires the updated engine server. Restart the engine.</section>'; else if (rebuild) { $('#view').innerHTML = integrityHtml(); wireIntegrity(); } else loadIntegrity(); }
@@ -1450,7 +1502,7 @@ async function refreshCombinedPaperPnl() {
 async function refreshGolive() {
   if (selectedWorkspacePoweredOff()) return;
   try {
-    const response = await IcarusClient.request('/api/golive', {cache:'no-store'});
+    const response = await IcarusClient.request('/api/golive', {cache:'no-store', timeoutMs:30000});
     const data = await response.json().catch(()=>({}));
     if (!response.ok) throw new Error(data.detail||data.error||('HTTP '+response.status));
     window.ICARUS_GOLIVE = data;

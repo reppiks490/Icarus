@@ -1,0 +1,15 @@
+# Task 04 — automation audit
+
+Read-only inspection of publish/Icarus, publish/Icarus-engine and selected research workflow definitions (AION, DAEDALUS, causal-router, Divine Providence, Advanced CSV). Read repository AGENTS and central START_HERE/ACTIVE/collisions/owner_status and owner-contact directive. No network, workflow dispatch, source mutation or test execution.
+
+## Findings
+
+1. **P2 — exported checksum manifest includes its own changing contents.** `/workspace/publish/Icarus/.github/workflows/icarus-full-export.yml:79` redirects checksum output to `$ROOT/SHA256SUMS.txt` while `find "$ROOT" -type f` enumerates that same file. Shell redirection creates/truncates the file before enumeration. Its recorded digest therefore describes its empty/partial contents, while the archived manifest has the completed contents; `sha256sum -c` cannot pass for this entry. Line 80 immediately packages the invalid manifest. Exclude the manifest or write it outside the enumerated root and move it afterward.
+
+2. **P2 — peer export drops successful event-driven producer completions.** `/workspace/publish/Icarus-engine/.github/workflows/interrepo-peer-intelligence.yml:5-12` subscribes to native research/liveness/watchdog completions, but its job condition at lines 48-51 accepts only producers whose original event was `schedule`. Native research explicitly accepts `workflow_run` from restored-five-local-shadow (`native-five-research.yml:7-10`); native liveness accepts scheduled-watchdog `workflow_run` (`restored-five-native-liveness.yml:4-7,27`); restored watchdog also accepts workflow_run. Their successful downstream completions have event `workflow_run` and are discarded by export. Manually dispatched and push-driven producer completions are discarded too. Actions-authored source commits do not supply the push fallback (export's own lines 9,28-30 acknowledge this). A separate scheduled/direct-watchdog export can eventually refresh, but the advertised producer-to-consumer update route is disconnected and can leave new evidence absent until another export runs. Accept verified same-repository main completions for the intended event types, preserving loop prevention.
+
+3. **P2 — CSS-only reference choreography changes bypass the real visual gate.** `/workspace/publish/Icarus/.github/workflows/ui-visual-contract.yml:5-25` includes only `experience-ui.css`; it omits `icarus_engine/reference-choreography.css`, which the real dashboard loads at `/workspace/publish/Icarus/icarus_engine/dashboard.html:133`. A PR changing only this stylesheet never starts this workflow's Chromium contracts/screenshots. The separate scroll browser workflow also filters only experience CSS/world immersion. Main pytest can check static invariants, but does not install/require the browser for these changes. Add the actual loaded CSS to visual-trigger paths (prefer all application CSS).
+
+## Limits
+
+Static findings describe reproducible workflow contracts, not current hosted run status. No assertion about provider credentials, entitlement or market-data freshness was made. No live authority, collection or scheduler changes were attempted.

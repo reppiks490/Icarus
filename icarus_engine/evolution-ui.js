@@ -66,7 +66,7 @@
     const el = document.querySelector('#evolutionPanel');
     if (!el) return;
     try {
-      const tok = localStorage.getItem('icarus-engine-token') || 'icarus';
+      const tok = IcarusClient.getToken();
       const r = await IcarusClient.request('/api/evolution', {cache:'no-store', headers:{'Authorization':'Bearer '+tok}});
       const state = await r.json();
       if (!r.ok) throw new Error(state.detail || ('HTTP '+r.status));
