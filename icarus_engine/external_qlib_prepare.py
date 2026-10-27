@@ -116,9 +116,13 @@ def prepare_qlib_csv(
                     # Preserve raw price/volume strings exactly; the independent
                     # verifier has already checked Decimal geometry/finiteness.
                     utc = datetime.fromisoformat(row["datetime"].replace("Z", "+00:00"))
-                    if utc.tzinfo is None or utc.utcoffset().total_seconds() != 0:
+                    if utc.tzinfo is None or utc.utcoffset() is None or utc.utcoffset().total_seconds() != 0:
                         raise VerificationRejected("lost UTC timestamp identity")
-                    timestamp = utc.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                    utc = utc.astimezone(timezone.utc)
+                    seconds_into_utc_day = utc.hour * 3600 + utc.minute * 60 + utc.second
+                    if utc.microsecond != 0 or seconds_into_utc_day % cadence != 0:
+                        raise VerificationRejected("unaligned/subsecond bars cannot be losslessly converted")
+                    timestamp = utc.strftime("%Y-%m-%d %H:%M:%S")
                     writer.writerow({
                         "date": timestamp,
                         **{field: row[field] for field in ("open", "high", "low", "close", "volume")},
