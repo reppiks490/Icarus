@@ -20,7 +20,6 @@ class OfflineContractTests(unittest.TestCase):
         self.assertEqual(raw.count(FIXTURE_CONTRACT.encode()), 5)
         self.assertEqual(len(hashlib.sha256(raw).hexdigest()), 64)
         self.assertNotIn(b"order_id", raw)
-        self.assertIn(b"synthetic", b"synthetic")
 
     def test_version_is_pinned(self):
         self.assertEqual(PINNED_HFTBACKTEST_VERSION, "2.4.4")
@@ -48,6 +47,11 @@ class OfflineContractTests(unittest.TestCase):
             ("ival", "<i8"), ("fval", "<f8"),
         ], align=True)
         _assert_event_dtype(np, correct, correct)
+        # NPY readback drops the dtype's 'align=True' flag but keeps ABI offsets.
+        unaligned_metadata = np.dtype([(name, correct.fields[name][0])
+                                       for name in COLUMNS], align=False)
+        self.assertFalse(unaligned_metadata.isalignedstruct)
+        _assert_event_dtype(np, unaligned_metadata, correct)
         wrong = np.dtype([(key, "<i8") for key in COLUMNS], align=True)
         with self.assertRaisesRegex(NativeSmokeError, "ABI"):
             _assert_event_dtype(np, correct, wrong)
