@@ -53,9 +53,9 @@ class OfflineContractTests(unittest.TestCase):
         self.assertFalse(unaligned_metadata.isalignedstruct)
         _assert_event_dtype(np, unaligned_metadata, correct)
         wrong = np.dtype([(key, "<i8") for key in COLUMNS], align=True)
-        with self.assertRaisesRegex(NativeSmokeError, "ABI"):
+        with self.assertRaisesRegex(NativeSmokeError, "mismatch"):
             _assert_event_dtype(np, correct, wrong)
-        with self.assertRaisesRegex(NativeSmokeError, "ABI"):
+        with self.assertRaisesRegex(NativeSmokeError, "mismatch"):
             _assert_event_dtype(np, wrong, correct)
 
     @unittest.skipUnless(importlib.util.find_spec("hftbacktest"), "Pinned HFTBacktest optional")
