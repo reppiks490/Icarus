@@ -191,6 +191,25 @@ class ExternalResearchTests(unittest.TestCase):
             self.handoff(available_at="2026-01-05T14:30:00Z")
         self.assertFalse((self.output / "candidate_handoff").exists())
 
+    def test_untrusted_manifest_metadata_is_not_promoted(self):
+        self.export()
+        import json
+        manifest = self.output / "manifest.json"
+        baseline = json.loads(manifest.read_text())
+        for field, value in (
+            ("source_id", None),
+            ("bar_seconds", "300"),
+            ("rows", True),
+            ("first_utc", "2026-01-06T00:00:00Z"),
+        ):
+            with self.subTest(field=field):
+                altered = dict(baseline)
+                altered[field] = value
+                manifest.write_text(json.dumps(altered))
+                with self.assertRaises(ResearchAdmissionError):
+                    self.handoff()
+                self.assertFalse((self.output / "candidate_handoff").exists())
+
     def test_handoff_is_write_once_and_requires_pinned_revision(self):
         self.export()
         with self.assertRaisesRegex(ResearchAdmissionError, "full lowercase SHA"):
