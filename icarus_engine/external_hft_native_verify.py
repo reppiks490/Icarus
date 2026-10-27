@@ -141,7 +141,9 @@ def _header(handle, rows):
         if len(keys) != len(set(keys)):
             raise NativeVerificationError("duplicate NPY header keys")
         header = ast.literal_eval(parsed)
-    except (UnicodeError, SyntaxError, ValueError, TypeError, MemoryError) as exc:
+    except NativeVerificationError:
+        raise
+    except (UnicodeError, SyntaxError, ValueError, TypeError, MemoryError, RecursionError) as exc:
         raise NativeVerificationError("invalid NPY header") from exc
     if not isinstance(header, dict) or set(header) != {
         "descr", "fortran_order", "shape"
