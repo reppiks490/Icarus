@@ -145,6 +145,47 @@ class QlibPrepareTests(unittest.TestCase):
         ) as f:
             self.assertEqual(sum(1 for _ in csv.reader(f)), 10006)
 
+    def test_manifest_changed_after_check_is_rejected_before_publish(self):
+        genuine = verify_candidate
+
+        def tamper(*args, **kwargs):
+            receipt = genuine(*args, **kwargs)
+            path = self.staging / "manifest.json"
+            payload = json.loads(path.read_text())
+            payload["rows"] = 500000
+            path.write_text(json.dumps(payload))
+            return receipt
+
+        with patch("icarus_engine.external_qlib_prepare.verify_candidate",
+                   side_effect=tamper):
+            with self.assertRaisesRegex(VerificationRejected, "manifest changed"):
+                self.prepare()
+        self.assertFalse(self.prepared.exists())
+
+    def test_subsecond_utc_bars_cannot_be_silently_truncated(self):
+        import shutil
+        shutil.rmtree(self.staging)
+        raw = self.source.read_text()
+        raw = raw.replace("14:30:00Z", "14:30:00.500000Z")
+        raw = raw.replace("14:35:00Z", "14:35:00.500000Z")
+        self.source.write_text(raw)
+        self.make_staging(period=300)
+        with self.assertRaisesRegex(VerificationRejected, "unaligned/subsecond"):
+            self.prepare()
+        self.assertFalse(self.prepared.exists())
+
+    def test_non_boundary_bars_cannot_masquerade_as_five_minute_bars(self):
+        import shutil
+        shutil.rmtree(self.staging)
+        raw = self.source.read_text()
+        raw = raw.replace("14:30:00Z", "14:31:00Z")
+        raw = raw.replace("14:35:00Z", "14:36:00Z")
+        self.source.write_text(raw)
+        self.make_staging(period=300)
+        with self.assertRaisesRegex(VerificationRejected, "unaligned/subsecond"):
+            self.prepare()
+        self.assertFalse(self.prepared.exists())
+
     def test_cli_can_prepare_without_importing_qlib(self):
         with patch("builtins.print") as emit:
             result = main([
