@@ -64,6 +64,8 @@ def prepare_qlib_csv(
     staging_dir = Path(staging_dir)
     source = staging_dir / "qlib-bars.csv"
     manifest_path = staging_dir / "manifest.json"
+    if manifest_path.is_symlink() or _stream_hash(manifest_path) != verified["manifest_sha256"]:
+        raise VerificationRejected("staging manifest changed since independent verification")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     cadence = manifest["bar_seconds"]
     if cadence not in FREQUENCIES:
@@ -132,7 +134,11 @@ def prepare_qlib_csv(
             except csv.Error as exc:
                 raise VerificationRejected("invalid staged CSV quoting") from exc
 
-        if digest.hexdigest() != manifest["export_sha256"] or count != verified["rows_rechecked"]:
+        if (
+            digest.hexdigest() != manifest["export_sha256"]
+            or count != verified["rows_rechecked"]
+            or _stream_hash(manifest_path) != verified["manifest_sha256"]
+        ):
             raise VerificationRejected("source changed while preparing Qlib input")
         record: dict[str, object] = {
             "schema_version": "icarus-qlib-csv-input-v1",
