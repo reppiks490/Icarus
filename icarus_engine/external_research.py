@@ -272,7 +272,7 @@ def emit_quarantined_handoff(
                    "execution_authorized"):
         if manifest.get(denied) is not False:
             raise ResearchAdmissionError("unexpected/raised research authority")
-    if not isinstance(manifest.get("rows"), int) or manifest["rows"] <= 0:
+    if type(manifest.get("rows")) is not int or manifest["rows"] <= 0:
         raise ResearchAdmissionError("invalid staged row count")
     source_hash = manifest.get("source_sha256", "")
     output_hash = manifest.get("export_sha256", "")
@@ -284,7 +284,14 @@ def emit_quarantined_handoff(
         or _file_hash(csv_path) != output_hash
     ):
         raise ResearchAdmissionError("staged data checksum mismatch")
+    first = _timestamp(manifest.get("first_utc", ""), 1)
     seen = _timestamp(manifest.get("last_utc", ""), 1)
+    if first > seen:
+        raise ResearchAdmissionError("invalid staged time interval")
+    bar_seconds = manifest.get("bar_seconds")
+    if type(bar_seconds) is not int or not 1 <= bar_seconds <= 86400:
+        raise ResearchAdmissionError("invalid staged bar interval")
+    source_id = _valid_id(manifest.get("source_id"), "source_id")
     if available < seen:
         raise ResearchAdmissionError("source cannot be available before final bar")
     instrument = _valid_id(manifest.get("instrument"), "instrument")
@@ -296,7 +303,7 @@ def emit_quarantined_handoff(
     evidence = {
         "schema_version": "1.0.0",
         "evidence_id": identity,
-        "source_id": manifest["source_id"],
+        "source_id": source_id,
         "source_revision": producer_revision,
         "instrument_id": instrument,
         "contract_id": contract_id,
@@ -321,7 +328,7 @@ def emit_quarantined_handoff(
             "kind": "quarantined_qlib_csv_staging",
             "export_sha256": output_hash,
             "rows": manifest["rows"],
-            "bar_seconds": manifest["bar_seconds"],
+            "bar_seconds": bar_seconds,
             "authority": "NONE",
         },
     }
