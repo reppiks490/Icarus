@@ -9,10 +9,12 @@ on:
       - "icarus_engine/external_qlib_prepare.py"
       - "icarus_engine/external_qlib_verify.py"
       - "icarus_engine/external_rd_agent_preflight.py"
+      - "icarus_engine/external_hft_stage.py"
       - "tests_engine/test_external_research_verify.py"
       - "tests_engine/test_external_qlib_prepare.py"
       - "tests_engine/test_external_qlib_verify.py"
       - "tests_engine/test_external_rd_agent_preflight.py"
+      - "tests_engine/test_external_hft_stage.py"
       - "docs/integrations/EXTERNAL_QUANT_FABRIC.md"
       - ".github/workflows/external-quant-contract.yml"
   workflow_dispatch:
@@ -35,7 +37,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Check source syntax
-        run: python -m py_compile icarus_engine/external_research.py icarus_engine/external_research_verify.py icarus_engine/external_qlib_prepare.py icarus_engine/external_qlib_verify.py icarus_engine/external_rd_agent_preflight.py tests_engine/test_external_research.py tests_engine/test_external_research_verify.py tests_engine/test_external_qlib_prepare.py tests_engine/test_external_qlib_verify.py tests_engine/test_external_rd_agent_preflight.py
+        run: python -m py_compile icarus_engine/external_research.py icarus_engine/external_research_verify.py icarus_engine/external_qlib_prepare.py icarus_engine/external_qlib_verify.py icarus_engine/external_rd_agent_preflight.py icarus_engine/external_hft_stage.py tests_engine/test_external_research.py tests_engine/test_external_research_verify.py tests_engine/test_external_qlib_prepare.py tests_engine/test_external_qlib_verify.py tests_engine/test_external_rd_agent_preflight.py tests_engine/test_external_hft_stage.py
       - name: Test isolated offline, standard-library-only contracts
         run: python -m unittest discover -s tests_engine -p "test_external_*.py" -v
       - name: Verify metadata-only probe does not require providers
