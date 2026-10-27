@@ -1,0 +1,32 @@
+name: HFT causal L2 replay-readiness quarantine
+
+on:
+  pull_request:
+    paths:
+      - "icarus_engine/external_hft_causal_audit.py"
+      - "tests_engine/test_external_hft_causal_audit.py"
+      - ".github/workflows/external-hft-causal-audit.yml"
+      - "docs/integrations/HFT_CAUSAL_READINESS.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  causal-audit:
+    name: Offline HFT causal audit Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile source and focused tests
+        run: python -m py_compile icarus_engine/external_hft_causal_audit.py tests_engine/test_external_hft_causal_audit.py
+      - name: Run synthetic full source-to-native causal quarantine tests
+        run: python -m unittest discover -s tests_engine -p "test_external_hft_causal_audit.py" -v
