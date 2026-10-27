@@ -248,6 +248,7 @@ def verify_candidate(
              and quality.get("confidence") is None
              and quality.get("conflicted") is False
              and isinstance(quality.get("missing_fields"), list)
+             and all(isinstance(item, str) for item in quality["missing_fields"])
              and EVIDENCE_MISSING.issubset(set(quality["missing_fields"])),
              "unverified research must remain explicitly stale and incomplete")
     payload = evidence.get("payload")
