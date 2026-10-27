@@ -109,6 +109,15 @@ class ExternalResearchTests(unittest.TestCase):
                     self.export()
                 self.assertFalse(self.output.exists())
 
+    def test_duplicate_ohlcv_header_is_not_silently_accepted(self):
+        self.input.write_text(
+            HEADER.rstrip("\n") + ",volume\n"
+            + GOOD.replace("\n", ",0\n")
+        )
+        with self.assertRaisesRegex(ResearchAdmissionError, "columns"):
+            self.export()
+        self.assertFalse(self.output.exists())
+
     def test_existing_export_is_never_overwritten(self):
         self.output.mkdir()
         marker = self.output / "keep"
