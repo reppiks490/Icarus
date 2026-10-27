@@ -114,7 +114,6 @@ def run_synthetic_native_smoke() -> dict:
             hft.BacktestAsset().linear_asset(1.0).data(data)
             .no_partial_fill_exchange().constant_latency(0, 0)
             .power_prob_queue_model3(3.0).tick_size(0.25).lot_size(1.0)
-            .trade_len(16)
         )
         backtest = hft.HashMapMarketDepthBacktest([asset])
         try:
