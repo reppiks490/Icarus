@@ -121,6 +121,19 @@ class HftStageTests(unittest.TestCase):
                     self.go()
                 self.assertFalse(self.output.exists())
 
+    def test_excessively_long_timestamp_is_refused_without_unhandled_parse(self):
+        huge = '9' * 6000
+        self.source.write_text(HEAD + DATA.replace('1700000000000000000,1700000000000001000',
+                                                   huge + ',1700000000000001000'))
+        with self.assertRaisesRegex(DepthAdmissionError, 'bounds'):
+            self.go()
+        self.assertFalse(self.output.exists())
+
+    def test_enormous_decimal_exponent_is_cleanly_refused(self):
+        self.source.write_text(HEAD + DATA.replace('15000.25,2', '1e999999999,2'))
+        with self.assertRaises(DepthAdmissionError):
+            self.go()
+        self.assertFalse(self.output.exists())
     def test_zero_trade_qty_forbidden_zero_depth_qty_allowed(self):
         self.source.write_text(HEAD + DATA.replace("15000.50,1\n", "15000.50,0\n"))
         with self.assertRaisesRegex(DepthAdmissionError, "quantity"):
