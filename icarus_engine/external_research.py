@@ -227,6 +227,151 @@ def export_qlib_staging(
             shutil.rmtree(scratch)
 
 
+
+def _file_hash(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as src:
+        for block in iter(lambda: src.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def emit_quarantined_handoff(
+    staging_dir: Path,
+    *,
+    producer_repository: str,
+    producer_revision: str,
+    available_at: str,
+) -> dict[str, object]:
+    """Generate canonical evidence + handoff only; NEVER promote to Brain state.
+
+    Caller-provided availability and provenance are recorded but remain
+    UNVERIFIED. This is a quarantine package for an independent validator.
+    """
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", producer_repository):
+        raise ResearchAdmissionError("invalid producer repository")
+    if not re.fullmatch(r"[0-9a-f]{40}", producer_revision):
+        raise ResearchAdmissionError("producer revision must be full lowercase SHA-1")
+    available = _timestamp(available_at, 1)
+    folder = Path(staging_dir)
+    manifest_path, csv_path = folder / "manifest.json", folder / "qlib-bars.csv"
+    if any(p.is_symlink() or not p.is_file() for p in (manifest_path, csv_path)):
+        raise ResearchAdmissionError("staging inputs must be regular non-symlink files")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (ValueError, OSError) as exc:
+        raise ResearchAdmissionError("invalid staging manifest") from exc
+    if not isinstance(manifest, dict) or (
+        manifest.get("schema_version") != "icarus-external-research-v1"
+        or manifest.get("target") != "qlib_csv_staging"
+        or manifest.get("price_basis") != "raw_operator_attested"
+    ):
+        raise ResearchAdmissionError("unrecognized staging format or price basis")
+    for denied in ("source_authenticity_verified", "entitlement_verified",
+                   "roll_mapping_verified", "training_approved",
+                   "execution_authorized"):
+        if manifest.get(denied) is not False:
+            raise ResearchAdmissionError("unexpected/raised research authority")
+    if not isinstance(manifest.get("rows"), int) or manifest["rows"] <= 0:
+        raise ResearchAdmissionError("invalid staged row count")
+    source_hash = manifest.get("source_sha256", "")
+    output_hash = manifest.get("export_sha256", "")
+    if (
+        not isinstance(source_hash, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", source_hash)
+        or not isinstance(output_hash, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", output_hash)
+        or _file_hash(csv_path) != output_hash
+    ):
+        raise ResearchAdmissionError("staged data checksum mismatch")
+    seen = _timestamp(manifest.get("last_utc", ""), 1)
+    if available < seen:
+        raise ResearchAdmissionError("source cannot be available before final bar")
+    instrument = _valid_id(manifest.get("instrument"), "instrument")
+    contract_id = _valid_id(manifest.get("actual_contract_id"), "contract_id")
+    identity = hashlib.sha256(
+        f"{producer_repository}|{producer_revision}|{source_hash}|{output_hash}|"
+        f"{available.isoformat()}".encode("utf-8")
+    ).hexdigest()
+    evidence = {
+        "schema_version": "1.0.0",
+        "evidence_id": identity,
+        "source_id": manifest["source_id"],
+        "source_revision": producer_revision,
+        "instrument_id": instrument,
+        "contract_id": contract_id,
+        "session_id": None,
+        "timezone": "UTC",
+        "observed_at": seen.isoformat(),
+        "available_at": available.isoformat(),
+        "decision_context_at": None,
+        "raw_artifact_hash": source_hash,
+        "transform_id": "icarus-external-qlib-staging-v1",
+        "transform_revision": producer_revision,
+        "quality": {
+            "stale": True,
+            "conflicted": False,
+            "missing_fields": [
+                "vendor_authenticity_receipt", "entitlement_confirmation",
+                "roll_calendar_validation", "training_holdout_validation",
+            ],
+            "confidence": None,
+        },
+        "payload": {
+            "kind": "quarantined_qlib_csv_staging",
+            "export_sha256": output_hash,
+            "rows": manifest["rows"],
+            "bar_seconds": manifest["bar_seconds"],
+            "authority": "NONE",
+        },
+    }
+    scratch = Path(tempfile.mkdtemp(prefix=".icarus-handoff-", dir=folder))
+    destination = folder / "candidate_handoff"
+    try:
+        if destination.exists():
+            raise ResearchAdmissionError("candidate handoff already exists")
+        evidence_path = scratch / "evidence_record.json"
+        evidence_path.write_text(json.dumps(evidence, sort_keys=True, indent=2) + "\n")
+        handoff = {
+            "schema_version": "1.0.0",
+            "handoff_id": identity,
+            "producer": "external_quant_fabric",
+            "producer_repository": producer_repository,
+            "producer_revision": producer_revision,
+            "target_repository": "reppiks490/Icarus",
+            "target_revision": None,
+            "created_at": None,
+            "expires_at": None,
+            "artifacts": [
+                {"path": "qlib-bars.csv", "hash": output_hash,
+                 "media_type": "text/csv"},
+                {"path": "manifest.json", "hash": _file_hash(manifest_path),
+                 "media_type": "application/json"},
+                {"path": "candidate_handoff/evidence_record.json",
+                 "hash": _file_hash(evidence_path),
+                 "media_type": "application/json"},
+            ],
+            "evidence_ids": [identity],
+            "claims": ["Structurally validated Qlib CSV staging; no empirical market-edge claim"],
+            "assumptions": ["Source authenticity and availability are caller-attested only"],
+            "tests": [],
+            "authority_requested": "RESEARCH",
+            "authority_granted": "NONE",
+            "limitations": [
+                "Quarantined, stale by default; cannot enter Brain or trading state",
+                "Vendor entitlements, contracts and fill assumptions unverified",
+            ],
+        }
+        (scratch / "handoff.json").write_text(
+            json.dumps(handoff, sort_keys=True, indent=2) + "\n"
+        )
+        scratch.rename(destination)
+        return handoff
+    finally:
+        if scratch.exists():
+            shutil.rmtree(scratch)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -239,11 +384,26 @@ def main(argv: list[str] | None = None) -> int:
     export.add_argument("--source-id", required=True)
     export.add_argument("--bar-seconds", required=True, type=int)
     export.add_argument("--price-basis", required=True, choices=["raw"])
+    handoff = commands.add_parser(
+        "emit-handoff", help="make a quarantined canonical schema candidate"
+    )
+    handoff.add_argument("--staging", required=True, type=Path)
+    handoff.add_argument("--producer-repository", required=True)
+    handoff.add_argument("--producer-revision", required=True)
+    handoff.add_argument("--available-at", required=True)
     args = parser.parse_args(argv)
     if args.command == "probe":
         print(json.dumps(installed_distributions(), sort_keys=True, indent=2))
         return 0
     try:
+        if args.command == "emit-handoff":
+            result = emit_quarantined_handoff(
+                args.staging, producer_repository=args.producer_repository,
+                producer_revision=args.producer_revision,
+                available_at=args.available_at,
+            )
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0
         report = export_qlib_staging(
             args.input, args.output, instrument=args.instrument,
             contract_id=args.contract_id, source_id=args.source_id,
