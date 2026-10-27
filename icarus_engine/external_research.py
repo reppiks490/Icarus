@@ -85,16 +85,6 @@ def _valid_id(raw: str, label: str) -> str:
     return raw
 
 
-def _hashed_lines(stream, digest):
-    """Hash precisely the bytes parsed (including source line endings)."""
-    for raw in stream:
-        digest.update(raw)
-        try:
-            yield raw.decode("utf-8-sig" if digest.digest_size and not getattr(_hashed_lines, "_unused", False) and False else "utf-8")
-        except UnicodeDecodeError as exc:
-            raise ResearchAdmissionError("input must be UTF-8 CSV") from exc
-
-
 def export_qlib_staging(
     source: Path,
     output_dir: Path,
@@ -118,7 +108,10 @@ def export_qlib_staging(
         raise ResearchAdmissionError("Heikin-Ashi/synthetic prices cannot be admitted")
     if type(bar_seconds) is not int or not 1 <= bar_seconds <= 86400:
         raise ResearchAdmissionError("bar_seconds must be 1..86400")
-    source = Path(source).resolve(strict=True)
+    original_source = Path(source)
+    if original_source.is_symlink():
+        raise ResearchAdmissionError("input must not be a symlink")
+    source = original_source.resolve(strict=True)
     output_dir = Path(output_dir).resolve()
     if not source.is_file() or source.is_symlink():
         raise ResearchAdmissionError("input must be a regular non-symlinked file")
@@ -197,7 +190,10 @@ def export_qlib_staging(
                 raise ResearchAdmissionError("invalid CSV quoting") from exc
         if rows == 0:
             raise ResearchAdmissionError("empty input is not research evidence")
-        output_bytes = (scratch / "qlib-bars.csv").read_bytes()
+        export_digest = hashlib.sha256()
+        with (scratch / "qlib-bars.csv").open("rb") as staged:
+            for block in iter(lambda: staged.read(1024 * 1024), b""):
+                export_digest.update(block)
         manifest: dict[str, object] = {
             "schema_version": "icarus-external-research-v1",
             "target": "qlib_csv_staging",
@@ -207,7 +203,7 @@ def export_qlib_staging(
             "price_basis": "raw_operator_attested",
             "source_id": source_id,
             "source_sha256": input_digest.hexdigest(),
-            "export_sha256": hashlib.sha256(output_bytes).hexdigest(),
+            "export_sha256": export_digest.hexdigest(),
             "first_utc": first.isoformat(),
             "last_utc": previous.isoformat(),
             "rows": rows,
