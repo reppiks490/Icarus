@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from icarus_engine.external_research import (
     ResearchAdmissionError,
+    emit_quarantined_handoff,
     export_qlib_staging,
     installed_distributions,
     main,
@@ -138,6 +139,65 @@ class ExternalResearchTests(unittest.TestCase):
         self.assertTrue(data["qlib"]["metadata_present"])
         self.assertFalse(data["qlib"]["runtime_verified"])
         self.assertFalse(data["qlib"]["icarus_integrated"])
+
+    def handoff(self, **overrides):
+        options = dict(
+            producer_repository="reppiks490/Icarus",
+            producer_revision="a" * 40,
+            available_at="2026-01-06T00:00:00Z",
+        )
+        options.update(overrides)
+        return emit_quarantined_handoff(self.output, **options)
+
+    def test_canonical_handoff_is_hash_bound_and_never_authoritative(self):
+        self.export()
+        handoff = self.handoff()
+        import json
+        record = json.loads(
+            (self.output / "candidate_handoff" / "evidence_record.json").read_text()
+        )
+        self.assertEqual(record["evidence_id"], handoff["handoff_id"])
+        self.assertEqual(record["source_revision"], "a" * 40)
+        self.assertEqual(record["payload"]["rows"], 2)
+        self.assertEqual(handoff["target_repository"], "reppiks490/Icarus")
+        self.assertEqual(handoff["authority_granted"], "NONE")
+        self.assertTrue(record["quality"]["stale"])
+        self.assertIsNone(record["decision_context_at"])
+        self.assertEqual(len(handoff["artifacts"]), 3)
+        self.assertTrue((self.output / "candidate_handoff" / "handoff.json").is_file())
+
+    def test_tampering_export_refuses_canonical_handoff(self):
+        self.export()
+        with (self.output / "qlib-bars.csv").open("a") as f:
+            f.write("injected\n")
+        with self.assertRaisesRegex(ResearchAdmissionError, "checksum"):
+            self.handoff()
+        self.assertFalse((self.output / "candidate_handoff").exists())
+
+    def test_caller_cannot_grant_execution_authority(self):
+        self.export()
+        import json
+        path = self.output / "manifest.json"
+        data = json.loads(path.read_text())
+        data["execution_authorized"] = True
+        path.write_text(json.dumps(data))
+        with self.assertRaisesRegex(ResearchAdmissionError, "authority"):
+            self.handoff()
+        self.assertFalse((self.output / "candidate_handoff").exists())
+
+    def test_future_information_is_refused_at_availability_boundary(self):
+        self.export()
+        with self.assertRaisesRegex(ResearchAdmissionError, "before final bar"):
+            self.handoff(available_at="2026-01-05T14:30:00Z")
+        self.assertFalse((self.output / "candidate_handoff").exists())
+
+    def test_handoff_is_write_once_and_requires_pinned_revision(self):
+        self.export()
+        with self.assertRaisesRegex(ResearchAdmissionError, "full lowercase SHA"):
+            self.handoff(producer_revision="main")
+        self.handoff()
+        with self.assertRaisesRegex(ResearchAdmissionError, "already exists"):
+            self.handoff()
 
     def test_cli_probe_works_without_network(self):
         with patch("icarus_engine.external_research.metadata.version", return_value="1.2.3"):
