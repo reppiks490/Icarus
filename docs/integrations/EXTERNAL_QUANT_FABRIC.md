@@ -26,6 +26,21 @@ python -m icarus_engine.external_research export-qlib \
 
 The example paths and receipt ID are placeholders, **not discovered or collected datasets**. No command retrieves market data. Output is a Qlib-oriented CSV staging artifact, **not** a Qlib native binary store, factor model, HFT event feed, or Nautilus data catalog.
 
+
+## Canonical handoff into the isolated evidence plane
+
+After **independently proving** the data source and actual producer Git commit, an operator may generate a quarantined, revision-bound candidate. Availability time is a caller attestation; the adapter rejects any availability earlier than the last bar but does not claim independent verification:
+
+```bash
+python -m icarus_engine.external_research emit-handoff \
+  --staging /authorized/research/staging/nqh2026_5m \
+  --producer-repository reppiks490/Icarus \
+  --producer-revision <FULL_40_CHARACTER_COMMIT_SHA> \
+  --available-at 2026-01-06T00:00:00Z
+```
+
+The adapter rehashes staged CSV against the manifest, checks that every safety flag remains denied, and creates `candidate_handoff/evidence_record.json` and `candidate_handoff/handoff.json`. These follow the structures at `integration/schemas/evidence-record.schema.json` and `integration/schemas/handoff.schema.json`. Any handoff is **stale by default**, `authority_granted=NONE` and requires independent canonical consumer-side validation and explicit review before research adoption. It is **never** written to the runtime's state or live decision input.
+
 ## Engineering still required — not implied complete
 
 | Framework | Next adapter / validation work | Hard blocker or proof needed |
