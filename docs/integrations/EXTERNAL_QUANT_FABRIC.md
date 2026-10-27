@@ -74,6 +74,36 @@ Outputs:
 Only after explicit local verification of the installed Qlib code and licenses may a research operator use its official `dump_bin.py dump_all` converter against this isolated `qlib_input` directory and a **separate, new** binary output location. That additional execution path is *not* implemented or authorized by this PR. Qlib provider/calendar behavior, inference pipelines and ML model acceptance still require independent validation, not just command success.
 
 
+
+## Native Qlib binary parity — independent read-only consumer (implemented)
+
+After a separately verified Qlib dump produced its files into a **fresh isolated directory**, the candidate can be audited against the exact prepared single-contract input. The verifier checks the official writer's little-endian float32 feature format (first float is calendar start index, followed by each observation), every price/volume/factor, contract-specific instrument start/end, and the frequency calendar. It streams all rows; neither rows nor features are silently truncated. The expected producer repository, immutable commit revision, and handoff identifier must come from an independent trusted source.
+
+```bash
+python -m icarus_engine.external_qlib_verify \
+  --prepared /authorized/research/prepared/nqh2026_5m \
+  --qlib-dir /authorized/research/native_qlib/nqh2026_5m \
+  --contract-id NQH2026 \
+  --producer-repository reppiks490/Icarus \
+  --producer-revision <FULL_40_CHARACTER_COMMIT_SHA> \
+  --handoff-id <64_CHAR_VERIFIED_HANDOFF_SHA256>
+```
+
+This verifier is **not the Qlib dump itself** and does not execute Qlib code, download source, connect to a provider, validate model prediction quality, or promote training/broker authority. Its offline regression fixtures emulate the published binary format; they do not constitute an authentic Qlib binary run. A verified structural match still does not establish market-data authenticity, entitlement, complete exchange sessions, accurate queue fills, or a profitable edge. Only a successful native Qlib dump+readback on the authorized owner host can clear the separate runtime step.
+
+## RD-Agent local Windows/WSL2 capacity preflight (implemented; local execution pending)
+
+```bash
+python -m icarus_engine.external_rd_agent_preflight --workspace .
+```
+
+This optional **read-only** inventory reports host/WSL kernel class, logical CPU count, available RAM, cgroup-v1/v2 effective memory ceilings and consumption when exposed, free disk bytes, and whether installed distribution metadata for `rdagent` exists. It never contacts a model endpoint, executes the agent, installs models, checks credentials, invokes GPU drivers, or changes host configuration.
+
+Capacity classes are deliberately provisional: fewer than 4 GiB effective available or 10 GiB free disk is blocked; under 12 GiB available or 25 GiB disk is constrained; above those thresholds means **capacity measured but model suitability unverified**, not permission to install or run a particular model. Unknown cgroup headroom remains unknown. It cannot measure available GPU VRAM or chat/embedding model compatibility.
+
+**Important:** A readout in the GitHub runner or this chat's container says nothing about the owner's Windows/WSL2 limits. The actual owner's host report remains outstanding, so RD-Agent local chat+embedding model selection, download, endpoint verification and experiment execution have not been performed.
+
+
 ## Engineering still required — not implied complete
 
 | Framework | Next adapter / validation work | Hard blocker or proof needed |
