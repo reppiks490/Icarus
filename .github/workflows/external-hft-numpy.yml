@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install pinned NumPy for independent binary readback only
-        run: python -m pip install --only-binary=:all: numpy==2.2.6
+        run: 'python -m pip install --only-binary=:all: numpy==2.2.6'
       - name: Verify isolated syntax
         run: python -m py_compile icarus_engine/external_hft_stage.py icarus_engine/external_hft_verify.py icarus_engine/external_hft_numpy.py tests_engine/test_external_hft_numpy.py
       - name: Verify independent producer-consumer-native binary parity and refusal
