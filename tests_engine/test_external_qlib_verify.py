@@ -35,6 +35,9 @@ class NativeQlibVerificationTests(unittest.TestCase):
         self.native = self.root / "native"
         self.write_input(2)
         self.generate_staging()
+        self.handoff_id = json.loads(
+            (self.prepared / "prepare_manifest.json").read_text()
+        )["handoff_id"]
         self.build_mock_native_layout()
 
     def write_input(self, count):
@@ -91,6 +94,8 @@ class NativeQlibVerificationTests(unittest.TestCase):
         args = {
             "expected_contract_id": "NQH2026",
             "expected_producer_revision": REV,
+            "expected_producer_repository": REPO,
+            "expected_handoff_id": self.handoff_id,
         }
         args.update(kw)
         return verify_qlib_binary(self.prepared, self.native, **args)
@@ -114,6 +119,8 @@ class NativeQlibVerificationTests(unittest.TestCase):
             {"expected_contract_id": "NQM2026"},
             {"expected_producer_revision": "main"},
             {"expected_producer_revision": "c" * 40},
+            {"expected_producer_repository": "attacker/other-repo"},
+            {"expected_handoff_id": "e" * 64},
         ):
             with self.subTest(arguments=arguments):
                 with self.assertRaises(VerificationRejected):
@@ -197,6 +204,7 @@ class NativeQlibVerificationTests(unittest.TestCase):
             self.assertEqual(main([
                 "--prepared", str(self.prepared), "--qlib-dir", str(self.native),
                 "--contract-id", "NQH2026", "--producer-revision", REV,
+                "--producer-repository", REPO, "--handoff-id", self.handoff_id,
             ]), 0)
             printer.assert_called_once()
 
@@ -207,6 +215,9 @@ class NativeQlibVerificationTests(unittest.TestCase):
         shutil.rmtree(self.native)
         self.write_input(10007)
         self.generate_staging()
+        self.handoff_id = json.loads(
+            (self.prepared / "prepare_manifest.json").read_text()
+        )["handoff_id"]
         self.build_mock_native_layout()
         self.assertEqual(self.verify()["rows_rechecked"], 10007)
 
