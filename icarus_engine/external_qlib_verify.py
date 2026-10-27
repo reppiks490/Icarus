@@ -78,6 +78,8 @@ def verify_qlib_binary(
     *,
     expected_contract_id: str,
     expected_producer_revision: str,
+    expected_producer_repository: str,
+    expected_handoff_id: str,
 ) -> dict[str, object]:
     """Compare every prepared raw observation to official Qlib binary layout.
 
@@ -102,6 +104,15 @@ def verify_qlib_binary(
              and re.fullmatch(r"[0-9a-f]{40}", expected_producer_revision) is not None
              and prep.get("producer_revision") == expected_producer_revision,
              "producer revision mismatch")
+    _require(isinstance(expected_producer_repository, str)
+             and re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", expected_producer_repository)
+             is not None
+             and prep.get("producer_repository") == expected_producer_repository,
+             "producer repository mismatch")
+    _require(isinstance(expected_handoff_id, str)
+             and HEX64.fullmatch(expected_handoff_id) is not None
+             and prep.get("handoff_id") == expected_handoff_id,
+             "independent handoff identity mismatch")
     _require(isinstance(expected_contract_id, str)
              and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", expected_contract_id) is not None
              and prep.get("actual_contract_id") == expected_contract_id,
@@ -181,6 +192,7 @@ def verify_qlib_binary(
                 raise VerificationRejected("invalid prepared CSV syntax") from exc
             _require(calendars.read(1) == b"", "Qlib calendar contains unexpected data")
         _require(observations == count, "Qlib observation count mismatch")
+        _require(_sha256(csv_path) == digest, "prepared CSV changed during verification")
         with inst_path.open("r", encoding="utf-8", newline="") as instruments:
             entries = [line.rstrip("\r\n") for line in instruments]
         _require(entries == [f"{expected_contract_id.upper()}\t{first}\t{last}"],
@@ -190,6 +202,8 @@ def verify_qlib_binary(
         return {
             "schema_version": "icarus-qlib-native-structural-verify-v1",
             "producer_revision": expected_producer_revision,
+            "producer_repository": expected_producer_repository,
+            "handoff_id": expected_handoff_id,
             "actual_contract_id": expected_contract_id,
             "frequency": frequency,
             "rows_rechecked": observations,
@@ -220,12 +234,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--qlib-dir", type=Path, required=True)
     parser.add_argument("--contract-id", required=True)
     parser.add_argument("--producer-revision", required=True)
+    parser.add_argument("--producer-repository", required=True)
+    parser.add_argument("--handoff-id", required=True)
     args = parser.parse_args(argv)
     try:
         receipt = verify_qlib_binary(
             args.prepared, args.qlib_dir,
             expected_contract_id=args.contract_id,
             expected_producer_revision=args.producer_revision,
+            expected_producer_repository=args.producer_repository,
+            expected_handoff_id=args.handoff_id,
         )
     except (VerificationRejected, OSError) as exc:
         parser.error(str(exc))
