@@ -63,12 +63,20 @@ def _assert_event_dtype(np, native_dtype, upstream_dtype):
         ("px", "<f8"), ("qty", "<f8"), ("order_id", "<u8"),
         ("ival", "<i8"), ("fval", "<f8"),
     ], align=True)
+    # NumPy NPY v1 stores field offsets and scalar types, but does not preserve
+    # the source dtype's 'align=True' metadata. Its reloaded dtype can have
+    # isalignedstruct=False even when the 64-byte ABI and buffer are aligned.
+    # Validate actual offsets/types and the upstream native dtype separately.
     for candidate in (native_dtype, upstream_dtype):
-        if (candidate.itemsize != 64 or candidate.names != COLUMNS
-                or candidate != expected or not candidate.isalignedstruct):
+        if candidate.itemsize != 64 or candidate.names != COLUMNS:
             raise NativeSmokeError("native/upstream Event ABI differs from pinned 64-byte layout")
+        if any(candidate.fields[key][0] != expected.fields[key][0]
+               for key in COLUMNS):
+            raise NativeSmokeError("native/upstream Event scalar types mismatch")
         if any(candidate.fields[key][1] != 8 * i for i, key in enumerate(COLUMNS)):
             raise NativeSmokeError("native/upstream Event offsets mismatch")
+    if not upstream_dtype.isalignedstruct:
+        raise NativeSmokeError("upstream native Event ABI is not aligned")
 
 
 def run_synthetic_native_smoke() -> dict:
