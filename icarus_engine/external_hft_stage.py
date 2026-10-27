@@ -42,7 +42,11 @@ def _grid(value: str, step: Decimal, label: str, line: int, zero: bool) -> str:
         raise DepthAdmissionError(f"row {line}: invalid {label}") from exc
     if not dec.is_finite() or dec < 0 or (not zero and dec <= 0):
         raise DepthAdmissionError(f"row {line}: nonpositive/nonfinite {label}")
-    if dec % step != 0:
+    try:
+        on_grid = dec % step == 0
+    except InvalidOperation as exc:
+        raise DepthAdmissionError(f"row {line}: invalid {label} magnitude") from exc
+    if not on_grid:
         raise DepthAdmissionError(f"row {line}: {label} off declared tick/lot grid")
     number = float(dec)
     if not math.isfinite(number) or abs(Decimal(repr(number)) - dec) > step / 1_000_000:
@@ -63,6 +67,8 @@ def _positive_decimal(value: str, label: str) -> Decimal:
 def _int(text: str, limit: int, label: str, line: int) -> int:
     if not isinstance(text, str) or not text.isascii() or not text.isdigit():
         raise DepthAdmissionError(f"row {line}: invalid {label}")
+    if len(text) > 20:
+        raise DepthAdmissionError(f"row {line}: {label} outside integer bounds")
     n = int(text)
     if n > limit:
         raise DepthAdmissionError(f"row {line}: {label} outside integer bounds")
