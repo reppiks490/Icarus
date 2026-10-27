@@ -280,6 +280,8 @@ def verify_candidate(
         "producer_revision": expected_producer_revision,
         "rows_rechecked": count,
         "artifact_hashes_rechecked": True,
+        "manifest_sha256": _sha256(manifest_file),
+        "staged_csv_sha256": exported_hash,
         "timestamps_and_ohlcv_rechecked": True,
         "candidate_structurally_valid": True,
         "provider_authenticity_verified": False,
