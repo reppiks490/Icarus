@@ -194,6 +194,14 @@ class VerifyCandidateTests(unittest.TestCase):
         with self.assertRaisesRegex(VerificationRejected, "authority"):
             self.verify()
 
+    def test_nonstring_provenance_list_items_are_refused_cleanly(self):
+        evidence = self.read(self.evidence)
+        evidence["quality"]["missing_fields"].append({"not": "a string"})
+        self.write(self.evidence, evidence)
+        self.rehash()
+        with self.assertRaisesRegex(VerificationRejected, "stale"):
+            self.verify()
+
     def test_duplicate_json_keys_are_rejected(self):
         self.handoff.write_text('{"schema_version": "1", "schema_version":"2"}')
         with self.assertRaisesRegex(VerificationRejected, "duplicate JSON"):
