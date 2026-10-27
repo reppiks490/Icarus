@@ -142,7 +142,7 @@ def export_qlib_staging(
                         raise ResearchAdmissionError("input must be UTF-8 CSV") from exc
 
             reader = csv.DictReader(decoded(), strict=True)
-            if reader.fieldnames is None or set(reader.fieldnames) != set(FIELDS):
+            if reader.fieldnames != list(FIELDS):
                 raise ResearchAdmissionError(
                     "required exact CSV columns: " + ",".join(FIELDS)
                 )
