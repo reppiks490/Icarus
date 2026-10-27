@@ -1,0 +1,44 @@
+name: External quantitative research staging contract
+
+on:
+  pull_request:
+    paths:
+      - "icarus_engine/external_research.py"
+      - "tests_engine/test_external_research.py"
+      - "icarus_engine/external_research_verify.py"
+      - "icarus_engine/external_qlib_prepare.py"
+      - "icarus_engine/external_qlib_verify.py"
+      - "icarus_engine/external_rd_agent_preflight.py"
+      - "icarus_engine/external_hft_stage.py"
+      - "tests_engine/test_external_research_verify.py"
+      - "tests_engine/test_external_qlib_prepare.py"
+      - "tests_engine/test_external_qlib_verify.py"
+      - "tests_engine/test_external_rd_agent_preflight.py"
+      - "tests_engine/test_external_hft_stage.py"
+      - "docs/integrations/EXTERNAL_QUANT_FABRIC.md"
+      - ".github/workflows/external-quant-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-admission:
+    name: raw-data admission Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Check source syntax
+        run: python -m py_compile icarus_engine/external_research.py icarus_engine/external_research_verify.py icarus_engine/external_qlib_prepare.py icarus_engine/external_qlib_verify.py icarus_engine/external_rd_agent_preflight.py icarus_engine/external_hft_stage.py tests_engine/test_external_research.py tests_engine/test_external_research_verify.py tests_engine/test_external_qlib_prepare.py tests_engine/test_external_qlib_verify.py tests_engine/test_external_rd_agent_preflight.py tests_engine/test_external_hft_stage.py
+      - name: Test isolated offline, standard-library-only contracts
+        run: python -m unittest discover -s tests_engine -p "test_external_*.py" -v
+      - name: Verify metadata-only probe does not require providers
+        run: python -m icarus_engine.external_research probe
