@@ -1,0 +1,32 @@
+name: Independent HFTBacktest L2 research consumer contract
+
+on:
+  pull_request:
+    paths:
+      - "icarus_engine/external_hft_verify.py"
+      - "tests_engine/test_external_hft_verify.py"
+      - "docs/integrations/HFT_L2_CONSUMER.md"
+      - ".github/workflows/external-hft-consumer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  independent-offline-consumer:
+    name: HFT L2 consumer Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Verify standalone syntax without external frameworks
+        run: python -m py_compile icarus_engine/external_hft_verify.py tests_engine/test_external_hft_verify.py
+      - name: Run independent L2 consumer and producer parity regressions
+        run: python -m unittest discover -s tests_engine -p "test_external_hft_verify.py" -v
