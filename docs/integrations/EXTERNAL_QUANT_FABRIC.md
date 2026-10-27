@@ -41,6 +41,39 @@ python -m icarus_engine.external_research emit-handoff \
 
 The adapter rehashes staged CSV against the manifest, checks that every safety flag remains denied, and creates `candidate_handoff/evidence_record.json` and `candidate_handoff/handoff.json`. These follow the structures at `integration/schemas/evidence-record.schema.json` and `integration/schemas/handoff.schema.json`. Any handoff is **stale by default**, `authority_granted=NONE` and requires independent canonical consumer-side validation and explicit review before research adoption. It is **never** written to the runtime's state or live decision input.
 
+## Independent read-only consumer verification (implemented)
+
+```bash
+python -m icarus_engine.external_research_verify \
+  --staging /authorized/research/staging/nqh2026_5m \
+  --producer-repository reppiks490/Icarus \
+  --producer-revision <FULL_40_CHARACTER_COMMIT_SHA>
+```
+
+This checks every exported row independently of the producer function, verifies the staged and canonical artifact hashes, recalculates the revision-bound evidence ID, rejects inconsistent first/last bar timestamps, rejects a different producer repository or revision, refuses path traversal and symlinks, and ensures the candidate's authority and training status remain denied. Returns a **read-only structural receipt**; authenticity, entitlement, calendar completeness and research model quality are not inferred.
+
+## Qlib official CSV-input preparation (implemented; Qlib binary conversion pending)
+
+Microsoft Qlib's maintained `scripts/dump_bin.py` takes individual symbol-named CSVs with a date column and open/close/high/low/volume/factor fields (see <https://github.com/microsoft/qlib/blob/main/docs/component/data.rst>). We now prepare that intermediate format without importing/executing Qlib:
+
+```bash
+python -m icarus_engine.external_qlib_prepare \
+  --staging /authorized/research/staging/nqh2026_5m \
+  --output /authorized/research/prepared/nqh2026_5m \
+  --producer-repository reppiks490/Icarus \
+  --producer-revision <FULL_40_CHARACTER_COMMIT_SHA>
+```
+
+Outputs:
+- `qlib_input/NQH2026.csv` with date, open, high, low, close, volume and factor columns; each date string is in **UTC without a timezone suffix** to match Qlib's documented parser. `prepare_manifest.json` permanently records that those naive strings mean UTC, the actual underlying futures contract, bar cadence, source revision, and SHA-256 input/output evidence.
+- Factor is **1** for unadjusted raw prices; it does not convert a continuous futures synthetic series into genuine fills. Rollover stitching and provenance require separate research work.
+- Supported offline CSV cadences: 1, 2, 5, 10, 15, 30 and 60 minutes. Other bar, event-tick and order-book inputs must use a dedicated adapter; no silent resampling or truncation.
+- The output is immutable at the directory level (pre-existing targets are refused), uses bounded streaming, and refuses unsafe filenames such as continuous ticker aliases as actual contract identities.
+- The tool never runs `dump_bin.py`, installs a dependency, downloads market data, trains a model or writes into Brain/strategy/broker state. Real Qlib binary export and native Qlib queries **remain not verified on the owner's Windows/WSL2 machine**.
+
+Only after explicit local verification of the installed Qlib code and licenses may a research operator use its official `dump_bin.py dump_all` converter against this isolated `qlib_input` directory and a **separate, new** binary output location. That additional execution path is *not* implemented or authorized by this PR. Qlib provider/calendar behavior, inference pipelines and ML model acceptance still require independent validation, not just command success.
+
+
 ## Engineering still required — not implied complete
 
 | Framework | Next adapter / validation work | Hard blocker or proof needed |
