@@ -59,7 +59,7 @@ class OfflineContractTests(unittest.TestCase):
         report = run_synthetic_native_smoke()
         self.assertEqual(report["status"], "SYNTHETIC_NATIVE_RUNTIME_SMOKE_ONLY")
         self.assertEqual(report["rows_source_verified"], 5)
-        self.assertEqual(report["rows_consumed_by_smoke"], 3)
+        self.assertEqual(report["fixture_events_scheduled_before_probe"], 3)
         self.assertEqual(report["order_submissions"], 0)
         self.assertTrue(report["native_simulator_invoked"])
         self.assertTrue(report["upstream_event_dtype_parity_verified"])
