@@ -131,7 +131,7 @@ def run_synthetic_native_smoke() -> dict:
             "source_sha256": trusted_sha,
             "native_sha256": verified["native_sha256"],
             "rows_source_verified": verified["rows"],
-            "rows_consumed_by_smoke": 3,
+            "fixture_events_scheduled_before_probe": 3,
             "event_dtype_itemsize_bytes": 64,
             "upstream_event_dtype_parity_verified": True,
             "native_simulator_invoked": True,
