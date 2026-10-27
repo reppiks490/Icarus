@@ -69,9 +69,12 @@ def _windows_memory() -> tuple[int | None, int | None]:
 
 
 def _cgroup_memory(root: Path = Path("/sys/fs/cgroup")) -> tuple[int | None, int | None]:
-    limit = _integer(root / "memory.max")
-    used = _integer(root / "memory.current")
-    if limit is None:
+    # cgroup-v2's literal "max" means unlimited, not absent v2 files.
+    # Do not silently replace a valid v2 usage reading with unrelated v1 data.
+    if (root / "memory.max").is_file():
+        limit = _integer(root / "memory.max")
+        used = _integer(root / "memory.current")
+    else:
         limit = _integer(root / "memory/memory.limit_in_bytes")
         used = _integer(root / "memory/memory.usage_in_bytes")
     if limit is not None and limit > 1 << 60:
