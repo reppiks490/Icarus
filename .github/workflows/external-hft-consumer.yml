@@ -1,6 +1,14 @@
 name: Independent HFTBacktest L2 research consumer contract
 
 on:
+  push:
+    branches:
+      - "chatgpt/hft-l2-consumer-audit-20261027"
+    paths:
+      - "icarus_engine/external_hft_verify.py"
+      - "tests_engine/test_external_hft_verify.py"
+      - "docs/integrations/HFT_L2_CONSUMER.md"
+      - ".github/workflows/external-hft-consumer.yml"
   pull_request:
     paths:
       - "icarus_engine/external_hft_verify.py"
