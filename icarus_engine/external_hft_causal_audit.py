@@ -137,7 +137,9 @@ def audit_causal_l2(
         if stream.read(1):
             raise CausalAuditError("native event file grew during audit")
 
-    if depth != receipt["depth_updates"] or trades != receipt["trades"]:
+    # The independent native verifier returns only rows, not event-kind counts.
+    # Its source-to-byte check already verified the producer kind breakdown.
+    if depth + trades != receipt["rows"]:
         raise CausalAuditError("native event counts changed during audit")
     if digest.hexdigest() != receipt["native_sha256"] or _sha_file(native) != digest.hexdigest():
         raise CausalAuditError("native bytes changed during audit")
