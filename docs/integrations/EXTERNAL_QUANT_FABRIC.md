@@ -104,6 +104,22 @@ Capacity classes are deliberately provisional: fewer than 4 GiB effective availa
 **Important:** A readout in the GitHub runner or this chat's container says nothing about the owner's Windows/WSL2 limits. The actual owner's host report remains outstanding, so RD-Agent local chat+embedding model selection, download, endpoint verification and experiment execution have not been performed.
 
 
+## HFTBacktest MBP L2 event-column staging (implemented; replay not authorized)
+
+HFTBacktest documents an 8-field Event dtype: `ev, exch_ts, local_ts, px, qty, order_id, ival, fval`; ICARUS now prepares a provenance-bound **CSV with these fields**, not an executable NumPy structured array. Upstream specification: https://github.com/nkaz001/hftbacktest/blob/master/docs/data.rst and https://github.com/nkaz001/hftbacktest/blob/master/hftbacktest/src/types.rs.
+
+The source CSV must have exactly `sequence,contract_id,kind,side,exchange_ts_ns,local_ts_ns,price,quantity`. Supported records are market-by-price `depth_update` (bid or ask, zero size means remove level) and `trade` (buy or sell aggressor, positive size). An actual futures contract, positive tick/lot sizes, strict sequence order, tick/lot grid alignment, nondecreasing exchange and local clock, and local reception no earlier than exchange timestamp are mandatory. The converter refuses unsupported snapshots, MBO order IDs and add/cancel events instead of inventing them.
+
+```bash
+python -m icarus_engine.external_hft_stage \
+  --input /authorized/data/physical_contract_mbp_l2.csv \
+  --output /authorized/research/hft/staged_nqh2026 \
+  --contract-id NQH2026 --source-id authorized_vendor_receipt \
+  --tick-size 0.25 --lot-size 1
+```
+
+Output is `hft-events.csv` and `manifest.json`, with input/output SHA-256, clock bounds, event counts and authority explicitly denied. Streaming has no arbitrary row limit and never overwrites an existing directory. This does **not** verify vendor entitlement, source authenticity, clock synchronization, snapshot completeness, L3 order IDs, queue placement, real fills or profitability. Conversion to version-pinned HFTBacktest-native NumPy and independent simulator replay remain separate unimplemented gates.
+
 ## Engineering still required — not implied complete
 
 | Framework | Next adapter / validation work | Hard blocker or proof needed |
