@@ -20,7 +20,7 @@ from .external_hft_simulator_smoke import (
 )
 
 STEP_EARLY_NS = 2_500_000_000
-STEP_FULL_NS = 4_500_000_000
+STEP_FULL_NS = 3_500_000_000
 
 
 class TemporalParityError(ValueError):
@@ -131,7 +131,7 @@ def run_synthetic_temporal_parity() -> dict:
             raise TemporalParityError("early observed book differs from pinned fixture")
         full_direct = _replay(hft, data, [STEP_FULL_NS])[-1]
         full_sliced = _replay(
-            hft, data, [500_000_000, 1_000_000_000, 1_000_000_000, 2_000_000_000]
+            hft, data, [500_000_000, 1_000_000_000, 1_000_000_000, 1_000_000_000]
         )[-1]
         _assert_same(full_direct, full_sliced, "full time slicing")
         changed_full = _replay(hft, altered, [STEP_FULL_NS])[-1]
