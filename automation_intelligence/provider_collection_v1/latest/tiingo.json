@@ -11,7 +11,7 @@
     "unresolved_operations": 1
   },
   "chatgpt_tokens_used": 0,
-  "completed_at_utc": "2026-10-28T09:35:37.153813+00:00",
+  "completed_at_utc": "2026-10-28T16:36:39.867190+00:00",
   "databento_excluded": true,
   "execution_authorized": false,
   "paid_model_calls": 0,
@@ -32,7 +32,7 @@
   },
   "raw_payloads_public": false,
   "requests": 0,
-  "run_id": "providers-40665415177-1-tiingo",
+  "run_id": "providers-40727595265-1-tiingo",
   "schema_version": "icarus-provider-collection-cycle-v1",
-  "started_at_utc": "2026-10-28T09:35:37.153552+00:00"
+  "started_at_utc": "2026-10-28T16:36:39.866986+00:00"
 }
