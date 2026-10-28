@@ -1,10 +1,10 @@
-# NautilusTrader 1.231.0 QuoteTick — quarantined research integration
+# NautilusTrader 1.221.0 QuoteTick — quarantined research integration
 
 **Status:** draft, source-integrity and native structural roundtrip only. **Not** a market-data collector, NautilusTrader backtest, L2 book reconstruction, order simulator, execution-quality measurement, model trainer, Brain input, or live broker interface.
 
 ## Upstream compatibility and license
 
-Pinned stable upstream release: `nautechsystems/nautilus_trader@v1.231.0` (2026-08-02), with documented `QuoteTick(instrument_id, bid_price, ask_price, bid_size, ask_size, ts_event, ts_init)` and `QuoteTick.to_dict/from_dict`. Sources: [QuoteTick documentation](https://github.com/nautechsystems/nautilus_trader/blob/v1.231.0/docs/concepts/data/quote_tick.md), [upstream Python quote unit tests](https://github.com/nautechsystems/nautilus_trader/blob/v1.231.0/python/tests/unit/model/test_quote.py). The upstream project is licensed under LGPL-3.0; ICARUS does not vendor or copy its source. The GitHub Actions runner installs a public prebuilt wheel at exactly `1.231.0`. This is **not** a claim that the owner Windows/WSL2 environment has the same package or capacity.
+Pinned upstream release: `nautechsystems/nautilus_trader@v1.221.0` (public wheel available on the Python 3.11 runner; newer GitHub tag v1.231.0 was not available from the runner's package index), with documented `QuoteTick(instrument_id, bid_price, ask_price, bid_size, ask_size, ts_event, ts_init)` and `QuoteTick.to_dict/from_dict`. Sources: [QuoteTick documentation](https://github.com/nautechsystems/nautilus_trader/blob/v1.221.0/docs/concepts/data/quote_tick.md), [upstream Python quote unit tests](https://github.com/nautechsystems/nautilus_trader/blob/v1.221.0/python/tests/unit/model/test_quote.py). The upstream project is licensed under LGPL-3.0; ICARUS does not vendor or copy its source. The GitHub Actions runner installs a public prebuilt wheel at exactly `1.221.0`. This is **not** a claim that the owner Windows/WSL2 environment has the same package or capacity.
 
 ## Input contract
 
