@@ -1,0 +1,35 @@
+name: HFTBacktest synthetic temporal parity and future-leak gate
+
+on:
+  pull_request:
+    paths:
+      - "icarus_engine/external_hft_temporal_parity.py"
+      - "tests_engine/test_external_hft_temporal_parity.py"
+      - ".github/workflows/external-hft-temporal-parity.yml"
+      - "docs/integrations/HFT_TEMPORAL_PARITY.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-temporal:
+    name: HFTBacktest 2.4.4 synthetic temporal parity Python 3.11
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned open-source simulator on ephemeral runner
+        run: |
+          python -m pip install --disable-pip-version-check "hftbacktest==2.4.4" "numpy==2.2.6" "numba==0.61.2"
+      - name: Compile source and assert pinned simulator
+        run: |
+          python -c "import hftbacktest; assert hftbacktest.__version__ == '2.4.4'"
+          python -m py_compile icarus_engine/external_hft_temporal_parity.py tests_engine/test_external_hft_temporal_parity.py
+      - name: Execute isolated synthetic-only parity suite and read-only receipt
+        run: |
+          python -m unittest tests_engine.test_external_hft_temporal_parity -v
+          python -m icarus_engine.external_hft_temporal_parity
