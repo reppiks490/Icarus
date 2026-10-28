@@ -78,7 +78,12 @@ def _source_rows(path: Path, instrument: str, tick: Decimal, lot: Decimal,
     last_sequence = last_event = last_arrival = None
     with path.open("rb") as handle:
         def lines():
-            for raw in handle:
+            while True:
+                raw = handle.readline(4097)
+                if not raw:
+                    break
+                if len(raw) > 4096:
+                    raise QuoteAdmissionError("oversized physical CSV line")
                 digest.update(raw)
                 try:
                     yield raw.decode("utf-8")
