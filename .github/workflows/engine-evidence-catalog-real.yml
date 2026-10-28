@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      ICARUS_ENGINE_REAL_ROOT: \${{ github.workspace }}/peer-engine
+      ICARUS_ENGINE_REAL_ROOT: ${{ github.workspace }}/peer-engine
       ICARUS_ENGINE_REAL_COMMIT: 10d02b2e1ee20797be5945ffe3f4ebb5e4193bb3
     steps:
       - name: Checkout Icarus candidate
