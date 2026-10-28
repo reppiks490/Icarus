@@ -99,7 +99,7 @@ class CausalAuditTests(unittest.TestCase):
     def test_rejects_modified_staging_even_with_previously_good_pin(self):
         path = self.staging / "quotes.jsonl"
         path.write_bytes(path.read_bytes().replace(b"15000.25", b"15001.25", 1))
-        with self.assertRaisesRegex(QuoteAdmissionError, "digest"):
+        with self.assertRaisesRegex(QuoteAdmissionError, "SHA-256 mismatch"):
             self.audit([EPOCH + 1200])
 
     def test_rejects_forged_authority_even_if_manifest_hash_recomputed(self):
