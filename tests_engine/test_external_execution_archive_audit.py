@@ -16,6 +16,7 @@ from external_execution_archive_audit import (  # noqa: E402
     _safe_archive_path,
     _safe_link,
     audit_archive,
+    attach_repository_lists,
     load_manifest,
     main,
 )
@@ -116,3 +117,23 @@ def test_symlink_normalization():
     member.linkname = "../../../LICENSE"
     assert not _safe_link(member, "source-repos/vendor__engine")
     assert not _safe_archive_path("source-repos/vendor__engine/../evil")
+
+
+def test_repository_list_crosswalk_is_not_installation_or_usage(tmp_path):
+    manifest, archive = _fixture(tmp_path)
+    names = tmp_path / "all-repos.txt"
+    names.write_text("vendor/engine\nother/tool\nother/tool\n")
+    result = attach_repository_lists(audit_archive(manifest, archive), [names])
+    crosswalk = result["named_repository_crosswalk"]
+    assert crosswalk["distinct_named"] == 2
+    assert crosswalk["named_with_verified_snapshot"] == 1
+    assert crosswalk["named_without_verified_snapshot"] == ["other/tool"]
+    assert result["acceptance_counts"]["actually_invoked_by_icarus_verified"] == 0
+
+
+def test_invalid_repository_list_blocks(tmp_path):
+    manifest, archive = _fixture(tmp_path)
+    names = tmp_path / "all-repos.txt"
+    names.write_text("vendor/engine\n../../escape\n")
+    with pytest.raises(AuditError, match="Invalid repository identity"):
+        attach_repository_lists(audit_archive(manifest, archive), [names])
