@@ -1,0 +1,50 @@
+name: Real Engine evidence gauges
+
+on:
+  pull_request:
+    paths:
+      - "icarus_engine/engine_evidence_gauges.py"
+      - "tests_engine/test_engine_evidence_gauges_real.py"
+      - ".github/workflows/engine-evidence-gauges-real.yml"
+      - "docs/integrations/ENGINE_EVIDENCE_GAUGES.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-gauges:
+    name: Validate gauges against actual committed Engine evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ICARUS_ENGINE_REAL_ROOT: ${{ github.workspace }}/peer-engine
+      ICARUS_ENGINE_REAL_COMMIT: 10d02b2e1ee20797be5945ffe3f4ebb5e4193bb3
+    steps:
+      - name: Checkout Icarus candidate
+        uses: actions/checkout@v4
+        with:
+          path: Icarus
+      - name: Checkout exact Icarus-engine evidence commit
+        uses: actions/checkout@v4
+        with:
+          repository: reppiks490/Icarus-engine
+          ref: 10d02b2e1ee20797be5945ffe3f4ebb5e4193bb3
+          path: peer-engine
+          persist-credentials: false
+      - name: Verify exact peer commit
+        run: test "$(git -C "$ICARUS_ENGINE_REAL_ROOT" rev-parse HEAD)" = "$ICARUS_ENGINE_REAL_COMMIT"
+      - name: Run real evidence catalog and gauge tests
+        working-directory: Icarus
+        run: |
+          python -m py_compile icarus_engine/engine_evidence_catalog.py icarus_engine/engine_evidence_gauges.py tests_engine/test_engine_evidence_catalog_real.py tests_engine/test_engine_evidence_gauges_real.py
+          python -m unittest discover -s tests_engine -p "test_engine_evidence_catalog_real.py" -v
+          python -m unittest discover -s tests_engine -p "test_engine_evidence_gauges_real.py" -v
+          python -m icarus_engine.engine_evidence_gauges --engine-root "$ICARUS_ENGINE_REAL_ROOT" --engine-commit "$ICARUS_ENGINE_REAL_COMMIT" > "$GITHUB_WORKSPACE/real-engine-evidence-gauges.json"
+      - name: Upload derived real-evidence gauge artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-engine-evidence-gauges
+          path: real-engine-evidence-gauges.json
+          if-no-files-found: error
+          retention-days: 14
