@@ -275,14 +275,57 @@ def audit_archive(
     }
 
 
+
+def attach_repository_lists(report: dict[str, Any], paths: list[Path]) -> dict[str, Any]:
+    """Crosswalk operator's named repos against pinned snapshots, without usage claims.
+
+    Lists are plain UTF-8 lines containing owner/repo. Blank lines and # comments
+    are ignored. The source lists remain unmodified, and duplicate names are
+    deduplicated across all lists. The result is not installation evidence.
+    """
+    named: set[str] = set()
+    sources: list[dict[str, Any]] = []
+    for path in paths:
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeError) as exc:
+            raise AuditError(f"Cannot read repository list {path.name}: {exc}") from exc
+        items: set[str] = set()
+        for line_number, raw in enumerate(lines, 1):
+            value = raw.strip()
+            if not value or value.startswith("#"):
+                continue
+            if not _REPO.fullmatch(value):
+                raise AuditError(f"Invalid repository identity in {path.name} line {line_number}")
+            items.add(value)
+        sources.append({"filename": path.name, "distinct_repositories": len(items)})
+        named.update(items)
+    archived = {row["repository"] for row in report["repositories"]}
+    report["repository_list_sources"] = sources
+    report["named_repository_crosswalk"] = {
+        "distinct_named": len(named),
+        "distinct_snapshot_only": len(archived - named),
+        "distinct_union": len(archived | named),
+        "named_with_verified_snapshot": len(named & archived),
+        "named_without_verified_snapshot": sorted(named - archived),
+        "snapshot_not_in_named_lists": sorted(archived - named),
+        "unverified_names_are_not_installed_or_used": True,
+    }
+    report["acceptance_counts"]["named_or_snapshotted_distinct"] = len(archived | named)
+    return report
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--archive", type=Path, required=True)
     parser.add_argument("--output", type=Path, help="Write machine-readable audit report; stdout otherwise")
+    parser.add_argument("--repository-list", type=Path, action="append", default=[], help="Additional owner/repo text inventory; repeatable")
     args = parser.parse_args(argv)
     try:
         report = audit_archive(args.manifest, args.archive)
+        if args.repository_list:
+            attach_repository_lists(report, args.repository_list)
     except (AuditError, FileNotFoundError) as exc:
         print(f"SOURCE_AUDIT_BLOCKED: {exc}", file=sys.stderr)
         return 2
