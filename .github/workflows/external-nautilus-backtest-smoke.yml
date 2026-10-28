@@ -1,0 +1,36 @@
+name: NautilusTrader native BacktestEngine smoke (research only)
+
+on:
+  pull_request:
+    paths:
+      - "icarus_engine/external_nautilus_backtest_smoke.py"
+      - "tests_engine/test_external_nautilus_backtest_smoke.py"
+      - ".github/workflows/external-nautilus-backtest-smoke.yml"
+      - "docs/integrations/NAUTILUS_BACKTEST_SMOKE.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-backtest-smoke:
+    name: Pinned NautilusTrader 1.221.0 BacktestEngine / Python 3.11
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned public native wheel only
+        run: |
+          python -m pip install --only-binary=:all: "nautilus_trader==1.221.0"
+      - name: Confirm pinned version and compile isolated integration
+        run: |
+          python -c "import importlib.metadata; assert importlib.metadata.version('nautilus_trader') == '1.221.0'"
+          python -m py_compile icarus_engine/external_nautilus_backtest_smoke.py tests_engine/test_external_nautilus_backtest_smoke.py
+      - name: Run parent provenance, causal and actual BacktestEngine synthetic suites
+        run: |
+          python -m unittest discover -s tests_engine -p "test_external_nautilus_quote_bridge.py" -v
+          python -m unittest discover -s tests_engine -p "test_external_nautilus_causal_audit.py" -v
+          python -m unittest discover -s tests_engine -p "test_external_nautilus_backtest_smoke.py" -v
