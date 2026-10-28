@@ -133,7 +133,7 @@ class QuoteBridgeTests(unittest.TestCase):
                 self.assertFalse(self.staging.exists())
 
     def test_reject_native_fixed_point_overflow(self):
-        self.source.write_text(HEADER + ROWS.replace("15000.25", "9999999999999999"))
+        self.source.write_text(HEADER + ROWS.replace("15000.25,15000.50", "9999999999999999.25,9999999999999999.50"))
         with self.assertRaisesRegex(QuoteAdmissionError, "fixed-point range"):
             self.stage()
         self.assertFalse(self.staging.exists())
