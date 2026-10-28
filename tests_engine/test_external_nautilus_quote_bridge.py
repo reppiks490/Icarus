@@ -172,7 +172,7 @@ class QuoteBridgeTests(unittest.TestCase):
         result = self.stage()
         self.assertEqual(result["manifest"]["rows"], 10021)
 
-    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.231.0 not installed")
+    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.221.0 not installed")
     def test_native_roundtrip_all_records(self):
         result = self.stage()
         receipt = self.verify(result)
@@ -182,14 +182,14 @@ class QuoteBridgeTests(unittest.TestCase):
         self.assertFalse(receipt["fills_verified"])
         self.assertFalse(receipt["execution_authorized"])
 
-    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.231.0 not installed")
+    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.221.0 not installed")
     def test_reject_tampered_source(self):
         result = self.stage()
         self.source.write_text(HEADER + ROWS.replace("15000.25", "15000.00"))
         with self.assertRaisesRegex(QuoteAdmissionError, "source SHA"):
             self.verify(result)
 
-    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.231.0 not installed")
+    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.221.0 not installed")
     def test_reject_tampered_export(self):
         result = self.stage()
         export = self.staging / "quotes.jsonl"
@@ -197,7 +197,7 @@ class QuoteBridgeTests(unittest.TestCase):
         with self.assertRaisesRegex(QuoteAdmissionError, "export SHA"):
             self.verify(result)
 
-    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.231.0 not installed")
+    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.221.0 not installed")
     def test_reject_forged_authority_even_with_repin(self):
         result = self.stage()
         manifest_file = self.staging / "manifest.json"
@@ -208,14 +208,14 @@ class QuoteBridgeTests(unittest.TestCase):
         with self.assertRaisesRegex(QuoteAdmissionError, "authority"):
             self.verify(result, expected_manifest_sha256=forged)
 
-    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.231.0 not installed")
+    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.221.0 not installed")
     def test_reject_unexpected_staging_files(self):
         result = self.stage()
         (self.staging / "extra.json").write_text("{}")
         with self.assertRaisesRegex(QuoteAdmissionError, "unexpected"):
             self.verify(result)
 
-    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.231.0 not installed")
+    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.221.0 not installed")
     def test_reject_untrusted_manifest_pin(self):
         result = self.stage()
         with self.assertRaisesRegex(QuoteAdmissionError, "manifest digest"):
