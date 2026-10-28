@@ -148,6 +148,12 @@ class QuoteBridgeTests(unittest.TestCase):
         with self.assertRaisesRegex(QuoteAdmissionError, "precision"):
             self.stage()
 
+    def test_reject_oversized_single_line_without_row_cap(self):
+        self.source.write_text(HEADER + "9" * 5000 + "\n")
+        with self.assertRaisesRegex(QuoteAdmissionError, "oversized physical CSV line"):
+            self.stage()
+        self.assertFalse(self.staging.exists())
+
     def test_reject_empty_source(self):
         self.source.write_text(HEADER)
         with self.assertRaisesRegex(QuoteAdmissionError, "empty"):
