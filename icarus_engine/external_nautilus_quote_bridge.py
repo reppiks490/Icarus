@@ -17,7 +17,7 @@ import re
 import shutil
 import tempfile
 
-VERSION = "1.231.0"
+VERSION = "1.221.0"
 SCHEMA = "icarus-nautilus-quote-staging-v1"
 COLUMNS = ("sequence", "instrument_id", "event_ts_ns", "arrival_ts_ns",
            "bid_price", "ask_price", "bid_size", "ask_size")
@@ -100,9 +100,9 @@ def _source_rows(path: Path, instrument: str, tick: Decimal, lot: Decimal,
                     raise QuoteAdmissionError(f"row {line}: nonmonotonic exchange/arrival clocks")
                 prices = (row["bid_price"], row["ask_price"])
                 sizes = (row["bid_size"], row["ask_size"])
-                if len(prices[0].split(".")[-1]) != len(prices[1].split(".")[-1]) if "." in prices[0] and "." in prices[1] else ("." in prices[0]) != ("." in prices[1]):
+                if len(prices[0].partition(".")[2]) != len(prices[1].partition(".")[2]):
                     raise QuoteAdmissionError(f"row {line}: unequal bid/ask price precision")
-                if len(sizes[0].split(".")[-1]) != len(sizes[1].split(".")[-1]) if "." in sizes[0] and "." in sizes[1] else ("." in sizes[0]) != ("." in sizes[1]):
+                if len(sizes[0].partition(".")[2]) != len(sizes[1].partition(".")[2]):
                     raise QuoteAdmissionError(f"row {line}: unequal bid/ask size precision")
                 bid, ask = (_decimal(x, "price") for x in prices)
                 bid_size, ask_size = (_decimal(x, "size") for x in sizes)
