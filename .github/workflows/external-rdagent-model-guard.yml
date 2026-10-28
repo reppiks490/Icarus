@@ -1,0 +1,32 @@
+name: RD-Agent local model plan offline safety contract
+
+on:
+  pull_request:
+    paths:
+      - "icarus_engine/external_rd_agent_model_guard.py"
+      - "tests_engine/test_external_rd_agent_model_guard.py"
+      - "docs/integrations/EXTERNAL_RDAGENT_MODEL_GUARD.md"
+      - ".github/workflows/external-rdagent-model-guard.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-model-plan:
+    name: offline plan guard Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Syntax check
+        run: python -m py_compile icarus_engine/external_rd_agent_model_guard.py tests_engine/test_external_rd_agent_model_guard.py
+      - name: Adversarial offline model-plan contracts
+        run: python -m unittest discover -s tests_engine -p "test_external_rd_agent_model_guard.py" -v
