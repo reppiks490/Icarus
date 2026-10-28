@@ -286,7 +286,7 @@ def verify_native(source: Path, staging: Path, *, instrument_id: str,
                 ask_size=Quantity.from_str(row["ask_size"]),
                 ts_event=row["ts_event"], ts_init=row["ts_init"],
             )
-            native = quote.to_dict()
+            native = QuoteTick.to_dict(quote)
             expected = {
                 "type": "QuoteTick", "instrument_id": instrument_id,
                 "bid_price": row["bid_price"], "ask_price": row["ask_price"],
