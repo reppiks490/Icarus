@@ -63,6 +63,7 @@ class ContextTests(unittest.TestCase):
         ctx = self.run_context()
         self.assertEqual(ctx["counts"]["discovered"], 2)
         self.assertEqual(ctx["counts"]["accessible_source_snapshots"], 1)
+        self.assertEqual(ctx["counts"]["deep_source_api_inspected_verified"], 0)
         self.assertEqual(ctx["counts"]["actually_invoked_verified"], 0)
         self.assertEqual(ctx["counts"]["blocked_for_verified_usage"], 2)
         self.assertFalse(ctx["policy"]["market_edge_claim_allowed"])
