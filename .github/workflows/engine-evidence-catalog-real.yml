@@ -1,0 +1,74 @@
+name: Real Icarus-engine evidence federation
+
+on:
+  pull_request:
+    paths:
+      - "icarus_engine/engine_evidence_catalog.py"
+      - "tests_engine/test_engine_evidence_catalog_real.py"
+      - ".github/workflows/engine-evidence-catalog-real.yml"
+      - "docs/integrations/ENGINE_REAL_EVIDENCE_FEDERATION.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-engine-evidence:
+    name: Validate actual committed Engine evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ICARUS_ENGINE_REAL_ROOT: \${{ github.workspace }}/peer-engine
+      ICARUS_ENGINE_REAL_COMMIT: 10d02b2e1ee20797be5945ffe3f4ebb5e4193bb3
+    steps:
+      - name: Checkout Icarus candidate
+        uses: actions/checkout@v4
+        with:
+          path: Icarus
+      - name: Checkout exact Icarus-engine evidence commit
+        uses: actions/checkout@v4
+        with:
+          repository: reppiks490/Icarus-engine
+          ref: 10d02b2e1ee20797be5945ffe3f4ebb5e4193bb3
+          path: peer-engine
+          persist-credentials: false
+      - name: Verify exact peer commit
+        run: |
+          test "$(git -C "$ICARUS_ENGINE_REAL_ROOT" rev-parse HEAD)" = "$ICARUS_ENGINE_REAL_COMMIT"
+      - name: Compile and validate real committed evidence
+        working-directory: Icarus
+        run: |
+          python -m py_compile icarus_engine/engine_evidence_catalog.py tests_engine/test_engine_evidence_catalog_real.py
+          python -m unittest discover -s tests_engine -p "test_engine_evidence_catalog_real.py" -v
+          python -m icarus_engine.engine_evidence_catalog \
+            --engine-root "$ICARUS_ENGINE_REAL_ROOT" \
+            --engine-commit "$ICARUS_ENGINE_REAL_COMMIT" \
+            > "$GITHUB_WORKSPACE/real-engine-evidence-catalog.json"
+          python - <<'PY'
+          import json, os
+          p=os.path.join(os.environ["GITHUB_WORKSPACE"],"real-engine-evidence-catalog.json")
+          x=json.load(open(p,encoding="utf-8"))
+          assert x["producer_commit"]==os.environ["ICARUS_ENGINE_REAL_COMMIT"]
+          assert x["provider_snapshot"]["current_collected_rows"]>0
+          assert x["sec_edgar"]["fact_rows"]>0 and x["sec_edgar"]["filing_rows"]>0
+          assert x["provider_requests_made"]==0
+          assert x["raw_payloads_copied"] is False
+          assert x["execution_authorized"] is False
+          print(json.dumps({
+            "producer_commit":x["producer_commit"],
+            "provider_rows":x["provider_snapshot"]["current_collected_rows"],
+            "substantive_providers":x["provider_snapshot"]["substantive_providers"],
+            "sec_fact_rows":x["sec_edgar"]["fact_rows"],
+            "sec_filing_rows":x["sec_edgar"]["filing_rows"],
+            "native_run_id":x["native_research"]["run_id"],
+            "interrepo_status":x["interrepo_acceptance"]["status"],
+            "sentinel_counts":x["sentinel_counts"],
+          },sort_keys=True))
+          PY
+      - name: Upload derived read-only catalog evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-engine-evidence-catalog
+          path: real-engine-evidence-catalog.json
+          if-no-files-found: error
+          retention-days: 14
