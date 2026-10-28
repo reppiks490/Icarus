@@ -132,6 +132,12 @@ class QuoteBridgeTests(unittest.TestCase):
                     self.stage()
                 self.assertFalse(self.staging.exists())
 
+    def test_reject_native_fixed_point_overflow(self):
+        self.source.write_text(HEADER + ROWS.replace("15000.25", "9999999999999999"))
+        with self.assertRaisesRegex(QuoteAdmissionError, "fixed-point range"):
+            self.stage()
+        self.assertFalse(self.staging.exists())
+
     def test_reject_mismatched_price_precision(self):
         self.source.write_text(HEADER + ROWS.replace("15000.50", "15000.5"))
         with self.assertRaisesRegex(QuoteAdmissionError, "precision"):
@@ -181,6 +187,17 @@ class QuoteBridgeTests(unittest.TestCase):
         self.assertFalse(receipt["native_backtest_executed"])
         self.assertFalse(receipt["fills_verified"])
         self.assertFalse(receipt["execution_authorized"])
+
+    @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.221.0 not installed")
+    def test_native_readback_exceeds_ten_thousand_records(self):
+        with self.source.open("w", encoding="utf-8") as handle:
+            handle.write(HEADER)
+            for n in range(1, 10022):
+                ts = 1700000000000000000 + n * 1000
+                handle.write(f"{n},NQH2026.CME,{ts},{ts+500},"
+                             "15000.25,15000.50,2,3\n")
+        receipt = self.verify(self.stage())
+        self.assertEqual(receipt["rows_verified"], 10021)
 
     @unittest.skipUnless(NATIVE_AVAILABLE, "native NautilusTrader 1.221.0 not installed")
     def test_reject_tampered_source(self):
