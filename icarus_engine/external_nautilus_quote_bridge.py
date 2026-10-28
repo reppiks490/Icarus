@@ -47,6 +47,10 @@ def _decimal(value: str, label: str) -> Decimal:
         raise QuoteAdmissionError(f"invalid {label}") from exc
     if dec <= 0:
         raise QuoteAdmissionError(f"nonpositive {label}")
+    # Conservative fixed-point 64-bit ceiling at 1e9 internal scale.
+    # Reject before invoking any native Price/Quantity constructor.
+    if dec * Decimal(1_000_000_000) > MAX_TS:
+        raise QuoteAdmissionError(f"{label} exceeds native 64-bit fixed-point range")
     return dec
 
 
