@@ -1,0 +1,35 @@
+name: NautilusTrader native causal quote audit (research only)
+
+on:
+  pull_request:
+    paths:
+      - "icarus_engine/external_nautilus_causal_audit.py"
+      - "tests_engine/test_external_nautilus_causal_audit.py"
+      - ".github/workflows/external-nautilus-causal-audit.yml"
+      - "docs/integrations/NAUTILUS_CAUSAL_AUDIT.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-causal-audit:
+    name: Pinned native NautilusTrader 1.221.0 / Python 3.11
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned public prebuilt native wheel
+        run: |
+          python -m pip install --only-binary=:all: "nautilus_trader==1.221.0"
+      - name: Confirm version and syntax
+        run: |
+          python -c "import importlib.metadata; assert importlib.metadata.version('nautilus_trader') == '1.221.0'"
+          python -m py_compile icarus_engine/external_nautilus_causal_audit.py tests_engine/test_external_nautilus_causal_audit.py
+      - name: Run complete synthetic native structural and causal tests
+        run: |
+          python -m unittest discover -s tests_engine -p "test_external_nautilus_quote_bridge.py" -v
+          python -m unittest discover -s tests_engine -p "test_external_nautilus_causal_audit.py" -v
