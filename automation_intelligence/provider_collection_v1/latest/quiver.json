@@ -11,7 +11,7 @@
     "unresolved_operations": 0
   },
   "chatgpt_tokens_used": 0,
-  "completed_at_utc": "2026-11-02T15:42:23.622456+00:00",
+  "completed_at_utc": "2026-11-02T23:28:59.888486+00:00",
   "databento_excluded": true,
   "execution_authorized": false,
   "paid_model_calls": 0,
@@ -32,7 +32,7 @@
   },
   "raw_payloads_public": false,
   "requests": 0,
-  "run_id": "providers-41474177812-1-quiver",
+  "run_id": "providers-41545686557-1-quiver",
   "schema_version": "icarus-provider-collection-cycle-v1",
-  "started_at_utc": "2026-11-02T15:42:23.622151+00:00"
+  "started_at_utc": "2026-11-02T23:28:59.888307+00:00"
 }
