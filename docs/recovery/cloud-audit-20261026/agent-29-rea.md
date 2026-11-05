@@ -1,0 +1,7 @@
+REA is **morluto/rea**, MIT, confirmed by cached `/tmp/reppiks490-starred.json`, `/tmp/repo-readmes/morluto__rea.md`, and the workspace public-branch inventory. It is not an owner-repository assumption.
+
+Actual installation is outside `/workspace`: `/tmp/rea-run/node_modules/rea-agents` version **6.8.0**, downloaded as `/tmp/rea-agents-6.8.0.tgz` (9,944,902 bytes). Cached npm logs record registry download and successful `npm install --prefix /tmp/rea-run --ignore-scripts --no-audit --no-fund …`. Independently recomputed tarball SHA-512 matches package-lock integrity. Package metadata identifies `git+https://github.com/morluto/rea.git`; this does not establish a signed source-commit mapping.
+
+Local aliases `rea` and `rea-agents` exist under `/tmp/rea-run/node_modules/.bin`; neither resolves on current PATH. Supported Node binary exists at `/tmp/rea-node-v24.22.1/node-v24.22.1-linux-x64/bin/node`. Static command definitions include `doctor` and `analyze-javascript-application`; existing Icarus/browser reports corroborate prior use. No unknown executable was run during this audit.
+
+Reuse the pinned local runtime/entrypoint for curated, credential-free Icarus source analysis. Avoid `@latest`, setup, runtime hooks, or whole-checkout captures. Existing `/tmp/mbo-rea-doctor.json` reports Node 24.22.1 healthy but overall environment unhealthy: native providers, skill identity and Codex registration are missing. Static JavaScript results do not establish full native-analysis readiness or current application correctness.

@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from icarus_engine.process_identity import identity
+from icarus_engine.access_control import resolve_owner_token
 
 from .downloads import ingest_downloads
 from .drop import ingest_drop
@@ -230,21 +231,23 @@ class Plant:
 
 
 def default_engine_service(root: str, repo: str, *, assets: str = "NQ", port: int = 8791,
-                           token: str = "icarus", offline: bool = False, preset: str = "NQ-20m-ultracoded",
+                           token: Optional[str] = None, offline: bool = False, preset: str = "NQ-20m-ultracoded",
                            feed: Optional[str] = None) -> Service:
     ensure(root)
     selected_feed = "file" if offline else (feed or os.environ.get("ICARUS_FEED", "yahoo")).strip().lower()
     if selected_feed not in ("yahoo", "file", "databento"):
         raise ValueError(f"unsupported ICARUS feed {selected_feed!r}")
+    token = resolve_owner_token(token)
     env = {
         "ICARUS_HOME": root,
         "ICARUS_FEED": selected_feed,
+        "ICARUS_TOKEN": token,
         "PYTHONPATH": repo + os.pathsep + os.environ.get("PYTHONPATH", ""),
     }
     db = os.path.join(root, "icarus_engine.db")
     argv = [
         sys.executable, "-m", "icarus_engine.cli", "run",
-        "--assets", assets, "--port", str(port), "--token", token,
+        "--assets", assets, "--port", str(port),
         "--preset", preset, "--db", db,
     ]
     if selected_feed != "yahoo":

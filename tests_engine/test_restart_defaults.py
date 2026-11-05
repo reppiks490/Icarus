@@ -180,7 +180,14 @@ def test_busy_runtime_changed_source_and_partial_write_failure_do_not_leave_part
     assert not (state / defaults.TEMPLATE_FILE).exists()
 
 
-def test_live_capture_is_loopback_authenticated_configuration_consistent_and_private(state, capsys):
+@pytest.mark.parametrize("owner_token,legacy_capture", [("fixture-owner-token", False), ("icarus", True)])
+def test_live_capture_is_loopback_authenticated_configuration_consistent_and_private(
+        state, capsys, monkeypatch, owner_token, legacy_capture):
+    if legacy_capture:
+        monkeypatch.delenv("ICARUS_TOKEN", raising=False)
+        monkeypatch.setenv("ICARUS_CAPTURE_TOKEN", owner_token)
+    else:
+        monkeypatch.delenv("ICARUS_CAPTURE_TOKEN", raising=False)
     values = Inputs().to_dict()
     values.update(tp1_pts=73, qty_contracts=9)
     count = []
@@ -188,7 +195,7 @@ def test_live_capture_is_loopback_authenticated_configuration_consistent_and_pri
         def log_message(self, *_):
             pass
         def do_GET(self):
-            assert self.headers['Authorization'] == 'Bearer fixture-owner-token'
+            assert self.headers['Authorization'] == 'Bearer ' + owner_token
             count.append(self.path)
             if self.path=='/api/workspace-runtime':
                 body={'schema_version':'icarus.workspace-power.v1','execution_authorized':False}
@@ -208,7 +215,8 @@ def test_live_capture_is_loopback_authenticated_configuration_consistent_and_pri
     thread = threading.Thread(target=server.serve_forever,daemon=True)
     thread.start()
     try:
-        result = defaults.capture_current(state,port=server.server_port,token='fixture-owner-token')
+        result = defaults.capture_current(state,port=server.server_port,
+                                          token=None if legacy_capture else owner_token)
     finally:
         server.shutdown(); thread.join(3); server.server_close()
     snapshot = json.loads(Path(result['capture_file']).read_text())
@@ -216,8 +224,10 @@ def test_live_capture_is_loopback_authenticated_configuration_consistent_and_pri
     assert snapshot['baseline']['inputs']['tp1_pts']==73
     assert snapshot['baseline']['basis']=='captured_live_main_nq'
     assert count==['/api/workspace-runtime','/api/inputs/NQ','/api/chart/NQ?n=1','/api/inputs/NQ']
-    assert 'fixture-owner-token' not in json.dumps(snapshot)
-    assert 'fixture-owner-token' not in capsys.readouterr().out
+    assert 'Bearer ' + owner_token not in json.dumps(snapshot)
+    assert 'Bearer ' + owner_token not in capsys.readouterr().out
+    if not legacy_capture:
+        assert owner_token not in json.dumps(snapshot)
     assert defaults.plan_defaults(state,capture_file=result['capture_file'])['baseline']['inputs']['qty_contracts']==9
 
 
@@ -248,6 +258,16 @@ def test_empty_or_tampered_template_is_not_silently_treated_as_no_policy(state):
     write(state/defaults.TEMPLATE_FILE,{})
     with pytest.raises(ValueError,match='identity'):
         defaults.owner_default_overrides(state,'ES')
+
+
+def test_capture_current_requires_explicit_runtime_token(state, monkeypatch):
+    monkeypatch.delenv('ICARUS_TOKEN', raising=False)
+    monkeypatch.delenv('ICARUS_CAPTURE_TOKEN', raising=False)
+    monkeypatch.delenv('ICARUS_ADMIN_TOKEN', raising=False)
+    monkeypatch.delenv('ADMIN_TOKEN', raising=False)
+    monkeypatch.setattr(defaults, 'build_opener', lambda *_args, **_kwargs:pytest.fail('network must not start without a token'))
+    with pytest.raises(ValueError, match='ICARUS_TOKEN'):
+        defaults.capture_current(state)
 
 
 def test_future_main_and_cc_assets_and_missing_profiles_use_real_startup_defaults(state, monkeypatch):

@@ -1,0 +1,9 @@
+TorQ-CME readiness: historical parsing component; not an entitled data feed or ready Icarus adapter.
+
+Source inspection confirms SOH-delimited CME MDP 3.0 historical FIX logs, plain/gzip, decoded through FIX44.xml plus custom tags. Handlers cover security definitions/status and bid/offer/implied/trade incremental entries. It reconstructs level-aggregated books, derives trade/book tables, and writes kdb+ date partitions/splayed tables (`code/processes/cmedecoder.q`, `code/msgs/incremental_refresh.q`, `code/cmedecoder/schema.q`, `write.q`). No realtime ingestion exists. TorQ base runtime and licensed kdb+ are external dependencies; `torq.q` is absent here.
+
+Only `sample/sample_20170101.log` is bundled: 5,010 lines, 1,061,020 bytes, SAMPLE sender. No production dataset or materialized HDB appears. README explicitly requires separately obtained CME Datamine data. Purchase/account entitlements, permitted storage/use/redistribution, and current compatibility are unverified. No LICENSE/COPYING or explicit code-license grant was found in this checkout; public availability does not establish reuse rights.
+
+Book caveats: wide output aggregates by TransactTime/Symbol, potentially losing intermediate events; tall output does not apply DisplayFactor and hardcodes ten levels in NEW expansion (`wide_book.q`, `tall_book.q`). Both require replay correctness review before research reliance.
+
+Precise potential interface: export normalized trade records (UTC nanoseconds, exact dated contract, scaled price, size, MsgSeqNum/RptSeq), aggregate verified trades into whole-second-open OHLCV CSV `ts,open,high,low,close,volume`, then admit through Icarus `icarus_engine/feeds/bars.py::parse_ohlcv_csv` and `HistoryHub` (`history/{SYM}_{N}m.csv`). Preserve contract/roll provenance separately; retain depth in a new evidence adapter. No existing bridge was established. Static inspection only; no code execution/network/tests.

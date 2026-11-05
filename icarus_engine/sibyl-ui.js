@@ -237,7 +237,7 @@
     var el = document.querySelector('#sibylPanel');
     if (!el) return;
     try {
-      var tok = localStorage.getItem('icarus-engine-token') || 'icarus';
+      var tok = IcarusClient.getToken();
       var input = document.querySelector('#sibylAsset');
       if (input && input.value.trim()) selectedAsset = input.value.trim().toUpperCase();
       var qs = selectedAsset ? '?asset=' + encodeURIComponent(selectedAsset) : '';

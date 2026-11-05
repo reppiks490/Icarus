@@ -1331,7 +1331,7 @@ def test_pantheon_is_visible_in_trader_interface():
     server = (repo / "icarus_engine" / "server.py").read_text(encoding="utf-8")
     brain = (repo / "icarus_engine" / "brain.py").read_text(encoding="utf-8")
     assert '/pantheon-ui.js' in dashboard
-    assert 'data-v="pantheon">PANTHEON / AETHER</span>' in dashboard
+    assert "['pantheon','PANTHEON / AETHER']" in dashboard
     assert "wirePantheon()" in dashboard
     assert "/api/pantheon" in ui
     assert "NO CAPITAL AUTHORITY" in ui

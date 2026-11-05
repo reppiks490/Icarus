@@ -41,7 +41,7 @@ function researchHtml(assets) {
     <p><button id="rsSaveAdaptation" disabled>Save configuration</button> <button id="rsEnableAdaptation" disabled>Enable scheduler</button> <button id="rsDisableAdaptation" disabled>Disable scheduler</button></p></div></details></section>`;
 }
 async function researchGet(path) {
-  const response = await IcarusClient.request(path, {headers:{Authorization:'Bearer '+(localStorage.getItem(tokKey)||'')}, cache:'no-store'});
+  const response = await IcarusClient.request(path, {headers:{Authorization:'Bearer '+IcarusClient.getToken()}, cache:'no-store'});
   const body = await response.json();
   if (!response.ok) throw new Error(body.detail || `HTTP ${response.status}`);
   return body;

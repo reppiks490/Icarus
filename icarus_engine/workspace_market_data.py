@@ -33,7 +33,9 @@ def snapshot(runner, resource, *, schema="mbp-10", limit=200, now=None):
                   "provider": type(owner).__name__.lower(), "cached_only": True,
                   "acquisition_requested": False, "available": False,
                   "as_of_ts": time.time() if now is None else now,
-                  "capabilities": {}, "metadata": {}, "ticks": [], "events": [],
+                  "capabilities": {"ticks": False, "mbp_10": False, "mbo": False,
+                                   "mbo_snapshot": False, "ohlcv_seconds": False},
+                  "metadata": {}, "ticks": [], "events": [],
                   "reason": "LOCKED_PROVIDER_CACHE_UNAVAILABLE"}
         # No duck-typed feed methods: meta/trades/depth may perform network I/O.
         if type(owner) is not Databento:

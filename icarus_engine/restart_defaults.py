@@ -18,6 +18,7 @@ import sys
 import time
 import uuid
 from urllib.request import Request, build_opener, ProxyHandler, HTTPRedirectHandler
+from .access_control import resolve_owner_token
 
 SCHEMA = "icarus-owner-restart-defaults-v1"
 CAPTURE_SCHEMA = "icarus-current-nq-capture-v1"
@@ -242,8 +243,17 @@ def capture_current(root, *, port=8791, token=None, timeout=10, output=None):
     class NoRedirect(HTTPRedirectHandler):
         def redirect_request(self, req, fp, code, msg, headers, newurl):
             raise ValueError("loopback NQ capture must not redirect")
+    # This one-time read may target an older running engine whose owner token
+    # was the former fixed default. Require an explicit capture-only environment
+    # value for that migration; the new server still rejects placeholders.
+    capture_token = os.environ.get("ICARUS_CAPTURE_TOKEN") if token is None else None
+    if capture_token is not None:
+        token = capture_token.strip()
+        if not token or any(ord(char) < 32 or ord(char) == 127 for char in token):
+            raise ValueError("ICARUS_CAPTURE_TOKEN must be a nonempty HTTP header value")
+    else:
+        token = resolve_owner_token(token)
     opener = build_opener(ProxyHandler({}), NoRedirect())
-    token = os.environ.get("ICARUS_TOKEN", "icarus") if token is None else token
     def request(path):
         req = Request(f"http://127.0.0.1:{port}" + path,
                       headers={"Authorization": "Bearer " + token, "X-Icarus-Workspace": "main"})

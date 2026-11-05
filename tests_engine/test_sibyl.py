@@ -298,7 +298,7 @@ def test_sibyl_is_visible_and_routed_in_icarus_interface():
     brain = (repo / "icarus_engine" / "brain.py").read_text(encoding="utf-8")
 
     assert '/sibyl-ui.js' in dashboard
-    assert 'data-v="sibyl">SIBYL Ω</span>' in dashboard
+    assert "['sibyl','SIBYL Ω']" in dashboard
     assert "wireSibyl()" in dashboard
     assert "/api/sibyl" in ui
     assert "FUTURE COLLAPSE" in ui

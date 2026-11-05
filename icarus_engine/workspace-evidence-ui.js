@@ -125,7 +125,7 @@
     if(!active||equityBusy||!equityCatalog)return;
     if(!canReadHistory()){text('#a200-history-note','Owner access is required to request research history.');return;}
     const instrument=equityCatalog.instruments.find(row=>row.instrument_id===$('#a200-instrument').value);
-    const token=localStorage.getItem('icarus-engine-token')||'';
+    const token=IcarusClient.getToken();
     if(!token){text('#a200-history-note','Set an owner token before requesting selected research history.');return;}
     if(!instrument)return;
     clearEquityHistory();const current=equityRead,historyRequest=new AbortController();historyAbort=historyRequest;

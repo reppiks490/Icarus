@@ -14,6 +14,14 @@ from icarus_engine.runtime import Inputs, Journal, Portfolio
 from icarus_engine.server import serve
 
 
+def test_server_requires_explicit_authentication_token(monkeypatch):
+    monkeypatch.delenv("ICARUS_TOKEN", raising=False)
+    monkeypatch.delenv("ICARUS_ADMIN_TOKEN", raising=False)
+    monkeypatch.delenv("ADMIN_TOKEN", raising=False)
+    with pytest.raises(ValueError, match='ICARUS_TOKEN'):
+        serve(object(), 0, token=None, start=False)
+
+
 @pytest.mark.parametrize('fault',['valid','empty','null_profit','text_profit','future_close'])
 def test_invalid_persisted_closure_cannot_become_complete_combined_pnl(tmp_path,monkeypatch,fault):
     from icarus_engine.workspace_performance import snapshot as performance
@@ -467,7 +475,7 @@ def test_real_workspace_runners_positions_journals_and_pnl_are_isolated(tmp_path
 
 def test_server_close_attempts_all_services_and_closes_socket_after_workspace_error(tmp_path, monkeypatch):
     port = Portfolio(Journal(":memory:"), str(tmp_path))
-    server = serve(port, 0, start=False)
+    server = serve(port, 0, token="paper-workspaces-test-token", start=False)
     closed_services = []
     base_server_close = ThreadingHTTPServer.server_close
 

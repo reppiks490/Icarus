@@ -1,8 +1,8 @@
 /* ICARUS authentic market-data console.
    Read-only except the explicit MBO snapshot button. It consumes the same engine
    endpoints exposed through MCP; it never fabricates ticks, depth, or execution state. */
-let marketDataLoading=false, marketDataPendingLoad=false;
-const marketDataState={asset:'',schema:'mbp-10',snapshot:null,snapshotError:''};
+let marketDataLoading=false, marketDataPendingLoad=false, marketDataForcePending=false;
+const marketDataState={asset:'',schema:'mbp-10',snapshot:null,snapshotError:'',unavailable:{},results:{}};
 
 function marketDataHtml(assets){
   const rows=Array.isArray(assets)?assets:[];
@@ -55,7 +55,7 @@ function marketDataChip(label,cls){
 
 async function marketDataFetch(path){
   try{
-    const token=localStorage.getItem('icarus-engine-token')||'';
+    const token=IcarusClient.getToken();
     const client=globalThis.IcarusClient;
     let target=path;
     if(client&&client.context.id!=='main'&&path.startsWith('/api/market-data/')){
@@ -70,12 +70,12 @@ async function marketDataFetch(path){
     if(!r.ok) return {ok:false,error:String(data.detail||data.error||('HTTP '+r.status)),status:r.status};
     return {ok:true,data:data};
   }catch(e){
-    return {ok:false,error:String(e&&e.message||e)};
+    return {ok:false,error:String(e&&e.message||e),status:Number(e&&e.status)||0};
   }
 }
 
 async function marketDataAdminPost(path,body){
-  const token=localStorage.getItem('icarus-engine-token')||'';
+  const token=IcarusClient.getToken();
   const init={method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body||{})};
   const r=await (globalThis.IcarusClient?IcarusClient.request(path,init):fetch(path,init));
   const data=await r.json().catch(function(){return {};});
@@ -157,16 +157,20 @@ function marketDataRender(capResult,tickResult,depthResult,healthResult){
   if(healthEl) healthEl.innerHTML=tiles.map(function(x){return '<div class="tile"><div class="k">'+esc(x[0])+'</div><div class="v">'+marketDataChip(x[1],x[2])+'</div></div>';}).join('');
   const errEl=document.querySelector('#mdErrors');
   if(errEl){
-    const errs=[];
+    const errs=[],info=[];
     if(!capResult.ok) errs.push('capabilities: '+capResult.error);
-    if(!tickResult.ok) errs.push('ticks: '+tickResult.error);
-    if(!depthResult.ok) errs.push('depth: '+depthResult.error);
-    if(caps.cached_only) errs.push('Selected runner cache only; no acquisition or subscription requested. '+(caps.available===false?caps.reason||'Cache unavailable.':''));
-    if(!coreKnown||!depthKnown) errs.push('Session health unobserved; missing metadata is not a healthy session.');
+    if(!tickResult.ok) (tickResult.unavailable||tickResult.status===409?info:errs).push('ticks: '+tickResult.error);
+    if(!depthResult.ok) (depthResult.unavailable||depthResult.status===409?info:errs).push('depth: '+depthResult.error);
+    if(caps.cached_only) info.push('Selected runner cache only; no acquisition or subscription requested. '+(caps.available===false?caps.reason||'Cache unavailable.':''));
+    if(!coreKnown||!depthKnown) info.push('Session health unobserved; missing metadata is not a healthy session.');
+    if((tickResult.unavailable||tickResult.status===409)||(depthResult.unavailable||depthResult.status===409))
+      info.push('The configured provider does not supply these authentic event streams. Use Refresh now after changing provider or entitlement.');
     if(liveError) errs.push(liveError);
     if(m.depth_error_codes) errs.push('depth codes '+JSON.stringify(m.depth_error_codes));
     if(m.core_error_code!=null) errs.push('core error code '+m.core_error_code);
-    errEl.innerHTML=errs.length?'<span class="neg"><b>Feed diagnostics:</b> '+esc(errs.join(' · '))+'</span>':'<span class="pos">No feed error reported by the current capability/metadata snapshot.</span>';
+    errEl.innerHTML=errs.length?'<span class="neg"><b>Feed errors:</b> '+esc(errs.join(' · '))+'</span>':
+      info.length?'<span class="muted"><b>Feed status:</b> '+esc(info.join(' · '))+'</span>':
+      '<span class="pos">No feed error reported by the current capability/metadata snapshot.</span>';
   }
 
   const totalSize=ticks.reduce(function(s,r){return s+Math.max(0,Number(r.size)||0);},0);
@@ -288,32 +292,60 @@ async function loadMarketUniverse(){
   });
 }
 
-async function loadMarketData(){
+async function loadMarketData(force=false){
   if(view!=='market-data') return;
-  if(marketDataLoading){marketDataPendingLoad=true;return;}
   const assets=(typeof last!=='undefined'&&last&&Array.isArray(last.assets))?last.assets:[];
   if(!marketDataState.asset&&assets.length) marketDataState.asset=String(assets[0].symbol||'').toUpperCase();
   if(!marketDataState.asset) return;
   const requestAsset=marketDataState.asset, requestSchema=marketDataState.schema;
+  const key=requestAsset+'|'+requestSchema;
+  if(marketDataLoading){marketDataPendingLoad=true;marketDataForcePending=marketDataForcePending||force;return;}
+  if(force){delete marketDataState.unavailable[key];delete marketDataState.results[key];}
+  const known=marketDataState.unavailable[key]||{ticks:false,depth:false};
+  if(!force&&known.ticks&&known.depth){
+    const cached=marketDataState.results[key];
+    if(cached&&view==='market-data') marketDataRender(cached[0],cached[1],cached[2],cached[3]);
+    return;
+  }
   marketDataLoading=true;
   marketDataPendingLoad=false;
   const busy=document.querySelector('#mdBusy');
   if(busy) busy.textContent='loading…';
   try{
-    const base='/api/market-data/'+encodeURIComponent(marketDataState.asset);
-    const results=await Promise.all([
-      marketDataFetch(base+'/capabilities'),
-      marketDataFetch(base+'/ticks?limit=300'),
-      marketDataFetch(base+'/depth?schema='+encodeURIComponent(marketDataState.schema)+'&limit=200'),
-      marketDataFetch('/healthz')
+    const base='/api/market-data/'+encodeURIComponent(requestAsset);
+    const [capResult,healthResult]=await Promise.all([
+      marketDataFetch(base+'/capabilities'),marketDataFetch('/healthz')
+    ]);
+    const caps=capResult.ok?(capResult.data?.capabilities||{}):{};
+    const depthCapability=requestSchema==='mbo'?'mbo':'mbp_10';
+    const ticksUnavailable=known.ticks||(capResult.ok&&caps.ticks===false);
+    const depthUnavailable=known.depth||(capResult.ok&&caps[depthCapability]===false);
+    const unavailable=(message)=>({ok:false,unavailable:true,error:message});
+    const [tickResult,depthResult]=await Promise.all([
+      ticksUnavailable?Promise.resolve(unavailable('Configured provider does not expose authentic trade ticks.')):
+        marketDataFetch(base+'/ticks?limit=300'),
+      depthUnavailable?Promise.resolve(unavailable('Configured provider does not expose '+requestSchema+' order-book events.')):
+        marketDataFetch(base+'/depth?schema='+encodeURIComponent(requestSchema)+'&limit=200')
     ]);
     if(requestAsset!==marketDataState.asset||requestSchema!==marketDataState.schema){marketDataPendingLoad=true;return;}
-    if(view==='market-data') marketDataRender(results[0],results[1],results[2],results[3]);
+    const nextUnavailable={
+      ticks:ticksUnavailable||tickResult.status===409,
+      depth:depthUnavailable||depthResult.status===409
+    };
+    if(nextUnavailable.ticks||nextUnavailable.depth) marketDataState.unavailable[key]=nextUnavailable;
+    else delete marketDataState.unavailable[key];
+    const results=[capResult,tickResult,depthResult,healthResult];
+    marketDataState.results[key]=results;
+    if(view==='market-data') marketDataRender(...results);
   }finally{
     marketDataLoading=false;
     const b=document.querySelector('#mdBusy');
     if(b) b.textContent='';
-    if(marketDataPendingLoad&&view==='market-data'){marketDataPendingLoad=false;setTimeout(loadMarketData,0);}
+    if(marketDataPendingLoad&&view==='market-data'){
+      marketDataPendingLoad=false;
+      const retryForce=marketDataForcePending;marketDataForcePending=false;
+      setTimeout(()=>loadMarketData(retryForce),0);
+    }
   }
 }
 
@@ -341,15 +373,15 @@ function wireMarketData(){
   if(asset) asset.onchange=function(){
     marketDataState.asset=String(asset.value||'').toUpperCase();
     marketDataState.snapshot=null; marketDataState.snapshotError='';
-    loadMarketData();
+    loadMarketData(true);
   };
   const schema=document.querySelector('#mdSchema');
   if(schema) schema.onchange=function(){
     marketDataState.schema=String(schema.value||'mbp-10');
-    loadMarketData();
+    loadMarketData(true);
   };
   const refresh=document.querySelector('#mdRefresh');
-  if(refresh) refresh.onclick=function(){loadMarketData();loadMarketUniverse();};
+  if(refresh) refresh.onclick=function(){loadMarketData(true);loadMarketUniverse();};
   const snapshot=document.querySelector('#mdSnapshot');
   if(snapshot) snapshot.onclick=marketDataSnapshot;
   loadMarketUniverse();

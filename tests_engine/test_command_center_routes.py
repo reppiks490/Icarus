@@ -433,6 +433,8 @@ const payloads=JSON.parse(process.argv[3]);let browser;
  });
  for(const id of ['cc1','cc2','cc3','cc4']){
   await page.goto(process.argv[1]+'/dashboards/'+id);
+  await page.locator('#owner-token').fill('owner-test');
+  await page.evaluate(async()=>{await IcarusWorkspacePower.refresh();});
   await page.waitForFunction(()=>document.querySelector('#all-total').textContent.includes('110.00'));
   assert.match(await page.locator('#all-realized').textContent(),/100.00/);
   assert.match(await page.locator('#all-open').textContent(),/10.00/);
@@ -463,7 +465,7 @@ const payloads=JSON.parse(process.argv[3]);let browser;
  await page.clock.runFor(92000);
  await page.waitForFunction(()=>document.querySelector('#all-total').textContent==='Unavailable');
  assert.equal(await page.locator('#own-open').textContent(),'Unavailable');
- await page.clock.pauseAt(new Date((payloads.cc4.paper_pnl.as_of_ts+93)*1000));
+ // Expiry is proven; the connections checks do not need a frozen clock.
  await page.goto(process.argv[1]+'/connections');
  await page.waitForFunction(()=>document.querySelectorAll('#firm-catalog option').length===9);
  assert.equal(await page.locator('section[aria-label="Eight researched prop firms"] details').count(),8);

@@ -1,5 +1,5 @@
 /* Public-source observations. Collection only runs after a button click. */
-let sourcesLoading = false, sourcesPendingLoad = false, sourceRecordsSeq = 0, sourceWatchLoaded = false, sourcesLatest = {};
+let sourcesLoading = false, sourcesPendingLoad = false, sourceRecordsSeq = 0, sourceContextSeq = 0, sourceWatchLoaded = false, sourcesLatest = {};
 const sourceNames = {cftc:'CFTC commitments of traders',bls:'BLS CPI',
   'federal-reserve':'Federal Reserve releases',bea:'BEA releases',sec:'SEC company filings',coinbase:'Coinbase BTC-USD trades',
   'yahoo-dxy':'DXY / asset return correlations'};
@@ -9,6 +9,11 @@ function sourcesHtml(assets) {
   return `<section class="card c12"><h2>Financial &amp; data <span class="sub">Source-backed public observations</span></h2>
     <p class="small muted">Collect on demand or enable bounded background refresh below. CFTC positions, macro releases, company filings and spot BTC trades are research evidence; they do not place orders or supply a licensed futures tick feed.</p>
     <div id="sourcesStatus" role="status" class="small muted">Loading saved source status…</div></section>
+    <section class="card c12"><h2>Cross-asset market context <span class="sub">Historical EIA spot observations</span></h2>
+    <p id="marketContextNote" class="small muted">Research context only. These snapshots are separate from futures bars, signals, qualification, and orders. Dates are source observation dates; missing values remain blank.</p>
+    <div id="marketContextStatus" role="status" class="small muted">Loading reviewed historical snapshots…</div>
+    <div id="marketContextTable" class="scroll" style="max-height:420px;overflow-wrap:anywhere"></div>
+    <details><summary>Reviewed source catalog and held candidates</summary><div id="marketContextCatalog" class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));overflow-wrap:anywhere"></div></details></section>
     <section class="card c12"><h2>Capability discovery registry <span class="sub">Pinned catalog receipts</span></h2>
     <p class="small muted">Read-only summaries from the three approved public catalogs. Catalog entries are discovery metadata, not verified services or market data. This view does not probe sources, refresh catalogs, or start background work.</p>
     <div id="discoveryRegistryStatus" role="status" class="small muted">Loading committed receipt summaries…</div>
@@ -34,6 +39,48 @@ function sourceLink(url,label) {
 }
 function sourceTime(value) {return value?esc(value):'unknown';}
 function sourceQuantity(value) {return Number.isFinite(value)?value.toLocaleString('en-US',{maximumFractionDigits:8}):'unknown';}
+async function loadMarketContext() {
+  const seq=++sourceContextSeq;
+  try {
+    const data=await researchGet('/api/research/market-context?limit=30');
+    if(seq!==sourceContextSeq||view!=='sources') return;
+    const datasets=Array.isArray(data.datasets)?data.datasets:[];
+    const catalog=data.catalog||{},sources=Array.isArray(catalog.reviewed_sources)?catalog.reviewed_sources:[];
+    const stale=datasets.filter(row=>row.freshness==='STALE').length;
+    const details=datasets.map(row=>`${row.name} through ${row.latest_observation_at||'unknown date'} · ${row.freshness||'UNKNOWN'}`);
+    $('#marketContextStatus').textContent=`${catalog.active_series??datasets.length} active series · ${catalog.sources??sources.length} catalog sources reviewed · ${stale} stale snapshots · ${details.join(' | ')}`;
+    const dateRows=new Map();
+    datasets.forEach(dataset=>(dataset.observations||[]).forEach(row=>{
+      if(!dateRows.has(row.date)) dateRows.set(row.date,{});
+      dateRows.get(row.date)[dataset.id]=row;
+    }));
+    const columns=[
+      ['eia-brent-daily','Brent · USD/barrel'],
+      ['eia-wti-daily','WTI · USD/barrel'],
+      ['eia-natural-gas-daily','Henry Hub · USD/MMBtu'],
+    ];
+    const dates=[...dateRows.keys()].sort().reverse();
+    $('#marketContextTable').innerHTML=dates.length?`<table><caption class="small muted">Exact source dates only · no interpolation or futures-contract mapping</caption><thead><tr><th scope="col">Observation date</th>${columns.map(([,label])=>`<th scope="col">${esc(label)}</th>`).join('')}</tr></thead><tbody>${dates.map(day=>`<tr><th scope="row">${esc(day)}</th>${columns.map(([id])=>{const row=dateRows.get(day)[id];return `<td>${row&&row.price!==null?esc(sourceQuantity(row.price)):'—'}${row?.quality_flags?.includes('missing_price')?' <span class="muted">missing</span>':''}</td>`;}).join('')}</tr>`).join('')}</tbody></table>`:'<p class="empty">No historical observations are available.</p>';
+    $('#marketContextCatalog').innerHTML=sources.map(source=>{
+      const state=source.status==='ACTIVE_RESEARCH_CONTEXT'?'Research context':source.status==='UNAVAILABLE'?'Unavailable':'Quarantined';
+      return `<div class="tile"><b>${sourceLink(source.source_url,source.name)}</b> <span class="chip">${esc(state)}</span><div class="small muted">${esc(source.reason||'Review required')}</div></div>`;
+    }).join('')||'<p class="empty">Source review catalog unavailable.</p>';
+  } catch(error) {
+    if(seq===sourceContextSeq&&view==='sources'&&$('#marketContextStatus')) {
+      $('#marketContextStatus').textContent='Historical market context unavailable: '+error.message;
+      const message=document.createElement('p');
+      message.className='empty';
+      message.textContent='The archived observations could not be loaded.';
+      const retry=document.createElement('button');
+      retry.id='marketContextRetry';
+      retry.type='button';
+      retry.dataset.workspaceReadOnly='true';
+      retry.textContent='Retry context load';
+      retry.addEventListener('click',()=>loadMarketContext(),{once:true});
+      $('#marketContextTable').replaceChildren(message,retry);
+    }
+  }
+}
 async function loadDiscoveryRegistry() {
   try {
     const data=await researchGet('/api/discovery-registry');
@@ -88,7 +135,7 @@ async function loadSources() {
         ${s.error?`<div class="small neg">${esc(s.error)}</div>`:''}<button class="sm" data-collect="${esc(source)}">Collect ${esc(source)}</button></div>`;
     }).join('');
     $('#sourcesCards').querySelectorAll('[data-collect]').forEach(button=>button.onclick=()=>collectSource(button));
-    await Promise.all([loadDiscoveryRegistry(),loadSourceRecords(),loadSourceWatch()]);
+    await Promise.all([loadMarketContext(),loadDiscoveryRegistry(),loadSourceRecords(),loadSourceWatch()]);
   } catch(e) {if($('#sourcesStatus')) $('#sourcesStatus').textContent='Financial data unavailable: '+e.message;}
   finally {
     sourcesLoading=false;
