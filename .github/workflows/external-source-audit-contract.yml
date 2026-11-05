@@ -1,0 +1,40 @@
+name: external-source-audit-contract
+
+on:
+  pull_request:
+    paths:
+      - tools/external_execution_archive_audit.py
+      - tests_engine/test_external_execution_archive_audit.py
+      - .github/workflows/external-source-audit-contract.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/external_execution_archive_audit.py
+      - tests_engine/test_external_execution_archive_audit.py
+      - .github/workflows/external-source-audit-contract.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: external-source-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-integrity-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check archive-streaming tool is present
+        run: command -v zstd
+      - name: Install isolated test dependency
+        run: python -m pip install pytest==8.4.2
+      - name: Verify fail-closed archive mechanics
+        run: python -m pytest -q tests_engine/test_external_execution_archive_audit.py
