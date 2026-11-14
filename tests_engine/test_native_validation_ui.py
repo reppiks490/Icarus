@@ -26,7 +26,7 @@ const context={window:{},document:{querySelector:()=>el},localStorage:{getItem:(
  fetch:async(url,options)=>{requests.push(url);assert.strictEqual(options.headers.Authorization,'Bearer token');
  const isNative=url.endsWith('/native-validation');return{ok:!isNative||!unavailable,status:503,
  json:async()=>isNative?native:url.endsWith('/work-orders')?board:{}};}};
-context.IcarusClient={request:context.fetch};
+context.IcarusClient={getToken:()=> 'token',request:context.fetch};
 vm.runInNewContext(fs.readFileSync(process.argv[2],'utf8'),context);
 (async()=>{
  await context.window.loadAscendancy();

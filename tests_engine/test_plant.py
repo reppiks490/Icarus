@@ -93,15 +93,16 @@ def test_ingest_file_es(tmp_path):
 
 
 def test_default_engine_service_offline_argv(tmp_path):
-    svc = default_engine_service(str(tmp_path), "/repo", offline=True, assets="NQ")
+    svc = default_engine_service(str(tmp_path), "/repo", offline=True, assets="NQ", token="unit-test-token")
     assert svc.env["ICARUS_FEED"] == "file"
     assert svc.env["ICARUS_HOME"] == os.path.abspath(str(tmp_path))
     assert "--feed" in svc.argv and "file" in svc.argv
     assert "--roll" not in svc.argv
+    assert "unit-test-token" not in svc.argv and svc.env["ICARUS_TOKEN"] == "unit-test-token"
     assert svc.health_url == "http://127.0.0.1:8791/healthz"
-    live = default_engine_service(str(tmp_path), "/repo", offline=False)
+    live = default_engine_service(str(tmp_path), "/repo", offline=False, token="unit-test-token")
     assert "--roll" not in live.argv  # continuous futures require no expiry/roll CLI override
-    db = default_engine_service(str(tmp_path), "/repo", feed="databento")
+    db = default_engine_service(str(tmp_path), "/repo", feed="databento", token="unit-test-token")
     assert db.env["ICARUS_FEED"] == "databento"
     assert db.argv[db.argv.index("--feed") + 1] == "databento"
 
@@ -524,7 +525,7 @@ def test_write_status_is_atomic_and_valid_json(tmp_path, monkeypatch):
     assert not (tmp_path / "run" / "status.json.tmp").exists()
 
 
-def test_start_does_not_silently_ignore_requested_bridge(tmp_path, capsys):
+def test_start_does_not_silently_ignore_requested_bridge(tmp_path, capsys, monkeypatch):
     from http.server import BaseHTTPRequestHandler, HTTPServer
     import threading
 
@@ -538,6 +539,7 @@ def test_start_does_not_silently_ignore_requested_bridge(tmp_path, capsys):
             return
 
     ensure(str(tmp_path))
+    monkeypatch.setenv("ICARUS_TOKEN", "plant-test-token")
     (tmp_path / "run" / "plant.pid").write_text(str(os.getpid()), encoding="ascii")
     httpd = HTTPServer(("127.0.0.1", 0), H)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -574,7 +576,7 @@ def test_stop_returns_failure_when_supervisor_remains_alive(tmp_path, monkeypatc
     assert "refusing to claim success" in err
 
 
-def test_start_rejects_healthy_engine_without_live_supervisor(tmp_path, capsys):
+def test_start_rejects_healthy_engine_without_live_supervisor(tmp_path, capsys, monkeypatch):
     from http.server import BaseHTTPRequestHandler, HTTPServer
     import threading
 
@@ -588,6 +590,7 @@ def test_start_rejects_healthy_engine_without_live_supervisor(tmp_path, capsys):
             return
 
     ensure(str(tmp_path))
+    monkeypatch.setenv("ICARUS_TOKEN", "plant-test-token")
     httpd = HTTPServer(("127.0.0.1", 0), H)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()

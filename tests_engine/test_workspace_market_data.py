@@ -77,6 +77,8 @@ def test_unknown_or_unlocked_provider_is_explicitly_unavailable(provider):
     provider.meta=trap
     result=snapshot(runner(provider),'capabilities')
     assert result['available'] is False and result['metadata']=={}
+    assert result['capabilities']=={'ticks':False,'mbp_10':False,'mbo':False,
+                                    'mbo_snapshot':False,'ohlcv_seconds':False}
     assert 'core_session_ok' not in result['metadata']
     assert snapshot(runner(provider),'ticks')['ticks']==[]
 
@@ -104,6 +106,44 @@ world.marketDataRender({ok:true,data:{metadata:{core_session_ok:true,
  {ok:true,data:{events:[]}},{ok:true,data:{}});
 assert(health.innerHTML.includes('Depth mbp-10</div><div class="v"><span class="chip b">OK</span>'),health.innerHTML);
 assert(/Freshness.*class="chip b">LIVE/.test(health.innerHTML),health.innerHTML);
+"""
+    result=subprocess.run([node,'-e',script,str(source)],text=True,capture_output=True,timeout=10)
+    assert result.returncode==0,result.stdout+result.stderr
+
+
+def test_market_console_suppresses_unsupported_stream_polls_until_explicit_refresh():
+    node=shutil.which('node')
+    if not node:pytest.skip('optional Node unavailable')
+    source=Path(__file__).resolve().parents[1]/'icarus_engine/market-data-ui.js'
+    script=r"""
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const calls=[],errors={innerHTML:''};let supported=false;
+const world={view:'market-data',last:{assets:[{symbol:'NQ'}]},esc:String,
+ document:{querySelector:s=>s==='#mdErrors'?errors:null},
+ localStorage:{getItem:()=> 'icarus'},
+ fetch:async path=>{
+   calls.push(path);let data={};
+   if(path.includes('/capabilities'))data={provider:'yahoo',capabilities:{ticks:supported,mbp_10:supported,mbo:supported},metadata:{}};
+   else if(path==='/healthz')data={ok:true};
+   else if(path.includes('/ticks'))data={ticks:[]};
+   else if(path.includes('/depth'))data={events:[]};
+   return {ok:true,status:200,json:async()=>data};
+ }};
+world.IcarusClient={context:{id:'main'},getToken:()=> 'market-data-test-token',request:(path,init)=>world.fetch(path,init)};
+vm.runInNewContext(fs.readFileSync(process.argv[1],'utf8'),world);
+(async()=>{
+ await world.loadMarketData();
+ const first=calls.length;
+ assert(first===2,calls);
+ assert(!calls.some(path=>path.includes('/ticks')||path.includes('/depth')),calls);
+ assert(errors.innerHTML.includes('Feed status:'),errors.innerHTML);
+ await world.loadMarketData();
+ assert(calls.length===first,calls);
+ supported=true;
+ await world.loadMarketData(true);
+ assert.equal(calls.filter(path=>path.includes('/ticks')).length,1,calls);
+ assert.equal(calls.filter(path=>path.includes('/depth')).length,1,calls);
+})().catch(error=>{console.error(error);process.exitCode=1;});
 """
     result=subprocess.run([node,'-e',script,str(source)],text=True,capture_output=True,timeout=10)
     assert result.returncode==0,result.stdout+result.stderr

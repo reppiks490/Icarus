@@ -9,6 +9,7 @@ const context=await browser.newContext({viewport:{width:1440,height:1000},reduce
 context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
 context.on('request',r=>{if(r.method()!=='GET')writes.push(r.url());});
 const page=await context.newPage();
+await require('./browser_preview_auth.cjs').authenticatePreview(context);
 await page.addInitScript(()=>{
  sessionStorage.setItem('icarus-intro-seen','1');window.auraDraws=0;window.cpuDraws=0;
  const draw=WebGLRenderingContext.prototype.drawArrays;

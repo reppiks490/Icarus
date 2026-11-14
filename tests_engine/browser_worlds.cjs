@@ -6,6 +6,7 @@ mkdirSync(output,{recursive:true});
 (async()=>{
 const browser=await chromium.launch({headless:true,...(process.env.ICARUS_BROWSER_BINARY ? {executablePath:process.env.ICARUS_BROWSER_BINARY} : {})});
 const page=await browser.newPage({viewport:{width:1440,height:1100}});
+await require('./browser_preview_auth.cjs').authenticatePreview(page.context());
 const errors=[]; const writes=[];
 page.on('pageerror',e=>errors.push(e.message));
 page.on('request',r=>{if(r.method()!=='GET') writes.push(r.url());});

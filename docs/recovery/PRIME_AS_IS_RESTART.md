@@ -9,6 +9,8 @@
 - Dashboard performance: PR #476, merged at `c0cac098ac71dc0aa3acccf5a7c29b7c6742a3a5`; scroll feedback no longer performs repeated layout reads.
 - Mobile integration: PR #481, merged at the release commit. The observation app and mobile gateway are integrated; explicit rate-limited backtest requests are supported, with no trade-state mutations; actual phone pairing and EAS/store signing remain pending owner-device/account setup.
 - Last successful warm Main observation: six active assets (`NQ,ES,YM,GC,SI,BTC`). A later failed readiness probe returned `warm:false` and an empty asset list; that is not a healthy zero-asset selection. The launch preserves the saved six-asset set to avoid adding runtime load; the defaults migration covers the full 35-symbol registry and saved selected CC assets.
+**New cloud candidate (2026-10-26).** Dashboard, access, market-context, and research-latency changes passed 4,495 tests on the earlier cloud base, with five host/opt-in skips and no failures; two runnable skips passed separately with Python 3.10 and checksum-verified PowerShell. The standalone engine passed 1,461 tests, and a later analysis-status cache fix passed 47 focused tests. Three native Windows contracts and exact-head checks remain for the published branch. The restart commands below continue to pin the established paper release until a validated candidate commit is published and substituted.
+
 - Owner machine: `C:\Users\tripl\Icarus-as-is` (Git Bash: `~/Icarus-as-is`)
 - Private state: `C:\Users\tripl\Icarus` (Git Bash: `~/Icarus`)
 - Paper-only; `execution_authorized=false`.
@@ -28,12 +30,12 @@ Run in Git Bash on the owner's PC. Leave any currently running Icarus launcher o
 ```bash
 set -euo pipefail
 export ICARUS_HOME="$HOME/Icarus"
-if [[ -z "${ICARUS_TOKEN:-}" ]]; then
-  read -r -s -p 'Dashboard token used by the running launcher (Enter if default is icarus or engine is stopped): ' ICARUS_TOKEN </dev/tty
+if [[ -z "${ICARUS_CAPTURE_TOKEN:-}" ]]; then
+  read -r -s -p 'Dashboard token used by the running launcher (Enter if default is icarus or engine is stopped): ' ICARUS_CAPTURE_TOKEN </dev/tty
   printf '\n'
-  ICARUS_TOKEN="${ICARUS_TOKEN:-icarus}"
+  ICARUS_CAPTURE_TOKEN="${ICARUS_CAPTURE_TOKEN:-${ICARUS_TOKEN:-icarus}}"
 fi
-export ICARUS_TOKEN
+export ICARUS_CAPTURE_TOKEN
 RELEASE_COMMIT="a21507b8b9bb46ec418a0a9b89fae448fb3eae96"
 cd "$HOME/Icarus-as-is"
 
@@ -69,6 +71,7 @@ test -x "$PY"
   --root "$ICARUS_HOME" --prepare \
   --capture-output "$ICARUS_HOME/current-nq-restart-capture.json" \
   --port 8791
+unset ICARUS_CAPTURE_TOKEN
 ```
 
 Read the JSON result. Stop if preparation fails or if the NQ chart/input/session summary is not the intended current Main NQ setup. The detached worktree receives its own environment through the same tested launcher setup path. This keeps the current checkout and running engine untouched while the NQ capture uses the exact pinned release. If Git reports a worktree conflict or the candidate interpreter command fails, do not reset the PC or improvise; preserve the output for diagnosis.
@@ -108,6 +111,15 @@ test -x "$PY"
   --root "$ICARUS_HOME" \
   --capture-file "$ICARUS_HOME/current-nq-restart-capture.json" --verify
 ```
+Before launching the updated engine, set a persistent, unique owner token. The token used to capture the older running engine may have been its former `icarus` default; the updated source rejects that placeholder. Enter the new value when the dashboard prompts for it and retain it in your password manager.
+
+```bash
+read -r -s -p 'Enter a unique owner token for the updated engine: ' ICARUS_TOKEN </dev/tty
+printf '\n'
+export ICARUS_TOKEN
+"$PY" -c "from icarus_engine.access_control import resolve_owner_token; resolve_owner_token()"
+```
+
 The defaults utility makes its own hash-tracked backup of changed settings under `Icarus/audit/restart-defaults/`. The full backup above also preserves journals and other private state. Do not proceed if `--apply` or `--verify` fails.
 
 Launch the local **paper** engine with the last owner-observed feed and active assets. The last documented owner-PC startup used Yahoo and reached `warm:true`; if the intended source has since changed, select the owner's intended non-live feed explicitly rather than guessing:

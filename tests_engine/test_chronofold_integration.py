@@ -16,7 +16,6 @@ def test_chronofold_server_and_dashboard_are_wired():
     assert '"chronofold": chronofold.status' in server
 
     assert '<script src="/chronofold-ui.js"></script>' in dashboard
-    assert "view==='chronofold'" in dashboard
     assert "view === 'chronofold'" in dashboard
     assert "wireChronofold()" in dashboard
 

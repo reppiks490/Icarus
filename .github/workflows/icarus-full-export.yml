@@ -76,7 +76,11 @@ jobs:
             echo "live_trading_execution_authorized=false"
           } > "$ROOT/metadata/REVISIONS.env"
           git log --all --date=iso-strict --format='%H%x09%ad%x09%d%x09%s' -n 300 > "$ROOT/metadata/RECENT_REPOSITORY_COMMITS.tsv"
-          find "$ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$ROOT/SHA256SUMS.txt"
+          (
+            cd "$ROOT"
+            find . -type f ! -path './SHA256SUMS.txt' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+            sha256sum --check SHA256SUMS.txt
+          )
           tar -czf ICARUS_EVERYTHING_2026-09-24.tar.gz "$ROOT"
       - uses: actions/upload-artifact@v4
         with:

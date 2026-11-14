@@ -22,8 +22,8 @@ def common_page(*args, **kwargs):
     return hosted_page(*args, **kwargs)
 
 
-def _frame(scope, **changes):
-    now = time.time_ns()
+def _frame(scope, *, now_ns=None, **changes):
+    now = time.time_ns() if now_ns is None else now_ns
     data = {
         "schema_version": "icarus-nexus-aion-v1", "workspace_id": scope,
         "config_revision": 0, "state": "OBSERVING", "observed_at_ns": now,
@@ -50,7 +50,7 @@ def _serve(page, base, scope, state):
     page.on("request", lambda req: state["requests"].append(req) if req.url == base + path else None)
 
     def reply(route):
-        frame = _frame(scope, **state.get("changes", {}))
+        frame = _frame(scope, now_ns=state.get("now_ns"), **state.get("changes", {}))
         if state.get("error"):
             return route.fulfill(status=503, content_type="application/json", body=json.dumps({
                 "workspace_id": scope, "detail": "diagnostic storage unavailable"}))
@@ -139,7 +139,12 @@ def test_subsystems_latest_failure_is_unavailable_and_recovers_automatically(wor
 def test_subsystems_reject_foreign_authorized_or_stale_frames(workspace_http, changes):
     """Catches rendering an old, foreign or authority-escalated diagnostic as current."""
     with common_page(workspace_http, "cc2", pause_periodic=True) as (page, base):
-        state = {}
+        # Keep this acceptance test deterministic under a loaded browser runner:
+        # the panel still sees real fresh and explicitly stale observations, but
+        # host scheduling delay cannot age the baseline before it reaches the DOM.
+        frozen_ms = page.evaluate("Date.now()")
+        page.evaluate("frozen => { Date.now = () => frozen; }", frozen_ms)
+        state = {"now_ns": int(frozen_ms * 1_000_000)}
         _serve(page, base, "cc2", state)
         _mount(page)
         state["changes"] = changes

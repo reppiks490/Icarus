@@ -26,7 +26,7 @@
     return '<span class="chip ' + cls + '">' + h(s) + '</span>';
   }
   function authHeaders(json) {
-    const token = localStorage.getItem('icarus-engine-token') || 'icarus';
+    const token = IcarusClient.getToken();
     const headers = {'Authorization':'Bearer ' + token};
     if (json) headers['Content-Type'] = 'application/json';
     return headers;

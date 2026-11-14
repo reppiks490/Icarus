@@ -141,6 +141,18 @@ await assert.rejects(active,error('CANCELLED'));await assert.rejects(other.read(
 """)
 
 
+def test_request_timeout_override_is_honored_and_not_forwarded_to_fetch():
+    run_js(r"""
+const calls=[];
+const c=factory.create({id:'main'},{origin:'http://localhost',timeoutMs:1000,
+  fetch:(url,init)=>{calls.push(init.timeoutMs);return new Promise(()=>{});}});
+const started=Date.now();
+await assert.rejects(c.request('/api/brain',{timeoutMs:25}),error('TIMEOUT'));
+assert(Date.now()-started<250);
+assert.deepEqual(calls,[undefined]);
+""")
+
+
 def test_configuration_preserves_editor_revision_and_explicit_control_scope():
     run_js(r"""
 const {c,calls}=client('cc1',(url,init)=>init.method==='POST'?reply({detail:'stale editor'},409):reply(identity('cc1',7)));
@@ -204,8 +216,13 @@ const {c,calls}=client('cc4',()=>reply([{name:'shared'}]));
 assert.equal(c.href(),'/dashboards/cc4');assert.equal(c.href('NQ'),'/dashboards/cc4?asset=NQ');
 for(const bad of ['nq','NQ/ES','NQ?workspace=main','%2FNQ'])assert.throws(()=>c.href(bad));
 assert.equal((await c.shared('/api/presets'))[0].name,'shared');
+for(const path of ['/api/overview/command-center','/api/discovery-registry','/api/provider-corpus','/api/research/market-context']){
+ const response=await c.request(path);
+ assert.equal(calls.at(-1).path,path,'global evidence reads must not be routed to a selected paper runtime');
+ assert.equal(response.headers.get('X-Icarus-Scope'),'shared');
+}
 for(const path of ['/api/brain','/admin/pause','https://external.example/api/presets'])await assert.rejects(c.shared(path));
-assert.equal(calls.length,1);assert.equal(calls[0].method,'GET');
+assert.equal(calls.length,5);assert(calls.every(x=>x.method==='GET'));
 const main=client('main');assert.equal(main.c.href('NQ'),'/?asset=NQ');
 """)
 

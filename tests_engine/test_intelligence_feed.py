@@ -185,7 +185,7 @@ const context = {window:{},document:{querySelector:()=>el},
  return {ok:!unavailable||!url.endsWith('/intelligence'),status:503,
  json:async()=>url.endsWith('/intelligence')?spine:{}};
 }};
-context.IcarusClient={request:context.fetch};
+context.IcarusClient={getToken:()=> 'token',request:context.fetch};
 vm.runInNewContext(fs.readFileSync(process.argv[2],'utf8'),context);
 (async()=>{
  await context.window.loadAscendancy();

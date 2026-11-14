@@ -8,7 +8,7 @@ on:
       - "icarus_engine/workspace-client.js"
       - "icarus_engine/server.py"
       - "icarus_engine/workspace_*.py"
-      - "icarus_engine/experience-ui.css"
+      - "icarus_engine/*.css"
       - "icarus_engine/experience-ui.js"
       - "icarus_engine/world-*.js"
       - "icarus_engine/worlds/**"
@@ -50,7 +50,18 @@ jobs:
       - name: Install ICARUS test dependencies
         run: pip install -e ".[dev,ml,bridge,databento]" playwright
 
+      - name: Install Playwright Chromium
+        env:
+          npm_config_audit: "false"
+          npm_config_fund: "false"
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+          node -e "require('node:fs').appendFileSync(process.env.GITHUB_ENV, 'ICARUS_BROWSER_BINARY=' + require('playwright').chromium.executablePath() + '\n')"
+
       - name: Run focused presentation invariants
+        env:
+          ICARUS_REQUIRE_WORKSPACE_BROWSER: "1"
         run: |
           python -m pytest \
             tests_engine/test_dashboard_js.py \
@@ -61,15 +72,6 @@ jobs:
             tests_engine/test_world_assets.py \
             tests_engine/test_world_cinema.py \
             tests_engine/test_world_immersion.py -q
-
-      - name: Install Playwright Chromium
-        env:
-          npm_config_audit: "false"
-          npm_config_fund: "false"
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-          node -e "require('node:fs').appendFileSync(process.env.GITHUB_ENV, 'ICARUS_BROWSER_BINARY=' + require('playwright').chromium.executablePath() + '\n')"
 
       - name: Verify five workspace routes in real Chromium
         env:

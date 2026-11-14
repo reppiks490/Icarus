@@ -185,7 +185,7 @@
     const el = document.querySelector('#parallaxPanel');
     if (!el) return;
     try {
-      const tok = localStorage.getItem('icarus-engine-token') || 'icarus';
+      const tok = IcarusClient.getToken();
       const headers = {'Authorization':'Bearer '+tok};
       const [pr, dr] = await Promise.all([
         IcarusClient.request('/api/parallax', {cache:'no-store', headers}),

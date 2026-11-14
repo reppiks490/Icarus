@@ -25,13 +25,12 @@
   const states = new Set(['ON', 'OFF', 'STARTING', 'STOPPING', 'ERROR']);
   const records = new Map(), pending = new Set(), errors = new Map(), rows = new Map();
   const activeRequests = new Set();
-  let section, status, flight = null, timer = null, active = true, available = false;
+  let section, status, flight = null, timer = null, active = true, available = false, lifecycle = 0;
   let finishReady;
   const ready = new Promise(resolve => { finishReady = resolve; });
 
   function token() {
-    const control = document.querySelector('#token') || document.querySelector('#owner-token');
-    return control?.value?.trim() || 'icarus';
+    return window.IcarusClient?.getToken?.() || window.IcarusWorkspaceAuth?.getToken?.() || '';
   }
   function validRecord(value) {
     if (!value || !ids.includes(value.id) || typeof value.desired_enabled !== 'boolean' ||
@@ -44,7 +43,12 @@
   function paperReceipt(data) {
     if (data?.paper_only !== true || data?.execution_authorized !== false) throw Error('Invalid paper worker safety receipt');
   }
-  async function request(path, body) {
+  async function request(path, body, attempt=0, generation=lifecycle) {
+    if (!active || generation !== lifecycle) throw Error('Paper worker request cancelled');
+    if (!token()) {
+      window.dispatchEvent(new Event('icarus:auth-required'));
+      throw Error('Authentication required');
+    }
     const controller = new AbortController();
     activeRequests.add(controller);
     const deadline = setTimeout(() => controller.abort(), 2000);
@@ -58,6 +62,15 @@
       if (!response.ok) {
         const reason = typeof data?.detail === 'string' ? data.detail :
           typeof data?.error === 'string' ? data.error : 'Request refused';
+        // This exact admission failure is emitted before any change is accepted.
+        // Keep the original revision/body; never replay accepted changes or other refusals.
+        if (body !== undefined && response.status === 409 &&
+            reason === 'Workspace is busy; retry after its current operation.' && attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, 100 * 2 ** attempt));
+          if (!active || generation !== lifecycle || controller.signal.aborted)
+            throw Error('Paper worker request cancelled');
+          return request(path, body, attempt + 1, generation);
+        }
         throw Error(`HTTP ${response.status} · ${reason}`);
       }
       if (!data) throw Error('Invalid paper worker response');
@@ -143,6 +156,7 @@
           record.runtime_state === 'ERROR' && !record.desired_enabled)) {
       render(); return;
     }
+    const generation = lifecycle;
     pending.add(id); errors.delete(id); render();
     try {
       const data = await request(`/admin/command-centers/${id}/runtime`,
@@ -152,10 +166,10 @@
       const updated = validRecord(data.workspace);
       if (updated.id !== id) throw Error('Worker receipt belongs to another workspace');
       if (updated.revision < record.revision) throw Error('Stale worker transition receipt');
-      if (!active) return;
+      if (!active || generation !== lifecycle) return;
       accept(updated); render(); publish();
     } catch (error) {
-      if (active) errors.set(id, error.message || String(error));
+      if (active && generation === lifecycle) errors.set(id, error.message || String(error));
     } finally {
       // Wait for any earlier read, then obtain a read started after this action.
       if (flight) await flight;
@@ -225,7 +239,7 @@
   }
   Object.defineProperty(window, 'IcarusWorkspacePower', {value:Object.freeze({context, ready, isOff, refresh}), writable:false, configurable:false});
   window.addEventListener('pagehide', () => {
-    active = false; clearInterval(timer); activeRequests.forEach(controller => controller.abort());
+    active = false; lifecycle++; clearInterval(timer); activeRequests.forEach(controller => controller.abort());
   });
   window.addEventListener('pageshow', event => {
     if (event.persisted) { active = true; void refresh(); timer = setInterval(() => { if (!document.hidden) void refresh(); }, 5000); }

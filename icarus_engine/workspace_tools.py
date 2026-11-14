@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 from functools import partial
+from .access_control import configured_owner_token, resolve_owner_token
 from http.client import HTTPConnection
 import json
 import os
@@ -73,6 +74,7 @@ def expand(fetch, profiles):
 
 
 def restart(args):
+    token = resolve_owner_token(args.token)
     root = str(Path(args.root).expanduser().resolve())
     command = [sys.executable, '-m', 'icarus_plant']
     subprocess.run([*command, 'stop', '--root', root], check=True)
@@ -88,10 +90,10 @@ def restart(args):
         raise RuntimeError('Port is still occupied. Stop its owning engine window before restarting.')
     finally:
         connection.close()
-    environment = dict(os.environ, ICARUS_HOME=root, ICARUS_FEED='file')
+    environment = dict(os.environ, ICARUS_HOME=root, ICARUS_FEED='file', ICARUS_TOKEN=token)
     child = subprocess.Popen([*command, 'start', '--root', root, '--offline', '--feed', 'file',
                               '--assets', ','.join(dashboard_assets()), '--engine-port', str(args.port),
-                              '--token', args.token, '--no-downloads', '--no-browser'], env=environment)
+                              '--no-downloads', '--no-browser'], env=environment)
     fetch = partial(request, args.port, args.token)
     try:
         deadline = time.monotonic()+90
@@ -129,10 +131,12 @@ def main(argv=None):
     parser.add_argument('action', choices=('restart', 'status', 'expand', 'controls'))
     parser.add_argument('--port', type=int, default=8791)
     parser.add_argument('--root', default=os.environ.get('ICARUS_HOME') or os.getcwd())
-    parser.add_argument('--token', default=os.environ.get('ICARUS_TOKEN') or 'icarus')
     parser.add_argument('--workspace', choices=(*IDS, 'all'), default='all')
     parser.add_argument('--keep-selection', action='store_true', help='Restart without expanding saved asset selections')
     args = parser.parse_args(argv)
+    args.token = configured_owner_token()
+    if not args.token:
+        parser.error('Set a unique non-placeholder ICARUS_TOKEN (or legacy ICARUS_ADMIN_TOKEN/ADMIN_TOKEN) in the process environment')
     if not 1 <= args.port <= 65535: parser.error('Port must be between 1 and 65535')
     fetch = partial(request, args.port, args.token)
     try:
