@@ -1,0 +1,62 @@
+name: External capability context (read-only pinned peer evidence)
+on:
+  pull_request:
+    paths:
+      - 'icarus_engine/external_capability_context.py'
+      - 'tests_engine/test_external_capability_context.py'
+      - '.github/workflows/external-capability-context.yml'
+      - 'docs/integrations/EXTERNAL_CAPABILITY_CONTEXT.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: external-capability-context-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  pinned-peer-context:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+    steps:
+      - name: Checkout ICARUS exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: icarus
+          persist-credentials: false
+      - name: Checkout owner-actions inventory exact commit (draft PR 87)
+        uses: actions/checkout@v4
+        with:
+          repository: reppiks490/icarus-owner-actions
+          ref: d5f1bd43e217f2ad7009bab1cff09e9fd422ecc5
+          path: owner-actions
+          persist-credentials: false
+      - name: Checkout Engine federation exact commit
+        uses: actions/checkout@v4
+        with:
+          repository: reppiks490/Icarus-engine
+          ref: 5c9d9921ce7a8fa9479d59b72047514f7a51c50c
+          path: engine
+          persist-credentials: false
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Offline tests against authentic pinned peers
+        working-directory: icarus
+        env:
+          ICARUS_OWNER_INVENTORY: ../owner-actions/coordination/handoffs/2026-10-28-external-execution-source-inventory.json
+          ICARUS_ENGINE_FEDERATION: ../engine/config/federated_repo_evidence.json
+        run: python -m unittest -v tests_engine.test_external_capability_context
+      - name: Emit counts-only real peer context (no market data)
+        working-directory: icarus
+        run: >-
+          python -m icarus_engine.external_capability_context
+          --owner-inventory ../owner-actions/coordination/handoffs/2026-10-28-external-execution-source-inventory.json
+          --engine-federation ../engine/config/federated_repo_evidence.json
+          --owner-revision d5f1bd43e217f2ad7009bab1cff09e9fd422ecc5
+          --engine-revision 5c9d9921ce7a8fa9479d59b72047514f7a51c50c
+          --expect-discovered 72 --expect-snapshots 43 --summary
