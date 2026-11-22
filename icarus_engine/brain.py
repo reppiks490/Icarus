@@ -75,6 +75,7 @@ SUBSYSTEMS = (
     {"id": "janus", "title": "JANUS", "owner": "omega", "job": "Causal project twin for reconciliation, dependency-aware prioritization, proof-carrying evolution, and handoff memory."},
     {"id": "infrastructure", "title": "INFRASTRUCTURE", "owner": "omega", "job": "Runtime health, recovery, rollback, bounded-autonomy supervision, durability, and dependency/topology safety."},
     {"id": "helios-prime", "title": "HELIOS PRIME", "owner": "omega", "job": "Cross-system integration, source economy, sibling adapters, and meta-research/self-audit."},
+    {"id": "omnigenesis", "title": "OMNIGENESIS ∞", "owner": "omega", "job": "Isolated mathematical hypothesis foundry, deterministic as-of research, immutable scientific memory, and bounded capability proposals; research-only."},
     {"id": "supermesh-x", "title": "SUPERMESH-X", "owner": "macro", "job": "Capability/provider discovery, health/drift-aware routing, provenance, failover, and execution-contract boundaries."},
     {"id": "parallax", "title": "PARALLAX", "owner": "aion", "job": "Observed counterfactual twin ledger: immutable decision identity, paired replay, regret, branch coverage, subsystem ablation attribution, and reproducible alternative-path evidence."},
     {"id": "psi", "title": "ICARUS Ψ", "owner": "aion", "job": "Research-only latent-pressure and possibility engine: microstructure elasticity, dynamic leadership, counterfactual price, future-space entropy/collapse, phase boundaries, forced consensus, and fail-closed abstention."},
