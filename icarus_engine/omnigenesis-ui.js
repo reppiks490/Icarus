@@ -39,12 +39,12 @@
       '<div class="og-body"><div class="og-overlay" aria-hidden="true"></div>' +
       '<canvas id="og-canvas" class="og-canvas" aria-label="Animated projected 3D scientific model network; movement is presentation only"></canvas>' +
       '<div class="og-data">' +
-      '<div class="og-metric"><div class="og-metric-label">Registered studies</div><div class="og-metric-value" id="og-count">—</div><div class="og-metric-note">Immutable research records</div></div>' +
-      '<div class="og-metric"><div class="og-metric-label">Exploratory findings</div><div class="og-metric-value" id="og-exploratory">—</div><div class="og-metric-note">Unqualified until independent verification</div></div>' +
-      '<div class="og-metric"><div class="og-metric-label">Rejected experiments</div><div class="og-metric-value" id="og-rejected">—</div><div class="og-metric-note">Failure knowledge preserved</div></div>' +
+      '<div class="og-metric"><div class="og-metric-label">Scientific records</div><div class="og-metric-value" id="og-count">—</div><div class="og-metric-note">Immutable research records</div></div>' +
+      '<div class="og-metric"><div class="og-metric-label">Exploratory studies (recent)</div><div class="og-metric-value" id="og-exploratory">—</div><div class="og-metric-note">Unqualified until independent verification</div></div>' +
+      '<div class="og-metric"><div class="og-metric-label">Rejected studies (recent)</div><div class="og-metric-value" id="og-rejected">—</div><div class="og-metric-note">Failure knowledge preserved</div></div>' +
       '</div><div class="og-coordinates" id="og-coordinates">SCIENCE // LOADING<br>DATA LINK // VERIFYING<br>FRAME RATE // —</div>' +
       '<div class="og-selection"><div class="og-selection-title">SCIENCE NODE / INSPECT</div>' +
-      '<div class="og-selection-detail" id="og-selected">Orbit around real recorded studies. If no studies exist, geometry is a visual background only.</div></div>' +
+      '<div class="og-selection-detail" id="og-selected">Select a recorded research study or artifact. Ambient geometry is decorative.</div></div>' +
       '<div class="og-viewmodes" role="group" aria-label="Research animation mode">' +
       '<button class="og-mode" type="button" data-og-mode="cosmos" aria-pressed="true">COSMOS</button>' +
       '<button class="og-mode" type="button" data-og-mode="lattice" aria-pressed="false">LATTICE</button>' +
@@ -199,7 +199,7 @@
       positions.forEach(function(item){
         var n=item.n,p=item.pos;
         var supported=n.data.status==='EXPLORATORY';
-        var color=supported?'#f7d8a4':'#ff3c75';
+        var color=n.data.scientific_kind==='ARTIFACT'?'#9ac4ff':supported?'#f7d8a4':'#ff3c75';
         ctx.save();
         ctx.strokeStyle=color;ctx.globalAlpha=.24;ctx.lineWidth=.6;
         ctx.beginPath();ctx.moveTo(center.x,center.y);ctx.lineTo(p.x,p.y);ctx.stroke();
@@ -313,6 +313,24 @@
     return {root:root,stop:stop,updateRows:updateRows};
   }
 
+  function researchRows(snapshot) {
+    var rows=(snapshot.recent_studies||[]).slice(0,100).map(function(s){
+      return Object.assign({scientific_kind:'STUDY'},s);
+    });
+    (snapshot.recent_artifacts||[]).slice(0,100).forEach(function(a){
+      if(!a || !a.research_only) return;
+      rows.push({
+        study_id:a.artifact_id,
+        asset:a.kind.toUpperCase(),
+        dataset_id:a.title,
+        status:a.status,
+        scientific_kind:'ARTIFACT',
+        holdout_brier_improvement:null
+      });
+    });
+    return rows.slice(0,100);
+  }
+
   function loadOmnigenesis() {
     var root=document.getElementById('og-root');
     if(!root || !active || active.root!==root) return Promise.resolve();
@@ -334,11 +352,11 @@
       }
       cached=snapshot;
       if(active && active.root===root && root.isConnected) {
-        root.querySelector('#og-count').textContent=String(snapshot.study_count);
+        root.querySelector('#og-count').textContent=String(snapshot.study_count+(snapshot.artifact_count||0));
         root.querySelector('#og-exploratory').textContent=String(snapshot.recent_studies.filter(function(s){return s.status==='EXPLORATORY';}).length);
         root.querySelector('#og-rejected').textContent=String(snapshot.recent_studies.filter(function(s){return s.status==='REJECTED';}).length);
-        root.querySelector('#og-data-status').textContent='LOCAL LEDGER VERIFIED / '+snapshot.recent_studies.length+' RECENT RECORDS';
-        active.updateRows(snapshot.recent_studies);
+        root.querySelector('#og-data-status').textContent='LOCAL LEDGER VERIFIED / '+researchRows(snapshot).length+' DISPLAYED RECORDS';
+        active.updateRows(researchRows(snapshot));
       }
     }).catch(function(e){
       if(active && active.root===root && root.isConnected) {
@@ -356,7 +374,7 @@
     if(active)active.stop();
     active=createScene(root);
     if(!active)return;
-    if(cached){active.updateRows(cached.recent_studies);}
+    if(cached){active.updateRows(researchRows(cached));}
     loadOmnigenesis();
   }
   window.omnigenesisHtml=omnigenesisHtml;
