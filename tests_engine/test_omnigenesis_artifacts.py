@@ -97,6 +97,17 @@ def test_no_unauthorized_or_forged_artifact(tmp_path):
     with pytest.raises(ValueError,match="unsupported"):
         store.append_artifact("order",{"status":"live"})
 
+    synthetic=replay_book(synthetic_scenario(11,70))
+    synthetic["submitted_quantity"] += 1
+    with pytest.raises(ValueError,match="accounting mismatch"):
+        store.append_artifact("synthetic_book",synthetic)
+
+    bad_plan=plan()
+    bad_plan["independent_approval_required"]=False
+    # The content-derived source ID is checked before artifact admission.
+    with pytest.raises(ValueError,match="tamper"):
+        store.append_artifact("capability_plan",bad_plan)
+
 
 def test_cli_science_recorded_and_retrievable(tmp_path):
     command=[sys.executable,"-m","icarus_engine.omnigenesis"]
