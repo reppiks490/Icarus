@@ -36,11 +36,11 @@ export function OmnigenesisMobile({ data }: Props) {
     }));
     const pulse = Animated.loop(Animated.sequence([
       Animated.timing(heartbeat, {
-        toValue: 1, duration: 2100, easing: Easing.inOut(Easing.sine),
+        toValue: 1, duration: 2100, easing: Easing.inOut(Easing.sin),
         useNativeDriver: true,
       }),
       Animated.timing(heartbeat, {
-        toValue: 0, duration: 2100, easing: Easing.inOut(Easing.sine),
+        toValue: 0, duration: 2100, easing: Easing.inOut(Easing.sin),
         useNativeDriver: true,
       }),
     ]));
