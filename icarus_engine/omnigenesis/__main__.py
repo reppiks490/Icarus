@@ -36,6 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     machine.add_argument("observations", type=Path)
     book = commands.add_parser("synthetic-book", help="run a seeded, toy exchange")
     book.add_argument("--seed", type=int, required=True)
+    book.add_argument("--root", type=Path, required=True)
     book.add_argument("--steps", type=int, default=100)
     proposal = commands.add_parser("propose", help="compile a bounded capability proposal")
     proposal.add_argument("spec", type=Path)
@@ -43,13 +44,16 @@ def main(argv: list[str] | None = None) -> int:
     plan.add_argument("proposals", type=Path)
     plan.add_argument("--seconds", type=int, required=True)
     plan.add_argument("--dollars", type=float, required=True)
+    plan.add_argument("--root", type=Path, required=True)
     formal = commands.add_parser("formal", help="compile and formally audit a typed automaton")
     formal.add_argument("spec", type=Path)
+    formal.add_argument("--root", type=Path, required=True)
     passage = commands.add_parser("first-passage", help="retrospective OHLC event-time labels")
     passage.add_argument("tape", type=Path)
     passage.add_argument("--up-ticks", required=True, type=int)
     passage.add_argument("--down-ticks", required=True, type=int)
     passage.add_argument("--horizon", required=True, type=int)
+    passage.add_argument("--root", type=Path, required=True)
     dashboard = commands.add_parser("dashboard", help="export offline animated observatory")
     dashboard.add_argument("--root", required=True, type=Path)
     dashboard.add_argument("--output", required=True, type=Path)
@@ -76,6 +80,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "synthetic-book":
         report = replay_book(synthetic_scenario(args.seed, args.steps))
+        ResearchLedger(args.root).append_artifact("synthetic_book", report)
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "propose":
         print(json.dumps(compile_proposal(read_limited_json(args.spec)),
@@ -84,15 +89,18 @@ def main(argv: list[str] | None = None) -> int:
         report = plan_capabilities(read_limited_json(args.proposals),
                                    max_compute_seconds=args.seconds,
                                    max_cost_usd=args.dollars)
+        ResearchLedger(args.root).append_artifact("capability_plan", report)
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "formal":
         report = formal_certificate(compile_automaton(read_limited_json(args.spec)))
+        ResearchLedger(args.root).append_artifact("formal", report)
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "first-passage":
         report = label_first_passage(read_limited_json(args.tape),
                                      upper_distance_ticks=args.up_ticks,
                                      lower_distance_ticks=args.down_ticks,
                                      horizon_bars=args.horizon)
+        ResearchLedger(args.root).append_artifact("first_passage", report)
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "dashboard":
         snap = ResearchLedger(args.root).snapshot(limit=100)
