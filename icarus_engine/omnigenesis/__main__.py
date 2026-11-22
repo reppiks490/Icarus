@@ -15,6 +15,7 @@ from . import AUTHORITY, ResearchLedger, evaluate_dataset, next_prime
 from .automata import compile_automaton, replay_automaton
 from .simulation import replay_book, synthetic_scenario
 from .evolution import compile_proposal, plan_capabilities
+from .observatory import render_observatory
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -40,6 +41,9 @@ def main(argv: list[str] | None = None) -> int:
     plan.add_argument("proposals", type=Path)
     plan.add_argument("--seconds", type=int, required=True)
     plan.add_argument("--dollars", type=float, required=True)
+    dashboard = commands.add_parser("dashboard", help="export offline animated observatory")
+    dashboard.add_argument("--root", required=True, type=Path)
+    dashboard.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
 
     def read_limited_json(path: Path):
@@ -72,6 +76,12 @@ def main(argv: list[str] | None = None) -> int:
                                    max_compute_seconds=args.seconds,
                                    max_cost_usd=args.dollars)
         print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "dashboard":
+        snap = ResearchLedger(args.root).snapshot(limit=100)
+        path = render_observatory(snap, args.output)
+        print(json.dumps({"exported": str(path), "offline": True,
+                          "study_count": snap["study_count"],
+                          "authority": AUTHORITY}, sort_keys=True))
     return 0
 
 
