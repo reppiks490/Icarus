@@ -38,6 +38,7 @@ capability proposals and unified scientific records. It does NOT replace:
 | 11 | Historical first-passage/competing-risk OHLC label engine | first_passage.py |
 | 12 | Read-only mobile gateway data access | icarus_mobile_gateway/proxy.py |
 | 13 | Immutable derived artifact families and unified research view | ledger.py, UI |
+| 15 | Native iOS/Android animated intelligence view | mobile/src/OmnigenesisMobile.tsx and mobile/App.tsx |
 
 Note: These are bounded research tools, NOT 13 production-qualified AI systems.
 
