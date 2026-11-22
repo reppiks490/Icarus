@@ -97,6 +97,12 @@ def compile_automaton(spec: Mapping[str, Any]) -> dict:
         unique.add(key)
         edges.append({"from": src, "to": dst, "feature": feature,
                       "op": op, "threshold": threshold})
+    # Reject contradictory guards at compile time, including rules testing
+    # different features that can simultaneously appear in one event record.
+    from .formal import check_guards
+    overlap = check_guards(edges)
+    if overlap:
+        raise ValueError("ambiguous transitions; counterexample: " + str(overlap[0]))
     reached = {initial}
     while True:
         expanded = reached | {t["to"] for t in edges if t["from"] in reached}
