@@ -39,6 +39,9 @@ def replay_book(events: list[Mapping[str, Any]]) -> dict:
     used_ids = set()
     used_events = set()
     trades = []
+    total_submitted = 0
+    total_canceled = 0
+    total_unfilled_market = 0
     previous_received = None
     event_count = 0
     for row in events:
@@ -65,6 +68,7 @@ def replay_book(events: list[Mapping[str, Any]]) -> dict:
             order = resting.get(oid)
             if order is None or order["actor"] != actor:
                 raise ValueError("cannot cancel missing/other actor order")
+            total_canceled += order["quantity"]
             del resting[oid]
             event_count += 1
             continue
@@ -72,6 +76,7 @@ def replay_book(events: list[Mapping[str, Any]]) -> dict:
         if side not in _SIDES:
             raise ValueError("invalid side")
         qty = _integer(qty, "quantity", 1, 1_000_000)
+        total_submitted += qty
         price = row["price_ticks"]
         if kind == "limit":
             price = _integer(price, "price_ticks", 1, 1_000_000_000)
@@ -109,6 +114,8 @@ def replay_book(events: list[Mapping[str, Any]]) -> dict:
             remaining -= filled
             if maker["quantity"] == 0:
                 del resting[maker_id]
+        if kind == "market":
+            total_unfilled_market += remaining
         if kind == "limit" and remaining:
             if len(resting) >= 5000:
                 raise ValueError("synthetic book capacity exceeded")
@@ -118,13 +125,26 @@ def replay_book(events: list[Mapping[str, Any]]) -> dict:
         event_count += 1
     buys = [row for row in resting.values() if row["side"] == "buy"]
     sells = [row for row in resting.values() if row["side"] == "sell"]
+    resting_quantity = sum(r["quantity"] for r in resting.values())
+    executed_quantity = sum(row["quantity"] for row in trades)
+    # Every trade consumes one maker unit AND one taker unit.
+    conserved = (total_submitted == (
+        resting_quantity + total_canceled + total_unfilled_market
+        + 2 * executed_quantity
+    ))
+    if not conserved:
+        raise AssertionError("synthetic exchange quantity conservation failed")
     return {
         "schema_version": "icarus-omnigenesis-synthetic-book-v1",
         "evidence_kind": "SYNTHETIC",
         "authority": dict(_AUTHORITY),
         "event_count": event_count,
         "trade_count": len(trades),
-        "executed_quantity": sum(row["quantity"] for row in trades),
+        "executed_quantity": executed_quantity,
+        "submitted_quantity": total_submitted,
+        "canceled_quantity": total_canceled,
+        "unfilled_market_quantity": total_unfilled_market,
+        "quantity_conserved": conserved,
         "best_bid_ticks": max((r["price_ticks"] for r in buys), default=None),
         "best_ask_ticks": min((r["price_ticks"] for r in sells), default=None),
         "resting_buy_quantity": sum(r["quantity"] for r in buys),
