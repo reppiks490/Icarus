@@ -18,6 +18,7 @@ from .evolution import compile_proposal, plan_capabilities
 from .observatory import render_observatory
 from .formal import formal_certificate
 from .first_passage import label_first_passage
+from .event_bridge import bridge_first_passage
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -54,6 +55,12 @@ def main(argv: list[str] | None = None) -> int:
     passage.add_argument("--down-ticks", required=True, type=int)
     passage.add_argument("--horizon", required=True, type=int)
     passage.add_argument("--root", type=Path, required=True)
+    bridge = commands.add_parser("bridge-event", help="join historical event labels with as-of features")
+    bridge.add_argument("report", type=Path)
+    bridge.add_argument("features", type=Path)
+    bridge.add_argument("--positive-event", choices=["UPPER", "LOWER"], default="UPPER")
+    bridge.add_argument("--output", type=Path, required=True,
+                        help="new local dataset file; refuses overwrite")
     dashboard = commands.add_parser("dashboard", help="export offline animated observatory")
     dashboard.add_argument("--root", required=True, type=Path)
     dashboard.add_argument("--output", required=True, type=Path)
@@ -102,6 +109,17 @@ def main(argv: list[str] | None = None) -> int:
                                      horizon_bars=args.horizon)
         ResearchLedger(args.root).append_artifact("first_passage", report)
         print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "bridge-event":
+        result = bridge_first_passage(read_limited_json(args.report),
+                                     read_limited_json(args.features),
+                                     positive_event=args.positive_event)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        # Exclusive create protects existing user artifacts. Nothing is sent
+        # to market APIs, and no real strategy is modified.
+        with args.output.open("x", encoding="utf-8") as fp:
+            json.dump(result["dataset"], fp, indent=2, sort_keys=True)
+        print(json.dumps({"output": str(args.output),
+                          "audit": result["audit"]}, indent=2, sort_keys=True))
     elif args.command == "dashboard":
         snap = ResearchLedger(args.root).snapshot(limit=100)
         path = render_observatory(snap, args.output)
