@@ -27,6 +27,15 @@ def render_observatory(snapshot: Mapping, output: str | Path) -> Path:
             "holdout_brier_improvement"
         }:
             raise ValueError("unexpected study data in snapshot")
+    artifact_rows = snapshot.get("recent_artifacts", [])
+    if not isinstance(artifact_rows, list) or len(artifact_rows) > 100:
+        raise ValueError("invalid bounded research artifacts")
+    for artifact in artifact_rows:
+        if (not isinstance(artifact, Mapping) or
+                set(artifact) != {"artifact_id", "kind", "source_id",
+                                 "title", "status", "metric", "research_only"} or
+                artifact["research_only"] is not True):
+            raise ValueError("unexpected artifact data")
     document = {
         "snapshot": dict(snapshot),
         "exported_at": datetime.now(timezone.utc).isoformat(),
@@ -98,17 +107,22 @@ Independent APEX/DAEDALUS review and explicit authorization remain required for 
 const data=JSON.parse(document.getElementById("snapshot-data").textContent);
 const snapshot=data.snapshot;
 const studies=snapshot.recent_studies;
+const artifacts=snapshot.recent_artifacts||[];
+const graphRecords=studies.concat(artifacts.map(a=>({
+  study_id:a.artifact_id,dataset_id:a.title,asset:a.kind,
+  status:a.status,holdout_brier_improvement:null
+})));
 const count=document.getElementById("count");
 const outcomes=document.getElementById("outcomes");
 const selected=document.getElementById("selected");
-count.textContent=String(snapshot.study_count);
+count.textContent=String(snapshot.study_count+(snapshot.artifact_count||0));
 outcomes.textContent=String(studies.filter(x=>x.status==="EXPLORATORY").length)+" / "+String(studies.filter(x=>x.status==="REJECTED").length);
 document.getElementById("exported").textContent=data.exported_at;
 const canvas=document.getElementById("network");
 const ctx=canvas.getContext("2d");
 const motion=!window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let W=1,H=1,dpr=1,zoom=1,panX=0,panY=0,drag=null,elapsed=0;
-const nodes=studies.map((s,i)=>({s:s,a:i*2.399963229728653,r:92+Math.sqrt(i)*28,offset:i%7*.6,rad:5.5+(i%3)}));
+const nodes=graphRecords.slice(0,100).map((s,i)=>({s:s,a:i*2.399963229728653,r:92+Math.sqrt(i)*28,offset:i%7*.6,rad:5.5+(i%3)}));
 function resize(){
 const box=canvas.getBoundingClientRect();
 W=box.width;H=box.height;dpr=Math.min(window.devicePixelRatio||1,2);
@@ -165,7 +179,7 @@ const p=toWorld(e);
 const target=nodes.find(n=>{const xy=position(n,elapsed);return Math.hypot(p.x-xy.x,p.y-xy.y)<Math.max(18,n.rad+8);});
 if(target){
 const s=target.s;
-selected.textContent="ID: "+s.study_id+" | Asset: "+s.asset+" | Dataset: "+s.dataset_id+" | Status: "+s.status+" | Holdout ΔBrier: "+Number(s.holdout_brier_improvement).toFixed(6);
+selected.textContent="ID: "+s.study_id+" | Asset: "+s.asset+" | Dataset: "+s.dataset_id+" | Status: "+s.status+" | Holdout ΔBrier: "+(s.holdout_brier_improvement==null?"N/A":Number(s.holdout_brier_improvement).toFixed(6));
 }
 });
 canvas.addEventListener("wheel",e=>{e.preventDefault();zoom=Math.max(.4,Math.min(3,zoom*(e.deltaY<0?1.08:.92)));if(!motion)render(0);},{passive:false});
