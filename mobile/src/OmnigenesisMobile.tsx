@@ -2,12 +2,12 @@
  * RN native-driver transform animations, no WebView, no external code,
  * no execution permissions and no fabricated study counts.
  */
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { JsonObject } from './types';
 
 type Props = { data: JsonObject | null };
-type Node = { key: string; name: string; artifact: boolean };
+type Node = { key: string; id: string; name: string; status: string; artifact: boolean };
 
 const sparks = Array.from({ length: 22 }, (_, i) => {
   const angle = i * 2.3999632297;
@@ -23,6 +23,8 @@ function label(value: unknown): string {
 }
 
 export function OmnigenesisMobile({ data }: Props) {
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [selection, setSelection] = useState<Node | null>(null);
   const spin = useRef(new Animated.Value(0)).current;
   const heartbeat = useRef(new Animated.Value(0)).current;
   const reverse = spin.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
@@ -31,6 +33,22 @@ export function OmnigenesisMobile({ data }: Props) {
   const glow = heartbeat.interpolate({ inputRange: [0, 1], outputRange: [.38, .94] });
 
   useEffect(() => {
+    let active = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (active) setReduceMotion(enabled);
+    }).catch(() => {});
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (enabled) => {
+      if (active) setReduceMotion(enabled);
+    });
+    return () => { active = false; sub.remove(); };
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      spin.setValue(0);
+      heartbeat.setValue(0);
+      return;
+    }
     const rotation = Animated.loop(Animated.timing(spin, {
       toValue: 1, duration: 28000, easing: Easing.linear, useNativeDriver: true,
     }));
@@ -47,20 +65,20 @@ export function OmnigenesisMobile({ data }: Props) {
     rotation.start();
     pulse.start();
     return () => { rotation.stop(); pulse.stop(); };
-  }, [spin, heartbeat]);
+  }, [spin, heartbeat, reduceMotion]);
 
   const studies = Array.isArray(data?.recent_studies) ? data.recent_studies : [];
   const artifacts = Array.isArray(data?.recent_artifacts) ? data.recent_artifacts : [];
   const records = useMemo<Node[]>(() => {
     const studyNodes: Node[] = studies.slice(0, 15).map((entry: unknown, i: number) => {
       const row = entry && typeof entry === 'object' ? entry as JsonObject : {};
-      return { key: label(row.study_id) + String(i), name: label(row.asset),
-               artifact: false };
+      return { key: label(row.study_id) + String(i), id: label(row.study_id),
+               name: label(row.asset), status: label(row.status), artifact: false };
     });
     const artifactNodes: Node[] = artifacts.slice(0, 15).map((entry: unknown, i: number) => {
       const row = entry && typeof entry === 'object' ? entry as JsonObject : {};
-      return { key: label(row.artifact_id) + String(i), name: label(row.kind),
-               artifact: true };
+      return { key: label(row.artifact_id) + String(i), id: label(row.artifact_id),
+               name: label(row.kind), status: label(row.status), artifact: true };
     });
     return [...studyNodes, ...artifactNodes].slice(0, 22);
   }, [data]);
@@ -70,7 +88,8 @@ export function OmnigenesisMobile({ data }: Props) {
     && data?.authority !== null
     && typeof data?.authority === 'object'
     && !Array.isArray(data?.authority)
-    && (data?.authority as JsonObject)?.execution_authorized === false;
+    && (data?.authority as JsonObject)?.execution_authorized === false
+    && (data?.authority as JsonObject)?.production_decision_authorized === false;
 
   const researchCount = valid && typeof data?.study_count === 'number'
     ? data.study_count : null;
@@ -88,7 +107,7 @@ export function OmnigenesisMobile({ data }: Props) {
         </View>
         <Text style={s.badge}>SHADOW ONLY</Text>
       </View>
-      <View style={s.scene} accessible accessibilityLabel="Decoratively animated scientific rings around observed research nodes">
+      <View style={s.scene} accessible={false} accessibilityLabel="Decoratively animated scientific rings around observed research nodes">
         <Animated.View style={[s.outerRing, { transform: [{ rotate }, { rotateX: '65deg' }] }]} />
         <Animated.View style={[s.midRing, { transform: [{ rotate: reverse }, { rotateY: '67deg' }] }]} />
         <Animated.View style={[s.innerRing, { transform: [{ rotate }, { rotateX: '30deg' }] }]} />
@@ -105,10 +124,12 @@ export function OmnigenesisMobile({ data }: Props) {
           {visibleNodes.map((node, i) => {
             const a = i * 2.3999632297;
             const r = 72 + Math.sqrt(i) * 28;
-            return <View key={node.key} style={[s.realNode, {
-              left: 154 + Math.cos(a) * r, top: 141 + Math.sin(a) * r * .68,
-              backgroundColor: node.artifact ? '#c1bbff' : '#f1bd92',
-            }]} />;
+            return <Pressable key={node.key} onPress={() => setSelection(node)}
+              accessibilityRole="button" accessibilityLabel={'Inspect ' + node.name + ' research ' + node.status}
+              style={[s.realNode, {
+                left: 148 + Math.cos(a) * r, top: 135 + Math.sin(a) * r * .68,
+                backgroundColor: node.artifact ? '#c1bbff' : '#f1bd92',
+              }]} />;
           })}
         </Animated.View>
         <Animated.View style={[s.centerAura, { opacity: glow, transform: [{ scale }] }]} />
@@ -126,6 +147,13 @@ export function OmnigenesisMobile({ data }: Props) {
         <View style={s.metric}><Text style={s.metricValue}>{artifactCount === null ? '—' : artifactCount}</Text><Text style={s.metricLabel}>ARTIFACTS</Text></View>
         <View style={s.metric}><Text style={[s.metricValue, s.research]}>OFF</Text><Text style={s.metricLabel}>EXECUTION</Text></View>
       </View>
+      {valid && selection && visibleNodes.some((node) => node.key === selection.key) ? (
+        <View style={s.selection}>
+          <Text style={s.selectionTitle}>RESEARCH RECORD SELECTED</Text>
+          <Text style={s.selectionText}>{selection.name} / {selection.status}</Text>
+          <Text style={s.selectionId}>{selection.id.slice(0, 32)}…</Text>
+        </View>
+      ) : null}
       <Text style={s.disclaimer}>
         {valid
           ? 'Research records verified through the gateway. Motion is decorative, not AI-agent or market activity.'
@@ -157,7 +185,8 @@ const s = StyleSheet.create({
   particleWorld: { position:'absolute', width:320, height:290 },
   spark: { position:'absolute' },
   dataNodes: { position:'absolute', width:320, height:290 },
-  realNode: { position:'absolute', height:8, width:8, borderRadius:4 },
+  realNode: { position:'absolute', height:20, width:20, borderRadius:10,
+              borderColor:'#ffffff78', borderWidth:1 }, 
   centerAura: { width:92, height:92, borderRadius:46, backgroundColor:'#c02e5a29',
                 position:'absolute' },
   centerCore: { width:52, height:52, borderRadius:26,
@@ -173,6 +202,11 @@ const s = StyleSheet.create({
   metricValue: { color:'#fff0f2', fontSize:23, fontWeight:'800' },
   metricLabel: { color:'#b58ca3', fontSize:9, letterSpacing:1.5, marginTop:3 },
   research: { color:'#ffa3b6' },
+  selection: { backgroundColor:'#231021', borderColor:'#b34479',
+               borderTopWidth:1, paddingHorizontal:16, paddingVertical:11 },
+  selectionTitle: { fontSize:9, color:'#eab69c', letterSpacing:1.6 },
+  selectionText: { color:'#fff0e8', fontSize:12, fontWeight:'700', marginTop:5 },
+  selectionId: { color:'#b394a8', fontSize:10, marginTop:4 },
   disclaimer: { color:'#a18c9b', fontSize:10, paddingHorizontal:17,
                 paddingBottom:15, lineHeight:17 },
 });
