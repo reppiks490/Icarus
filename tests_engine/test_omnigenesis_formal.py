@@ -41,8 +41,8 @@ def test_complete_numeric_partition_has_no_overlap():
 
 
 def test_witness_same_feature_overlaps_exactly():
-    a=transition("WAIT","A","score","gte",0.8)
-    b=transition("WAIT","B","score","gt",0.6)
+    a=transition("WAIT","HIT","score","gte",0.8)
+    b=transition("WAIT","MISS","score","gt",0.6)
     clash=guard_collision(a,b)
     assert clash is not None
     assert clash["feature_value"]>=0.8
