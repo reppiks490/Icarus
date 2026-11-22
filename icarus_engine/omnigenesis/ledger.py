@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -31,11 +32,19 @@ class ResearchLedger:
             )
             db.execute("CREATE INDEX IF NOT EXISTS idx_omega_dataset ON studies(dataset_sha256)")
 
+    @contextmanager
     def _connect(self):
         con = sqlite3.connect(self.path, timeout=15)
-        con.execute("PRAGMA journal_mode=WAL")
-        con.execute("PRAGMA busy_timeout=15000")
-        return con
+        try:
+            con.execute("PRAGMA journal_mode=WAL")
+            con.execute("PRAGMA busy_timeout=15000")
+            yield con
+            con.commit()
+        except Exception:
+            con.rollback()
+            raise
+        finally:
+            con.close()
 
     def append(self, report: dict) -> str:
         if not isinstance(report, dict) or report.get("authority") != _AUTHORITY:
