@@ -72,6 +72,7 @@ def test_deterministic_report_id_and_empty_event_path():
 def test_asof_and_bad_prices_rejected():
     bad=tape()
     bad["bars"][4]["received_at"]="2026-01-01T00:02:00+00:00"
+    bad["bars"][4]["observed_at"]="2026-01-01T00:01:00+00:00"
     with pytest.raises(ValueError,match="increase"):
         label_first_passage(bad,upper_distance_ticks=4,lower_distance_ticks=4,horizon_bars=4)
     bad=tape()
