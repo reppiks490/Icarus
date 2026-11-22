@@ -38,7 +38,7 @@ def _candidate_witnesses(first: float, second: float) -> list[float]:
 
 def guard_collision(a: Mapping[str, Any], b: Mapping[str, Any]) -> dict | None:
     """Return an exact floating-point counterexample for ambiguous transitions."""
-    if a["from"] != b["from"] or a["feature"] != b["feature"]:
+    if a["from"] != b["from"]:
         return None
     op_a, op_b = a["op"], b["op"]
     if op_a not in _OPERATIONS or op_b not in _OPERATIONS:
@@ -46,6 +46,24 @@ def guard_collision(a: Mapping[str, Any], b: Mapping[str, Any]) -> dict | None:
     ta, tb = float(a["threshold"]), float(b["threshold"])
     if not math.isfinite(ta) or not math.isfinite(tb):
         raise ValueError("nonfinite guard threshold")
+    if a["feature"] != b["feature"]:
+        # Both features may occur in the SAME input record. Different field
+        # names therefore do not make mutually exclusive transitions.
+        witness_a = next((v for v in _candidate_witnesses(ta, ta)
+                          if _OPERATIONS[op_a](v, ta)), None)
+        witness_b = next((v for v in _candidate_witnesses(tb, tb)
+                          if _OPERATIONS[op_b](v, tb)), None)
+        if witness_a is not None and witness_b is not None:
+            return {
+                "from": a["from"],
+                "feature": a["feature"],
+                "feature_value": witness_a,
+                "other_feature": b["feature"],
+                "other_feature_value": witness_b,
+                "first_to": a["to"],
+                "second_to": b["to"],
+            }
+        return None
     for value in _candidate_witnesses(ta, tb):
         if _OPERATIONS[op_a](value, ta) and _OPERATIONS[op_b](value, tb):
             return {
