@@ -342,12 +342,23 @@ export default function App() {
   useEffect(() => {
     if (!client || tab !== 'intelligence') return;
     let cancelled = false;
-    void client.omnigenesis().then((next) => {
-      if (!cancelled) setOmnigenesis(next);
-    }).catch(() => {
-      if (!cancelled) setOmnigenesis(null);
-    });
-    return () => { cancelled = true; };
+    let inFlight = false;
+    const refreshResearch = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const next = await client.omnigenesis();
+        if (!cancelled) setOmnigenesis(next);
+      } catch {
+        if (!cancelled) setOmnigenesis(null);
+      } finally {
+        inFlight = false;
+      }
+    };
+    void refreshResearch();
+    // Foreground-only read polling; never controls or triggers research jobs.
+    const timer = setInterval(() => { void refreshResearch(); }, 15000);
+    return () => { cancelled = true; clearInterval(timer); };
   }, [client, tab]);
 
   useEffect(() => {
