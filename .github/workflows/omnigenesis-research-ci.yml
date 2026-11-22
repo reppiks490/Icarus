@@ -9,6 +9,10 @@ on:
       - 'icarus_engine/server.py'
       - 'icarus_engine/dashboard.html'
       - 'icarus_engine/omnigenesis-ui.*'
+      - 'icarus_mobile_gateway/proxy.py'
+      - 'mobile/App.tsx'
+      - 'mobile/src/OmnigenesisMobile.tsx'
+      - 'mobile/src/api.ts'
       - '.github/workflows/omnigenesis-research-ci.yml'
   workflow_dispatch:
 
@@ -42,3 +46,21 @@ jobs:
           assert AUTHORITY["production_decision_authorized"] is False
           assert AUTHORITY["auto_promote"] is False
           PY
+
+  mobile-typescript:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+          cache: 'npm'
+          cache-dependency-path: 'mobile/package-lock.json'
+      - name: Install locked native-app dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck OMNIGENESIS within the complete native app
+        run: npm run typecheck
