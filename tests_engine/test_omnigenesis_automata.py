@@ -89,6 +89,8 @@ def test_future_timestamp_rejected():
 def test_nonmonotone_timestamps_rejected():
     rows = observations()
     rows[1]["decision_at"] = rows[0]["decision_at"]
+    rows[1]["received_at"] = rows[0]["received_at"]
+    rows[1]["observed_at"] = rows[0]["observed_at"]
     with pytest.raises(ValueError, match="non-increasing"):
         replay_automaton(compile_automaton(machine()), rows)
 
