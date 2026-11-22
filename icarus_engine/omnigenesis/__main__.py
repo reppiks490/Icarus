@@ -16,6 +16,8 @@ from .automata import compile_automaton, replay_automaton
 from .simulation import replay_book, synthetic_scenario
 from .evolution import compile_proposal, plan_capabilities
 from .observatory import render_observatory
+from .formal import formal_certificate
+from .first_passage import label_first_passage
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,6 +43,13 @@ def main(argv: list[str] | None = None) -> int:
     plan.add_argument("proposals", type=Path)
     plan.add_argument("--seconds", type=int, required=True)
     plan.add_argument("--dollars", type=float, required=True)
+    formal = commands.add_parser("formal", help="compile and formally audit a typed automaton")
+    formal.add_argument("spec", type=Path)
+    passage = commands.add_parser("first-passage", help="retrospective OHLC event-time labels")
+    passage.add_argument("tape", type=Path)
+    passage.add_argument("--up-ticks", required=True, type=int)
+    passage.add_argument("--down-ticks", required=True, type=int)
+    passage.add_argument("--horizon", required=True, type=int)
     dashboard = commands.add_parser("dashboard", help="export offline animated observatory")
     dashboard.add_argument("--root", required=True, type=Path)
     dashboard.add_argument("--output", required=True, type=Path)
@@ -75,6 +84,15 @@ def main(argv: list[str] | None = None) -> int:
         report = plan_capabilities(read_limited_json(args.proposals),
                                    max_compute_seconds=args.seconds,
                                    max_cost_usd=args.dollars)
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "formal":
+        report = formal_certificate(compile_automaton(read_limited_json(args.spec)))
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "first-passage":
+        report = label_first_passage(read_limited_json(args.tape),
+                                     upper_distance_ticks=args.up_ticks,
+                                     lower_distance_ticks=args.down_ticks,
+                                     horizon_bars=args.horizon)
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "dashboard":
         snap = ResearchLedger(args.root).snapshot(limit=100)
