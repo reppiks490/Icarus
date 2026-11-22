@@ -29,6 +29,11 @@ def test_price_time_and_conservation():
     assert [x["maker_order"] for x in report["trades"]] == ["a", "b"]
     assert [x["quantity"] for x in report["trades"]] == [2, 2]
     assert report["executed_quantity"] == 4
+    assert report["quantity_conserved"] is True
+    assert (report["submitted_quantity"] == report["resting_sell_quantity"]
+            + report["resting_buy_quantity"]
+            + report["canceled_quantity"] + report["unfilled_market_quantity"]
+            + 2 * report["executed_quantity"])
     assert report["resting_sell_quantity"] == 1
     assert report["best_ask_ticks"] == 100
     assert report["evidence_kind"] == "SYNTHETIC"
@@ -102,3 +107,15 @@ def test_duplicate_id_future_timestamp_and_negative_quantity_rejected():
     broken[0]["quantity"] = -1
     with pytest.raises(ValueError, match="quantity"):
         replay_book(broken)
+
+
+@pytest.mark.parametrize("seed", list(range(35)))
+def test_synthetic_book_conservation_under_variable_activity(seed):
+    result = replay_book(synthetic_scenario(seed, 120))
+    assert result["quantity_conserved"] is True
+    assert (result["submitted_quantity"] ==
+            result["resting_sell_quantity"] +
+            result["resting_buy_quantity"] +
+            result["canceled_quantity"] +
+            result["unfilled_market_quantity"] +
+            2 * result["executed_quantity"])
