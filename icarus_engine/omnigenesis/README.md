@@ -1,41 +1,58 @@
-# OMNIGENESIS ∞ — phases 1–3 implementation (research only)
+# ICARUS OMNIGENESIS ∞ — Research-only Mathematical Intelligence
 
-This is a real, narrowly bounded foundation for the larger OMNIGENESIS roadmap.
-It **does not** train AI agents, predict the future, automatically modify
-ICARUS's strategies, or grant broker permissions.
+This package is an implemented, intentionally constrained scientific microkernel.
+It is not an autonomous profitable trading system, AI agent colony, production
+execution controller, or verified financial forecaster.
 
-## Current capabilities
+## Delivered Python capabilities
 
-- Exact prime successor and historical first-event primitives (phase 1).
-- Strict provenance and as-of feature/label timestamps (phase 1).
-- Deterministic, bounded, safe hypothesis search (phase 2).
-- 60/20/20 chronological train/validation/holdout, with label-maturity purges
-  before validation and test windows (phase 2).
-- Train-only candidate parameter generation, validation-only model selection,
-  holdout-only final comparison, explicit trial count (phase 2).
-- Immutable, content-addressed SQLite research artifacts, no raw market data
-  persistence and no access to live orders (phase 3).
-- Read-only derived status and CLI (phase 3).
+- Exact next-prime and first-observed-event arithmetic.
+- Strict as-of timestamps, immutable record identity, source Git revision.
+- Single-feature finite hypothesis discovery with purged chronological splits.
+- SQLite-ledgered study outcomes with immutable content-derived identifiers.
+- Typed finite-state machine compiler, deterministic replay, prefix causality.
+- Symbolic detection of overlapping numeric transition guards with counterexamples.
+- Seeded price/time-priority synthetic order-book matching with self-match guard.
+- Exact-tick historical OHLC upper/lower first-passage, explicit ambiguous and
+  censored outcomes, and incomplete-horizon rejection.
+- Bounded, dependency-ordered, non-executing research capability proposals.
+- Unified content-addressed summaries of model studies, proofs, event-time
+  labels, synthetic exchange experiments and capability plans.
+- Native ICARUS read-only API, desktop cinematic research tab and secure mobile
+  gateway read surface. Standalone HTML visualization for offline viewing.
+- Focused tests in tests_engine/test_omnigenesis*.py and dedicated Actions CI.
 
-## CLI
+## Run from canonical repository root
 
-Use Python 3.10+ from the repository root:
-
+    python -m pytest tests_engine/test_omnigenesis*.py -q
     python -m icarus_engine.omnigenesis prime 100
-    python -m icarus_engine.omnigenesis run ./example_dataset.json --root .
+    python -m icarus_engine.omnigenesis run dataset.json --root .
     python -m icarus_engine.omnigenesis status --root .
-    python -m pytest tests_engine/test_omnigenesis.py -q
+    python -m icarus_engine.omnigenesis synthetic-book --seed 17 --steps 300 --root .
+    python -m icarus_engine.omnigenesis formal machine.json --root .
+    python -m icarus_engine.omnigenesis automaton machine.json observations.json
+    python -m icarus_engine.omnigenesis first-passage tape.json --up-ticks 8 --down-ticks 6 --horizon 10 --root .
+    python -m icarus_engine.omnigenesis propose capability.json
+    python -m icarus_engine.omnigenesis plan proposals.json --seconds 1000 --dollars 0 --root .
+    python -m icarus_engine.omnigenesis dashboard --root . --output research/omnigenesis.html
 
-The JSON dataset must contain exactly:
+No CLI command automatically trains, deploys, schedules, purchases data or
+modifies paper/live trading. Offline evaluation uses explicit input files.
 
-- dataset_id: unique 1–128 char identifier
-- source_commit: exact lowercase 40-character source Git commit SHA
-- records: 30–50,000 records of **one** asset, chronological after sorting
+## Historical research dataset contract
 
-Each record requires precisely:
+JSON must contain exactly these top-level keys:
 
     {
-      "record_id": "event-001",
+      "dataset_id": "NQ-verified-run-id",
+      "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "records": [...]
+    }
+
+Each of the 30–50000 records must contain exactly:
+
+    {
+      "record_id": "event-0001",
       "asset": "NQ",
       "decision_at": "2026-01-01T14:00:00Z",
       "observed_at": "2026-01-01T13:59:59Z",
@@ -43,43 +60,81 @@ Each record requires precisely:
       "label_resolved_at": "2026-01-01T14:05:00Z",
       "feature": 0.25,
       "outcome": true,
-      "source_record_id": "databento:record-001"
+      "source_record_id": "verified-source-record-0001"
     }
 
-`feature` is strictly one floating-point as-of observable; `outcome` is a
-**historically resolved** yes/no target. Producing causally valid event labels
-from raw market tapes, contract-roll and cost handling remain upstream tasks.
-Do **not** put feature values calculated from the future into this field.
+This is a ONE-ASSET, ONE-FEATURE experimental grammar. Outcome is a historically
+resolved boolean; unlabeled, ambiguous and censored observations MUST NOT be
+arbitrarily converted into false. Observational and label clocks must be
+verified upstream. This version does NOT prove data-provider completeness or
+correctness just because it accepts a syntactically valid source identifier.
 
-Output `EXPLORATORY` means only the held-out Brier score improved on this
-one dataset. It does not mean a verified trading edge or a deployable signal.
-Results are never auto-promoted. No direct REST endpoint or dashboard binding
-exists yet; operators can inspect the CLI status output.
+Output EXPLO​RATORY (without the optional invisible separator) is only an
+exploratory held-out improvement and never qualification. Data snooping,
+transaction costs, multiple-testing penalties, OOD, and cross-market
+validation remain external DAEDALUS/ASCENDANCY obligations.
 
-## Guardrails
+## First-passage tape JSON
 
-- No `eval`, arbitrary code, internet, broker, production route, order
-  mutation, position mutation, auto-promotion, scheduling, or background loops.
-- Strict event timestamps and source identity; fail closed on violations.
-- No future observations for model input at an as-of decision.
-- Validation and holdout do not tune the final model after selection.
-- Existing APEX, DAEDALUS and DREAMSTATE gates remain mandatory for any
-  future cross-subsystem qualification.
-- Offline data may contain overlapping labels: use properly embargoed,
-  non-overlapping episodes and independent market datasets for validation.
-- Input source and dataset provenance should be independently audited.
+    {
+      "asset": "NQ",
+      "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "bars": [
+        {
+          "record_id": "bar_001",
+          "observed_at": "2026-01-01T14:00:00Z",
+          "received_at": "2026-01-01T14:00:01Z",
+          "open_ticks": 25000,
+          "high_ticks": 25004,
+          "low_ticks": 24996,
+          "close_ticks": 25002
+        }
+      ]
+    }
 
-## Next phases — not implemented in this branch
+The actual tape requires at least five bars. All prices must be positive
+integer tick indices. Outcomes are UPPER, LOWER, AMBIGUOUS_BOTH or CENSORED.
+An incomplete future window is PENDING (excluded). These are retrospective
+labels, not forecasted trades, not actual fills and not a synthetic oracle.
 
-4. Evidence adapter: ingest source-verified APEX/NEXUS and CL results, typed
-   interoperability, calendar-safe data extraction, asset-specific cost models.
-5. Simulation foundry: exchange order books, agents, liquidity/impact,
-   scenario generation and replay against observed data.
-6. Program synthesis: typed safe DSL and formally checked strategy-state
-   automata with independently verified counterexamples.
-7. Evolution control: bounded proposal workers, resource accounting,
-   independent approval, explicit sandboxing, no autonomous deployment.
-8. Observability: authenticated read-only MCP/HTTP contracts and motion-driven
-   dashboard with *real* telemetry, not fabricated research activity.
-9. Independent validation: cross-market forwarding, selection-bias controls,
-   OOD/drift, failure injection, CI, long-run soak testing and explicit release.
+## Typed machine JSON
+
+    {
+      "name": "sweep_reclaim",
+      "states": ["WAIT", "SWEEP", "DONE"],
+      "initial": "WAIT",
+      "terminal_states": ["DONE"],
+      "transitions": [
+        {"from": "WAIT", "to": "SWEEP", "feature": "sweep",
+         "op": "gte", "threshold": 1.0},
+        {"from": "SWEEP", "to": "DONE", "feature": "reclaim",
+         "op": "gte", "threshold": 0.7}
+      ]
+    }
+
+Replay inputs are bounded arrays of as-of observations, each with exactly
+record_id, observed_at, received_at, decision_at and a finite numeric
+features object. Simultaneously satisfiable guards fail compilation. A
+formal certificate proves only structural properties of this typed program,
+not that real markets will ever enter its terminal state.
+
+## Research integration and UI
+
+An authenticated GET /api/omnigenesis returns a read-only, bounded derived
+snapshot. The existing desktop dashboard has an OMNIGENESIS tab with a
+cinematic geometry scene and data-backed study/artifact nodes. The session-
+secured mobile gateway forwards GET /v1/omnigenesis, but does NOT install
+a new phone application or expose the engine port publicly.
+
+The CLI dashboard command creates an HTML offline snapshot (not live data).
+Animation is visual presentation only and never an assertion of autonomous
+agent activity. Empty ledger means zero research records.
+
+For architecture, ownership, remaining research and release gates see:
+docs/icarus/OMNIGENESIS.md.
+
+## Strict prohibitions
+
+No eval or arbitrary generated code, live order APIs, broker tokens, trade
+state writes, paid vendor requests, production model promotion, self-deploy,
+indefinite autonomous tasks, hidden future inputs or fabricated causal proof.
