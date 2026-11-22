@@ -74,9 +74,8 @@ def test_transition_ambiguity_fails_closed():
         "from": "SWEEP", "to": "INVALIDATED",
         "feature": "reclaim_score", "op": "gte", "threshold": 0.7
     })
-    program = compile_automaton(spec)
     with pytest.raises(ValueError, match="ambiguous"):
-        replay_automaton(program, observations())
+        compile_automaton(spec)
 
 
 def test_future_timestamp_rejected():
