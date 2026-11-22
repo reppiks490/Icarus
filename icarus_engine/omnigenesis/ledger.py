@@ -121,6 +121,37 @@ class ResearchLedger:
             actual = identity({k: v for k, v in report.items() if k != key})
             if actual != source:
                 raise ValueError("artifact tamper or source mismatch")
+        # Independently cross-check reported conservation and scientific
+        # status before accepting an opaque derived artifact.
+        if kind == "synthetic_book":
+            if report.get("evidence_kind") != "SYNTHETIC" or report.get("quantity_conserved") is not True:
+                raise ValueError("synthetic origin or conservation was not verified")
+            required = ("submitted_quantity", "resting_buy_quantity",
+                        "resting_sell_quantity", "canceled_quantity",
+                        "unfilled_market_quantity", "executed_quantity",
+                        "trade_count")
+            if any(type(report.get(k)) is not int or report[k] < 0 for k in required):
+                raise ValueError("synthetic accounting metrics invalid")
+            if report["submitted_quantity"] != (
+                report["resting_buy_quantity"] + report["resting_sell_quantity"]
+                + report["canceled_quantity"] + report["unfilled_market_quantity"]
+                + 2 * report["executed_quantity"]
+            ):
+                raise ValueError("synthetic quantity accounting mismatch")
+            trades = report.get("trades")
+            if not isinstance(trades, list) or len(trades) != report["trade_count"] or (
+                sum(row.get("quantity", 0) for row in trades) != report["executed_quantity"]
+            ):
+                raise ValueError("synthetic trade receipts inconsistent")
+        elif kind == "first_passage":
+            counts = report.get("counts", {})
+            if not isinstance(counts, dict) or any(
+                type(value) is not int or value < 0 for value in counts.values()
+            ) or sum(counts.values()) != report.get("label_count"):
+                raise ValueError("first-passage totals inconsistent")
+        elif kind == "capability_plan":
+            if report.get("status") != "PROPOSED_NOT_EXECUTED" or report.get("independent_approval_required") is not True:
+                raise ValueError("unapproved autonomous plan")
         # Synthetic scenario_id identifies input events, not the summary;
         # tie the immutable artifact identity to the entire derived report.
         digest = identity(report)
