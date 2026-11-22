@@ -11,7 +11,10 @@ import argparse
 import json
 from pathlib import Path
 
-from . import AUTHORITY, SCHEMA_VERSION, ResearchLedger, evaluate_dataset, next_prime
+from . import AUTHORITY, ResearchLedger, evaluate_dataset, next_prime
+from .automata import compile_automaton, replay_automaton
+from .simulation import replay_book, synthetic_scenario
+from .evolution import compile_proposal, plan_capabilities
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -25,20 +28,50 @@ def main(argv: list[str] | None = None) -> int:
                      help="working directory for derived research ledger")
     status = commands.add_parser("status", help="derived research snapshot")
     status.add_argument("--root", required=True, type=Path)
+    machine = commands.add_parser("automaton", help="replay a safe state machine")
+    machine.add_argument("spec", type=Path)
+    machine.add_argument("observations", type=Path)
+    book = commands.add_parser("synthetic-book", help="run a seeded, toy exchange")
+    book.add_argument("--seed", type=int, required=True)
+    book.add_argument("--steps", type=int, default=100)
+    proposal = commands.add_parser("propose", help="compile a bounded capability proposal")
+    proposal.add_argument("spec", type=Path)
+    plan = commands.add_parser("plan", help="plan proposed projects without executing")
+    plan.add_argument("proposals", type=Path)
+    plan.add_argument("--seconds", type=int, required=True)
+    plan.add_argument("--dollars", type=float, required=True)
     args = parser.parse_args(argv)
+
+    def read_limited_json(path: Path):
+        if path.stat().st_size > 50_000_000:
+            parser.error("input exceeds 50 MB research limit")
+        return json.loads(path.read_text(encoding="utf-8"))
     if args.command == "prime":
         print(json.dumps({"input": args.n, "next_prime": next_prime(args.n),
                           "authority": AUTHORITY}))
     elif args.command == "run":
-        if args.dataset.stat().st_size > 50_000_000:
-            parser.error("dataset exceeds 50 MB research input limit")
-        data = json.loads(args.dataset.read_text(encoding="utf-8"))
+        data = read_limited_json(args.dataset)
         report = evaluate_dataset(data)
         ResearchLedger(args.root).append(report)
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "status":
         print(json.dumps(ResearchLedger(args.root).snapshot(), indent=2,
                          sort_keys=True))
+    elif args.command == "automaton":
+        program = compile_automaton(read_limited_json(args.spec))
+        report = replay_automaton(program, read_limited_json(args.observations))
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "synthetic-book":
+        report = replay_book(synthetic_scenario(args.seed, args.steps))
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "propose":
+        print(json.dumps(compile_proposal(read_limited_json(args.spec)),
+                         indent=2, sort_keys=True))
+    elif args.command == "plan":
+        report = plan_capabilities(read_limited_json(args.proposals),
+                                   max_compute_seconds=args.seconds,
+                                   max_cost_usd=args.dollars)
+        print(json.dumps(report, indent=2, sort_keys=True))
     return 0
 
 
