@@ -309,3 +309,75 @@ def test_paper_cli_prints_research_receipt_without_mutating_ledger(tmp_path):
     assert report["broker_order_count"] == 0
     assert report["results"]["final_position_contracts"] == 0
     assert ResearchLedger(tmp_path).snapshot()["artifact_count"] == 0
+
+
+def _router_spec(mismatch=False):
+    def evt(n, action, **kwargs):
+        return {"event_id": f"evt_{n}", "sequence": n,
+                "received_at": f"2026-01-01T00:00:0{n}+00:00",
+                "action": action, **kwargs}
+    return {
+        "schema_version": "icarus-omnigenesis-offline-order-router-v1",
+        "mode": "OFFLINE_SANDBOX", "asset": "NQ",
+        "max_position_contracts": 2, "max_single_order_contracts": 2,
+        "max_active_orders": 2,
+        "events": [
+            evt(1, "SUBMIT", order_id="o1", side="BUY",
+                quantity=1, limit_ticks=10000),
+            evt(2, "ACK", order_id="o1"),
+            evt(3, "FILL", order_id="o1", execution_id="x1",
+                quantity=1, price_ticks=10000),
+            evt(4, "RECONCILE", position_contracts=0 if mismatch else 1),
+        ],
+    }
+
+
+def test_router_operator_receipt_can_enter_research_ledger_without_broker_actions(tmp_path):
+    from icarus_engine.omnigenesis import ResearchLedger
+    plan = compile_research_workflow(manifest([
+        job("mock_orders", "offline_order_router", {"spec": _router_spec()}),
+        job("inspect", "prime", {"n": 10}, ["mock_orders"]),
+    ]))
+    run = execute_research_workflow(plan)
+    assert run["counts"] == {"PASS": 2, "FAIL": 0, "BLOCKED": 0}
+    node = run["receipts"][0]["detail"]
+    assert node["kind"] == "SIMULATED_ORDER_LIFECYCLE"
+    assert node["broker_order_count"] == 0
+    assert node["mock_filled_contracts"] == 1
+    assert node["source_authenticity_verified"] is False
+    assert node["execution_authorized"] is False
+    store = ResearchLedger(tmp_path)
+    store.append_artifact("agent_workflow", run)
+    assert store.snapshot()["recent_artifacts"][0]["status"] == "RESEARCH_ONLY"
+
+
+def test_reconciliation_mismatch_fails_and_blocks_downstream_agent_research():
+    plan = compile_research_workflow(manifest([
+        job("router", "offline_order_router", {"spec": _router_spec(mismatch=True)}),
+        job("downstream", "prime", {"n": 10}, ["router"]),
+    ]))
+    run = execute_research_workflow(plan)
+    assert run["counts"] == {"PASS": 0, "FAIL": 1, "BLOCKED": 1}
+    assert run["status"] == "RESEARCH_ONLY_REVIEW_REQUIRED"
+    assert run["receipts"][0]["detail"]["error_code"] == "RESEARCH_OPERATOR_REJECTED"
+    assert run["receipts"][1]["status"] == "BLOCKED"
+    assert run["authority"]["execution_authorized"] is False
+
+
+def test_router_cli_is_local_and_does_not_touch_research_ledger(tmp_path):
+    import subprocess
+    import sys
+    from icarus_engine.omnigenesis import ResearchLedger
+    payload = _router_spec()
+    path = tmp_path / "offline-router.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    proc = subprocess.run(
+        [sys.executable, "-m", "icarus_engine.omnigenesis",
+         "offline-router", str(path)],
+        capture_output=True, text=True, check=True)
+    report = json.loads(proc.stdout)
+    assert report["broker_order_count"] == 0
+    assert report["position_contracts"] == 1
+    assert report["actual_exchange_reconciled"] is False
+    assert report["authority"]["execution_authorized"] is False
+    assert ResearchLedger(tmp_path).snapshot()["artifact_count"] == 0
