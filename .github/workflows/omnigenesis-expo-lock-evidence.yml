@@ -49,6 +49,6 @@ jobs:
           };
           console.log('LOCK_DELTA_COUNT', Object.keys(changed).length, removed.length);
           console.log('LOCK_DELTA_BEGIN');
-          console.log(zlib.gzipSync(Buffer.from(JSON.stringify(delta))).toString('base64'));
+          console.log(JSON.stringify(delta));
           console.log('LOCK_DELTA_END');
           NODE
