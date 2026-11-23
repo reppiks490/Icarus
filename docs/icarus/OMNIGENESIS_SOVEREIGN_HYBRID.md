@@ -81,3 +81,86 @@ The paths above are illustrative: these input files are **not** automatically in
 **Missing before any production rollout:** independently authenticated licensed historical market data (provider/channel/contract/calendar), order-book queue/partial-fill model, exchange slippage/fees, robust no-lookahead backtests, OOD/purged holdouts, multiplicity and data-mining penalties, broker sandbox certification, idempotent order entry/cancel/reconcile, connectivity failures, live position risk monitoring, full audit + independent APEX/DAEDALUS qualification and explicit owner-approved risk/capital limits. Current paper configuration values are research assumptions, not authoritative futures contract specifications. Self-improvement here means bounded parameter comparison and falsifiable receipt collection. There is no basis to assert sentience or consciousness.
 
 **Knowledge delta / Akinator provenance:** Before: research DAG and synthetic order book, but no strategy signal-to-delayed-fill accounting. After: causal paper execution, conservative cost knobs and risk switches plus training-only challenger evaluation. Decision: research-only, isolate live trading. Rejected alternative: connecting broker/API secrets or letting generated strategies self-promote. Verification: current-HEAD Actions and adversarial tests, independently reviewed before merge. This record becomes stale if authentic market feeds, margin, order routing or execution venue behavior changes.
+
+
+## Phase 20 — Offline order lifecycle, idempotency and reconciliation
+
+**Implemented only on draft PR #503:** source
+icarus_engine/omnigenesis/offline_order_router.py; adversarial tests
+tests_engine/test_omnigenesis_offline_order_router.py; Phase 18 workflow
+operator offline_order_router and explicit offline-router CLI. This module
+has **no broker adapter, network, credentials, real order entry or fill
+claims**. It evaluates strict user-authored messages in an OFFLINE_SANDBOX
+state machine.
+
+Typed actions: SUBMIT, ACK, FILL, CANCEL, CANCEL_ACK, REJECT, HALT and
+RECONCILE. Every unique message must have a stable event ID, strictly
+increasing numeric sequence and timezone-aware increasing receive clock.
+Exact event-ID replay with unchanged bytes is deduplicated *within the
+current replay only*; conflicting duplicate content fails. This is NOT
+durable exactly-once broker execution. Client order IDs and execution IDs
+are unique, fills never exceed the submitted order quantity, fills can
+arrive before ACK or while cancellation is pending, delayed ACK cannot
+reopen terminal orders, and fills after confirmed cancellation are
+rejected pending an independently verified exchange audit.
+
+Worst-case exposure is bounded by the current signed position **plus all
+in-flight same-direction quantities**, without netting unconfirmed
+opposite orders. An explicit HALT forbids new submits; previously
+submitted simulated orders can still produce late fills and should be
+canceled/reconciled outside this model. A RECONCILE mismatch latches
+HALT but cannot prove the external position snapshot is authentic.
+Its report therefore has actual_exchange_reconciled=false,
+source_authenticity_verified=false, broker_order_count=0 and no
+profitability or production authority.
+
+Workflow integration: a clean mock replay yields a bounded typed
+SIMULATED_ORDER_LIFECYCLE research receipt. A safety HALT or
+reconciliation mismatch **fails the DAG operator and blocks downstream
+tasks**, even if the stand-alone replay returned an informative report.
+The existing append-only research ledger stores only derived run
+summaries; there are no new write APIs for broker execution.
+
+Local example command (provide your own typed JSON input):
+
+    python -m icarus_engine.omnigenesis offline-router ./sandbox-messages.json
+
+The root JSON keys are schema_version
+icarus-omnigenesis-offline-order-router-v1, mode OFFLINE_SANDBOX, asset,
+max_position_contracts, max_single_order_contracts, max_active_orders,
+and events (1–2000). Events always include event_id, sequence,
+received_at and action; action-specific fields are validated exactly.
+A result cannot be promoted to production by changing this mode,
+adding a broker token, or inserting an unapproved action.
+
+**Unfinished real execution gates:** real broker sandbox, separate
+account-scoped signed idempotency keys with durable storage, exchange
+execution-ID provenance and async out-of-order repair, actual order state
+snapshot reconciliation, crash/restart replay, reconnect/timeout,
+kill switch acknowledgment and external cancel-on-disconnect, risk
+position and margin guardrails, market/venue limit rules, account
+permissions, independent APEX/DAEDALUS failure injection, and explicit
+owner-approved live risk policies. Synthetic tests cannot prove those.
+Order "profit" is not calculated here; Phase 19's P&L is purely toy
+simulation.
+
+**Automation:** GitHub workflow
+.github/workflows/omnigenesis-offline-agent-evidence.yml runs adversarial
+local tests and a deterministically seeded synthetic strategy tournament
+on pull requests, emits a short research witness and archives it for
+seven days. Its daily cron (06:41 UTC) can execute ONLY after that
+workflow is merged into the repository default branch; PR existence
+does not activate a recurring schedule. The job has contents: read,
+no market vendor access, no broker secrets, no deployment, no Codex
+usage, no auto-trading and no automatic model promotion.
+
+**Akinator provenance / decision:** Before: typed synthetic bar P&L
+harness but no asynchronous order/cancel/reconcile invariants. After:
+explicit offline message replay, bounded orders/exposure, replay-local
+idempotency, fail-closed agent dependency and evidence in CI. Alternative
+rejected: connecting live broker endpoints or declaring simulation
+receipts "verified exchange execution." Review must challenge extreme
+gaps, server-side unknown order states, partial fills, duplicate delivery,
+API rate limits and loss in transit before any live adapter is authorized.
+Current evidence is versioned source and exact-commit CI, not a
+production certification or a claim of machine consciousness.
