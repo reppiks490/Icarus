@@ -412,11 +412,15 @@ def arbitrate(plan: Mapping[str, Any], evidence: list[Mapping[str, Any]]) -> dic
     }, "tribunal_id")
 
 
+class _DuplicateKeyError(ValueError):
+    """Reject ambiguous JSON before interpreting a worker receipt."""
+
+
 def _unique_pairs(pairs: list[tuple[str, Any]]) -> dict:
     result = {}
     for name, value in pairs:
         if name in result:
-            raise ValueError("duplicate constellation JSON key")
+            raise _DuplicateKeyError("duplicate constellation JSON key")
         result[name] = value
     return result
 
@@ -427,6 +431,8 @@ def _read(path: Path) -> dict:
     try:
         return json.loads(path.read_text(encoding="utf-8"),
                           object_pairs_hook=_unique_pairs)
+    except _DuplicateKeyError:
+        raise
     except (OSError, ValueError, UnicodeError) as exc:
         raise ValueError("malformed constellation input") from exc
 
