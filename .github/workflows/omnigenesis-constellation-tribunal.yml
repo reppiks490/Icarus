@@ -1,0 +1,54 @@
+name: OMNIGENESIS Constellation falsification tribunal
+on:
+  workflow_call:
+    inputs:
+      plan_id:
+        description: Content-addressed parent work plan to arbitrate
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  tribunal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Collect sealed dispatch plan
+        uses: actions/download-artifact@v4
+        with:
+          name: omnigenesis-constellation-plan
+          path: evidence/plan
+      - name: Collect all specialist shard receipts from this workflow run
+        uses: actions/download-artifact@v4
+        with:
+          pattern: constellation-worker-*
+          merge-multiple: true
+          path: evidence/workers
+      - name: Fail closed on missing, forged, duplicated or inconsistent workers
+        env:
+          EXPECTED_PLAN_ID: ${{ inputs.plan_id }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from icarus_engine.omnigenesis.constellation import build_plan
+          path = Path('evidence/plan/constellation-plan.json')
+          plan = json.loads(path.read_text(encoding='utf-8'))
+          assert plan == build_plan(plan['seed']), 'sealed plan mismatch'
+          assert plan['plan_id'] == os.environ['EXPECTED_PLAN_ID'], 'wrong dispatch identity'
+          PY
+          python -m icarus_engine.omnigenesis.constellation tribunal \
+            --plan evidence/plan/constellation-plan.json \
+            --worker-dir evidence/workers \
+            --output evidence/constellation-tribunal.json
+      - name: Upload data-minimized, externally unqualified research verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: omnigenesis-constellation-tribunal
+          path: evidence/constellation-tribunal.json
+          retention-days: 14
+          if-no-files-found: error
