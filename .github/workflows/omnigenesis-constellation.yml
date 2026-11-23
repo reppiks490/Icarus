@@ -74,10 +74,171 @@ jobs:
       seed: ${{ needs.seal-plan.outputs.seed }}
       plan_id: ${{ needs.seal-plan.outputs.plan_id }}
 
-  evidence-tribunal:
-    name: 12-worker hash-chain and independent research review gate
+
+  recovery-plan:
+    name: Fail-closed missing-worker checkpoint and bounded retry plan
     if: ${{ always() && needs.seal-plan.result == 'success' }}
     needs: [seal-plan, specialist-workers]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    outputs:
+      retry_needed: ${{ steps.decide.outputs.retry_needed }}
+      retry_matrix: ${{ steps.decide.outputs.retry_matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: omnigenesis-constellation-plan
+          path: evidence/plan
+      - name: Collect successful first-pass receipts (missing is not PASS)
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: constellation-worker-*
+          merge-multiple: true
+          path: evidence/workers
+      - name: Validate receipts against same-revision specialist executions
+        id: decide
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          EXPECTED_PLAN_ID: ${{ needs.seal-plan.outputs.plan_id }}
+        run: |
+          mkdir -p evidence/workers evidence/recovery
+          python -m icarus_engine.omnigenesis.constellation_recovery \
+            --plan evidence/plan/constellation-plan.json \
+            --worker-dir evidence/workers \
+            --source-sha "$SOURCE_SHA" --run-id "$RUN_ID" \
+            --run-attempt "$RUN_ATTEMPT" \
+            --output evidence/recovery/checkpoint-0.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from icarus_engine.omnigenesis.constellation_recovery import verify_checkpoint
+          from icarus_engine.omnigenesis.constellation import build_plan
+          plan = json.loads(Path('evidence/plan/constellation-plan.json').read_text())
+          assert plan == build_plan(plan['seed']), 'sealed plan was altered'
+          checkpoint = json.loads(Path('evidence/recovery/checkpoint-0.json').read_text())
+          assert verify_checkpoint(plan, checkpoint) == checkpoint
+          assert checkpoint['plan_id'] == os.environ['EXPECTED_PLAN_ID']
+          assert checkpoint['context']['source_sha'] == os.environ['SOURCE_SHA']
+          if checkpoint['status'] == 'FAIL_CLOSED_NO_EVIDENCE':
+              raise RuntimeError('no usable worker receipts: fail closed')
+          matrix = json.dumps({'include': checkpoint['retry_jobs']},
+                              separators=(',', ':'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+              out.write('retry_needed=' + ('true' if checkpoint['retry_jobs'] else 'false') + '\n')
+              out.write('retry_matrix=' + matrix + '\n')
+          print(json.dumps({'status': checkpoint['status'],
+                            'accepted': checkpoint['accepted_count'],
+                            'retry_shards': checkpoint['retry_jobs'],
+                            'checkpoint_id': checkpoint['checkpoint_id']},
+                           sort_keys=True))
+          PY
+      - name: Archive strict partial-recovery evidence for 14 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: omnigenesis-constellation-recovery-0
+          path: evidence/recovery/checkpoint-0.json
+          retention-days: 14
+          if-no-files-found: error
+
+  retry-workers:
+    name: One retry for ${{ matrix.lane }} / ${{ matrix.shard }}
+    if: ${{ needs.recovery-plan.outputs.retry_needed == 'true' }}
+    needs: [seal-plan, recovery-plan]
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix: ${{ fromJSON(needs.recovery-plan.outputs.retry_matrix) }}
+    uses: ./.github/workflows/omnigenesis-constellation-worker.yml
+    permissions:
+      contents: read
+    with:
+      lane: ${{ matrix.lane }}
+      shard: ${{ matrix.shard }}
+      seed: ${{ needs.seal-plan.outputs.seed }}
+      plan_id: ${{ needs.seal-plan.outputs.plan_id }}
+
+  recovery-finalize:
+    name: Monotonic complete checkpoint before independent tribunal
+    if: ${{ always() && needs.recovery-plan.result == 'success' && (needs.retry-workers.result == 'success' || needs.retry-workers.result == 'skipped') }}
+    needs: [seal-plan, recovery-plan, retry-workers]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: omnigenesis-constellation-plan
+          path: evidence/plan
+      - uses: actions/download-artifact@v4
+        with:
+          name: omnigenesis-constellation-recovery-0
+          path: evidence/recovery
+      - name: Download all first-pass and recovered worker artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: constellation-worker-*
+          merge-multiple: true
+          path: evidence/workers
+      - name: Require every original worker and a sealed monotonic recovery chain
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          EXPECTED_PLAN_ID: ${{ needs.seal-plan.outputs.plan_id }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from icarus_engine.omnigenesis.constellation import build_plan
+          from icarus_engine.omnigenesis.constellation_recovery import (
+              _collect, _read, checkpoint_recovery, verify_checkpoint)
+          plan = _read(Path('evidence/plan/constellation-plan.json'))
+          assert plan == build_plan(plan['seed'])
+          assert plan['plan_id'] == os.environ['EXPECTED_PLAN_ID']
+          previous = _read(Path('evidence/recovery/checkpoint-0.json'))
+          verify_checkpoint(plan, previous)
+          where = {'run_id':os.environ['RUN_ID'],
+                   'attempt':int(os.environ['RUN_ATTEMPT']),
+                   'source_sha':os.environ['SOURCE_SHA']}
+          receipts = _collect(Path('evidence/workers'))
+          if previous['status'] == 'RETRY_REQUIRED':
+              final = checkpoint_recovery(plan, receipts, previous=previous, **where)
+          else:
+              final = checkpoint_recovery(plan, receipts, **where)
+              if final != previous:
+                  raise RuntimeError('unexplained worker changes after complete checkpoint')
+          if final['status'] != 'COMPLETE_PENDING_TRIBUNAL':
+              raise RuntimeError('recovered worker set is still incomplete')
+          Path('evidence/recovery/checkpoint-final.json').write_text(
+              json.dumps(final, indent=2, sort_keys=True)+'\n', encoding='utf-8')
+          print(json.dumps({'status':final['status'],
+                            'accepted':final['accepted_count'],
+                            'checkpoint_id':final['checkpoint_id'],
+                            'previous_checkpoint_id':final['previous_checkpoint_id']},
+                           sort_keys=True))
+          PY
+      - name: Archive verified final checkpoint (not a release certificate)
+        uses: actions/upload-artifact@v4
+        with:
+          name: omnigenesis-constellation-recovery-final
+          path: evidence/recovery/checkpoint-final.json
+          retention-days: 14
+          if-no-files-found: error
+
+  evidence-tribunal:
+    name: 12-worker hash-chain and independent research review gate
+    if: ${{ always() && needs.recovery-finalize.result == 'success' }}
+    needs: [seal-plan, recovery-finalize]
     uses: ./.github/workflows/omnigenesis-constellation-tribunal.yml
     permissions:
       contents: read
