@@ -116,6 +116,7 @@ def test_roll_interval_and_overlap_rejected(tmp_path):
 
 def test_monotonic_receive_time_and_sequence(tmp_path):
     tape, manifest, rows = fixture(tmp_path)
+    rows[1]["observed_at"] = rows[0]["observed_at"]
     rows[1]["received_at"] = rows[0]["received_at"]
     rows[1]["sequence"] = rows[0]["sequence"]
     update_digest(tape, manifest, rows)
