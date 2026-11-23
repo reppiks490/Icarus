@@ -412,11 +412,21 @@ def arbitrate(plan: Mapping[str, Any], evidence: list[Mapping[str, Any]]) -> dic
     }, "tribunal_id")
 
 
+def _unique_pairs(pairs: list[tuple[str, Any]]) -> dict:
+    result = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate constellation JSON key")
+        result[name] = value
+    return result
+
+
 def _read(path: Path) -> dict:
     if path.is_symlink() or not path.is_file() or path.stat().st_size > 2_000_000:
         raise ValueError("missing, symlinked or oversized constellation input")
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"),
+                          object_pairs_hook=_unique_pairs)
     except (OSError, ValueError, UnicodeError) as exc:
         raise ValueError("malformed constellation input") from exc
 
@@ -450,12 +460,18 @@ def main(argv: list[str] | None = None) -> None:
         obj = run_worker(_read(args.plan), args.lane, args.shard)
     else:
         plan = _read(args.plan)
-        if not args.worker_dir.is_dir():
+        if args.worker_dir.is_symlink() or not args.worker_dir.is_dir():
             raise ValueError("constellation worker directory missing")
         worker_files = sorted(args.worker_dir.glob("worker-*.json"))
         if len(worker_files) != 12 or len(list(args.worker_dir.iterdir())) != 12:
             raise ValueError("constellation worker artifact count mismatch")
-        obj = arbitrate(plan, [_read(f) for f in worker_files])
+        evidence = []
+        for file in worker_files:
+            entry = _read(file)
+            if file.name != f"worker-{entry.get('lane')}-{entry.get('shard')}.json":
+                raise ValueError("constellation worker filename/identity mismatch")
+            evidence.append(entry)
+        obj = arbitrate(plan, evidence)
     _write(args.output, obj)
     print(json.dumps({
         "schema_version": obj["schema_version"],
