@@ -45,6 +45,49 @@ jobs:
             --plan evidence/plan/constellation-plan.json \
             --worker-dir evidence/workers \
             --output evidence/constellation-tribunal.json
+      - name: Collect completed recovery checkpoint for observatory verification
+        uses: actions/download-artifact@v4
+        with:
+          name: omnigenesis-constellation-recovery-final
+          path: evidence/recovery-final
+      - name: Collect original checkpoint (required for actual recoveries)
+        uses: actions/download-artifact@v4
+        with:
+          name: omnigenesis-constellation-recovery-0
+          path: evidence/recovery-first
+      - name: Produce truthful completed-worker status from validated evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from icarus_engine.omnigenesis.constellation_recovery import _read
+          from icarus_engine.omnigenesis.constellation_observation import observe_constellation
+          plan = _read(Path("evidence/plan/constellation-plan.json"))
+          current = _read(Path("evidence/recovery-final/checkpoint-final.json"))
+          first = _read(Path("evidence/recovery-first/checkpoint-0.json"))
+          tribunal = _read(Path("evidence/constellation-tribunal.json"))
+          predecessor = first if current["retry_round"] == 1 else None
+          projection = observe_constellation(
+              plan, current, tribunal, predecessor=predecessor)
+          Path("evidence/constellation-observation.json").write_text(
+              json.dumps(projection, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8")
+          print(json.dumps({
+              "status": projection["status"],
+              "worker_count": projection["worker_count"],
+              "snapshot_is_live": False,
+              "broker_order_count": 0,
+              "github_api_provenance_verified": False,
+              "observation_id": projection["observation_id"],
+          }, sort_keys=True))
+          PY
+      - name: Upload sanitized read-only Constellation observatory receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: omnigenesis-constellation-observation
+          path: evidence/constellation-observation.json
+          retention-days: 14
+          if-no-files-found: error
       - name: Upload data-minimized, externally unqualified research verdict
         uses: actions/upload-artifact@v4
         with:
