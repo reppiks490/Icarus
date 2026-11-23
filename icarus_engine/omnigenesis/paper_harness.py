@@ -276,9 +276,9 @@ def tournament_paper_strategies(spec: Mapping[str, Any]) -> dict:
     strategies = [_strategy(x) for x in candidates]
     if len({identity(x) for x in strategies}) != len(strategies):
         raise ValueError("duplicate challenger")
+    exe, risk = _execution(spec["execution"]), _risk(spec["risk"])
     if len(canonical_bytes(spec)) > 40_000:
         raise ValueError("tournament spec exceeds byte cap")
-    exe, risk = _execution(spec["execution"]), _risk(spec["risk"])
     path = _synthetic_bars(seed, bars)
     split = (bars * 7) // 10
     training, test = path[:split], path[split:]
