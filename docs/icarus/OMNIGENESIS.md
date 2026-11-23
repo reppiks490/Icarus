@@ -45,8 +45,11 @@ capability proposals and unified scientific records. It does NOT replace:
 | 18 | Typed on-demand research-agent DAG, UMBRA synthetic-worldline evidence adapter, chain-verified ledger records | agent_workflow.py, umbra_bridge.py, ledger.py, tests_engine/test_omnigenesis_agent_workflow.py, tests_engine/test_omnigenesis_umbra_bridge.py |
 | 19 | Causal synthetic SMA paper execution: delayed fills, fees, adverse slippage, risk kills and train-selected challenger holdout | paper_harness.py, tests_engine/test_omnigenesis_paper_harness.py |
 | 20 | Offline order-message lifecycle: duplicate delivery, partial fills, cancellation races, exposure limits, reconciliation halt and no broker adapter | offline_order_router.py, tests_engine/test_omnigenesis_offline_order_router.py |
+| 21 | Explicit historical OHLC receipt-clock and delayed modeled-fill evidence, with no claimed exchange authenticity | historical_paper.py, tests_engine/test_omnigenesis_historical_paper.py |
+| 22 | GitHub-native research Constellation: sealed plan and 12 bounded specialists in reusable workflows (E2E pending) | constellation.py, omnigenesis-constellation.yml, omnigenesis-constellation-worker.yml, tests_engine/test_omnigenesis_constellation.py |
+| 23 | Fail-closed evidence tribunal, duplicate/forged artifact rejection and same-code deterministic recomputation (not independent scientific validation) | constellation.py, omnigenesis-constellation-tribunal.yml, tests_engine/test_omnigenesis_constellation.py |
 
-Note: These are now 20 bounded engineering phases, NOT production-qualified AI systems. Full code-level handoff and exact CI evidence are in docs/icarus/OMNIGENESIS_HANDOFF.md.
+Note: These are now 23 bounded engineering phases, NOT production-qualified AI systems. Full code-level handoff and exact CI evidence are in docs/icarus/OMNIGENESIS_HANDOFF.md.
 
 ## Prime-number foundation
 
@@ -130,3 +133,7 @@ ICARUS remains the research host; UMBRA Sovereign Worlds v5 remains a separately
 ## Phases 19–20: Paper execution and harness automation
 
 Versioned strictly offline execution science has been implemented on this draft branch: generated synthetic SMA signals settle at later opens with integer-tick and cent accounting, adverse fees/slippage, risk aborts and a held-out synthetic challenger comparison. A separate OFFLINE_SANDBOX message replay validates order/cancel/fill/reconcile event contracts and prevents routing new intents after a halt. No broker, exchange fills, real profits, independent market data or continuous agent process is implied. A read-only GitHub Actions research test and synthetic evidence workflow runs on pull requests; nightly scheduling is inactive until the workflow is merged into default branch. See docs/icarus/OMNIGENESIS_SOVEREIGN_HYBRID.md for source paths, test status and release blockers.
+
+## Phase 21–23: Research Constellation and time-accurate evidence
+
+Phase 21 inspects caller-supplied OHLC bars with explicit open/close/receipt timestamps; modeled entries execute no earlier than an opening strictly after information receipt. No actual venue fill or licensed feed is inferred. Phase 22 adds finite six-lane/two-shard Github-native reusable workflow fanout with no trading or source-write permissions. Phase 23 independently replays worker receipts *within the same source revision*, rejects missing, duplicate, altered, misnamed and authority-escalated evidence, but does NOT provide independent APEX/DAEDALUS scientific certification. The 12-job nested GitHub Actions graph is committed yet remains E2E UNVERIFIED until an actual Constellation Swarm Actions run proves every reusable workflow and artifact handoff. Hourly GitHub schedule activates only after an explicit reviewed merge to default branch; PR #503 remains draft. Complete architecture and precise gates: docs/icarus/OMNIGENESIS_CONSTELLATION_SWARM.md.
