@@ -96,6 +96,7 @@ class ResearchLedger:
             "synthetic_book": "icarus-omnigenesis-synthetic-book-v1",
             "first_passage": "icarus-omnigenesis-first-passage-v1",
             "capability_plan": "icarus-omnigenesis-plan-v1",
+            "agent_workflow": "icarus-omnigenesis-agent-run-v1",
         }
         if kind not in schemas or not isinstance(report, dict):
             raise ValueError("unsupported research artifact")
@@ -111,13 +112,14 @@ class ResearchLedger:
             "synthetic_book": "scenario_id",
             "first_passage": "report_id",
             "capability_plan": "plan_id",
+            "agent_workflow": "run_id",
         }
         key = origins[kind]
         source = report.get(key)
         if (not isinstance(source, str) or len(source) != 64
                 or any(c not in "0123456789abcdef" for c in source)):
             raise ValueError("invalid artifact identity")
-        if kind in {"formal", "first_passage", "capability_plan"}:
+        if kind in {"formal", "first_passage", "capability_plan", "agent_workflow"}:
             actual = identity({k: v for k, v in report.items() if k != key})
             if actual != source:
                 raise ValueError("artifact tamper or source mismatch")
@@ -152,6 +154,39 @@ class ResearchLedger:
         elif kind == "capability_plan":
             if report.get("status") != "PROPOSED_NOT_EXECUTED" or report.get("independent_approval_required") is not True:
                 raise ValueError("unapproved autonomous plan")
+        elif kind == "agent_workflow":
+            if (report.get("status") not in {"RESEARCH_ONLY_COMPLETE", "RESEARCH_ONLY_REVIEW_REQUIRED"}
+                    or report.get("scientific_qualification") is not False
+                    or report.get("external_approval_required") is not True
+                    or report.get("no_network_or_broker_operations") is not True):
+                raise ValueError("workflow authority or status violation")
+            receipts = report.get("receipts")
+            counts = report.get("counts")
+            if (not isinstance(receipts, list) or not 1 <= len(receipts) <= 24
+                    or not isinstance(counts, dict)
+                    or set(counts) != {"PASS", "FAIL", "BLOCKED"}
+                    or any(type(x) is not int or x < 0 for x in counts.values())):
+                raise ValueError("invalid workflow receipts/counts")
+            prior = "0" * 64
+            observed = {"PASS": 0, "FAIL": 0, "BLOCKED": 0}
+            for node in receipts:
+                if (not isinstance(node, dict) or
+                        node.get("previous_receipt") != prior or
+                        node.get("execution_authorized") is not False or
+                        node.get("research_only") is not True or
+                        node.get("status") not in observed):
+                    raise ValueError("invalid workflow receipt chain")
+                if node.get("receipt_id") != identity({
+                        key: value for key, value in node.items() if key != "receipt_id"}):
+                    raise ValueError("tampered workflow receipt")
+                prior = node["receipt_id"]
+                observed[node["status"]] += 1
+            if observed != counts or report.get("final_receipt") != prior:
+                raise ValueError("workflow count or chain mismatch")
+            expected_status = ("RESEARCH_ONLY_COMPLETE" if not counts["FAIL"] and not counts["BLOCKED"]
+                               else "RESEARCH_ONLY_REVIEW_REQUIRED")
+            if report["status"] != expected_status:
+                raise ValueError("workflow status inconsistent with receipts")
         # Synthetic scenario_id identifies input events, not the summary;
         # tie the immutable artifact identity to the entire derived report.
         digest = identity(report)
@@ -168,6 +203,10 @@ class ResearchLedger:
             "capability_plan": {"title": "Capability expansion research proposal",
                                 "status": "PROPOSED",
                                 "metric": len(report.get("selected_proposal_ids", []))},
+            "agent_workflow": {"title": "Research workflow execution receipts",
+                               "status": "RESEARCH_ONLY" if report["status"] == "RESEARCH_ONLY_COMPLETE"
+                                         else "REVIEW_REQUIRED",
+                               "metric": len(report["receipts"])},
         }[kind]
         if type(details["metric"]) is not int or not 0 <= details["metric"] <= 100000:
             raise ValueError("artifact metric out of bounds")
