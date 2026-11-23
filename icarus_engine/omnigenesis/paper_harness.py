@@ -108,9 +108,13 @@ def _synthetic_bars(seed: int, steps: int) -> list[dict]:
 
 
 def _simulate(path: list[dict], strategy: dict, execution: dict,
-              risk: dict) -> dict:
-    """Causal close(i) decision => strictly later open(j) fill. No API side effects."""
-    fast, slow = strategy["fast"], strategy["slow"]
+              risk: dict, *, causal_clock: dict | None = None) -> dict:
+    """A close may schedule only a later, *information-available* opening.
+
+    When causal_clock is supplied, observed data timing is explicit: an
+    open may execute a signal only if open_at > signal received_at.
+    This is still a modeled quote fill, never a broker or venue receipt.
+    """    fast, slow = strategy["fast"], strategy["slow"]
     qty, tick = execution["contracts"], execution["tick_value_cents"]
     fee, slip, latency = (execution["fee_per_contract_cents"],
                           execution["slippage_ticks"],
@@ -131,6 +135,17 @@ def _simulate(path: list[dict], strategy: dict, execution: dict,
     halt_at = None
     gross_fees = 0
     max_drawdown = 0
+    risk_exit_due = None
+    extra_signal_delay_bars = 0
+
+    def eligible_open(after_index: int, delay_bars: int) -> int:
+        """Bar latency and observed receipt time must BOTH be satisfied."""
+        j = after_index + delay_bars
+        if causal_clock is not None:
+            while (j < len(path)
+                   and causal_clock["opened_at"][j] <= causal_clock["received_at"][after_index]):
+                j += 1
+        return j
 
     def fill(index: int, price: int, target: int, reason: str,
              source_index: int | None) -> None:
@@ -167,8 +182,8 @@ def _simulate(path: list[dict], strategy: dict, execution: dict,
         # Process orders only after signals from PREVIOUS closes. When a risk
         # kill was latched, exit at THIS open; never pretend to exit on a prior
         # close that was only learned after the bar ended.
-        if halt_at is not None and pos:
-            fill(i, row["open_ticks"], 0, "RISK_KILL_NEXT_OPEN", None)
+        if risk_exit_due is not None and i >= risk_exit_due and pos:
+            fill(i, row["open_ticks"], 0, "RISK_KILL_FIRST_CAUSAL_OPEN", None)
         if not halted:
             eligible = [x for x in delayed_signals if x[0] <= i]
             delayed_signals = [x for x in delayed_signals if x[0] > i]
@@ -193,8 +208,10 @@ def _simulate(path: list[dict], strategy: dict, execution: dict,
         if not halted:
             if equity <= risk["initial_cash_cents"] - risk["max_loss_cents"]:
                 halted, halt_reason, halt_at = True, "MAX_LOSS_CLOSE_MARK", i
+                risk_exit_due = eligible_open(i, 1)
             elif highwater - equity >= risk["max_drawdown_cents"]:
                 halted, halt_reason, halt_at = True, "MAX_DRAWDOWN_CLOSE_MARK", i
+                risk_exit_due = eligible_open(i, 1)
         # Form signal from fully observed close ONLY; schedule on a later open.
         if not halted and i + 1 >= slow:
             fast_sum = sum(closed[i - fast + 1: i + 1])
@@ -207,8 +224,10 @@ def _simulate(path: list[dict], strategy: dict, execution: dict,
             if not decisions or decisions[-1]["target"] != target:
                 decisions.append({"decision_bar_index": i,
                                   "decision_at": row["observed_at"], "target": target})
-                if i + latency < len(path):
-                    delayed_signals.append((i + latency, i, target))
+                eligible = eligible_open(i, latency)
+                if eligible < len(path):
+                    extra_signal_delay_bars += eligible - (i + latency)
+                    delayed_signals.append((eligible, i, target))
     if pos:
         # Forced research settlement at final close, with adverse slippage.
         # No evidence of a real order at that quote is implied.
@@ -231,8 +250,12 @@ def _simulate(path: list[dict], strategy: dict, execution: dict,
             "halt_reason": halt_reason, "halt_at_bar": halt_at,
             "forced_flat_at_end": True, "final_position_contracts": pos,
             "fill_count": len(fills), "decision_count": len(decisions),
-            "stale_signal_count": rejected_signals, "fills": fills,
-            "decisions": decisions}
+            "stale_signal_count": rejected_signals,
+            "extra_causality_delay_bars": extra_signal_delay_bars,
+            "unfilled_causal_risk_exit": bool(
+                risk_exit_due is not None and risk_exit_due >= len(path)
+                and halt_at is not None),
+            "fills": fills, "decisions": decisions}
 
 
 def run_paper_execution(spec: Mapping[str, Any]) -> dict:
