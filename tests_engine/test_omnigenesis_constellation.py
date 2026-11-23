@@ -196,3 +196,41 @@ def test_plan_file_input_rejects_symlink_and_malformed_bytes(tmp_path):
     with pytest.raises(ValueError, match="symlink"):
         main(["worker", "--plan", str(symlink), "--lane", "chronos",
               "--shard", "0", "--output", str(tmp_path / "out.json")])
+
+
+def test_duplicate_json_keys_fail_before_work_is_scheduled(tmp_path):
+    payload = tmp_path / "duplicated.json"
+    payload.write_text('{"seed":1,"seed":2}', encoding="utf-8")
+    with pytest.raises(ValueError, match="duplicate constellation JSON key"):
+        main(["worker", "--plan", str(payload), "--lane", "chronos",
+              "--shard", "0", "--output", str(tmp_path / "out.json")])
+
+
+def test_evidence_filename_must_match_typed_lane_and_shard(tmp_path):
+    plan = build_plan(71)
+    p = tmp_path / "plan.json"
+    p.write_text(json.dumps(plan), encoding="utf-8")
+    folder = tmp_path / "worker-evidence"
+    folder.mkdir()
+    for item in plan["jobs"]:
+        a = run_worker(plan, item["lane"], item["shard"])
+        name = folder / f"worker-{item['lane']}-{item['shard']}.json"
+        name.write_text(json.dumps(a), encoding="utf-8")
+    before = folder / "worker-chronos-0.json"
+    after = folder / "worker-rogue-0.json"
+    before.rename(after)
+    with pytest.raises(ValueError, match="filename/identity mismatch"):
+        main(["tribunal", "--plan", str(p), "--worker-dir", str(folder),
+              "--output", str(tmp_path / "report.json")])
+
+
+def test_symlinked_artifact_directory_is_not_trusted(tmp_path):
+    p = tmp_path / "plan.json"
+    p.write_text(json.dumps(build_plan(19)), encoding="utf-8")
+    target = tmp_path / "actual-dir"
+    target.mkdir()
+    link = tmp_path / "artifact-link"
+    link.symlink_to(target, target_is_directory=True)
+    with pytest.raises(ValueError, match="worker directory missing"):
+        main(["tribunal", "--plan", str(p), "--worker-dir", str(link),
+              "--output", str(tmp_path / "report.json")])
