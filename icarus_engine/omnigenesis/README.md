@@ -138,3 +138,14 @@ docs/icarus/OMNIGENESIS.md.
 No eval or arbitrary generated code, live order APIs, broker tokens, trade
 state writes, paid vendor requests, production model promotion, self-deploy,
 indefinite autonomous tasks, hidden future inputs or fabricated causal proof.
+
+## Phase 17–18 ICARUS × UMBRA hybrid research — current draft
+
+Phase 17 provides local, read-only, normalized JSONL intake and precise checksum/declared futures-roll and timestamp audits. It does **not** authenticate the claimed vendor, validate actual market-data rights, reconstruct official MBO or produce market signals. UMBRA's separate v5 source is accepted only as a schema-checked synthetic paired-worldline report. Phase 18 provides an **explicitly invoked**, typed, dependency-checked, research-only task DAG with deterministic chained receipts and fail-closed task statuses. Derived summaries may be appended to the existing immutable SQLite research ledger and consequently viewed in the existing authenticated OMNIGENESIS tab without a new write endpoint.
+
+    python -m icarus_engine.omnigenesis market-intake path/to/local_tape.jsonl path/to/manifest.json
+    python -m icarus_engine.omnigenesis audit-umbra path/to/paired.json --claimed-source-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    python -m icarus_engine.omnigenesis workflow path/to/workflow.json
+    python -m icarus_engine.omnigenesis workflow path/to/workflow.json --execute --root . --output research/new_workflow_receipt.json
+
+All paths above are illustrative. No licensed market tape, vendor attestation, live feed, broker order, or actual UMBRA engine replay was performed. Workflow compute budgets are estimates rather than preemptive CPU enforcement. A PASS receipt is not APEX/DAEDALUS approval, empirical causality or profit evidence. Do not present the current local executor as permanently running agents. Source, schemas, nonclaims and release gates: docs/icarus/OMNIGENESIS_SOVEREIGN_HYBRID.md.
