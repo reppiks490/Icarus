@@ -219,3 +219,31 @@ The hourly GitHub schedule is inactive until explicit review/merge to default;
 this draft branch has no continuous production swarm. Full design, CLI,
 evidence limitations and release gates:
 docs/icarus/OMNIGENESIS_CONSTELLATION_SWARM.md.
+
+## Phases 24–25 — Recovery and real research receipts
+
+The Constellation parent workflow now produces a SHA-256-bound partial-worker
+checkpoint and retries only missing shards once. Its recovery gate requires all
+twelve original receipts before the final tribunal. A failed first-pass matrix
+remains a failed CI job; no automatic merge or release promotion is enabled.
+Checkpoint artifacts are retained for fourteen days, not indefinitely.
+
+A COMPLETED Constellation run can produce an immutable, minimal observation.
+The observer replays the exact source-valid checkpoint and tribunal in memory
+and records zero currently active workers, unverified external provenance and
+no broker orders. GitHub Actions archives a read-only observer artifact. To
+make a verified imported result appear in the existing authenticated ICARUS
+research snapshot, an operator can explicitly run:
+
+    python -m icarus_engine.omnigenesis constellation-import \
+      --plan ./constellation-plan.json \
+      --checkpoint ./checkpoint-final.json \
+      --tribunal ./constellation-tribunal.json \
+      --root /path/to/local/icarus
+
+If recovery actually occurred, append --predecessor ./checkpoint-0.json. All
+paths refer to operator-supplied exact-run files; they are not bundled sample
+datasets or live GitHub links. The import does not fetch GitHub APIs, verify
+an exchange, synchronize an iPhone or alter production trades. It stores ONLY
+a derived, locally replayed artifact in the existing SQLite scientific ledger.
+Full architecture and known limits: docs/icarus/OMNIGENESIS_CONSTELLATION_SWARM.md.
