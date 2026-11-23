@@ -114,7 +114,8 @@ def _simulate(path: list[dict], strategy: dict, execution: dict,
     When causal_clock is supplied, observed data timing is explicit: an
     open may execute a signal only if open_at > signal received_at.
     This is still a modeled quote fill, never a broker or venue receipt.
-    """    fast, slow = strategy["fast"], strategy["slow"]
+    """
+    fast, slow = strategy["fast"], strategy["slow"]
     qty, tick = execution["contracts"], execution["tick_value_cents"]
     fee, slip, latency = (execution["fee_per_contract_cents"],
                           execution["slippage_ticks"],
