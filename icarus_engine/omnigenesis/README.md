@@ -170,3 +170,29 @@ operators with a spec object; their results can enter the existing ledger
 only as derived workflow summaries. No broker, API keys, scheduled agent
 loop, real fills or guaranteed max-loss is implemented. See
 docs/icarus/OMNIGENESIS_SOVEREIGN_HYBRID.md.
+
+
+## Phase 20 — Offline order message router and automated research check
+
+A new OFFLINE_SANDBOX-only router simulates message ordering for
+SUBMIT, ACK, FILL, CANCEL, CANCEL_ACK, REJECT, HALT and RECONCILE
+without a broker connection. It supports replay-local event-ID
+deduplication, partial fills, fills racing with cancellations, signed
+position caps and worst-case unfilled-order exposure. Any halt or
+reconciliation mismatch stops downstream typed workflow operations.
+It does not claim live idempotency, market fill prices, account
+reconciliation or guaranteed risk enforcement.
+
+    python -m icarus_engine.omnigenesis offline-router ./sandbox-messages.json
+
+The argument is operator-provided strict OFFLINE_SANDBOX JSON and not a
+real broker feed. The typed DAG operator offline_order_router accepts
+a spec object. GitHub Actions workflow
+.github/workflows/omnigenesis-offline-agent-evidence.yml also verifies
+the Phase 19/20 synthetic harness on pull requests and writes an
+archived fabricated evidence receipt. Its nightly schedule only becomes
+active after a reviewed merge to the default branch; no scheduled trade
+execution or production deployment is configured.
+
+See docs/icarus/OMNIGENESIS_SOVEREIGN_HYBRID.md for security and
+execution-approval limitations.
