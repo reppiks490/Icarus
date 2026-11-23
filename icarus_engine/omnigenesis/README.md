@@ -149,3 +149,24 @@ Phase 17 provides local, read-only, normalized JSONL intake and precise checksum
     python -m icarus_engine.omnigenesis workflow path/to/workflow.json --execute --root . --output research/new_workflow_receipt.json
 
 All paths above are illustrative. No licensed market tape, vendor attestation, live feed, broker order, or actual UMBRA engine replay was performed. Workflow compute budgets are estimates rather than preemptive CPU enforcement. A PASS receipt is not APEX/DAEDALUS approval, empirical causality or profit evidence. Do not present the current local executor as permanently running agents. Source, schemas, nonclaims and release gates: docs/icarus/OMNIGENESIS_SOVEREIGN_HYBRID.md.
+
+
+## Phase 19 — Causal synthetic paper execution
+
+The offline paper harness creates fabricated deterministic bar paths, produces
+SMA-cross decisions only after each close, fills at later opens with adverse
+slippage and fees, and uses integer tick/cent bookkeeping with explicit risk
+kill conditions. A 2–8 contender tournament ranks strategies on a 70%
+synthetic calibration segment and tests only the selected one on the
+remaining 30%. No automatic live promotion or certified profits.
+
+    python -m icarus_engine.omnigenesis paper ./operator-paper.json
+    python -m icarus_engine.omnigenesis paper-arena ./operator-arena.json
+
+These filenames are illustrative; supply strict schema-valid local JSON
+manifests (paper-execution-v1 or paper-arena-v1). Phase 18 agent_workflow
+now accepts the research-only paper_execution and paper_tournament
+operators with a spec object; their results can enter the existing ledger
+only as derived workflow summaries. No broker, API keys, scheduled agent
+loop, real fills or guaranteed max-loss is implemented. See
+docs/icarus/OMNIGENESIS_SOVEREIGN_HYBRID.md.
