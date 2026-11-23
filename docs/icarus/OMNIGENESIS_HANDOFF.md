@@ -437,3 +437,18 @@ auto_promote=false, no live routes/secrets, no force-push, no blind
 merge. Check that every new doc and source claim has code/test/CI
 evidence at the same source SHA. Keep PR draft until independent
 review and explicit release authorization.
+
+---
+
+## 15. Phase 21 and Sovereign Constellation specialist swarm (2026-11-23 UTC)
+
+**Current status: DEVELOPMENT-BRANCH ONLY, PR #503.** This appendix supersedes any earlier claim that 16/18/20 are the latest phases. The project now contains an additional historical causality adapter and a drafted 12-worker GitHub-native research constellation. Confirm all source HEADs and exact CI again before modifying or merging.
+
+- Phase 21: icarus_engine/omnigenesis/historical_paper.py and tests_engine/test_omnigenesis_historical_paper.py. Uses explicitly supplied historical OHLC with open_at, close_at, received_at and operator-declared SHA-256/source/license metadata. A signal may affect a simulated future open only AFTER its receipt timestamp. Late data delay entries and risk exits. This is hypothetical bar-open replay, never exchange-authenticated orders or observed profits.
+- Constellation orchestration: icarus_engine/omnigenesis/constellation.py and tests_engine/test_omnigenesis_constellation.py. Immutable research-only plan and 12 SHA-256 receipts (CHRONOS, EXECUTION, RECONCILIATION, NEMESIS, WORLDLINE, MEMORY, each 2 shards). One fail-closed tribunal requires all 12 unique canonical receipts and same-code recomputation, rejects missing, duplicated, tampered, authority-escalated, malformed/symlinked evidence, and NEVER self-promotes.
+- GitHub-native nested worker graph: .github/workflows/omnigenesis-constellation.yml parent, omnigenesis-constellation-worker.yml reusable specialists, omnigenesis-constellation-tribunal.yml reusable gate. PR/explicit trigger; post-merge hourly UTC :17 schedule is not active on a draft branch. Parent computes exact finite matrix, max 6 parallel, 7-day specialist and 14-day tribunal artifacts, read-only job permissions. No Codex, broker, paid provider, auto-merge or deploy.
+- Full precise architecture, role map, truth and CI gates: docs/icarus/OMNIGENESIS_CONSTELLATION_SWARM.md. This is GitHub Actions process orchestration, not 12 sentient models, continuous cloud hosting, a real market MBO twin or guaranteed-profit strategy.
+- Existing OMNIGENESIS research-only workflow includes all new Python unit/negative tests on the source branch. **DO NOT confuse its passing with verified nested GitHub Actions E2E:** independently verify a Constellation Swarm Actions run with 12 worker jobs and callable tribunal. If unavailable, record NESTED_WORKFLOW_E2E_UNVERIFIED. The separate upstream live peer expiry remains [issue #504](https://github.com/reppiks490/Icarus/issues/504) and must not be bypassed by raising freshness tolerance.
+- Coordination source: reppiks490/icarus-owner-actions session chatgpt-20261123-omnigenesis-constellation-swarm (PLAN, subsequent UPDATE/HANDOFF). The existing ICARUS Sovereign Evolution ChatGPT automation is separate and remains non-Codex. Never force push, auto-merge, arm live broker execution or relabel research data.
+
+Current acceptance must compare PR #503 exact HEAD against all canonical CI, not just experimental science tests. Ephemeral GitHub workers do not provide durable cross-run claims, authenticated market provenance or independent production signoff.
