@@ -22,6 +22,7 @@ from .event_bridge import bridge_first_passage
 from .data_intake import inspect_market_tape
 from .umbra_bridge import audit_umbra_worldlines
 from .agent_workflow import compile_research_workflow, execute_research_workflow
+from .paper_harness import run_paper_execution, tournament_paper_strategies
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -75,6 +76,10 @@ def main(argv: list[str] | None = None) -> int:
     workflow.add_argument("--execute", action="store_true", help="explicitly run allowable research-only operators")
     workflow.add_argument("--root", type=Path, help="persist verified derived run summary in existing research ledger")
     workflow.add_argument("--output", type=Path, help="write new receipt JSON; exclusive creation, never overwrites")
+    paper = commands.add_parser("paper", help="causal offline synthetic paper-execution harness")
+    paper.add_argument("spec", type=Path)
+    arena = commands.add_parser("paper-arena", help="select a predeclared strategy on synthetic training only")
+    arena.add_argument("spec", type=Path)
     dashboard = commands.add_parser("dashboard", help="export offline animated observatory")
     dashboard.add_argument("--root", required=True, type=Path)
     dashboard.add_argument("--output", required=True, type=Path)
@@ -153,6 +158,12 @@ def main(argv: list[str] | None = None) -> int:
             with args.output.open("x", encoding="utf-8") as fp:
                 json.dump(result, fp, indent=2, sort_keys=True)
         print(json.dumps(result, indent=2, sort_keys=True))
+    elif args.command == "paper":
+        report = run_paper_execution(read_limited_json(args.spec))
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "paper-arena":
+        report = tournament_paper_strategies(read_limited_json(args.spec))
+        print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "dashboard":
         snap = ResearchLedger(args.root).snapshot(limit=100)
         path = render_observatory(snap, args.output)
