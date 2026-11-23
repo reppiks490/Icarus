@@ -59,7 +59,7 @@ jobs:
           if-no-files-found: error
 
   specialist-workers:
-    name: ${{ matrix.lane }} : ${{ matrix.shard }}
+    name: '${{ matrix.lane }} : ${{ matrix.shard }}'
     needs: seal-plan
     strategy:
       fail-fast: false
