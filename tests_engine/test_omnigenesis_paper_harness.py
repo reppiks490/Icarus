@@ -241,3 +241,33 @@ def test_multi_seed_receipts_are_deterministic_and_end_flat():
         assert result["results"]["final_position_contracts"] == 0
         assert result["results"]["start_cash_cents"] + result["results"]["net_pnl_cents"] == result["results"]["end_cash_cents"]
         assert result["results"]["fill_count"] >= 1
+
+
+def test_final_exit_fees_are_included_in_minimum_equity_and_drawdown():
+    # Monotonically rising toy prices deliberately sustain a long position
+    # until forced final research settlement. Large deterministic commissions
+    # ensure settlement equity is lower than any earlier marked equity.
+    path = [{
+        "bar_id": f"handcrafted_{i}",
+        "observed_at": f"2026-01-01T00:{i:02d}:00+00:00",
+        "open_ticks": 10000 + i,
+        "high_ticks": 10002 + i,
+        "low_ticks": 9999 + i,
+        "close_ticks": 10001 + i,
+    } for i in range(30)]
+    strategy = {"kind": "SMA_CROSS", "fast": 2, "slow": 4,
+                "direction": "trend"}
+    execution = {"contracts": 1, "tick_value_cents": 10,
+                 "fee_per_contract_cents": 1000, "slippage_ticks": 1,
+                 "latency_bars": 1}
+    risk = {"initial_cash_cents": 1_000_000, "max_loss_cents": 100_000,
+            "max_drawdown_cents": 100_000, "max_order_events": 20}
+    run = _simulate(path, strategy, execution, risk)
+    assert run["fill_count"] == 2
+    assert run["final_position_contracts"] == 0
+    assert run["start_cash_cents"] > run["end_cash_cents"]
+    assert run["minimum_marked_equity_cents"] == run["end_cash_cents"]
+    assert run["max_mark_to_market_drawdown_cents"] >= (
+        run["start_cash_cents"] - run["end_cash_cents"])
+    assert run["gross_fees_cents"] == 2000
+    assert run["fills"][-1]["reason"] == "SYNTHETIC_FINAL_SETTLEMENT"
