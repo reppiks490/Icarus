@@ -41,8 +41,10 @@ capability proposals and unified scientific records. It does NOT replace:
 | 14 | Offline observatory integrity, schema, XSS tests | tests_engine/test_omnigenesis_observatory.py |
 | 15 | Native iOS/Android animated intelligence view | mobile/src/OmnigenesisMobile.tsx and mobile/App.tsx |
 | 16 | Retrospective as-of event-label to hypothesis-data bridge | event_bridge.py, tests_engine/test_omnigenesis_event_bridge.py |
+| 17 | Local normalized market JSONL intake: checksum, declared timestamps, contract-roll and bounded evidence receipt | data_intake.py, tests_engine/test_omnigenesis_data_intake.py |
+| 18 | Typed on-demand research-agent DAG, UMBRA synthetic-worldline evidence adapter, chain-verified ledger records | agent_workflow.py, umbra_bridge.py, ledger.py, tests_engine/test_omnigenesis_agent_workflow.py, tests_engine/test_omnigenesis_umbra_bridge.py |
 
-Note: These are 16 bounded engineering phases, NOT 16 production-qualified AI systems. Full code-level handoff and exact CI evidence are in docs/icarus/OMNIGENESIS_HANDOFF.md.
+Note: These are now 18 bounded engineering phases, NOT 16 production-qualified AI systems. Full code-level handoff and exact CI evidence are in docs/icarus/OMNIGENESIS_HANDOFF.md.
 
 ## Prime-number foundation
 
@@ -118,3 +120,7 @@ No claim that these gates have passed merely because code was written.
 
 OMNIGENESIS expands the scientific toolbox; it does not grant omniscience,
 unlimited computation, permanent access to the user's PC, or profitable trading.
+
+## Hybrid research protocol and release status
+
+ICARUS remains the research host; UMBRA Sovereign Worlds v5 remains a separately versioned synthetic world generator. The strict UMBRA adapter validates declared paired reports but does not independently replay the UMBRA engine. Local Phase 17 market tape intake validates operator-provided bytes against operator-provided SHA-256 and roll/timestamp contracts, not independent provider licensing/authenticity. The Phase 18 workflow engine executes only on explicit CLI/function invocation and records bounded evidence chains in the existing research ledger; APEX, DAEDALUS and ASCENDANCY retain all approval, truth and work-governance boundaries. No broker authority, no production deploy. See docs/icarus/OMNIGENESIS_SOVEREIGN_HYBRID.md for exact schemas, tests and outstanding release gates.
