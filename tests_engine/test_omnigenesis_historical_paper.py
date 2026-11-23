@@ -83,7 +83,7 @@ def test_no_extra_delay_when_receipts_arrive_before_next_open():
 
 
 @pytest.mark.parametrize("mutate,pattern", [
-    (lambda s: s["bars"][0].update(close_ticks=5555), "SHA-256 mismatch"),
+    (lambda s: s["bars"][0].update(close_ticks=s["bars"][0]["close_ticks"] - 1), "SHA-256 mismatch"),
     (lambda s: s["evidence"].update(source_commit="signed"), "source commit"),
     (lambda s: s["evidence"].update(declared_sha256="!"), "SHA-256"),
     (lambda s: s["bars"][1].update(bar_id="t-00000"), "duplicate bar ID"),
@@ -91,7 +91,7 @@ def test_no_extra_delay_when_receipts_arrive_before_next_open():
     (lambda s: s["bars"][0].update(high_ticks=1), "inconsistent"),
     (lambda s: s["bars"][2].update(received_at="2025-01-01T00:00:00Z"), "bar not available"),
     (lambda s: s["bars"][1].update(opened_at=s["bars"][0]["opened_at"]), "non-increasing"),
-    (lambda s: s["bars"][4].update(received_at=s["bars"][3]["received_at"]), "out-of-order"),
+    (lambda s: s["bars"][3].update(received_at=s["bars"][5]["received_at"]), "out-of-order"),
     (lambda s: s["bars"][0].update(extra_private_token="NO"), "bar fields"),
     (lambda s: s.update(broker_credentials="FORBIDDEN"), "schema"),
 ])
