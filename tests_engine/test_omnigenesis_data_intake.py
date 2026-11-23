@@ -172,3 +172,32 @@ def test_manifest_missing_or_bad_tick_and_count(tmp_path):
     bad.pop("license_reference")
     with pytest.raises(ValueError, match="manifest schema"):
         inspect_market_tape(tape, bad)
+
+
+def test_sequence_regression_rejected_even_when_receive_time_increases(tmp_path):
+    """An increasing wall clock cannot conceal an older contract sequence."""
+    tape, manifest, rows = fixture(tmp_path)
+    assert rows[2]["received_at"] > rows[1]["received_at"]
+    rows[2]["sequence"] = rows[1]["sequence"] - 1
+    update_digest(tape, manifest, rows)
+    with pytest.raises(ValueError, match="per-contract sequence"):
+        inspect_market_tape(tape, manifest)
+
+
+def test_separate_futures_contracts_may_restart_normalized_sequence(tmp_path):
+    """Contract switches are not falsely treated as a global order channel."""
+    tape, manifest, rows = fixture(tmp_path)
+    rows[3]["sequence"] = 1
+    update_digest(tape, manifest, rows)
+    receipt = inspect_market_tape(tape, manifest)
+    assert receipt["contract_count"] == 2
+    assert receipt["record_count"] == 4
+
+
+def test_receive_time_cannot_go_backwards_when_sequence_increases(tmp_path):
+    tape, manifest, rows = fixture(tmp_path)
+    rows[2]["observed_at"] = rows[2]["received_at"] = rows[0]["observed_at"]
+    rows[2]["sequence"] = 99
+    update_digest(tape, manifest, rows)
+    with pytest.raises(ValueError, match="received timestamp"):
+        inspect_market_tape(tape, manifest)
