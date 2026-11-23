@@ -170,7 +170,10 @@ def replay_offline_order_router(spec: Mapping[str, Any]) -> dict:
                 if exec_id in seen_exec:
                     raise ValueError("duplicate execution ID")
                 qty = _int(event["quantity"], "fill quantity", 1, max_single)
-                _int(event["price_ticks"], "fill price ticks", 1, 1_000_000_000)
+                fill_ticks = _int(event["price_ticks"], "fill price ticks", 1, 1_000_000_000)
+                if ((order["side"] == "BUY" and fill_ticks > order["limit_ticks"]) or
+                        (order["side"] == "SELL" and fill_ticks < order["limit_ticks"])):
+                    raise ValueError("fill violates submitted limit price")
                 if qty > order["remaining"]:
                     raise ValueError("execution overfills original order")
                 new_pos = position + qty * (1 if order["side"] == "BUY" else -1)
