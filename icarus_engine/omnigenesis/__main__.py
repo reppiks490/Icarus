@@ -23,6 +23,7 @@ from .data_intake import inspect_market_tape
 from .umbra_bridge import audit_umbra_worldlines
 from .agent_workflow import compile_research_workflow, execute_research_workflow
 from .paper_harness import run_paper_execution, tournament_paper_strategies
+from .offline_order_router import replay_offline_order_router
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -80,6 +81,8 @@ def main(argv: list[str] | None = None) -> int:
     paper.add_argument("spec", type=Path)
     arena = commands.add_parser("paper-arena", help="select a predeclared strategy on synthetic training only")
     arena.add_argument("spec", type=Path)
+    router = commands.add_parser("offline-router", help="replay sandbox-only order message lifecycle; never connect to broker")
+    router.add_argument("spec", type=Path)
     dashboard = commands.add_parser("dashboard", help="export offline animated observatory")
     dashboard.add_argument("--root", required=True, type=Path)
     dashboard.add_argument("--output", required=True, type=Path)
@@ -163,6 +166,9 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "paper-arena":
         report = tournament_paper_strategies(read_limited_json(args.spec))
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "offline-router":
+        report = replay_offline_order_router(read_limited_json(args.spec))
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "dashboard":
         snap = ResearchLedger(args.root).snapshot(limit=100)
