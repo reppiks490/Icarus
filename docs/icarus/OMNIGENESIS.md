@@ -38,9 +38,11 @@ capability proposals and unified scientific records. It does NOT replace:
 | 11 | Historical first-passage/competing-risk OHLC label engine | first_passage.py |
 | 12 | Read-only mobile gateway data access | icarus_mobile_gateway/proxy.py |
 | 13 | Immutable derived artifact families and unified research view | ledger.py, UI |
+| 14 | Offline observatory integrity, schema, XSS tests | tests_engine/test_omnigenesis_observatory.py |
 | 15 | Native iOS/Android animated intelligence view | mobile/src/OmnigenesisMobile.tsx and mobile/App.tsx |
+| 16 | Retrospective as-of event-label to hypothesis-data bridge | event_bridge.py, tests_engine/test_omnigenesis_event_bridge.py |
 
-Note: These are bounded research tools, NOT 13 production-qualified AI systems.
+Note: These are 16 bounded engineering phases, NOT 16 production-qualified AI systems. Full code-level handoff and exact CI evidence are in docs/icarus/OMNIGENESIS_HANDOFF.md.
 
 ## Prime-number foundation
 
