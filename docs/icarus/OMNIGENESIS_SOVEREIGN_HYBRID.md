@@ -59,3 +59,25 @@ Normalized historical files are checked against a **global nondecreasing receive
 7. Human-reviewed merge/deployment decision only after canonical CI, real device and scientific gate signoff. No force push, blind merge, self-promotion, real trading or unattended Codex-driven loop.
 
 **Verification evidence is per exact source SHA. This document is a continuing source map, not a production release certificate.**
+
+
+## Phase 19 — Causal synthetic paper execution
+
+**Status: implemented on the DRAFT ICARUS PR #503 branch, not deployed, not a broker connection. CI result depends on exact current HEAD and independent review.**
+
+New source: icarus_engine/omnigenesis/paper_harness.py. The paper executor produces 100–2048 seeded, fabricated bars; reads only already-closed prices when making an SMA-cross decision; schedules a target-position action for an open **at least one bar later**. Position books settle in integer ticks and cents, with 1–5 synthetic contracts, adverse configurable fill slippage and per-contract fees. It handles long/short/flat and reversals, cash mark-to-market drawdown, max loss and maximum order-event guards, plus final synthetic liquidation. A close-based loss trigger exits no earlier than the *next open*, never a retroactive guaranteed stop. Price gaps and fees may exceed a requested stop budget. The fill event budget allows emergency liquidation; no real order has been sent.
+
+New second operator: tournament_paper_strategies takes 2–8 preregistered SMA variants, ranks them by training-segment synthetic P&L minus drawdown on the first 70% of the same fabricated timeline, selects one by deterministic tie break and scores **only that chosen** strategy on the latter 30%. No winner is promoted or granted production/execution authority. The reproducible holdout is NOT access controlled; repeated retries and user seed selection can overfit it. Independently collected exchange data, cost/queue evidence, OOD validation and independent review remain absent.
+
+Phase 18 DAG's allowlist was extended by two *typed research operators*, paper_execution and paper_tournament. Each accepts one spec object, hashes the underlying research receipt and persists only a bounded synthetic-summary record via the existing, authenticated, read-only OMNIGENESIS scientific ledger. Direct CLI commands:
+
+    python -m icarus_engine.omnigenesis paper ./operator-paper-config.json
+    python -m icarus_engine.omnigenesis paper-arena ./operator-tournament-config.json
+
+The paths above are illustrative: these input files are **not** automatically included or authenticated. For the paper config the exact JSON keys are schema_version, seed, bars, strategy, execution, risk. Schema version is icarus-omnigenesis-paper-execution-v1. Strategy: kind SMA_CROSS, fast integer 2–30, slow integer 4–80 (fast < slow), direction trend or reversion. Execution: contracts (1–5), tick_value_cents (positive integer), fee_per_contract_cents (nonnegative integer), slippage_ticks (1–100) and latency_bars (1–10). Risk: initial_cash_cents, max_loss_cents, max_drawdown_cents and max_order_events. Arena schema is icarus-omnigenesis-paper-arena-v1, replacing strategy with a 2–8-member candidates array; requires >=160 bars.
+
+**Falsification tests:** tests_engine/test_omnigenesis_paper_harness.py and test_omnigenesis_agent_workflow.py check seeded reproducibility, later-open fills, no broker capability, realistic adverse cost ordering within the toy model, losses and order-event killing, forced flat end, invalid/extra API-key fields, train/holdout separation, and receipt/ledger transparency. Passing tests establish implemented code constraints, not market edge.
+
+**Missing before any production rollout:** independently authenticated licensed historical market data (provider/channel/contract/calendar), order-book queue/partial-fill model, exchange slippage/fees, robust no-lookahead backtests, OOD/purged holdouts, multiplicity and data-mining penalties, broker sandbox certification, idempotent order entry/cancel/reconcile, connectivity failures, live position risk monitoring, full audit + independent APEX/DAEDALUS qualification and explicit owner-approved risk/capital limits. Current paper configuration values are research assumptions, not authoritative futures contract specifications. Self-improvement here means bounded parameter comparison and falsifiable receipt collection. There is no basis to assert sentience or consciousness.
+
+**Knowledge delta / Akinator provenance:** Before: research DAG and synthetic order book, but no strategy signal-to-delayed-fill accounting. After: causal paper execution, conservative cost knobs and risk switches plus training-only challenger evaluation. Decision: research-only, isolate live trading. Rejected alternative: connecting broker/API secrets or letting generated strategies self-promote. Verification: current-HEAD Actions and adversarial tests, independently reviewed before merge. This record becomes stale if authentic market feeds, margin, order routing or execution venue behavior changes.
