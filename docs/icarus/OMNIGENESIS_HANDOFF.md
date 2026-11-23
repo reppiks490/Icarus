@@ -339,3 +339,29 @@ Continue building **ICARUS OMNIGENESIS ∞** from the REAL source of truth, not 
 
 ---
 This handoff is deliberately exact about what is BUILT versus what is only PROPOSED. Revalidate everything at the beginning of the next session.
+
+---
+
+## 13. Phase 17–18 implemented hybrid update (2026-11-22 America/Chicago; overrides older proposed-only statements)
+
+**Important chronological correction:** Earlier sections 3, 9, 10, 12 above document the historical pre-handoff state, where Phase 17 had not yet been implemented. **It has now been implemented on this draft branch**, together with Phase 18 and an expressly synthetic UMBRA bridge. Read the latest source and CI before treating this appendix as current.
+
+**New source paths:**
+- icarus_engine/omnigenesis/data_intake.py — Phase 17 read-only inspection of operator-declared local historical normalized JSONL market data; strict manifest, SHA-256 exact bytes, accepted event schema, declared contract-roll period, timestamp and sequence tests, and bounded file/row/size limits.
+- icarus_engine/omnigenesis/umbra_bridge.py — UMBRA Sovereign Worlds v5 pairedExperiment arithmetic/seed validation. Separate repo: https://github.com/reppiks490/umbra-sovereign-worlds . Source commit is caller-claimed; UMBRA model is **not** independently replayed by this adapter.
+- icarus_engine/omnigenesis/agent_workflow.py — Phase 18 compiled, on-demand, deterministic research DAG with strictly allowlisted local operators: prime, synthetic_book, market_intake, umbra_worldline and formal. Input plans and receipts hash-bound; on failure downstream dependencies are BLOCKED. Budget estimates are metadata; no real-time preemption, agent LLM workers, broker execution or scheduler.
+- icarus_engine/omnigenesis/ledger.py — original application-level append-only research artifacts now include validated agent_workflow summaries with receipt-chain and count/status checks; new results flow through existing read-only /api/omnigenesis and mobile gateway and may appear as genuine derived artifact nodes in the existing dashboard.
+- icarus_engine/omnigenesis/__main__.py — adds market-intake, audit-umbra and explicit workflow CLI; optional --execute --root writes derived summaries to the existing research ledger, --output creates a new file only.
+- Tests: tests_engine/test_omnigenesis_data_intake.py, test_omnigenesis_umbra_bridge.py, test_omnigenesis_agent_workflow.py. These include tampering, future timestamps, row ordering, invalid contract roll and unknown operator denial, DAG cycles, authority escalation, receipt tampering, ledger read-only summaries and CLI idempotence/exclusive output.
+
+**Combined source and nonclaims:** docs/icarus/OMNIGENESIS_SOVEREIGN_HYBRID.md; phase matrix in docs/icarus/OMNIGENESIS.md; user-facing source/CLI notes in icarus_engine/omnigenesis/README.md.
+
+**Observed CI evidence:** On earlier interim head 3925deeb92289821c0bdece584bea127036dadd1, the dedicated OMNIGENESIS research-only workflow was observed **SUCCESS** after a corrected timestamp-confounded test fixture. The newer documentation commits and any subsequent source changes MUST be checked against the final source SHA. Full repository-wide UI/Playwright/Expo/portfolio workflows have independent failures or pending jobs at earlier snapshots; dedicated success does NOT establish release readiness. Do not invent full passing CI.
+
+**Beyond synthetic, precisely:** Phase 17 can structurally inspect user-provided *historical observed-byte datasets* but DOES NOT verify exchange/provider origin, license rights, truth of clock claims, MBO completeness or broker fills. SHA-256 expected bytes are supplied by the same operator, so an internally matching digest is **not independent authentication**. NEXUS/ARGUS vendor-authorized source verification, instrument masters and roll/sequence policy remain required before live/read-only market-fed model comparisons.
+
+**Actual hybrid limitation:** It is now one typed research evidence/workflow integration hosted in ICARUS, **not** a merged world engine or real-time UMBRA-to-ICARUS link. The public UMBRA site is a separate product with three routes and distinct browser storage keys. No site was modified. UMBRA draft archive PR #4 has a source-review accessor/toJSON safety finding; do not import that archive until it is fixed and independently reviewed.
+
+**Next work and release gates:** Verify current PR #503 HEAD and dedicated CI, repair canonical CI failures without weakening tests, independently attest source/contract/rights via NEXUS, implement replay/queue/latency/transaction-cost comparisons against actual licensed historical depth if available, and measure real desktop/iPhone rendered UI and touch paths. Independent APEX/DAEDALUS review and ASCENDANCY governance remain mandatory. No force push, automatic merge, scheduled Codex, live trades or undocumented production deployment.
+
+**Exact handoff mode:** This is a **development-branch** status record, not an installed Windows application or owner-authorized release. Do not create a second repository or fresh replacement microkernel. Continue PR #503 on agent/omnigenesis-phase-01-foundation and preserve all pre-existing phases 1–16.
