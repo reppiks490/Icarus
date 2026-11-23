@@ -85,3 +85,28 @@ def test_cross_implementation_seed_recovers_exact_js_hash():
         s = hash32(49021 + (k + 1) * 0x9e3779b1)
         assert 0 <= s <= 0xffffffff
         assert isinstance(s, int)
+
+
+def test_actual_umbra_v5_javascript_paired_experiment_fixture():
+    """Replay the UMBRA v5 JS output contract in the Python evidence adapter.
+
+    Fixture was emitted by UMBRA engine.mjs pairedExperiment() with seed=49021,
+    trials=8 and steps=24; source reference is pinned only as a claim.
+    The adapter checks the report but does NOT execute the external engine.
+    """
+    import json
+    from pathlib import Path
+    fixture = Path(__file__).parent / "fixtures" / "omnigenesis_umbra_v5_paired.json"
+    data = json.loads(fixture.read_text(encoding="utf-8"))
+    output = audit_umbra_worldlines(
+        data, claimed_source_commit="fb5d532785056331174d616820fe19856e331a03"
+    )
+    assert output["seed"] == 49021 and output["trials"] == 8
+    assert output["steps"] == 24
+    assert output["mean_internal_effect"] == 10.16
+    assert output["positive_replicates"] == 8
+    assert output["all_seed_and_aggregate_checks_passed"] is True
+    assert output["source_commit_verified"] is False
+    assert output["engine_replay_verified"] is False
+    assert output["real_market_fidelity_verified"] is False
+
