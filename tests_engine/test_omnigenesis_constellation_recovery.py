@@ -224,3 +224,26 @@ def test_cli_rejects_forged_artifact_filename(evidence, tmp_path):
         main(["--plan", str(p), "--worker-dir", str(folder),
               "--source-sha", "a" * 40, "--run-id", "45121812267",
               "--run-attempt", "1", "--output", str(tmp_path / "output.json")])
+
+
+def test_nested_recovery_jobs_cannot_skip_because_original_worker_failed():
+    """GitHub implicitly tests success() unless a failure-aware condition exists."""
+    from pathlib import Path
+    workflow = (
+        Path(__file__).resolve().parents[1]
+        / ".github/workflows/omnigenesis-constellation.yml"
+    ).read_text(encoding="utf-8")
+    assert "  recovery-plan:" in workflow
+    assert "if: ${{ always() && needs.seal-plan.result == 'success' }}" in workflow
+    assert "  retry-workers:" in workflow
+    assert ("if: ${{ always() && needs.recovery-plan.result == 'success' "
+            "&& needs.recovery-plan.outputs.retry_needed == 'true' }}" in workflow)
+    assert "  recovery-finalize:" in workflow
+    assert "needs: [seal-plan, recovery-plan, retry-workers]" in workflow
+    assert "  evidence-tribunal:" in workflow
+    assert ("if: ${{ always() && needs.recovery-finalize.result == 'success' }}"
+            in workflow)
+    assert "needs: [seal-plan, recovery-finalize]" in workflow
+    assert "max-parallel: 6" in workflow
+    assert "contents: read" in workflow
+    assert "contents: write" not in workflow
