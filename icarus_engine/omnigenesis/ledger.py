@@ -227,6 +227,48 @@ class ResearchLedger:
                        (digest, kind, now, payload))
         return digest
 
+    def append_constellation(self, plan: dict, checkpoint: dict,
+                             tribunal: dict, *,
+                             predecessor: dict | None = None) -> str:
+        """Store only a verified, derived Constellation observation summary.
+
+        Does not accept a caller-asserted success flag or a bare observation:
+        all worker receipts, checkpoint provenance and tribunal output are
+        replayed in memory against the exact current source. The SQLite
+        artifact remains a small, read-only UI summary; raw worker evidence
+        and claimed GitHub run metadata are never stored in this database.
+        """
+        from .constellation_observation import observe_constellation
+
+        observation = observe_constellation(
+            plan, checkpoint, tribunal, predecessor=predecessor)
+        digest = identity(observation)
+        summary = {
+            "artifact_id": digest,
+            "kind": "constellation_observation",
+            "source_id": observation["observation_id"],
+            "title": "Completed Constellation research receipt audit",
+            "status": "LOCAL_REPLAY_ONLY",
+            "metric": observation["completed_count"],
+            "research_only": True,
+        }
+        payload = canonical_bytes(summary).decode("utf-8")
+        with self._connect() as db:
+            found = db.execute(
+                "SELECT summary_json FROM artifacts WHERE artifact_id=?",
+                (digest,),
+            ).fetchone()
+            if found is not None:
+                if found[0] != payload:
+                    raise ValueError("immutable Constellation artifact collision")
+                return digest
+            now = datetime.now(timezone.utc).isoformat()
+            db.execute(
+                "INSERT INTO artifacts VALUES (?, ?, ?, ?)",
+                (digest, "constellation_observation", now, payload),
+            )
+        return digest
+
     def snapshot(self, limit: int = 20) -> dict:
         if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
             raise ValueError("limit must be an integer between 1 and 100")
