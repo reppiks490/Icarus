@@ -1,10 +1,6 @@
 name: OMNIGENESIS Sovereign Constellation Swarm
 on:
-  pull_request:
-    paths:
-      - 'icarus_engine/omnigenesis/**'
-      - 'tests_engine/test_omnigenesis*.py'
-      - '.github/workflows/omnigenesis-constellation*.yml'
+  workflow_call:
   workflow_dispatch:
   schedule:
     # Hourly research checks become active ONLY when merged to default branch.
