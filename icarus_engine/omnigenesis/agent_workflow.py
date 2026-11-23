@@ -19,6 +19,7 @@ from .formal import formal_certificate
 from .simulation import replay_book, synthetic_scenario
 from .data_intake import inspect_market_tape
 from .umbra_bridge import audit_umbra_worldlines
+from .paper_harness import run_paper_execution, tournament_paper_strategies
 
 _AUTHORITY = {"research_only": True, "execution_authorized": False,
               "production_decision_authorized": False, "auto_promote": False}
@@ -29,6 +30,8 @@ _OPERATORS = {
     "market_intake": {"path", "manifest"},
     "umbra_worldline": {"report", "claimed_source_commit"},
     "formal": {"spec"},
+    "paper_execution": {"spec"},
+    "paper_tournament": {"spec"},
 }
 _EXPECTED_TASK = {"task_id", "operator", "depends_on", "parameters",
                   "estimated_compute_seconds"}
@@ -75,6 +78,9 @@ def _validate_task(task: Mapping[str, Any]) -> dict:
             raise ValueError("UMBRA report must be an object")
         if not isinstance(params["claimed_source_commit"], str):
             raise ValueError("missing UMBRA claimed source")
+    elif operator in ("paper_execution", "paper_tournament"):
+        if not isinstance(params["spec"], Mapping):
+            raise ValueError("paper harness spec must be an object")
     elif operator == "formal":
         if not isinstance(params["spec"], Mapping):
             raise ValueError("formal specification must be an object")
@@ -161,6 +167,20 @@ def _execute_operator(item: dict) -> dict:
         )
         return {"kind": "SYNTHETIC_MODEL_INTERNAL", "receipt_id": receipt["receipt_id"],
                 "all_seed_and_aggregate_checks_passed": True, "engine_replay_verified": False}
+    if op == "paper_execution":
+        report = run_paper_execution(arg["spec"])
+        return {"kind": "SYNTHETIC_PAPER_EXECUTION", "receipt_id": report["receipt_id"],
+                "synthetic_net_pnl_cents": report["results"]["net_pnl_cents"],
+                "halt_reason": report["results"]["halt_reason"], "broker_order_count": 0,
+                "profitability_verified": False, "execution_authorized": False}
+    if op == "paper_tournament":
+        report = tournament_paper_strategies(arg["spec"])
+        return {"kind": "SYNTHETIC_CHALLENGER_TOURNAMENT",
+                "receipt_id": report["receipt_id"],
+                "candidate_count": report["candidate_count"],
+                "synthetic_holdout_net_pnl_cents": report["chosen_holdout_net_pnl_cents"],
+                "strategy_promoted": False, "profitability_verified": False,
+                "broker_order_count": 0, "execution_authorized": False}
     if op == "formal":
         result = formal_certificate(compile_automaton(arg["spec"]))
         return {"kind": "FORMAL_WITHIN_TYPED_GRAMMAR", "certificate_id": result["certificate_id"],
