@@ -149,7 +149,8 @@ jobs:
 
   retry-workers:
     name: One retry for ${{ matrix.lane }} / ${{ matrix.shard }}
-    if: ${{ needs.recovery-plan.outputs.retry_needed == 'true' }}
+    # The original matrix may have FAILED; do not inherit implicit success() and skip recovery.
+    if: ${{ always() && needs.recovery-plan.result == 'success' && needs.recovery-plan.outputs.retry_needed == 'true' }}
     needs: [seal-plan, recovery-plan]
     strategy:
       fail-fast: false
