@@ -1,0 +1,89 @@
+name: OMNIGENESIS Sovereign Constellation Swarm
+on:
+  pull_request:
+    paths:
+      - 'icarus_engine/omnigenesis/**'
+      - 'tests_engine/test_omnigenesis*.py'
+      - '.github/workflows/omnigenesis-constellation*.yml'
+  workflow_dispatch:
+  schedule:
+    # Hourly research checks become active ONLY when merged to default branch.
+    # No Codex, exchange orders, paid data, auto-merges, self-training or deploy.
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: constellation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  seal-plan:
+    name: Content-addressed workload dispatcher
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.seal.outputs.matrix }}
+      seed: ${{ steps.seal.outputs.seed }}
+      plan_id: ${{ steps.seal.outputs.plan_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Create finite six-lane x two-shard work plan
+        id: seal
+        run: |
+          mkdir -p evidence/plan
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          from icarus_engine.omnigenesis.constellation import build_plan
+          # Stable within this workflow run; changing run or head changes
+          # the synthetic scenario. Not market entropy or a valid OOD holdout.
+          material = (os.environ['GITHUB_SHA'] + ':' +
+                      os.environ['GITHUB_RUN_ID']).encode('ascii')
+          seed = int.from_bytes(hashlib.sha256(material).digest()[:4], 'big')
+          plan = build_plan(seed)
+          Path('evidence/plan/constellation-plan.json').write_text(
+              json.dumps(plan, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          matrix = json.dumps({'include': plan['jobs']}, separators=(',', ':'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+              out.write('seed=' + str(seed) + '\n')
+              out.write('plan_id=' + plan['plan_id'] + '\n')
+              out.write('matrix=' + matrix + '\n')
+          print(json.dumps({'plan_id':plan['plan_id'], 'worker_count':len(plan['jobs']),
+                            'execution_authorized':False,
+                            'market_data_feed_used':False},sort_keys=True))
+          PY
+      - name: Upload sealed plan (cannot contain credentials)
+        uses: actions/upload-artifact@v4
+        with:
+          name: omnigenesis-constellation-plan
+          path: evidence/plan/constellation-plan.json
+          retention-days: 7
+          if-no-files-found: error
+
+  specialist-workers:
+    name: ${{ matrix.lane }} : ${{ matrix.shard }}
+    needs: seal-plan
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix: ${{ fromJSON(needs.seal-plan.outputs.matrix) }}
+    uses: ./.github/workflows/omnigenesis-constellation-worker.yml
+    permissions:
+      contents: read
+    with:
+      lane: ${{ matrix.lane }}
+      shard: ${{ matrix.shard }}
+      seed: ${{ needs.seal-plan.outputs.seed }}
+      plan_id: ${{ needs.seal-plan.outputs.plan_id }}
+
+  evidence-tribunal:
+    name: 12-worker hash-chain and independent research review gate
+    if: ${{ always() && needs.seal-plan.result == 'success' }}
+    needs: [seal-plan, specialist-workers]
+    uses: ./.github/workflows/omnigenesis-constellation-tribunal.yml
+    permissions:
+      contents: read
+    with:
+      plan_id: ${{ needs.seal-plan.outputs.plan_id }}
