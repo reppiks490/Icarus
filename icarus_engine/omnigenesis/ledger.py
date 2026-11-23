@@ -204,9 +204,9 @@ class ResearchLedger:
                                 "status": "PROPOSED",
                                 "metric": len(report.get("selected_proposal_ids", []))},
             "agent_workflow": {"title": "Research workflow execution receipts",
-                               "status": "RESEARCH_ONLY" if report["status"] == "RESEARCH_ONLY_COMPLETE"
+                               "status": "RESEARCH_ONLY" if report.get("status") == "RESEARCH_ONLY_COMPLETE"
                                          else "REVIEW_REQUIRED",
-                               "metric": len(report["receipts"])},
+                               "metric": len(report.get("receipts", []))},
         }[kind]
         if type(details["metric"]) is not int or not 0 <= details["metric"] <= 100000:
             raise ValueError("artifact metric out of bounds")
