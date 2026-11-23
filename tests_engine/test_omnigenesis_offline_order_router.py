@@ -283,7 +283,8 @@ def test_safety_halt_with_zero_working_orders_still_requires_external_reconcile(
 def test_router_report_reconciliation_key_present_for_all_terminal_states():
     """Guard against accidentally commenting out the safety report field."""
     cases = [
-        config([]),
+        # Flat but schema-valid: the offline router requires >=1 event.
+        config([event(1, "RECONCILE", position_contracts=0)]),
         config([submit(1, "o1", "BUY", 1),
                 event(2, "ACK", order_id="o1"),
                 event(3, "FILL", order_id="o1", execution_id="fill1",
