@@ -78,3 +78,28 @@ The recovery checkpoint is an artifact retained for 14 days. This is ARTIFACT-BA
 Adversarial tests: tests_engine/test_omnigenesis_constellation_recovery.py, verifying 12/12, 11/12, 0/12, one-time continuation, exhausted retry, immutable accepted receipts, plan/source/run binding, duplicate or unregistered workers, forged statuses, CLI exclusive writes, malformed JSON, symlinked inputs and filename mismatch. These tests must pass at the exact source SHA, and an actual GitHub Actions nested rehearsal must pass plan → workers → recovery-plan → conditional retry → recovery-finalize → tribunal before Phase 24 is declared operational.
 
 Next upgrade, NOT implemented: independently signed immutable cross-run journal backed by authorized durable storage, strict repo/commit ancestry and data-rights validation, crash-resume after expiry, proved order/position reconciliation against broker sandbox, read-only authenticated iPhone telemetry with measured frame times, incident classification and human-reviewed exception routing. research_only=true, execution_authorized=false, production_decision_authorized=false, auto_promote=false remain mandatory.
+
+
+## Phase 25 — Completed-only observational evidence and authenticated research-snapshot compatibility
+
+**Implemented on the draft ICARUS branch.** Source: icarus_engine/omnigenesis/constellation_observation.py. A caller supplies the sealed plan, the complete Phase 24 checkpoint and the real completed tribunal JSON. If a worker retry occurred, the original partial checkpoint is also REQUIRED. The module revalidates the plan/worker lineage, complete checkpoint content hash, monotonic predecessor chain and exact same-revision tribunal result. Failed, incomplete, changed, unsigned-by-digest or authority-escalated observations are refused.
+
+The output is a versioned, content-addressed, data-minimized observation describing exactly twelve COMPLETED_RESEARCH_ONLY workers with receipt IDs. It has active_workers_now=0, snapshot_is_live=false, github_api_provenance_verified=false, source_commit_attested=false, independent_scientific_validation=false, real_profitability_verified=false, release_authorized=false and broker_order_count=0. The named GitHub run/source revision comes from the checkpoint's CALLER-DECLARED context, not an authenticated GitHub API response. This is an audit of local source/replay consistency, not a signed remote workflow-state certificate.
+
+The tribunal reusable workflow .github/workflows/omnigenesis-constellation-tribunal.yml now downloads the final and initial recovery checkpoint artifacts after the original twelve-worker tribunal succeeds, constructs the observation and uploads omnigenesis-constellation-observation (14-day retention). If the observation cannot be verified, that tribunal job fails rather than writing a fake status. No public website, live UI gateway, account credentials or provider/financial data are touched.
+
+ICARUS already exposes an authenticated, read-only research snapshot from ResearchLedger.snapshot(). A new ResearchLedger.append_constellation(plan, checkpoint, tribunal, predecessor=None) method verifies all input evidence again and writes ONLY a small six-field derived artifact summary to the existing SQLite scientific ledger, never the full worker receipts, raw market data or caller-supplied run metadata. Its artifact kind is constellation_observation, its status is LOCAL_REPLAY_ONLY, and metric 12 denotes twelve COMPLETED specialist receipts—not twelve currently active workers. Existing dashboard/mobile read surfaces can display this derived record after explicit local import. No new HTTP write route is introduced.
+
+Example explicit offline import on an authorized local checkout, using actual artifacts from ONE source/run:
+
+    python -m icarus_engine.omnigenesis constellation-import \
+      --plan ./constellation-plan.json \
+      --checkpoint ./checkpoint-final.json \
+      --tribunal ./constellation-tribunal.json \
+      --root /path/to/icarus
+
+For an actual recovery attempt, also supply --predecessor ./checkpoint-0.json. The input paths above are examples, not preinstalled files. Imports are idempotent for identical evidence and reject tampering, forged status, missing shards, missing recovery predecessor and any attempted authority escalation. CLI output explicitly reports LOCAL_REPLAY_ONLY and github_api_provenance_verified=false.
+
+Unit regressions: tests_engine/test_omnigenesis_constellation_observation.py (normal/recovered completed runs, forged tribunal, partial checkpoint, predecessor mismatch, immutable stored summary, CLI exclusive creation and import). The separate recovery tests assert the GitHub workflow retry condition has a failure-aware always() guard. Dedicated OMNIGENESIS Python/mobile tests passed at a source commit preceding this documentation; the new tribunal artifact step and workflow-level transfer require exact-head GitHub Actions E2E proof.
+
+**Still missing:** automatic authenticated GitHub-to-local polling/streaming, verifiable provenance from GitHub's own API, durable cross-run signed incident history beyond 14-day artifacts, native iPhone real-time activity rendering and device FPS measurements, independently authenticated market data/exchange fills, and actual broker-safe live execution certification. No claim of those capabilities should be made from a successful local replay or a synthetic worker animation.
