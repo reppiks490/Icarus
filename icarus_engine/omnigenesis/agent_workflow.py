@@ -185,6 +185,8 @@ def _execute_operator(item: dict) -> dict:
                 "broker_order_count": 0, "execution_authorized": False}
     if op == "offline_order_router":
         report = replay_offline_order_router(arg["spec"])
+        if report["halted"] or report["must_cancel_and_reconcile_externally"]:
+            raise ValueError("offline order router safety halt requires independent review")
         return {"kind": "SIMULATED_ORDER_LIFECYCLE",
                 "receipt_id": report["receipt_id"],
                 "mock_filled_contracts": report["mock_filled_contracts"],
