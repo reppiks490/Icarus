@@ -20,6 +20,7 @@ from .simulation import replay_book, synthetic_scenario
 from .data_intake import inspect_market_tape
 from .umbra_bridge import audit_umbra_worldlines
 from .paper_harness import run_paper_execution, tournament_paper_strategies
+from .offline_order_router import replay_offline_order_router
 
 _AUTHORITY = {"research_only": True, "execution_authorized": False,
               "production_decision_authorized": False, "auto_promote": False}
@@ -32,6 +33,7 @@ _OPERATORS = {
     "formal": {"spec"},
     "paper_execution": {"spec"},
     "paper_tournament": {"spec"},
+    "offline_order_router": {"spec"},
 }
 _EXPECTED_TASK = {"task_id", "operator", "depends_on", "parameters",
                   "estimated_compute_seconds"}
@@ -78,7 +80,7 @@ def _validate_task(task: Mapping[str, Any]) -> dict:
             raise ValueError("UMBRA report must be an object")
         if not isinstance(params["claimed_source_commit"], str):
             raise ValueError("missing UMBRA claimed source")
-    elif operator in ("paper_execution", "paper_tournament"):
+    elif operator in ("paper_execution", "paper_tournament", "offline_order_router"):
         if not isinstance(params["spec"], Mapping):
             raise ValueError("paper harness spec must be an object")
     elif operator == "formal":
@@ -181,6 +183,16 @@ def _execute_operator(item: dict) -> dict:
                 "synthetic_holdout_net_pnl_cents": report["chosen_holdout_net_pnl_cents"],
                 "strategy_promoted": False, "profitability_verified": False,
                 "broker_order_count": 0, "execution_authorized": False}
+    if op == "offline_order_router":
+        report = replay_offline_order_router(arg["spec"])
+        return {"kind": "SIMULATED_ORDER_LIFECYCLE",
+                "receipt_id": report["receipt_id"],
+                "mock_filled_contracts": report["mock_filled_contracts"],
+                "message_count": report["message_count"],
+                "reconciliation_failed": report["reconciliation_failed"],
+                "halted": report["halted"], "broker_order_count": 0,
+                "source_authenticity_verified": False,
+                "execution_authorized": False}
     if op == "formal":
         result = formal_certificate(compile_automaton(arg["spec"]))
         return {"kind": "FORMAL_WITHIN_TYPED_GRAMMAR", "certificate_id": result["certificate_id"],
