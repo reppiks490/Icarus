@@ -164,3 +164,8 @@ gaps, server-side unknown order states, partial fills, duplicate delivery,
 API rate limits and loss in transit before any live adapter is authorized.
 Current evidence is versioned source and exact-commit CI, not a
 production certification or a claim of machine consciousness.
+
+
+### Final-liquidation risk-accounting regression
+
+Phase 19's synthetic settlement previously deducted adverse exit slippage and commissions from ending cash but did not always update the *minimum marked equity* and *maximum drawdown* after settlement. That could under-report simulated drawdown even when net P&L reflected fees. Corrected in `paper_harness.py`: after forced terminal liquidation, account for final after-fee cash as a mark and recompute drawdown against the pre-existing equity high-water mark. Added deterministic, monotonically rising toy-path adversarial test in `tests_engine/test_omnigenesis_paper_harness.py` with substantial commissions proving the post-settlement equity extreme. This only improves **synthetic accounting**, not real market risk guarantees. Reverify exact-current-HEAD CI before acceptance.
