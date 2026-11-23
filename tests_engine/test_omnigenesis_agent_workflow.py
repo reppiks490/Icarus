@@ -159,3 +159,73 @@ def test_worker_intake_uses_actual_operator_bytes_without_promoting_provenance(t
     assert detail["provider_license_verified"] is False
     assert detail["record_count"] == 1
     assert "x1" not in json.dumps(result)
+
+
+def test_verified_run_stored_as_immutable_scientific_artifact(tmp_path):
+    from icarus_engine.omnigenesis import ResearchLedger
+    store = ResearchLedger(tmp_path)
+    plan = compile_research_workflow(manifest([
+        job("math", "prime", {"n": 100}),
+        job("world", "umbra_worldline", {"report": umbra_report(),
+                                        "claimed_source_commit": SOURCE}, ["math"]),
+    ]))
+    result = execute_research_workflow(plan)
+    first = store.append_artifact("agent_workflow", result)
+    assert first == store.append_artifact("agent_workflow", result)
+    snap = store.snapshot()
+    assert snap["artifact_count"] == 1
+    assert snap["study_count"] == 0
+    assert snap["recent_artifacts"][0]["kind"] == "agent_workflow"
+    assert snap["recent_artifacts"][0]["status"] == "RESEARCH_ONLY"
+    assert snap["recent_artifacts"][0]["metric"] == 2
+    assert snap["recent_artifacts"][0]["research_only"] is True
+    assert snap["authority"]["execution_authorized"] is False
+
+
+def test_ledger_rejects_spoofed_workflow_status_and_receipt_chain(tmp_path):
+    from icarus_engine.omnigenesis import ResearchLedger
+    from icarus_engine.omnigenesis.contracts import identity
+    store = ResearchLedger(tmp_path)
+    original = execute_research_workflow(compile_research_workflow(
+        manifest([job("math", "prime", {"n": 6})])))
+    changed = copy.deepcopy(original)
+    changed["receipts"][0]["detail"]["next_prime"] = 999
+    changed["run_id"] = identity({k: v for k, v in changed.items() if k != "run_id"})
+    with pytest.raises(ValueError, match="tampered workflow receipt"):
+        store.append_artifact("agent_workflow", changed)
+    changed = copy.deepcopy(original)
+    changed["status"] = "APPROVED_FOR_TRADING"
+    changed["run_id"] = identity({k: v for k, v in changed.items() if k != "run_id"})
+    with pytest.raises(ValueError, match="authority or status"):
+        store.append_artifact("agent_workflow", changed)
+    changed = copy.deepcopy(original)
+    changed["counts"]["PASS"] = 0
+    changed["run_id"] = identity({k: v for k, v in changed.items() if k != "run_id"})
+    with pytest.raises(ValueError, match="workflow count"):
+        store.append_artifact("agent_workflow", changed)
+
+
+def test_operator_cli_workflow_execution_persists_only_derived_receipts(tmp_path):
+    import subprocess
+    import sys
+    from icarus_engine.omnigenesis import ResearchLedger
+
+    payload = manifest([job("math", "prime", {"n": 1009})])
+    spec = tmp_path / "workflow.json"
+    spec.write_text(json.dumps(payload), encoding="utf-8")
+    target = tmp_path / "first-run.json"
+    cmd = [sys.executable, "-m", "icarus_engine.omnigenesis",
+           "workflow", str(spec), "--execute", "--root", str(tmp_path),
+           "--output", str(target)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    report = json.loads(proc.stdout)
+    assert report["counts"]["PASS"] == 1
+    assert report["receipts"][0]["detail"]["next_prime"] == 1013
+    assert json.loads(target.read_text()) == report
+    snap = ResearchLedger(tmp_path).snapshot()
+    assert snap["recent_artifacts"][0]["kind"] == "agent_workflow"
+    assert snap["recent_artifacts"][0]["source_id"] == report["run_id"]
+    # Exclusive receipt creation: second run must not overwrite operator evidence.
+    again = subprocess.run(cmd, capture_output=True, text=True)
+    assert again.returncode != 0
+    assert json.loads(target.read_text()) == report
