@@ -64,3 +64,12 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Typecheck OMNIGENESIS within the complete native app
         run: npm run typecheck
+
+  constellation-e2e:
+    name: Governed twelve-worker Constellation rehearsal
+    # A green core engine test is a prerequisite; this is an actual nested
+    # reusable-workflow/parallel-artifact trial, not a synthetic green badge.
+    needs: omnigenesis
+    permissions:
+      contents: read
+    uses: ./.github/workflows/omnigenesis-constellation.yml
