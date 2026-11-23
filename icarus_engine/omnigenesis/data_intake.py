@@ -118,7 +118,8 @@ def inspect_market_tape(path: str | Path, manifest: Mapping[str, Any], *,
     if tape.stat().st_size > max_bytes:
         raise ValueError("byte budget exceeded")
     sha = hashlib.sha256()
-    previous_key = None
+    previous_received = None
+    last_contract_sequence = {}
     seen = set()
     counts = Counter()
     nbytes = 0
@@ -157,10 +158,17 @@ def inspect_market_tape(path: str | Path, manifest: Mapping[str, Any], *,
                 raise ValueError("future record or post-capture arrival")
             if not any(start <= observed < end and sym == name for start, end, sym in schedule):
                 raise ValueError("event outside declared contract roll interval")
-            key = (received, sequence)
-            if previous_key is not None and key <= previous_key:
-                raise ValueError("out-of-order received time / sequence")
-            previous_key = key
+            # Receive timestamps are global nondecreasing. A normalized
+            # sequence is monotonic *within its declared contract*; different
+            # contracts may legitimately use overlapping or reset counters.
+            # This checks ordering only, NOT venue packet/sequence completeness.
+            if previous_received is not None and received < previous_received:
+                raise ValueError("out-of-order received timestamp")
+            last_sequence = last_contract_sequence.get(name)
+            if last_sequence is not None and sequence <= last_sequence:
+                raise ValueError("out-of-order per-contract sequence")
+            previous_received = received
+            last_contract_sequence[name] = sequence
             kind = record["event_type"]
             if kind not in _EVENT_KINDS:
                 raise ValueError("unsupported event kind")
