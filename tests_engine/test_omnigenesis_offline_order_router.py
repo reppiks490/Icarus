@@ -125,7 +125,7 @@ def test_halt_allows_subsequent_late_fills_but_no_new_exposure_requests():
     assert r["position_contracts"] == 1
     assert r["halted"] is True
     assert r["outstanding_order_ids"] == []
-    assert r["must_cancel_and_reconcile_externally"] is False
+    assert r["must_cancel_and_reconcile_externally"] is True
 
 
 def test_mismatched_position_snapshot_halts_and_discloses_disagreement():
@@ -252,3 +252,29 @@ def test_limit_order_never_accepts_worse_than_user_declared_price():
     assert replay_offline_order_router(buy)["position_contracts"] == 1
     sell["events"][2]["price_ticks"] = 10001
     assert replay_offline_order_router(sell)["position_contracts"] == -1
+
+
+def test_safety_halt_with_zero_working_orders_still_requires_external_reconcile():
+    # A local flat/canceled state is NOT evidence of actual exchange positions.
+    no_orders = config([event(1, "HALT", reason="RISK_HALT")])
+    report = replay_offline_order_router(no_orders)
+    assert report["outstanding_order_ids"] == []
+    assert report["halted"] is True
+    assert report["must_cancel_and_reconcile_externally"] is True
+    assert report["actual_exchange_reconciled"] is False
+    assert report["broker_order_count"] == 0
+
+    canceled = config([
+        submit(1, "o1", "BUY", 2),
+        event(2, "ACK", order_id="o1"),
+        event(3, "HALT", reason="RISK_HALT"),
+        event(4, "CANCEL", order_id="o1"),
+        event(5, "CANCEL_ACK", order_id="o1"),
+        event(6, "RECONCILE", position_contracts=0),
+    ])
+    result = replay_offline_order_router(canceled)
+    assert result["outstanding_order_ids"] == []
+    assert result["reconciliation_failed"] is False
+    assert result["must_cancel_and_reconcile_externally"] is True
+    assert result["actual_exchange_reconciled"] is False
+    assert result["authority"]["execution_authorized"] is False
