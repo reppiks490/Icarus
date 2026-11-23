@@ -229,3 +229,83 @@ def test_operator_cli_workflow_execution_persists_only_derived_receipts(tmp_path
     again = subprocess.run(cmd, capture_output=True, text=True)
     assert again.returncode != 0
     assert json.loads(target.read_text()) == report
+
+
+def _paper_cfg():
+    return {"schema_version": "icarus-omnigenesis-paper-execution-v1",
+            "seed": 12, "bars": 160,
+            "strategy": {"kind": "SMA_CROSS", "fast": 3, "slow": 10,
+                         "direction": "trend"},
+            "execution": {"contracts": 1, "tick_value_cents": 125,
+                          "fee_per_contract_cents": 200, "slippage_ticks": 2,
+                          "latency_bars": 1},
+            "risk": {"initial_cash_cents": 10_000_000,
+                     "max_loss_cents": 5_000_000,
+                     "max_drawdown_cents": 5_000_000,
+                     "max_order_events": 100}}
+
+
+def test_agent_workflow_paper_execution_and_tournament_only_in_science_ledger(tmp_path):
+    from icarus_engine.omnigenesis import ResearchLedger
+    from icarus_engine.omnigenesis.contracts import identity
+    paper = _paper_cfg()
+    tournament = {
+        "schema_version": "icarus-omnigenesis-paper-arena-v1",
+        "seed": paper["seed"], "bars": 180,
+        "candidates": [
+            {"kind": "SMA_CROSS", "fast": 3, "slow": 10, "direction": "trend"},
+            {"kind": "SMA_CROSS", "fast": 4, "slow": 15, "direction": "reversion"},
+        ],
+        "execution": paper["execution"], "risk": paper["risk"]
+    }
+    plan = compile_research_workflow(manifest([
+        job("paper", "paper_execution", {"spec": paper}),
+        job("arena", "paper_tournament", {"spec": tournament}, ["paper"]),
+    ]))
+    report = execute_research_workflow(plan)
+    assert report["counts"] == {"PASS": 2, "FAIL": 0, "BLOCKED": 0}
+    assert report["no_network_or_broker_operations"] is True
+    assert report["authority"]["execution_authorized"] is False
+    assert report["receipts"][0]["detail"]["broker_order_count"] == 0
+    assert report["receipts"][0]["detail"]["profitability_verified"] is False
+    assert report["receipts"][1]["detail"]["strategy_promoted"] is False
+    assert report["receipts"][1]["detail"]["kind"] == "SYNTHETIC_CHALLENGER_TOURNAMENT"
+    assert report["receipts"][0]["detail"]["kind"] == "SYNTHETIC_PAPER_EXECUTION"
+    assert report["run_id"] == identity({k: v for k, v in report.items() if k != "run_id"})
+    ledger = ResearchLedger(tmp_path)
+    ledger.append_artifact("agent_workflow", report)
+    snapshot = ledger.snapshot()
+    assert snapshot["artifact_count"] == 1
+    assert snapshot["recent_artifacts"][0]["kind"] == "agent_workflow"
+    assert snapshot["recent_artifacts"][0]["status"] == "RESEARCH_ONLY"
+
+
+def test_agent_workflow_rejects_paper_broker_injection_and_blocks_dependencies():
+    bad = _paper_cfg()
+    bad["execution"]["exchange_api_key"] = "should-not-be-accepted"
+    plan = compile_research_workflow(manifest([
+        job("unsafe", "paper_execution", {"spec": bad}),
+        job("downstream", "prime", {"n": 17}, ["unsafe"]),
+    ]))
+    run = execute_research_workflow(plan)
+    assert run["status"] == "RESEARCH_ONLY_REVIEW_REQUIRED"
+    assert run["counts"] == {"PASS": 0, "FAIL": 1, "BLOCKED": 1}
+    assert run["receipts"][0]["detail"]["error_code"] == "RESEARCH_OPERATOR_REJECTED"
+    assert run["receipts"][1]["status"] == "BLOCKED"
+    assert run["authority"]["auto_promote"] is False
+
+
+def test_paper_cli_prints_research_receipt_without_mutating_ledger(tmp_path):
+    import subprocess
+    import sys
+    from icarus_engine.omnigenesis import ResearchLedger
+    payload = _paper_cfg()
+    path = tmp_path / "paper.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    cmd = [sys.executable, "-m", "icarus_engine.omnigenesis", "paper", str(path)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    report = json.loads(proc.stdout)
+    assert report["authority"]["execution_authorized"] is False
+    assert report["broker_order_count"] == 0
+    assert report["results"]["final_position_contracts"] == 0
+    assert ResearchLedger(tmp_path).snapshot()["artifact_count"] == 0
