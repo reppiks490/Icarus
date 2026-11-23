@@ -36,7 +36,7 @@ def test_partial_fill_cancel_race_and_late_ack_are_expressly_modelled():
         event(3, "ACK", order_id="o1"),
         event(4, "CANCEL", order_id="o1"),
         event(5, "FILL", order_id="o1", execution_id="x2",
-              quantity=1, price_ticks=10001),  # can race cancel
+              quantity=1, price_ticks=9999),  # can race cancel at a better buy price
         event(6, "CANCEL_ACK", order_id="o1"),
         event(7, "RECONCILE", position_contracts=3),
     ])
@@ -132,7 +132,7 @@ def test_mismatched_position_snapshot_halts_and_discloses_disagreement():
     s = config([submit(1, "o1", "BUY", 1),
                 event(2, "ACK", order_id="o1"),
                 event(3, "FILL", order_id="o1", execution_id="f1",
-                      quantity=1, price_ticks=10004),
+                      quantity=1, price_ticks=9999),
                 event(4, "RECONCILE", position_contracts=0)])
     r = replay_offline_order_router(s)
     assert r["position_contracts"] == 1
@@ -194,16 +194,16 @@ def test_overfill_duplicate_execution_id_and_fill_after_cancel_ack_refused():
     with pytest.raises(ValueError, match="overfills"):
         replay_offline_order_router(config(initial + [
             event(4, "FILL", order_id="o1", execution_id="x2",
-                  quantity=2, price_ticks=10001)]))
+                  quantity=2, price_ticks=9999)]))
     with pytest.raises(ValueError, match="duplicate execution ID"):
         replay_offline_order_router(config(initial + [
             event(4, "FILL", order_id="o1", execution_id="x1",
-                  quantity=1, price_ticks=10001)]))
+                  quantity=1, price_ticks=9999)]))
     settled = initial + [
         event(4, "CANCEL", order_id="o1"),
         event(5, "CANCEL_ACK", order_id="o1"),
         event(6, "FILL", order_id="o1", execution_id="x2",
-              quantity=1, price_ticks=10001)]
+              quantity=1, price_ticks=9999)]
     with pytest.raises(ValueError, match="fill after terminal"):
         replay_offline_order_router(config(settled))
 
@@ -233,3 +233,22 @@ def test_mode_cannot_be_live_or_paper_broker_and_strict_root():
     s["credentials"] = {"key": "forbidden"}
     with pytest.raises(ValueError, match="router schema"):
         replay_offline_order_router(s)
+
+
+def test_limit_order_never_accepts_worse_than_user_declared_price():
+    buy = config([submit(1, "buy1", "BUY", 1),
+                  event(2, "ACK", order_id="buy1"),
+                  event(3, "FILL", order_id="buy1", execution_id="x1",
+                        quantity=1, price_ticks=10001)])
+    with pytest.raises(ValueError, match="submitted limit price"):
+        replay_offline_order_router(buy)
+    sell = config([submit(1, "sell1", "SELL", 1),
+                   event(2, "ACK", order_id="sell1"),
+                   event(3, "FILL", order_id="sell1", execution_id="x1",
+                         quantity=1, price_ticks=9999)])
+    with pytest.raises(ValueError, match="submitted limit price"):
+        replay_offline_order_router(sell)
+    buy["events"][2]["price_ticks"] = 9999
+    assert replay_offline_order_router(buy)["position_contracts"] == 1
+    sell["events"][2]["price_ticks"] = 10001
+    assert replay_offline_order_router(sell)["position_contracts"] == -1
