@@ -278,3 +278,27 @@ def test_safety_halt_with_zero_working_orders_still_requires_external_reconcile(
     assert result["must_cancel_and_reconcile_externally"] is True
     assert result["actual_exchange_reconciled"] is False
     assert result["authority"]["execution_authorized"] is False
+
+
+def test_router_report_reconciliation_key_present_for_all_terminal_states():
+    """Guard against accidentally commenting out the safety report field."""
+    cases = [
+        config([]),
+        config([submit(1, "o1", "BUY", 1),
+                event(2, "ACK", order_id="o1"),
+                event(3, "FILL", order_id="o1", execution_id="fill1",
+                      quantity=1, price_ticks=10000)]),
+        config([event(1, "HALT", reason="RISK_HALT")]),
+        config([submit(1, "o1", "BUY", 1),
+                event(2, "CANCEL", order_id="o1"),
+                event(3, "CANCEL_ACK", order_id="o1"),
+                event(4, "HALT", reason="RISK_HALT")]),
+    ]
+    for spec in cases:
+        result = replay_offline_order_router(spec)
+        assert "must_cancel_and_reconcile_externally" in result
+        assert result["must_cancel_and_reconcile_externally"] is result["halted"]
+        assert result["actual_exchange_reconciled"] is False
+        assert result["broker_order_count"] == 0
+        assert result["receipt_id"] == identity(
+            {key: value for key, value in result.items() if key != "receipt_id"})
