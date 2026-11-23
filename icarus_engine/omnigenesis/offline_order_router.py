@@ -226,7 +226,7 @@ def replay_offline_order_router(spec: Mapping[str, Any]) -> dict:
         "halted": halted, "halt_reason": halt_reason,
         "reconciliation_failed": reconciliation_failed,
         "outstanding_order_ids": open_ids,
-        "must_cancel_and_reconcile_externally": halted and bool(open_ids),
+        # A safety halt is not an external reconciliation certificate, even\n        # if every simulated order is already terminal.\n        "must_cancel_and_reconcile_externally": halted,
         "orders": {oid: {"status": o["status"], "side": o["side"],
                           "remaining": o["remaining"],
                           "filled_contracts": o["filled_contracts"],
