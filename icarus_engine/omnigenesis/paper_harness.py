@@ -136,6 +136,7 @@ def _simulate(path: list[dict], strategy: dict, execution: dict,
     gross_fees = 0
     max_drawdown = 0
     risk_exit_due = None
+    risk_exit_required = False
     extra_signal_delay_bars = 0
 
     def eligible_open(after_index: int, delay_bars: int) -> int:
@@ -183,7 +184,7 @@ def _simulate(path: list[dict], strategy: dict, execution: dict,
         # kill was latched, exit at THIS open; never pretend to exit on a prior
         # close that was only learned after the bar ended.
         if risk_exit_due is not None and i >= risk_exit_due and pos:
-            fill(i, row["open_ticks"], 0, "RISK_KILL_FIRST_CAUSAL_OPEN", None)
+            fill(i, row["open_ticks"], 0, "RISK_KILL_FIRST_CAUSAL_OPEN", halt_at)
         if not halted:
             eligible = [x for x in delayed_signals if x[0] <= i]
             delayed_signals = [x for x in delayed_signals if x[0] > i]
@@ -209,9 +210,11 @@ def _simulate(path: list[dict], strategy: dict, execution: dict,
             if equity <= risk["initial_cash_cents"] - risk["max_loss_cents"]:
                 halted, halt_reason, halt_at = True, "MAX_LOSS_CLOSE_MARK", i
                 risk_exit_due = eligible_open(i, 1)
+                risk_exit_required = pos != 0
             elif highwater - equity >= risk["max_drawdown_cents"]:
                 halted, halt_reason, halt_at = True, "MAX_DRAWDOWN_CLOSE_MARK", i
                 risk_exit_due = eligible_open(i, 1)
+                risk_exit_required = pos != 0
         # Form signal from fully observed close ONLY; schedule on a later open.
         if not halted and i + 1 >= slow:
             fast_sum = sum(closed[i - fast + 1: i + 1])
@@ -253,8 +256,8 @@ def _simulate(path: list[dict], strategy: dict, execution: dict,
             "stale_signal_count": rejected_signals,
             "extra_causality_delay_bars": extra_signal_delay_bars,
             "unfilled_causal_risk_exit": bool(
-                risk_exit_due is not None and risk_exit_due >= len(path)
-                and halt_at is not None),
+                risk_exit_required and risk_exit_due is not None
+                and risk_exit_due >= len(path)),
             "fills": fills, "decisions": decisions}
 
 
