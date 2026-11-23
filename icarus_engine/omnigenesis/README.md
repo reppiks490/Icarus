@@ -196,3 +196,26 @@ execution or production deployment is configured.
 
 See docs/icarus/OMNIGENESIS_SOVEREIGN_HYBRID.md for security and
 execution-approval limitations.
+
+## Phase 21 + Sovereign Constellation — historical time and parallel CI research workers
+
+Historical paper: run_historical_paper_replay(operator_supplied_history_spec) enforces
+strict OHLC observed/open/closed/received chronology and only models hypothetical
+later-open fills after the signal actually became available. No real exchange
+origin, data entitlement, broker execution, or profitability is verified.
+
+Constellation: build_plan(seed) → run_worker(plan,lane,shard) → arbitrate(plan,receipts).
+Six research disciplines (chronos, execution, reconciliation, nemesis, worldline,
+memory) across two unique shards create twelve typed content-addressed receipts.
+A separate fail-closed tribunal rejects tampered/duplicate/missing/mislabelled
+receipts and checks deterministic same-source replay. No auto-promotions.
+
+Nested GitHub workflow hierarchy is in:
+- .github/workflows/omnigenesis-constellation.yml — parent research dispatcher
+- .github/workflows/omnigenesis-constellation-worker.yml — reusable specialists
+- .github/workflows/omnigenesis-constellation-tribunal.yml — reusable review gate
+
+The hourly GitHub schedule is inactive until explicit review/merge to default;
+this draft branch has no continuous production swarm. Full design, CLI,
+evidence limitations and release gates:
+docs/icarus/OMNIGENESIS_CONSTELLATION_SWARM.md.
