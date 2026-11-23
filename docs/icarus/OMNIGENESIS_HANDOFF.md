@@ -365,3 +365,75 @@ This handoff is deliberately exact about what is BUILT versus what is only PROPO
 **Next work and release gates:** Verify current PR #503 HEAD and dedicated CI, repair canonical CI failures without weakening tests, independently attest source/contract/rights via NEXUS, implement replay/queue/latency/transaction-cost comparisons against actual licensed historical depth if available, and measure real desktop/iPhone rendered UI and touch paths. Independent APEX/DAEDALUS review and ASCENDANCY governance remain mandatory. No force push, automatic merge, scheduled Codex, live trades or undocumented production deployment.
 
 **Exact handoff mode:** This is a **development-branch** status record, not an installed Windows application or owner-authorized release. Do not create a second repository or fresh replacement microkernel. Continue PR #503 on agent/omnigenesis-phase-01-foundation and preserve all pre-existing phases 1–16.
+
+
+---
+
+## 14. Phases 19–20 offline execution research — authoritative current supplement
+
+**Scope:** ICARUS branch agent/omnigenesis-phase-01-foundation, draft PR #503.
+Older handoff instructions asserting Phase 17 is unimplemented or listing
+only five workflow operators are superseded by sections 13–14 and actual
+source. Do not replace ICARUS or its existing live/paper execution engine.
+
+### New source and operations
+
+- icarus_engine/omnigenesis/paper_harness.py — seeded synthetic OHLC
+  generator, causal SMA-cross strategy, signals calculated at close and
+  filled at later opens with adverse slippage, per-contract fee and
+  integer-cent/tick accounting. Risk event and loss/drawdown caps and
+  synthetic forced end settlement, plus training-only champion evaluation
+  with one 70/30 synthetic split. This is NOT observed fill reconstruction
+  or a guaranteed maximum loss.
+- icarus_engine/omnigenesis/offline_order_router.py — versioned
+  OFFLINE_SANDBOX mock order protocol with SUBMIT/ACK/FILL/CANCEL/
+  CANCEL_ACK/REJECT/HALT/RECONCILE. Replay-local duplicate-message
+  handling, partial fill and cancel races, buy/sell limit price checks,
+  in-flight exposure caps and fail-closed mismatch halting. No network,
+  credentials, real broker, real order ID, order output API or venue claim.
+- icarus_engine/omnigenesis/agent_workflow.py — allowlisted operators
+  paper_execution, paper_tournament, offline_order_router now join the
+  prior prime/synthetic_book/market_intake/umbra_worldline/formal operators.
+  Offline router safety halt or unmatched position snapshot fails its
+  operator and BLOCKS all downstream dependencies. Its successful
+  synthetic receipt may enter the existing summary-only immutable ledger.
+- icarus_engine/omnigenesis/__main__.py — new explicit local CLI commands
+  paper, paper-arena and offline-router. No automatic scheduler on these
+  commands, no side effects except explicitly authorized file outputs
+  in the existing research workflow command.
+- Tests: tests_engine/test_omnigenesis_paper_harness.py and
+  test_omnigenesis_offline_order_router.py plus integration/CLI/ledger
+  tests in test_omnigenesis_agent_workflow.py. Negative tests verify
+  data timing, execution costs, kill semantics, no agent authority,
+  idempotency, stale cancels, late ACK/fills, signed exposure,
+  post-cancel fills rejection and price limits.
+- .github/workflows/omnigenesis-offline-agent-evidence.yml — new
+  PR-triggered synthetic CI + seven-day JSON witness upload, read-only
+  permissions, daily UTC seeded experiments. The cron does not run on
+  this draft PR: scheduled GitHub workflows run from default branch
+  only. After a review-approved merge, it can run at 06:41 UTC daily.
+  No broker, live market, paid data, Codex or automatic promotion.
+
+**Current evidence discipline:** See exact current PR head GitHub Actions.
+Earlier Phase 19 and Phase 20 dedicated Python/mobile checks passed at
+their respective SHAs; they do not prove later edits and are not a
+full repository release certificate. A scheduled PR test was observed
+passing at commit 0575a1d8, but later changes require fresh tests.
+Compare canonical Linux/Windows, UI/browser, portfolio, federation,
+install and native phone checks independently before any merge.
+
+**Serious incomplete requirements:** independently authentic market data
+providers, certified exchange-native MBO and quote state, order/latency/
+queue/partial-fill inference with historical replay, official futures
+contracts and margin, durable cross-session idempotency and order
+reconciliation, verified broker sandbox adapter and outage failover,
+actual kill-switch wiring, robust purged OOD validation and independent
+APEX/DAEDALUS/AEGIS review. Neither synthetic nor mock router proves
+live profits, survival under market gaps or human/AI consciousness.
+
+**Reviewer acceptance rule:** preserve research_only=true,
+execution_authorized=false, production_decision_authorized=false and
+auto_promote=false, no live routes/secrets, no force-push, no blind
+merge. Check that every new doc and source claim has code/test/CI
+evidence at the same source SHA. Keep PR draft until independent
+review and explicit release authorization.
