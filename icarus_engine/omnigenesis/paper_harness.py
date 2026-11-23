@@ -214,6 +214,11 @@ def _simulate(path: list[dict], strategy: dict, execution: dict,
         # No evidence of a real order at that quote is implied.
         fill(len(path) - 1, path[-1]["close_ticks"], 0,
              "SYNTHETIC_FINAL_SETTLEMENT", None)
+        # Unlike a mid-bar mark, final cash includes exit fees and
+        # adverse slippage. They can set the true minimum equity / peak
+        # drawdown and must not disappear from risk reports.
+        min_equity = min(min_equity, cash)
+        max_drawdown = max(max_drawdown, highwater - cash)
     ending = cash
     return {"start_cash_cents": risk["initial_cash_cents"],
             "end_cash_cents": ending,
