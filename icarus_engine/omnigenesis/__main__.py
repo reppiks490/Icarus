@@ -73,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     workflow = commands.add_parser("workflow", help="compile explicit bounded local research workflow")
     workflow.add_argument("spec", type=Path)
     workflow.add_argument("--execute", action="store_true", help="explicitly run allowable research-only operators")
+    workflow.add_argument("--root", type=Path, help="persist verified derived run summary in existing research ledger")
     workflow.add_argument("--output", type=Path, help="write new receipt JSON; exclusive creation, never overwrites")
     dashboard = commands.add_parser("dashboard", help="export offline animated observatory")
     dashboard.add_argument("--root", required=True, type=Path)
@@ -143,6 +144,10 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "workflow":
         plan = compile_research_workflow(read_limited_json(args.spec))
         result = execute_research_workflow(plan) if args.execute else plan
+        if args.root is not None:
+            if not args.execute:
+                parser.error("--root requires --execute for a completed receipt")
+            ResearchLedger(args.root).append_artifact("agent_workflow", result)
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             with args.output.open("x", encoding="utf-8") as fp:
