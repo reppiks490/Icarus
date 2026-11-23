@@ -44,6 +44,10 @@ Workflow JSON root: schema_version = icarus-omnigenesis-agent-workflow-v1; name 
 
 APEX owns evidence truth, DAEDALUS/AEGIS independent qualification, ASCENDANCY governed scheduling. ICARUS/Pulse remains sole owner of broker and trading-execution controls. Research authority flags always: research_only true, execution_authorized false, production_decision_authorized false, auto_promote false.
 
+## Phase 17 event-order precision clarification
+
+Normalized historical files are checked against a **global nondecreasing received timestamp** and a **strictly increasing sequence per declared contract**. A later receive timestamp must never conceal a regressed sequence for the same contract. Different contract symbols may reset sequence counters after a roll, so a globally increasing sequence is not assumed. The current format has no venue-channel/packet gap map: passing the ordering check does **not** establish exchange sequence completeness, authentic MBO, provider source identity or tradeability. Negative tests exercise per-contract regression, allowed contract reset and arrival-clock reversal. The exact source/file SHA still comes from an operator-authored manifest until NEXUS independent evidence is connected.
+
 ## Unfinished integration and next engineering gates
 
 1. Current standalone PR #503 is DRAFT. Check complete GitHub Actions at its current HEAD; a dedicated workflow passing does not establish all canonical Linux/Windows, Expo installation, UI workspace browser or portfolio Playwright success.
