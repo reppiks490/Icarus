@@ -83,6 +83,12 @@ def main(argv: list[str] | None = None) -> int:
     arena.add_argument("spec", type=Path)
     router = commands.add_parser("offline-router", help="replay sandbox-only order message lifecycle; never connect to broker")
     router.add_argument("spec", type=Path)
+    constellation_import = commands.add_parser("constellation-import", help="verify completed swarm artifacts and append local read-only evidence")
+    constellation_import.add_argument("--plan", required=True, type=Path)
+    constellation_import.add_argument("--checkpoint", required=True, type=Path)
+    constellation_import.add_argument("--tribunal", required=True, type=Path)
+    constellation_import.add_argument("--predecessor", type=Path)
+    constellation_import.add_argument("--root", required=True, type=Path)
     dashboard = commands.add_parser("dashboard", help="export offline animated observatory")
     dashboard.add_argument("--root", required=True, type=Path)
     dashboard.add_argument("--output", required=True, type=Path)
@@ -170,6 +176,21 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "offline-router":
         report = replay_offline_order_router(read_limited_json(args.spec))
         print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "constellation-import":
+        from .constellation_recovery import _read as read_sealed_json
+        artifact_id = ResearchLedger(args.root).append_constellation(
+            read_sealed_json(args.plan),
+            read_sealed_json(args.checkpoint),
+            read_sealed_json(args.tribunal),
+            predecessor=read_sealed_json(args.predecessor)
+                if args.predecessor else None,
+        )
+        print(json.dumps({"artifact_id": artifact_id,
+                          "status": "LOCAL_REPLAY_ONLY",
+                          "research_only": True,
+                          "broker_order_count": 0,
+                          "github_api_provenance_verified": False},
+                         sort_keys=True))
     elif args.command == "dashboard":
         snap = ResearchLedger(args.root).snapshot(limit=100)
         path = render_observatory(snap, args.output)
