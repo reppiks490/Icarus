@@ -1,0 +1,161 @@
+"""Phase 18 research DAG orchestration tests: no live order or auto-promotion."""
+import copy
+import hashlib
+import json
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from icarus_engine.omnigenesis.agent_workflow import (
+    compile_research_workflow, execute_research_workflow
+)
+
+SOURCE = "b" * 40
+
+
+def hash32(n):
+    n &= 0xffffffff
+    n = ((n ^ (n >> 16)) * 0x7feb352d) & 0xffffffff
+    n = ((n ^ (n >> 15)) * 0x846ca68b) & 0xffffffff
+    return (n ^ (n >> 16)) & 0xffffffff
+
+
+def umbra_report():
+    policy = {"trade": .72, "climate": .38, "medicine": .48,
+              "innovation": .58, "migration": .48, "conservation": .48,
+              "conflict": .25}
+    rows = [{"seed": hash32(49021 + (i + 1) * 0x9e3779b1),
+             "baseline": 90 + i, "treatment": 88 + i, "diff": 2,
+             "foodDiff": 1.5, "emissionsDiff": -0.2} for i in range(3)]
+    return {"version": "5.0.0", "seed": 49021, "trials": 3,
+            "steps": 6, "baseline": policy,
+            "treatment": {**policy, "trade": 0.0},
+            "mean": 2, "median": 2, "p05": 2, "p95": 2,
+            "sd": 0, "positive": 3, "paths": rows}
+
+
+def job(name, op, args, deps=None, seconds=10):
+    return {"task_id": name, "operator": op,
+            "depends_on": deps or [], "parameters": args,
+            "estimated_compute_seconds": seconds}
+
+
+def manifest(tasks, budget=200):
+    return {"schema_version": "icarus-omnigenesis-agent-workflow-v1",
+            "name": "Validated ICARUS x UMBRA research-only workflow",
+            "tasks": tasks, "compute_budget_seconds": budget}
+
+
+def test_agentic_research_dag_sealed_replayed_and_read_only():
+    spec = manifest([
+        job("book", "synthetic_book", {"seed": 17, "steps": 20}, ["math"]),
+        job("world", "umbra_worldline", {
+            "report": umbra_report(), "claimed_source_commit": SOURCE}, ["math"]),
+        job("math", "prime", {"n": 100}),
+    ])
+    plan = compile_research_workflow(spec)
+    assert plan["status"] == "PLANNED_NOT_EXECUTED"
+    assert [x["task_id"] for x in plan["tasks"]] == ["math", "book", "world"]
+    assert plan["authority"]["execution_authorized"] is False
+    assert plan["actual_broker_execution_authorized"] is False
+    a = execute_research_workflow(plan)
+    b = execute_research_workflow(plan)
+    assert a == b
+    assert a["counts"] == {"PASS": 3, "FAIL": 0, "BLOCKED": 0}
+    assert a["status"] == "RESEARCH_ONLY_COMPLETE"
+    assert a["scientific_qualification"] is False
+    assert a["external_approval_required"] is True
+    assert all(x["execution_authorized"] is False for x in a["receipts"])
+    assert a["receipts"][0]["detail"]["next_prime"] == 101
+    assert a["receipts"][-1]["detail"]["kind"] == "SYNTHETIC_MODEL_INTERNAL"
+    assert a["receipts"][1]["previous_receipt"] == a["receipts"][0]["receipt_id"]
+    assert a["final_receipt"] == a["receipts"][-1]["receipt_id"]
+    assert len(a["run_id"]) == 64
+
+
+def test_task_input_order_irrelevant_and_dependency_cycle_rejected():
+    tasks = [job("second", "prime", {"n": 5}, ["first"]),
+             job("first", "prime", {"n": 3})]
+    assert compile_research_workflow(manifest(tasks)) == (
+        compile_research_workflow(manifest(list(reversed(tasks)))))
+    cyclic = [job("alpha", "prime", {"n": 1}, ["beta"]),
+              job("beta", "prime", {"n": 2}, ["alpha"])]
+    with pytest.raises(ValueError, match="dependency cycle"):
+        compile_research_workflow(manifest(cyclic))
+
+
+def test_fail_closed_status_and_downstream_blocking_on_missing_file():
+    flow = compile_research_workflow(manifest([
+        job("intake", "market_intake", {"path": "/not/a/real/tape.jsonl",
+                                      "manifest": {}}, seconds=10),
+        job("theory", "prime", {"n": 3}, ["intake"]),
+    ]))
+    result = execute_research_workflow(flow)
+    assert result["counts"] == {"PASS": 0, "FAIL": 1, "BLOCKED": 1}
+    assert result["status"] == "RESEARCH_ONLY_REVIEW_REQUIRED"
+    assert result["receipts"][0]["detail"]["error_code"] == "RESEARCH_OPERATOR_REJECTED"
+    assert result["receipts"][1]["detail"]["reason"] == "dependency did not pass"
+
+
+@pytest.mark.parametrize("operation,pattern", [
+    (lambda p: p["authority"].update(execution_authorized=True), "authority"),
+    (lambda p: p.update(actual_broker_execution_authorized=True), "authority"),
+    (lambda p: p["tasks"][0]["parameters"].update(n=999), "tampered"),
+    (lambda p: p.update(status="RUNNING"), "prepared"),
+])
+def test_reject_mutated_seal_or_authority(operation, pattern):
+    plan = compile_research_workflow(manifest([job("math", "prime", {"n": 5})]))
+    operation(plan)
+    with pytest.raises(ValueError, match=pattern):
+        execute_research_workflow(plan)
+
+
+def test_unknown_agents_shell_or_order_operations_refused():
+    for op in ("execute_order", "shell", "pip_install", "broker_connect",
+               "arbitrary_llm", "deploy", "external_http"):
+        with pytest.raises(ValueError, match="unapproved workflow operator"):
+            compile_research_workflow(manifest([job("bad", op, {})]))
+
+
+def test_invalid_budget_unknown_dependency_and_huge_steps_refused():
+    with pytest.raises(ValueError, match="budget"):
+        compile_research_workflow(manifest(
+            [job("math", "prime", {"n": 7}, seconds=100)], budget=2))
+    with pytest.raises(ValueError, match="missing workflow dependency"):
+        compile_research_workflow(manifest(
+            [job("math", "prime", {"n": 7}, ["phantom"])]))
+    with pytest.raises(ValueError, match="synthetic event cap"):
+        compile_research_workflow(manifest(
+            [job("book", "synthetic_book", {"seed": 0, "steps": 2000})]))
+
+
+def test_worker_intake_uses_actual_operator_bytes_without_promoting_provenance(tmp_path):
+    received = "2026-01-01T00:00:01+00:00"
+    row = {"event_id": "x1", "sequence": 1, "contract": "NQZ6",
+           "observed_at": "2026-01-01T00:00:00+00:00", "received_at": received,
+           "event_type": "trade", "side": "buy", "price_ticks": 2000, "quantity": 1}
+    path = tmp_path / "local_tape.jsonl"
+    path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    intake_manifest = {
+        "schema_version": "icarus-omnigenesis-market-manifest-v1",
+        "dataset_id": "local-adversarial-fixture",
+        "provider": "TEST FIXTURE", "venue": "TEST", "asset": "NQ",
+        "source_category": "TRADES_NORMALIZED",
+        "license_reference": "NO REAL RIGHTS ASSERTED",
+        "expected_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "expected_records": 1,
+        "contracts": [{"symbol": "NQZ6", "start_at": "2025-12-31T00:00:00Z",
+                       "end_at": "2026-01-02T00:00:00Z", "tick_size": "0.25"}],
+        "capture_cutoff": "2026-01-03T00:00:00Z",
+    }
+    plan = compile_research_workflow(manifest([
+        job("intake", "market_intake", {
+            "path": str(path), "manifest": intake_manifest})]))
+    result = execute_research_workflow(plan)
+    assert result["counts"] == {"PASS": 1, "FAIL": 0, "BLOCKED": 0}
+    detail = result["receipts"][0]["detail"]
+    assert detail["kind"] == "DECLARED_OBSERVED_BYTES_CHECKED"
+    assert detail["source_authenticity_verified"] is False
+    assert detail["provider_license_verified"] is False
+    assert detail["record_count"] == 1
+    assert "x1" not in json.dumps(result)
