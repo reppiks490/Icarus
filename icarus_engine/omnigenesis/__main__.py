@@ -19,6 +19,9 @@ from .observatory import render_observatory
 from .formal import formal_certificate
 from .first_passage import label_first_passage
 from .event_bridge import bridge_first_passage
+from .data_intake import inspect_market_tape
+from .umbra_bridge import audit_umbra_worldlines
+from .agent_workflow import compile_research_workflow, execute_research_workflow
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -61,6 +64,16 @@ def main(argv: list[str] | None = None) -> int:
     bridge.add_argument("--positive-event", choices=["UPPER", "LOWER"], default="UPPER")
     bridge.add_argument("--output", type=Path, required=True,
                         help="new local dataset file; refuses overwrite")
+    intake = commands.add_parser("market-intake", help="inspect explicit local normalized JSONL tape; no feed/network")
+    intake.add_argument("tape", type=Path)
+    intake.add_argument("manifest", type=Path)
+    worldline = commands.add_parser("audit-umbra", help="audit a synthetic UMBRA v5 paired-run report")
+    worldline.add_argument("report", type=Path)
+    worldline.add_argument("--claimed-source-commit", required=True)
+    workflow = commands.add_parser("workflow", help="compile explicit bounded local research workflow")
+    workflow.add_argument("spec", type=Path)
+    workflow.add_argument("--execute", action="store_true", help="explicitly run allowable research-only operators")
+    workflow.add_argument("--output", type=Path, help="write new receipt JSON; exclusive creation, never overwrites")
     dashboard = commands.add_parser("dashboard", help="export offline animated observatory")
     dashboard.add_argument("--root", required=True, type=Path)
     dashboard.add_argument("--output", required=True, type=Path)
@@ -120,6 +133,21 @@ def main(argv: list[str] | None = None) -> int:
             json.dump(result["dataset"], fp, indent=2, sort_keys=True)
         print(json.dumps({"output": str(args.output),
                           "audit": result["audit"]}, indent=2, sort_keys=True))
+    elif args.command == "market-intake":
+        report = inspect_market_tape(args.tape, read_limited_json(args.manifest))
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "audit-umbra":
+        report = audit_umbra_worldlines(read_limited_json(args.report),
+                                        claimed_source_commit=args.claimed_source_commit)
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "workflow":
+        plan = compile_research_workflow(read_limited_json(args.spec))
+        result = execute_research_workflow(plan) if args.execute else plan
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            with args.output.open("x", encoding="utf-8") as fp:
+                json.dump(result, fp, indent=2, sort_keys=True)
+        print(json.dumps(result, indent=2, sort_keys=True))
     elif args.command == "dashboard":
         snap = ResearchLedger(args.root).snapshot(limit=100)
         path = render_observatory(snap, args.output)
