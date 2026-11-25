@@ -1,4 +1,6 @@
 # Local research inventory — 2026-11-24
+
+**Findings navigation:** [FINDINGS_LOCATIONS.md](FINDINGS_LOCATIONS.md) contains directions to the recorded local and GitHub findings. [findings-locations.json](findings-locations.json) indexes all 275 measured project roots, all 14 pinned model/tokenizer directories and 42 observed artifact paths, plus targeted path checks and environment locations. Resolve local path aliases on the authorized Windows device; do not guess missing paths.
 ## START HERE for the next agent
 This is a local Windows-machine evidence handoff for ICARUS / UMBRA / MYRIAD / POLYMIND. It is research-only, not a deployment or authorization to trade. Read this file, repository-metadata.json and repository-sizes.json before downloading more repositories. All findings are snapshots, not current runtime guarantees. Use authorized Remote Desktop Commander to reverify local paths. <USER_HOME> means the connected Windows user's home; <SYNC_ROOT> means its local Dropbox-synced research root (resolve locally; do not publish account-identifying path components). Unprefixed size-record paths are relative to user home.
 
