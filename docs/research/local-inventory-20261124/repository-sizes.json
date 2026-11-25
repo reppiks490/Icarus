@@ -1,33 +1,39 @@
 {
   "schema": "icarus.local_repository_sizes.v1",
   "as_of_local": "2026-11-24",
-  "method": "Logical length of files from local directory metadata. Nested inventoried roots excluded to avoid overlap. Reparse/offline entries excluded, no hydration. No hardlink or physical allocated-byte reconciliation. Category heuristics based on directory and extension, not content qualification.",
-  "status": "partial",
+  "method": "Logical length of files from directory metadata; nested inventoried roots excluded. Reparse/offline entries excluded; no hydration. No hardlink or physical allocated-byte reconciliation. Categories inferred from directory and extension.",
+  "status": "completed_original_269_roots",
   "summary": {
     "roots_expected": 269,
-    "roots_measured": 268,
-    "logical_bytes": 87951276664,
-    "files": 978888,
+    "roots_measured": 269,
+    "logical_bytes": 100765857325,
+    "files": 1771110,
     "errors": 0,
     "placeholder_entries": 0,
     "placeholder_file_logical_bytes": 0,
     "nested_roots_excluded": 4,
-    "missing": [
-      "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\ClickHouse__ClickHouse"
+    "missing": [],
+    "additional_discovered_roots_pending": [
+      "projects\\icarus-ml-research-sources\\aeon-toolkit--aeon",
+      "projects\\icarus-ml-research-sources\\danijar--dreamerv3",
+      "projects\\icarus-ml-research-sources\\KangOxford--jax-lob",
+      "projects\\icarus-ml-research-sources\\LAMDA-Tabular--TALENT",
+      "projects\\icarus-ml-research-sources\\nicklashansen--tdmpc2",
+      "projects\\icarus-ml-research-sources\\takuseno--d3rlpy"
     ],
     "categories": {
-      "source_other": 26574647622,
-      "weights": 255020418,
-      "data": 5499998644,
-      "build": 343875124,
-      "git": 49987769116,
-      "dependencies": 4460764326,
-      "archives": 829201414
+      "source_other": 35613645526,
+      "weights": 274327054,
+      "data": 5730859315,
+      "build": 566938515,
+      "git": 52857900497,
+      "dependencies": 4591978539,
+      "archives": 1130207879
     },
     "groups": {
       "external": {
-        "count": 87,
-        "bytes": 32709567997,
+        "count": 88,
+        "bytes": 45524148658,
         "errors": 0
       },
       "downloads": {
@@ -51,7 +57,15 @@
         "errors": 0
       }
     },
-    "process_summary": null
+    "process_summary": {
+      "roots_expected": 269,
+      "roots_measured": 269,
+      "logical_bytes_nonoverlap": 100765857325,
+      "files": 1771110,
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "errors": 0
+    }
   },
   "repositories": [
     {
@@ -77,6 +91,36 @@
       "nested_roots_excluded": 0,
       "errors": 0,
       "elapsed_sec": 0.95
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\ClickHouse__ClickHouse",
+      "kind": "GIT",
+      "head_at_discovery": "b40fcbae8",
+      "logical_bytes": 12814580661,
+      "file_count": 792222,
+      "categories": {
+        "source_other": 9038997904,
+        "archives": 301006465,
+        "data": 230860671,
+        "build": 223063391,
+        "weights": 19306636,
+        "dependencies": 131214213,
+        "git": 2870131381
+      },
+      "file_counts": {
+        "source_other": 764900,
+        "archives": 497,
+        "data": 956,
+        "build": 8005,
+        "weights": 12,
+        "dependencies": 10420,
+        "git": 7432
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 161.53
     },
     {
       "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\ccxt__ccxt",
