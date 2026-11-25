@@ -85,3 +85,9 @@ Original machine scope: Git repository and source discovery under user home to d
 
 ## 6. Agent transfer
 Start with README.md, CONTINUE.md and both inventory JSONs. Then inspect current local processes, exact branches, current model receipt files, existing trainers and selected data schemas. If a previous process no longer exists, reconstruct state from its persisted receipt, not from an old PID. Recheck all dynamic facts. Coordinate with the existing research automations and avoid their paths. Keep non-Codex scheduled automation restriction. Prefer targeted adapter/qualification PRs and exact-head evidence over wholesale rewrites. No further owner questions are necessary for read-only examination; explicit authorization required for destructive actions or runtime activation. 
+
+## 7. Final handoff closeout (supersedes preliminary snapshots)
+- All 275 discovered locations measured and matched against metadata. 1,774,395 files; 101,135,047,636 logical bytes. Git metadata 53,015,505,445 bytes (52.42%). See GIT_STORAGE_AUDIT.md and RECOVERY_CATALOG.md. No cleanup, actual NTFS allocation or reclaimable bytes verified.
+- Both numerical download jobs finished: 14 verified model/tokenizer acquisitions, 1,228,929,627 download bytes. FinBERT excluded by noncommercial license policy. No inference qualification. The 14 research source clones are all measured; do not reacquire unnecessarily.
+- The isolated installer completed with a dependency conflict: gplearn 0.4.3 requires scikit-learn>=1.8.0; installed 1.7.2. Treat the environment as unqualified. Last free-space receipt 11,328,151,552 bytes, not current.
+- Follow CONTINUE.md for the next agent's master prompt, qualification gates and prioritized work. The complete technical handoff is distributed across the seven companion files indexed in README.md; no verbatim full-chat export, secret values or private raw data included. The actual Deep Research report has not been recovered.
