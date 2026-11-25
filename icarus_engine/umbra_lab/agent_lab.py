@@ -103,13 +103,33 @@ def prequential(bank,model_digest,window=16):
 
 
 def available_ram():
-    """Best-effort physical/cgroup available bytes, not a kernel memory reservation."""
-    import psutil  # optional; no fallback to invented telemetry
-    n=psutil.virtual_memory().available
-    root=Path('/sys/fs/cgroup')
-    if os.name=='posix' and (root/'memory.max').is_file():
-        limit=(root/'memory.max').read_text().strip()
-        if limit!='max': n=min(n,max(0,int(limit)-int((root/'memory.current').read_text().strip())))
+    """Native Windows/Linux telemetry; best effort, not a hard reservation."""
+    if os.name=='nt':
+        import ctypes
+        class Status(ctypes.Structure):
+            _fields_=[('length',ctypes.c_ulong),('load',ctypes.c_ulong)]+[(k,ctypes.c_ulonglong) for k in ('total','available','page_total','page_available','virtual_total','virtual_available','extended')]
+        status=Status(); status.length=ctypes.sizeof(status)
+        if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+            raise RuntimeError('Windows memory telemetry unavailable')
+        return int(status.available)
+    meminfo=Path('/proc/meminfo')
+    if not meminfo.is_file(): raise RuntimeError('native memory telemetry unavailable')
+    fields=[line.split() for line in meminfo.read_text().splitlines() if line.startswith('MemAvailable:')]
+    if len(fields)!=1 or len(fields[0])!=3 or fields[0][2]!='kB': raise ValueError('invalid memory telemetry')
+    n=int(fields[0][1])*1024
+    root=Path('/sys/fs/cgroup').resolve()
+    if (root/'cgroup.controllers').is_file():
+        groups=[line[3:] for line in Path('/proc/self/cgroup').read_text().splitlines() if line.startswith('0::')]
+        if len(groups)!=1: raise ValueError('invalid unified cgroup identity')
+        group=(root/groups[0].lstrip('/')).resolve()
+        if not group.is_relative_to(root) or not group.is_dir(): raise ValueError('unresolved cgroup')
+        while True:
+            cap=group/'memory.max'; used=group/'memory.current'
+            if cap.is_file():
+                limit=cap.read_text().strip()
+                if limit!='max': n=min(n,max(0,int(limit)-int(used.read_text().strip())))
+            if group==root: break
+            group=group.parent
     if type(n) is not int or n<0: raise ValueError('invalid physical memory')
     return n
 
