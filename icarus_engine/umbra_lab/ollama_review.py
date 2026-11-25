@@ -12,12 +12,17 @@ import time
 import urllib.request
 
 GIB=1024**3
-RESERVE=1536*1024**2
+RESERVE=1_800_000_000
 OVERHEAD=GIB
 MAX_RESPONSE=256*1024
 MAX_WORKERS=4
 
 TASKS=[
+ ("large-code-audit","qwen2.5-coder:7b","Review this scenario: a forecast at t=10 targets t=20 and a label arrives at t=19. Identify the invariant and a negative test."),
+ ("large-causal-audit","qwen3:8b","A market event timestamp is 10, availability 14, ingest 17, decision 16. Explain whether the event is admissible, and propose a boundary test."),
+ ("quantized-research-audit","hf.co/bartowski/Qwen_Qwen3-8B-GGUF:IQ2_M","Design one test distinguishing a frozen paired intervention from a change in the common random seed."),
+ ("medium-statistical-audit","qwen3:4b","Two closed label intervals [2,4] and [4,5] share endpoint 4. Explain how purged validation must treat them."),
+ ("medium-ledger-audit","phi4-mini:latest","A hash chain verifies after deleting its final record. State why and propose a trusted-head checkpoint test."),
  ("causal-clock","qwen3:0.6b","Find one edge case in a causal event prefix filter using event <= available <= ingested <= decision. Give a test, not code."),
  ("ledger-integrity","granite4:350m","Find one failure mode of a hash-chained forecast settlement ledger that accepts labels after target time. Give a concrete test."),
  ("purged-validation","qwen2.5-coder:1.5b","Find one test for closed-interval label leakage and embargo after test intervals. Be precise."),
@@ -31,6 +36,25 @@ TASKS=[
  ("handoff","gemma3:1b","Give a compact set of fields for a durable reproducible experiment handoff."),
  ("scientific-court","qwen3:1.7b","Give one independent validation test to prevent selecting a strategy only because many alternatives were tried.")
 ]
+
+def estimated_bytes(tag):
+    size=tag.get("size")
+    if type(size) is not int or size<=0:
+        raise ValueError("invalid model size")
+    return size+OVERHEAD
+
+def admit_wave(tasks,tags,available):
+    """Largest feasible first, then fill remaining capacity with smaller distinct models."""
+    if type(available) is not int or available<0:
+        raise ValueError("invalid memory measurement")
+    tasks=list(tasks); budget=max(0,available-RESERVE)
+    candidates=sorted(enumerate(tasks),key=lambda item:-estimated_bytes(tags[item[1][1]]))
+    chosen=set(); used=set()
+    for i,t in candidates:
+        cost=estimated_bytes(tags[t[1]])
+        if len(chosen)<MAX_WORKERS and t[1] not in used and cost<=budget:
+            chosen.add(i);used.add(t[1]);budget-=cost
+    return [t for i,t in candidates if i in chosen],[t for i,t in enumerate(tasks) if i not in chosen]
 
 def memory():
     class M(ctypes.Structure):
@@ -70,7 +94,7 @@ def worker(task,tag):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--output",type=Path,required=True)
-    p.add_argument("--limit",type=int,default=12,choices=range(1,13))
+    p.add_argument("--limit",type=int,default=len(TASKS),choices=range(1,len(TASKS)+1))
     args=p.parse_args()
     tags={m["name"]:m for m in request("tags")["models"]}
     pending=list(TASKS[:args.limit])
@@ -85,25 +109,26 @@ def main():
         while pending:
             if request("ps").get("models"):
                 emit({"kind":"blocked","reason":"Ollama already busy; no eviction","pending":[x[0] for x in pending]});break
-            available=memory();budget=max(0,available-RESERVE)
-            selected=[];deferred=[];used=set()
+            available=memory()
+            eligible=[]
             for task in pending:
-                model=task[1];tag=tags.get(model)
-                if not tag:
-                    emit({"kind":"result","id":task[0],"model":model,"status":"not_installed","advisory_only":True});continue
-                cost=int(tag["size"])+OVERHEAD
-                if model not in used and len(selected)<MAX_WORKERS and cost<=budget:
-                    selected.append(task);used.add(model);budget-=cost
-                else: deferred.append(task)
+                if task[1] not in tags:
+                    emit({"kind":"result","id":task[0],"model":task[1],"status":"not_installed","advisory_only":True})
+                else: eligible.append(task)
+            selected,deferred=admit_wave(eligible,tags,available)
             if not selected:
                 if deferred:emit({"kind":"blocked","reason":"memory admission","available":available,"pending":[x[0] for x in deferred]})
                 break
             wave+=1
-            emit({"kind":"wave","wave":wave,"available_ram":available,"workers":len(selected),"ids":[x[0] for x in selected]})
+            emit({"kind":"wave","wave":wave,"available_ram":available,"workers":len(selected),"ids":[x[0] for x in selected],"models":[x[1] for x in selected],"estimated_bytes":sum(estimated_bytes(tags[x[1]]) for x in selected),"estimated_remaining_ram":available-sum(estimated_bytes(tags[x[1]]) for x in selected)})
             with concurrent.futures.ThreadPoolExecutor(max_workers=len(selected)) as pool:
                 for rec in pool.map(lambda t:worker(t,tags[t[1]]),selected):
                     emit({"kind":"result","wave":wave,**rec})
             pending=deferred
+            observed=memory()
+            emit({"kind":"post_wave_memory","wave":wave,"available_ram":observed,"reserve_met":observed>=RESERVE})
+            if observed<RESERVE:
+                emit({"kind":"blocked","reason":"observed memory below reserve","pending":[x[0] for x in pending]});break
         emit({"kind":"end","waves":wave,"remaining":[x[0] for x in pending]})
 
 if __name__=="__main__":main()
