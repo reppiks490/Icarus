@@ -982,5 +982,28 @@
       "shared_base_weights_allowed": true,
       "independent_checkpoint_qualification_required": true
     }
-  ]
+  ],
+  "sovereign_candidate": {
+    "model": "hf.co/bartowski/Qwen_Qwen3.6-27B-GGUF:IQ2_XS",
+    "source": "https://huggingface.co/bartowski/Qwen_Qwen3.6-27B-GGUF",
+    "weights_sha256": "f3a6aaf277afa192fc92b0654ebd4a344b70078d8d36c3b651c5018019aec973",
+    "status": "acquisition_blocked_unqualified",
+    "owner_authorized_download": true,
+    "default_enabled": false,
+    "eligible_role_families": [
+      "Q01",
+      "Q02",
+      "Q03",
+      "Q04",
+      "Q05",
+      "Q06"
+    ],
+    "assignment_policy": "escalation candidate only after independent qualification; existing role preferences unchanged",
+    "max_concurrent_inference": 1,
+    "solo": true,
+    "ram_reserve_bytes": 1800000000,
+    "estimated_overhead_bytes": 2147483648,
+    "qualification_module": "icarus_engine.umbra_lab.sovereign_review",
+    "authority": "research_only"
+  }
 }
