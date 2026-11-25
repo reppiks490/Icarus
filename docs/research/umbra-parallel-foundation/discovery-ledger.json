@@ -1,0 +1,2482 @@
+{
+  "schema": "umbra.discovery_ledger.v1",
+  "inventory_head": "4674662ecb8c7e3eae4c57505591198bb9a43b85",
+  "completion_policy": "Every discovered location requires evidence-backed integrated, hybridized, qualified, superseded or excluded disposition. Pending is not complete.",
+  "rows": [
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\JerBouma\\FinanceDatabase",
+      "head": "3815eb341c7aa7bfae4a720744093e75528b6099",
+      "logical_bytes": 14972388862,
+      "git_bytes": 14753996337,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\ClickHouse__ClickHouse",
+      "head": "b40fcbae88941e843983d98fee8e8012643c18b8",
+      "logical_bytes": 12814580661,
+      "git_bytes": 2870131381,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\ccxt__ccxt",
+      "head": "133fd945e5dabea9b08a3d6b1012cefe1ef9713b",
+      "logical_bytes": 9649798427,
+      "git_bytes": 9132449951,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\ICARUS-OPTIONAL-SOURCES\\STARNET",
+      "head": "74fcd5040ba0eb93c8f9fa07b2d0a9fcfddd1475",
+      "logical_bytes": 5946680137,
+      "git_bytes": 2336801508,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\ICARUS-OPTIONAL-SOURCES\\STARNET-74fcd5040ba0",
+      "head": null,
+      "logical_bytes": 3601462375,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\dgunning__edgartools",
+      "head": "3931b22077eee1e0d2b77a8c5a61ab415d51ae0b",
+      "logical_bytes": 3570714868,
+      "git_bytes": 919150595,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\openbq-org__OpenBB",
+      "head": "7df7d0c5592bf25be88e87e130a05c71e243d2d8",
+      "logical_bytes": 2727510370,
+      "git_bytes": 2548201158,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\grafana\\grafana",
+      "head": "82187be1b526e498be30fe081c63a2b21c4a550f",
+      "logical_bytes": 2372371286,
+      "git_bytes": 2144754802,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\pingdotgg\\t3code",
+      "head": "0604547a3ae7bca2e5cad1c17b40be5de17dd2cc",
+      "logical_bytes": 2254697498,
+      "git_bytes": 752877547,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\heygen-com\\hyperframes",
+      "head": "933ae3eb5b173995ad730360f9a11f3e3c287e1d",
+      "logical_bytes": 2035600035,
+      "git_bytes": 1113191079,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\apache__datafusion",
+      "head": "833f499da96a1b1fa0f4527305910499485eb8ad",
+      "logical_bytes": 1529818035,
+      "git_bytes": 641596024,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-ml-d9d4db8",
+      "head": "55b88422b36a52821b4990060468f069359e4ea2",
+      "logical_bytes": 1521940021,
+      "git_bytes": 154784747,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\MainakRepositor\\Datasets",
+      "head": "f20fd12b065e2aa8d4ee436e984d275655b2de50",
+      "logical_bytes": 1227433485,
+      "git_bytes": 329345842,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\vectorize-io\\hindsight",
+      "head": "5a672f0cdb89f4a3b841770cce2036a5b28b799d",
+      "logical_bytes": 1126668360,
+      "git_bytes": 853251249,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\airbytehq__airbyte",
+      "head": "a16e57dc89034578e943a97317473173454f7c8b",
+      "logical_bytes": 1110045276,
+      "git_bytes": 162316824,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\polakowo\\vectorbt",
+      "head": "8e30b8ce102f302bec0c0226e05b59714453bebd",
+      "logical_bytes": 966299483,
+      "git_bytes": 794903017,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\grafana\\loki",
+      "head": "168ed3f22124c902a6316206c3243388dea8b39e",
+      "logical_bytes": 949337533,
+      "git_bytes": 602043870,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\recinosr\\wall-street-motor",
+      "head": "e622cfabe07b7692ebea406d357cffbc8868564b",
+      "logical_bytes": 936600351,
+      "git_bytes": 279279202,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\duckdb__duckdb",
+      "head": "c1606652f2a0ff1fd2ce9bf90373575abaf85767",
+      "logical_bytes": 931269211,
+      "git_bytes": 650759941,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-as-is",
+      "head": "8929c9664a64c126bf2a080624aa5c109533cc90",
+      "logical_bytes": 918742345,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus",
+      "head": "75785696173fce83b51f485377b7b786d8a2d3a1",
+      "logical_bytes": 917403521,
+      "git_bytes": 29867838,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\kungfu-systems\\kungfu",
+      "head": "a025fe8fd3063175a263c481b42b0b34f63fa91c",
+      "logical_bytes": 914418078,
+      "git_bytes": 600727730,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\ruvnet\\ruflo",
+      "head": "dafd38a4fe3767e3dcc6e5d353e352760c0634b8",
+      "logical_bytes": 834506682,
+      "git_bytes": 683160968,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\K-Dense-AI\\scientific-agent-skills",
+      "head": "5f2bc0341354fd5590aef76a533ada1e1e5b4e62",
+      "logical_bytes": 775306018,
+      "git_bytes": 483686168,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\NationalSecurityAgency\\ghidra",
+      "head": "057a646233edfb21768a42a0aabc1d1a7709da19",
+      "logical_bytes": 771856391,
+      "git_bytes": 441736007,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\anomalyco\\opencode",
+      "head": "7ad676b0c7d8f9cfe270594d7bf56a631ee840bb",
+      "logical_bytes": 770942274,
+      "git_bytes": 626474815,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\mlflow__mlflow",
+      "head": "387eaeda91dfdf411a6913eabab36284fa635d34",
+      "logical_bytes": 717192667,
+      "git_bytes": 297847281,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\Arize-ai__phoenix",
+      "head": "23bd69f0cade8fe7cd96bb0f92d36ac072ee46be",
+      "logical_bytes": 681232085,
+      "git_bytes": 609284847,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\semgrep__semgrep",
+      "head": "087e93b3a1fdf44f97bc92b5b9c2ba221cb2488b",
+      "logical_bytes": 657649565,
+      "git_bytes": 41460282,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\questdb__questdb",
+      "head": "0151d5ef8cb418db9e77f4c4c0b5267a42d8f63e",
+      "logical_bytes": 653026570,
+      "git_bytes": 279773983,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\icarus-reset-20261015-070848\\Icarus",
+      "head": "2bf27433878d6cd48474876244796cec58d900fd",
+      "logical_bytes": 651178740,
+      "git_bytes": 9202432,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\paperclipai\\paperclip",
+      "head": "835966dec8cc1eb9899dc7e1daf2d3e986f2fbc9",
+      "logical_bytes": 616013671,
+      "git_bytes": 434188075,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\crewAIInc__crewAI",
+      "head": "ed0abf25b325bcb28cf4db89ac16569ca70cc0f7",
+      "logical_bytes": 593183568,
+      "git_bytes": 118394299,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\shap__shap",
+      "head": "c058cae5fd5da62b70ff9058247bd01b6a8c05d0",
+      "logical_bytes": 562434311,
+      "git_bytes": 153600347,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-as-is-restart-candidate-a21507b8b9bb",
+      "head": "08c57fe6c3fb3c12f13d8346c99e4c57a1280156",
+      "logical_bytes": 560374312,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\divine-providence",
+      "head": "5e4ed5fe005a4454512beca161bcb6879cc2ac0f",
+      "logical_bytes": 527261763,
+      "git_bytes": 4040426,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\open-metadata__OpenMetadata",
+      "head": "bff4d4845fec6130d0cb23567bef967db471b281",
+      "logical_bytes": 518748240,
+      "git_bytes": 160130748,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\QuantConnect__Lean",
+      "head": "22404ea28b8d3f3c9eb74d6ed9f0444426f8e417",
+      "logical_bytes": 513311017,
+      "git_bytes": 223936343,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\feast-dev__feast",
+      "head": "1e5e90ca01b0a6b1877a6c809436f0d8d574aad6",
+      "logical_bytes": 508866645,
+      "git_bytes": 322763170,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\continuedev__continue",
+      "head": "5522c6f44ca0ac3528b37244818fbfa39b5af470",
+      "logical_bytes": 473874996,
+      "git_bytes": 189710814,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\pydantic__pydantic-ai",
+      "head": "f6851c5b65343f7020c5bf04cf9ba9dddbef4454",
+      "logical_bytes": 459331258,
+      "git_bytes": 132882507,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\nautechsystems\\nautilus_trader",
+      "head": "04f766b4d434d67fc8672026fefa25135bdc01be",
+      "logical_bytes": 453483684,
+      "git_bytes": 319797987,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\dagster-io__dagster",
+      "head": "c94186b79fcfd0e74e3c275cd7ec8816414fe0a2",
+      "logical_bytes": 448743541,
+      "git_bytes": 126165546,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-restart-backups\\independent-access-20261104T180122Z\\private-root",
+      "head": "75785696173fce83b51f485377b7b786d8a2d3a1",
+      "logical_bytes": 433315570,
+      "git_bytes": 24921256,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\promptfoo__promptfoo",
+      "head": "e48ed85e08ff8a1ca74fa7d0e41daf47cf155efb",
+      "logical_bytes": 432689812,
+      "git_bytes": 185882580,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\icarus-reset-20261015\\divine-providence",
+      "head": "0e17bbe0a7b5fa223f6ec0f975e2446e5b96f450",
+      "logical_bytes": 430482517,
+      "git_bytes": 5023881,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\icarus-reset-20261015-070848\\divine-providence",
+      "head": "eeb82bd0fee67b6d76beb648e3e16c27aaa557dd",
+      "logical_bytes": 430260693,
+      "git_bytes": 4668203,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\apache__arrow",
+      "head": "4a6ebc06dc2bb967263fdf83449ac104e54cbaba",
+      "logical_bytes": 371602524,
+      "git_bytes": 289269066,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-mobile-sdk58",
+      "head": "294f5a1fa182660bc5b476e82b7774add59bacb7",
+      "logical_bytes": 365625977,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\datahub-project__datahub",
+      "head": "68fb10c0cb516bc3944cf314857762d53ce76d11",
+      "logical_bytes": 359610082,
+      "git_bytes": 74246280,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\nkaz001__hftbacktest",
+      "head": "5f3ec40b2afb764e0fea112f941ed85523ef4e88",
+      "logical_bytes": 353006945,
+      "git_bytes": 280753426,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-backup-20261028T041317Z",
+      "head": "75785696173fce83b51f485377b7b786d8a2d3a1",
+      "logical_bytes": 346043365,
+      "git_bytes": 24092865,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\Zdong104\\FNSPID_Financial_News_Dataset",
+      "head": "4054842ec476953b30ee874d4b7e8eea786a21fa",
+      "logical_bytes": 344519014,
+      "git_bytes": 111302529,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\BerriAI__litellm",
+      "head": "6d9344535093b6ad5a1b246af449c20d1db46004",
+      "logical_bytes": 320051070,
+      "git_bytes": 67135424,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\unit8co__darts",
+      "head": "555c8d1c4753e63c679507073f4f1fbe7d245a4b",
+      "logical_bytes": 311346556,
+      "git_bytes": 77856262,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\morluto\\rea",
+      "head": "e89192653402222c5b099216f0d83a2d1bceace0",
+      "logical_bytes": 306192742,
+      "git_bytes": 215234961,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\tradingview__lightweight-charts",
+      "head": "c9ec1cec25583a0200f3c85ad9019d19c1d65f97",
+      "logical_bytes": 299108706,
+      "git_bytes": 290346850,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\grafana__grafana",
+      "head": "2612e559b1b9c1542f50111ec196b51626e7e885",
+      "logical_bytes": 290451871,
+      "git_bytes": 62834508,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus.backup-20261024T023702Z",
+      "head": "75785696173fce83b51f485377b7b786d8a2d3a1",
+      "logical_bytes": 272509532,
+      "git_bytes": 19932802,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus.backup-20261023T204521Z",
+      "head": "75785696173fce83b51f485377b7b786d8a2d3a1",
+      "logical_bytes": 269456316,
+      "git_bytes": 19456609,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\cvxpy\\cvxpy",
+      "head": "8280648bd1f70fce701d362de4f58120f940c2f3",
+      "logical_bytes": 266874757,
+      "git_bytes": 237694997,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-backup-20261027T033253Z",
+      "head": "75785696173fce83b51f485377b7b786d8a2d3a1",
+      "logical_bytes": 264989901,
+      "git_bytes": 23515850,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\daedalus-review\\daedalus-research-os",
+      "head": null,
+      "logical_bytes": 261045952,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\K-Dense-AI--scientific-agent-skills",
+      "head": "c21d13b3cc2894680229ba9959a53281acb9200e",
+      "logical_bytes": 245870644,
+      "git_bytes": 245870644,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\icarus-bridge",
+      "head": "bc4f3bd19004300ed93734f7f04cc941e29a23e0",
+      "logical_bytes": 244706654,
+      "git_bytes": 57156899,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\LAMDA-Tabular--TALENT",
+      "head": "39b54024902955e51063a34bce17d514cd68ff42",
+      "logical_bytes": 242117679,
+      "git_bytes": 106519875,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\polakowo__vectorbt",
+      "head": "8e30b8ce102f302bec0c0226e05b59714453bebd",
+      "logical_bytes": 240490166,
+      "git_bytes": 63207268,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus.backup-20261021-204236",
+      "head": "75785696173fce83b51f485377b7b786d8a2d3a1",
+      "logical_bytes": 239047748,
+      "git_bytes": 11260583,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus.backup-20261021-213348",
+      "head": "75785696173fce83b51f485377b7b786d8a2d3a1",
+      "logical_bytes": 239047748,
+      "git_bytes": 11260583,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus.backup-20261021-204204",
+      "head": "75785696173fce83b51f485377b7b786d8a2d3a1",
+      "logical_bytes": 234506307,
+      "git_bytes": 11260583,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\pola-rs__polars",
+      "head": "d0a98d9c509ddad852337db66261d2d16f1a419e",
+      "logical_bytes": 230567003,
+      "git_bytes": 196419184,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\Aider-AI__aider",
+      "head": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+      "logical_bytes": 225295296,
+      "git_bytes": 147307036,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\dynamicslab--pysindy",
+      "head": "c4421fcec275c8f4cc5c1e93bebb961b212067ae",
+      "logical_bytes": 220856597,
+      "git_bytes": 98862252,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\agent-substrate\\substrate",
+      "head": "ffed85512d9cabadf8d3be4059ed529140168ee4",
+      "logical_bytes": 208249349,
+      "git_bytes": 54542369,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\AI-Aimbot v3.1.0 source code\\RootKit-Org-AI-Aimbot-b91dd1c",
+      "head": null,
+      "logical_bytes": 201812473,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\epam\\java-cme-mdp3-handler",
+      "head": "0291e50f7a39593c7176987f254b7e30cc5f2ca6",
+      "logical_bytes": 197399752,
+      "git_bytes": 108021739,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\Nixtla__statsforecast",
+      "head": "8e0f32724f1649163e5a562f18fe351ce08e2ebd",
+      "logical_bytes": 186199967,
+      "git_bytes": 48169470,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\Yuri-Mizuki\\daily_stock_analysis",
+      "head": "ef7264f76a9b16d6854b6d26bfe38229734a43aa",
+      "logical_bytes": 180050780,
+      "git_bytes": 91528041,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\jakobrunge__tigramite",
+      "head": "ff3ff13e1481073b8c5833a6fde1c304627a208e",
+      "logical_bytes": 173297447,
+      "git_bytes": 126719189,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\nautechsystems__nautilus_trader",
+      "head": "04f766b4d434d67fc8672026fefa25135bdc01be",
+      "logical_bytes": 165932583,
+      "git_bytes": 32246886,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\dlt-hub__dlt",
+      "head": "ab73248dee5c67bad736cc783ff0b6b960202afe",
+      "logical_bytes": 157646073,
+      "git_bytes": 124078275,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\Comfy-Org\\ComfyUI",
+      "head": "cdf272f3514353aab04dc2d9fceef57a260dc156",
+      "logical_bytes": 155137772,
+      "git_bytes": 103819807,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\aquasecurity__trivy",
+      "head": "4e948808830af7bc0f02c9f8107ab0e9d2d4efce",
+      "logical_bytes": 149518336,
+      "git_bytes": 54196258,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\CurateLabs\\xyg",
+      "head": "d005b0063d9909392786a18262ff1306e3e8f54c",
+      "logical_bytes": 143473334,
+      "git_bytes": 63738740,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\mindsdb\\mindsdb-docs-old",
+      "head": "6d4030af960261f9a05bca20be8e8f5ef92c3e83",
+      "logical_bytes": 142163927,
+      "git_bytes": 89610249,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\NVIDIA\\OpenShell",
+      "head": "5c533d6fbbda46657372b7e56abac7c9347b1a1a",
+      "logical_bytes": 138503651,
+      "git_bytes": 99551007,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\superbot-complete\\superbot-mcp",
+      "head": null,
+      "logical_bytes": 131418286,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-phone-upgrade",
+      "head": "8c3a1ae3ff04377a1ae53371445383a28fe0224f",
+      "logical_bytes": 130270399,
+      "git_bytes": 14105345,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Cinematic-Development\\new",
+      "head": "3c7ff8e3ac7359459ebab680429d559a07595193",
+      "logical_bytes": 127565758,
+      "git_bytes": 54667237,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\affaan-m\\ECC",
+      "head": "25278e7d7b6cf6e6a4e7a6c8e10f14ff22f0eb5b",
+      "logical_bytes": 124934892,
+      "git_bytes": 62851913,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\PrefectHQ__prefect",
+      "head": "21a1f025480406046668edf22705234ce6b1c31f",
+      "logical_bytes": 121905622,
+      "git_bytes": 31303902,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\apache__echarts",
+      "head": "34f4d927eafe251f26f63afd3aeefa30f2feba30",
+      "logical_bytes": 115896404,
+      "git_bytes": 17972190,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\astral-sh__ruff",
+      "head": "07872adbafa7c00f42f1174d8aa3c3e324033009",
+      "logical_bytes": 114234735,
+      "git_bytes": 19496712,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\google__osv-scanner",
+      "head": "b1d85b72a60cb40f4bf9394d9d61a8beb08a5ac9",
+      "logical_bytes": 107503357,
+      "git_bytes": 53478655,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\AI4Finance-Foundation__FinRL",
+      "head": "7e98df461cbc7772f16a545a2f13b521e5d0b8f4",
+      "logical_bytes": 105959128,
+      "git_bytes": 86412983,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\CMEGroupPublic\\datamine_python",
+      "head": "0454c8f04cb379de10c2949590bf6b92479af520",
+      "logical_bytes": 97921984,
+      "git_bytes": 97217471,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\microsoft__autogen",
+      "head": "004749e6b7102c8fd317b9b1499ce5807223c278",
+      "logical_bytes": 91210466,
+      "git_bytes": 33071272,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\TencentCloud\\Octop",
+      "head": "890111b7879665840414ca28ab168b05b0db0921",
+      "logical_bytes": 89855329,
+      "git_bytes": 38697043,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\aeon-toolkit--aeon",
+      "head": "810325b558c8459c538fd162ef6bae3abacf7d7d",
+      "logical_bytes": 88327856,
+      "git_bytes": 34339319,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\py-why__EconML",
+      "head": "9f61a3376cbf41c5a9155f46bbafaaea9f281508",
+      "logical_bytes": 78082953,
+      "git_bytes": 20934180,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\langfuse__langfuse",
+      "head": "7526ede92399d7e04235b581b12470a401aaf5d7",
+      "logical_bytes": 75287543,
+      "git_bytes": 16923039,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\mem0ai__mem0",
+      "head": "26cdefb46600c0fa5953c4b5ee5003c125539fc4",
+      "logical_bytes": 73846900,
+      "git_bytes": 21107026,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\treeverse__lakeFS",
+      "head": "34567699eab33d1bc9763b163d301ed06b1e21d8",
+      "logical_bytes": 71224777,
+      "git_bytes": 25614605,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\Nixtla--neuralforecast",
+      "head": "24dd828c12d966ba5d41566d91735c996e488db7",
+      "logical_bytes": 70888782,
+      "git_bytes": 26439462,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\Nixtla__neuralforecast",
+      "head": "34ce1325008e8eab5e65ba3616345ed31f3ce4cd",
+      "logical_bytes": 70725494,
+      "git_bytes": 26381310,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\anchore__syft",
+      "head": "fb56f1eef1908ad249a59ea7b2fe913bae16304f",
+      "logical_bytes": 70011175,
+      "git_bytes": 35211610,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\icaros-usc--pyribs",
+      "head": "29fa9b0b85b6623f8e0384c910c6f5bfffcdaac0",
+      "logical_bytes": 68360014,
+      "git_bytes": 31379484,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\kestra-io__kestra",
+      "head": "6f8d0216e32b910c8cc4f838cf1198cd0ba23b86",
+      "logical_bytes": 65839717,
+      "git_bytes": 18770516,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\OpenHands__OpenHands",
+      "head": "dbe578d5dbac60a584b7b9ffeb23ec7005779325",
+      "logical_bytes": 60295782,
+      "git_bytes": 21968476,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\online-ml__river",
+      "head": "950984786649806bfdc446062fcc830235f8131b",
+      "logical_bytes": 58866213,
+      "git_bytes": 48072925,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\evidentlyai__evidently",
+      "head": "34771fe41c08ca074d96a52aaf4a45cd640cbaf5",
+      "logical_bytes": 58121183,
+      "git_bytes": 15470720,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\mksglu\\context-mode",
+      "head": "843570277671ae4df0df9137e8a5b9da2d89171b",
+      "logical_bytes": 55898764,
+      "git_bytes": 43526079,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\temporalio__temporal",
+      "head": "9c8c4eddb7c0d9373e76b87afb8057a7bcec4786",
+      "logical_bytes": 55853131,
+      "git_bytes": 10578338,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\locustio__locust",
+      "head": "a1864e576bbb806ebcbf93a3bff2fd32637ac5ea",
+      "logical_bytes": 54349337,
+      "git_bytes": 43860873,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\cporter202\\API-mega-list",
+      "head": "b7c914f5abd7d0f7562bd1f2036411d3c8f7c29e",
+      "logical_bytes": 51398018,
+      "git_bytes": 27180799,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\meltano__meltano",
+      "head": "e96f637184473edbfc11622178499c263a77ae74",
+      "logical_bytes": 50794937,
+      "git_bytes": 18361003,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\astral-sh__uv",
+      "head": "68677f5439c027db17b4db7821882a9881d376f6",
+      "logical_bytes": 50785118,
+      "git_bytes": 8488206,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-engine",
+      "head": "dfce55097efbc200ce2a0664e34dd463fb3824b5",
+      "logical_bytes": 49661410,
+      "git_bytes": 14539043,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\microsoft__RD-Agent",
+      "head": "484776c211e4fbbeef03e0ec00d6bbee7362a4f4",
+      "logical_bytes": 47531314,
+      "git_bytes": 31300654,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\richie-ma\\cme.mdp",
+      "head": "4d0db0c941c539e1401f949edb0cb46dd1092534",
+      "logical_bytes": 46116363,
+      "git_bytes": 43181293,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\tashfeenahmed\\freellmapi",
+      "head": "22b7ec74a09892d3efdb9107ec3e74c764dd71a1",
+      "logical_bytes": 45668511,
+      "git_bytes": 26310056,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\plotly__dash",
+      "head": "d74f6157bb0ea38cec65d8250af0ad9299b57e66",
+      "logical_bytes": 43529401,
+      "git_bytes": 11866612,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\getzep__graphiti",
+      "head": "5c27edfa8d3e0f49b2571bcebb4261bcc89ee037",
+      "logical_bytes": 41626491,
+      "git_bytes": 18296252,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\oh-my-claudecode-main",
+      "head": null,
+      "logical_bytes": 40474739,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\ggml-org--llama.cpp",
+      "head": "22b99122e1dfe1d8a5175bfa2eaa8389699c0b92",
+      "logical_bytes": 40265993,
+      "git_bytes": 40265993,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\py-why__dowhy",
+      "head": "d34703b81835195d8bf8f2051c5e3ca0c8a58853",
+      "logical_bytes": 40202545,
+      "git_bytes": 13264929,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\prometheus__prometheus",
+      "head": "8d8dc0ccc564c9c350c403326839e16a0a07c185",
+      "logical_bytes": 38671069,
+      "git_bytes": 7182288,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-dashboard-release",
+      "head": "23b078fb20fe36454306a27047b0aa12bd1d14e8",
+      "logical_bytes": 38626345,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\AI4Finance-Foundation__FinGPT",
+      "head": "ac5c5443fbeeafad801e7a3c188e4f24cfaad4d8",
+      "logical_bytes": 35487947,
+      "git_bytes": 11091495,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\abides-sim--abides",
+      "head": "c4bf157678928934417aba6073eb0651aeaf6d15",
+      "logical_bytes": 33767836,
+      "git_bytes": 15305731,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\anthropics\\claude-plugins-official",
+      "head": "58267944f92187b7d6a1c822165c96c81c864806",
+      "logical_bytes": 33673507,
+      "git_bytes": 19075205,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\task-api",
+      "head": null,
+      "logical_bytes": 31858812,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\adbar--trafilatura",
+      "head": "195a969613c8f262128b7238b534d372a56db2f5",
+      "logical_bytes": 31700300,
+      "git_bytes": 31700300,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\anchore__grype",
+      "head": "882c0aba40522a7fa906b90df4969929ee5b0676",
+      "logical_bytes": 31073315,
+      "git_bytes": 22318562,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\datasets\\publicbodies",
+      "head": "add22e71c622528514987233de8e69a0d72fe12a",
+      "logical_bytes": 28620374,
+      "git_bytes": 16641979,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\kgretzky\\evilginx2",
+      "head": "4c0988a1d9db4d172a185e979a38bfd0efdb5830",
+      "logical_bytes": 27845897,
+      "git_bytes": 8706069,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\microsoft__qlib",
+      "head": "54355232463878d2eebb91fe0ee5fa7fa1f5976c",
+      "logical_bytes": 27552261,
+      "git_bytes": 18984391,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\shiyu-coder--Kronos",
+      "head": "67b630e67f6a18c9e9be918d9b4337c960db1e9a",
+      "logical_bytes": 26362097,
+      "git_bytes": 9410390,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\akfamily__akshare",
+      "head": "2ea08ff44512a9b0c008cd4ff77463b940959c7e",
+      "logical_bytes": 26009184,
+      "git_bytes": 11089612,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\pymc-devs__pymc",
+      "head": "31aed52d360b0d415065b472829111f3b799cd95",
+      "logical_bytes": 25909128,
+      "git_bytes": 7045056,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\awslabs__gluonts",
+      "head": "d60556ca71167a3ec1ea807b491dd982d1de2112",
+      "logical_bytes": 25794888,
+      "git_bytes": 17462190,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\UKGovernmentBEIS--inspect_ai",
+      "head": "cab2b874f5ac05937afc1e80b7316cb5873fad98",
+      "logical_bytes": 23593097,
+      "git_bytes": 23593097,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\publicbodies",
+      "head": "add22e71c622528514987233de8e69a0d72fe12a",
+      "logical_bytes": 20211385,
+      "git_bytes": 8232990,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\perspective-dev__perspective",
+      "head": "d03a0b6da9eadd64008d932fd96a77ba15e0a966",
+      "logical_bytes": 20159761,
+      "git_bytes": 4216014,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\bytewax__bytewax",
+      "head": "57369808388e06220b6a79038ade2713756e05bb",
+      "logical_bytes": 20148697,
+      "git_bytes": 14239050,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\tgko_prototype",
+      "head": null,
+      "logical_bytes": 19453633,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\blue-yonder__tsfresh",
+      "head": "6af3c0030b6c9f02c3862a20e00cce87c984aa5b",
+      "logical_bytes": 19447229,
+      "git_bytes": 9075422,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\langchain-ai__langgraph",
+      "head": "1526b0e82df6e2f9879eb0fb005d04d3fe469ebf",
+      "logical_bytes": 18731814,
+      "git_bytes": 4091936,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\ranaroussi\\yfinance",
+      "head": "d9f72aa4214167ced6bd5b7ba9a0c02a2209db9b",
+      "logical_bytes": 18629647,
+      "git_bytes": 11579833,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\stanfordnlp--dspy",
+      "head": "2ae73ca33372aa0a172bcb27584f03aaaf4d7e18",
+      "logical_bytes": 17961274,
+      "git_bytes": 17961274,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\QwenLM--Qwen-Agent",
+      "head": "31a4d36d123688581a9e9744427272b33ce940e0",
+      "logical_bytes": 16884978,
+      "git_bytes": 16884978,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\deepcharles__ruptures",
+      "head": "ee1c8ff8a548d54c641b2bb471562165931f31c7",
+      "logical_bytes": 16462300,
+      "git_bytes": 12042219,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\exchange-rates",
+      "head": "9e669bcf5274a8c6d9974721d3fecace76982520",
+      "logical_bytes": 15364654,
+      "git_bytes": 7156164,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\evidentlyai--evidently",
+      "head": "34771fe41c08ca074d96a52aaf4a45cd640cbaf5",
+      "logical_bytes": 15212263,
+      "git_bytes": 15212263,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\open-telemetry__opentelemetry-collector",
+      "head": "30add0562534958c3b4173fa307b5a3497d0bc9c",
+      "logical_bytes": 15041025,
+      "git_bytes": 3195549,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\microsoft--qlib",
+      "head": "54355232463878d2eebb91fe0ee5fa7fa1f5976c",
+      "logical_bytes": 13898687,
+      "git_bytes": 5330538,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\deepset-ai--haystack",
+      "head": "68497ec581d759e05f058ece0132f91013b856ff",
+      "logical_bytes": 13592570,
+      "git_bytes": 13592570,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\nicklashansen--tdmpc2",
+      "head": "332f19e4aba4bffe2dc736f45ea7f7bdc585903a",
+      "logical_bytes": 13136666,
+      "git_bytes": 6237701,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\danijar--dreamerv3",
+      "head": "e01491fad6434b2245a3b8ca201dd7faedcc458c",
+      "logical_bytes": 13025085,
+      "git_bytes": 6371034,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\microsoft--graphrag",
+      "head": "34b2b67ae4601ad0b47bcd179fbe3f2a23aa0857",
+      "logical_bytes": 11935851,
+      "git_bytes": 11935851,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\mementum__backtrader",
+      "head": "b853d7c90b6721476eb5a5ea3135224e33db1f14",
+      "logical_bytes": 10754769,
+      "git_bytes": 2403218,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\icarus-runtime",
+      "head": "e13b949b50470898d5ad84b4d0473091867c6fc6",
+      "logical_bytes": 10710926,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\dp-runtime",
+      "head": "e13b949b50470898d5ad84b4d0473091867c6fc6",
+      "logical_bytes": 10566351,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\umbra-native-compute-20261124",
+      "head": "36f7d592020378b8e7080f7156ea0f23fa0273c9",
+      "logical_bytes": 10196962,
+      "git_bytes": 2499639,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\umbra-native-compute-review-20261124",
+      "head": "0f1d446eadca20819a7338422782c668e9b8544d",
+      "logical_bytes": 9407670,
+      "git_bytes": 1786526,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\ranaroussi__yfinance",
+      "head": "d9f72aa4214167ced6bd5b7ba9a0c02a2209db9b",
+      "logical_bytes": 9084388,
+      "git_bytes": 1330439,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\rhysd__actionlint",
+      "head": "011a6d15e749bb3f2d771eed9c7aa0e7e3e10ee7",
+      "logical_bytes": 9030629,
+      "git_bytes": 5413335,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\huggingface--lerobot",
+      "head": "b07adcc5e3ce42c26a248236dbb3571f84c28c43",
+      "logical_bytes": 8718074,
+      "git_bytes": 8718074,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\takuseno--d3rlpy",
+      "head": "38c34b6f99fde82875e2ad81d1ba1f7a7da34137",
+      "logical_bytes": 8567823,
+      "git_bytes": 3663958,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\gitleaks__gitleaks",
+      "head": "5f6ec56cfa6f8c67648d863582c7ae2f206d5c1c",
+      "logical_bytes": 8205251,
+      "git_bytes": 6964588,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\alpacahq__alpaca-py",
+      "head": "3da132c6407792310bfbaca1b3114863c44d5bda",
+      "logical_bytes": 8071943,
+      "git_bytes": 4364655,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\firmai\\financial-machine-learning",
+      "head": "a0fda6ac1f40251b9eb7cc32dd665db59130714e",
+      "logical_bytes": 7635092,
+      "git_bytes": 6657742,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\searxng--searxng",
+      "head": "a7163d091037cae586c444b05f22ecca162bb492",
+      "logical_bytes": 6755215,
+      "git_bytes": 6755215,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\datasets\\s-and-p-500-companies-financials",
+      "head": "4223bbde4d13d349f0399cad98efb030a28878c5",
+      "logical_bytes": 6591000,
+      "git_bytes": 5678295,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\ICARUS-OPTIONAL-SOURCES\\STARNET-74fcd5040ba0\\src-tauri",
+      "head": null,
+      "logical_bytes": 6444838,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\jadchaar__sec-edgar-downloader",
+      "head": "185a5548e49fd37afb9871df8aa9485075f21e21",
+      "logical_bytes": 5872754,
+      "git_bytes": 4801798,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\jpmorganchase__abides-jpmc-public",
+      "head": "f9cbe51342b7dedd9587e4e069040d68a5c6477f",
+      "logical_bytes": 5842229,
+      "git_bytes": 3151596,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\KangOxford__AlphaTrade",
+      "head": "2b1951fb47392db0e6d832c81a21a39a6b5eed05",
+      "logical_bytes": 5592368,
+      "git_bytes": 721395,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\EleutherAI--lm-evaluation-harness",
+      "head": "d6de81643928d653435c431bae19945d41d32520",
+      "logical_bytes": 5471677,
+      "git_bytes": 5471677,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\Yuri-Mizuki\\AlphaGPT",
+      "head": "d851f2221dcaf4d53a707344f68ae6801e3e5af5",
+      "logical_bytes": 5463772,
+      "git_bytes": 2638516,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\modelcontextprotocol__servers",
+      "head": "ef9808f71090d0db3eda99e2af2ba78f1086f4fb",
+      "logical_bytes": 5407245,
+      "git_bytes": 1267558,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\google-deepmind--clrs",
+      "head": "6d5728b9efadf8648413c8c473929a733caacced",
+      "logical_bytes": 5380018,
+      "git_bytes": 5380018,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\Reconstructing-MBP-10-data-from-MBO-data",
+      "head": "5614e5a28fdc3a8c0fdeb446a97b3890eae8aed3",
+      "logical_bytes": 5229145,
+      "git_bytes": 610966,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\Shine-5705\\Reconstructing-MBP-10-data-from-MBO-data",
+      "head": "5614e5a28fdc3a8c0fdeb446a97b3890eae8aed3",
+      "logical_bytes": 5228409,
+      "git_bytes": 610230,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\modelcontextprotocol--python-sdk",
+      "head": "77001c96f9507be0f4d009b83210a384a5e08bda",
+      "logical_bytes": 5223897,
+      "git_bytes": 5223897,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\optuna__optuna",
+      "head": "b37c43f8037fed3859e9e01253d13267726d21d7",
+      "logical_bytes": 5223812,
+      "git_bytes": 1061013,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\zizmorcore__zizmor",
+      "head": "dc2209b6b6d76781c43d2a09aa9d51b56627457c",
+      "logical_bytes": 5223203,
+      "git_bytes": 1155268,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\microsoft--markitdown",
+      "head": "ed178952a6672abdfd35b5f9e76a80b6cefc086e",
+      "logical_bytes": 4831740,
+      "git_bytes": 4831740,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\thuml--Time-Series-Library",
+      "head": "4e938a1767106324dd753b2a44832bf870a0252e",
+      "logical_bytes": 4766223,
+      "git_bytes": 1846577,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\icarus-owner-actions-coordination",
+      "head": "3ec14b004cfd5ecf853f77935e6d01b582b6ffa6",
+      "logical_bytes": 4369463,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\treeverse__dvc",
+      "head": "56e59829512ff134aa269099a2099587b810b4dd",
+      "logical_bytes": 4102715,
+      "git_bytes": 951826,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\langchain-ai--langgraph",
+      "head": "732da52047a1658cccffca86ac27396871b3f385",
+      "logical_bytes": 4070552,
+      "git_bytes": 4070552,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\landtml__finlab-ml",
+      "head": "32ca4472cc4439d25ad709133999975df5038bf4",
+      "logical_bytes": 4044810,
+      "git_bytes": 2060880,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\icarus-bridge-panels",
+      "head": "e1b68ee1487e9150b1b624519e69d76ccae82e88",
+      "logical_bytes": 4029446,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\KangOxford--jax-lob",
+      "head": "d1f596610b04a09941c7a1b609e5bab541ecfc98",
+      "logical_bytes": 4015202,
+      "git_bytes": 473061,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-g008",
+      "head": "9a7ca02cc72e51a871ec8b35e334a0b2134cd5b4",
+      "logical_bytes": 3932227,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-g009",
+      "head": "506f00c6220bbff5fa334b44fed601aff75e4f96",
+      "logical_bytes": 3922209,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-g005",
+      "head": "98d701444279a1676bf897c841a322b403ed6ae6",
+      "logical_bytes": 3840174,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\astra-push",
+      "head": "312ff25855b6f301fd6c526fdf916d26db09216d",
+      "logical_bytes": 3753884,
+      "git_bytes": 1111008,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\facebookresearch--faiss",
+      "head": "6074b69e98a736f5be370c69043b346370a1b3be",
+      "logical_bytes": 3751528,
+      "git_bytes": 3751528,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-g003",
+      "head": "c7a898696a72cbab7fda1fa3e8dfc888bfce613e",
+      "logical_bytes": 3740345,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-causal-asof",
+      "head": "232ea462a94cd7b3a8aa574e588a8843f5338974",
+      "logical_bytes": 3637547,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-g001",
+      "head": "080e9d0daad29486891df46448344e9f44faa8e6",
+      "logical_bytes": 3498788,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\oil-prices",
+      "head": "24f11b38195b58618196adb548c929e15f37a43c",
+      "logical_bytes": 3384535,
+      "git_bytes": 1724309,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\databento__databento-python",
+      "head": "bde82bd2688a50644851725dfbfe8b6297235c92",
+      "logical_bytes": 3336901,
+      "git_bytes": 1908065,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\datasets\\oil-prices",
+      "head": "1cfa6f0a21b54fecd0e55c297074c1c19bf79d68",
+      "logical_bytes": 3305565,
+      "git_bytes": 1645339,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\nexus-review-20260923\\bundle-checkout",
+      "head": "6529eed7623e9a967bb053c9a78e4102d2c18d6d",
+      "logical_bytes": 3200771,
+      "git_bytes": 327486,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\nexus-review-20260923\\NEXUS_ADAPTIVE_MARKET_FABRIC_v0.3_SOL_FOR_SOL_EXTRA_HIGH\\nexus-adaptive-market-fabric",
+      "head": null,
+      "logical_bytes": 3002116,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\dottxt-ai--outlines",
+      "head": "c52af8472c6fe8a607a733ec11b709476af77a96",
+      "logical_bytes": 2992856,
+      "git_bytes": 2992856,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\aion-review-20260923\\icarus-aion",
+      "head": "12a7cb8ef99e84ce50b766db0aea1592b3906f80",
+      "logical_bytes": 2794660,
+      "git_bytes": 143785,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\rx3asarc\\toragents-pi",
+      "head": "1f3a20e901159a0dff38db7eef92338ddded3ba5",
+      "logical_bytes": 2688411,
+      "git_bytes": 1093915,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\hudson-and-thames\\mlfinlab",
+      "head": "79dcc7120ec84110578f75b025a75850eb72fc73",
+      "logical_bytes": 2528384,
+      "git_bytes": 732544,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\awesome-public-datasets",
+      "head": "4016cdea56d66bb59c73f80f9b7d4526d6d1181a",
+      "logical_bytes": 2517316,
+      "git_bytes": 2210337,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\daedalus-intake-20260923\\daedalus-research-os",
+      "head": "74ad94149b02ddd3f69d535ee5fdc00c1fdbe096",
+      "logical_bytes": 2495126,
+      "git_bytes": 183615,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\NEXUS_v0.3_SOL.git (1).bundle",
+      "head": "03b2265536aebdd111e83c13d7bafb03f68f4a50",
+      "logical_bytes": 2303537,
+      "git_bytes": 310661,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\icarus-owner-actions",
+      "head": "cf9947b340e6138b14551dfe34f83a21973bdb4a",
+      "logical_bytes": 2245035,
+      "git_bytes": 2211133,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\s-and-p-500-companies",
+      "head": "2f083ae70907cca3b644a94744dde87f3199fc5b",
+      "logical_bytes": 1933882,
+      "git_bytes": 1869195,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\awesomedata\\awesome-public-datasets",
+      "head": "4016cdea56d66bb59c73f80f9b7d4526d6d1181a",
+      "logical_bytes": 1879431,
+      "git_bytes": 1572452,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\datasets\\s-and-p-500-companies",
+      "head": "2f083ae70907cca3b644a94744dde87f3199fc5b",
+      "logical_bytes": 1878204,
+      "git_bytes": 1813517,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\torq-cme",
+      "head": "4d5f3484368cc55e16b970b3cb252a1eae38c905",
+      "logical_bytes": 1846760,
+      "git_bytes": 407701,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\DaniyalMlk__holdout",
+      "head": "172358144b938a8cb47614cb13a72555550c4a1f",
+      "logical_bytes": 1645305,
+      "git_bytes": 798580,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Icarus-aion-review",
+      "head": "20c1f153a21f48fce628a139f5485eff794c76de",
+      "logical_bytes": 1556505,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\connu\\awesome-datasets",
+      "head": "c7416f524d11441946a2931211dbdf190a9f524c",
+      "logical_bytes": 1536312,
+      "git_bytes": 546461,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_032(1).zip",
+      "head": null,
+      "logical_bytes": 1455272,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\ar51an\\unbound-dashboard",
+      "head": "971ba67f2b7b15747b7ba030fc0108d708cdfbf9",
+      "logical_bytes": 1164869,
+      "git_bytes": 598369,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_038.zip",
+      "head": null,
+      "logical_bytes": 1157135,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\huggingface--smolagents",
+      "head": "d0ec5966bd0bc723988a62f91ae81ffacdddd2fe",
+      "logical_bytes": 1144978,
+      "git_bytes": 1144978,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_037.zip",
+      "head": null,
+      "logical_bytes": 1071093,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_027.zip",
+      "head": null,
+      "logical_bytes": 991047,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\optuna--optuna",
+      "head": "0abf066c1e5d9d83987986869daa3c2bb23df519",
+      "logical_bytes": 964597,
+      "git_bytes": 964597,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\v1.5.0 -- Neng Li Ceng _Duo Hou Duan Lu You + Zhen Ti Jian + OpenCLI source code (1)\\Panniantong-Agent-Reach-f65526c",
+      "head": null,
+      "logical_bytes": 815750,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\merge\\prometheus",
+      "head": "136563e25ca3325df13ca56672d2c20cbfbe74da",
+      "logical_bytes": 788139,
+      "git_bytes": 330786,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_032.zip",
+      "head": null,
+      "logical_bytes": 759829,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\clonemasterUwU\\orderbook",
+      "head": "0e261be47464155043b9728b14908785fea4a420",
+      "logical_bytes": 698683,
+      "git_bytes": 627173,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_030.zip",
+      "head": null,
+      "logical_bytes": 602987,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\orderbook",
+      "head": "0e261be47464155043b9728b14908785fea4a420",
+      "logical_bytes": 602392,
+      "git_bytes": 530882,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\virattt\\financial-datasets",
+      "head": "9856644262caab56cf174109924bba1d81330335",
+      "logical_bytes": 583090,
+      "git_bytes": 381613,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\Python-3.10.20\\Python-3.10.20\\Tools\\peg_generator",
+      "head": null,
+      "logical_bytes": 569938,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\Python-3.10.20 (1)\\Python-3.10.20\\Tools\\peg_generator",
+      "head": null,
+      "logical_bytes": 569938,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_029.zip",
+      "head": null,
+      "logical_bytes": 563865,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\icarus-csv-evidence-lab",
+      "head": "d6a5868e3f3202ef82579aca40b83cb3f8a4b491",
+      "logical_bytes": 558342,
+      "git_bytes": 414545,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_028.zip",
+      "head": null,
+      "logical_bytes": 525228,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_025.zip",
+      "head": null,
+      "logical_bytes": 488039,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.5_VERIFIED_2026-09-25.bundle",
+      "head": "444d978134f2b138e647b2c6c9e219f83074ac75",
+      "logical_bytes": 479404,
+      "git_bytes": 170781,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.4_VERIFIED_2026-09-25(1).bundle",
+      "head": "2659350553f23f2314b27a80bb04604d5747418e",
+      "logical_bytes": 425969,
+      "git_bytes": 149782,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\landtml__purgedcv",
+      "head": "aee3396422192d18bc30d376dfe9e31b2399abab",
+      "logical_bytes": 392247,
+      "git_bytes": 236117,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\ORACLE_CHECKPOINT_C_75_SOL.git (1).bundle",
+      "head": "6255339daf80b709357a2ea581b572ebbcef5905",
+      "logical_bytes": 390078,
+      "git_bytes": 200650,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\noamgat--lm-format-enforcer",
+      "head": "817f944fcc8851917c40300a47f62d1defc3ffc3",
+      "logical_bytes": 380590,
+      "git_bytes": 380590,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.5_VERIFIED_2026-09-25(1).zip",
+      "head": null,
+      "logical_bytes": 340255,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\aion-gap-integrity-20260924",
+      "head": "12a7cb8ef99e84ce50b766db0aea1592b3906f80",
+      "logical_bytes": 281195,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\icarus-causal-router",
+      "head": "d95a53c70b04349fbef42c0a9dc35de87ca72f40",
+      "logical_bytes": 257581,
+      "git_bytes": 55092,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\awesome-public-real-time-datasets",
+      "head": "519508440fe7f784be7d1e814bc2129d77424567",
+      "logical_bytes": 214035,
+      "git_bytes": 175441,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\tgko_prototype (1)",
+      "head": null,
+      "logical_bytes": 207669,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_ALL_CURRENT_WORK_FRESH_2026-09-24.zip",
+      "head": null,
+      "logical_bytes": 191851,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\oracle-review-20260923\\ICARUS_ORACLE_CHECKPOINT_C_75_SOL_FOR_SOL_EXTRA_HIGH\\icarus-oracle",
+      "head": null,
+      "logical_bytes": 184031,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.5_VERIFIED_2026-09-25(1).bundle",
+      "head": "",
+      "logical_bytes": 168076,
+      "git_bytes": 168076,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\tgko_prototype (2)",
+      "head": null,
+      "logical_bytes": 160875,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\projects\\icarus-ml-research-sources\\yuezhihan--ts2vec",
+      "head": "b0088e14a99706c05451316dc6db8d3da9351163",
+      "logical_bytes": 146611,
+      "git_bytes": 57195,
+      "status": "pending_qualification",
+      "source_inspected": true,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.4_VERIFIED_2026-09-25.bundle",
+      "head": "",
+      "logical_bytes": 137217,
+      "git_bytes": 137217,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.2_SIBLING_BINDINGS_PLAN_2026-09-24.zip",
+      "head": null,
+      "logical_bytes": 133578,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\oh-my-claudecode-main\\benchmark",
+      "head": null,
+      "logical_bytes": 130975,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.3_VERIFIED_2026-09-25.bundle",
+      "head": "",
+      "logical_bytes": 119219,
+      "git_bytes": 119219,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.1_2026-09-24.zip",
+      "head": null,
+      "logical_bytes": 118296,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.2_SIBLING_BINDINGS_PLAN_2026-09-24.bundle",
+      "head": "",
+      "logical_bytes": 109599,
+      "git_bytes": 109599,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.1_2026-09-24.bundle",
+      "head": "",
+      "logical_bytes": 103554,
+      "git_bytes": 103554,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\sovai-research\\open-investment-datasets",
+      "head": "6af7a5d0d12363e26d79cd463b699f70a93c2338",
+      "logical_bytes": 100174,
+      "git_bytes": 88866,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\datasets-links-collection",
+      "head": "fd98f4a5fc42f08ce04aaf1cec9ce666341e763d",
+      "logical_bytes": 98097,
+      "git_bytes": 88342,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\vdmitriyev\\datasets-links-collection",
+      "head": "fd98f4a5fc42f08ce04aaf1cec9ce666341e763d",
+      "logical_bytes": 97387,
+      "git_bytes": 87632,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\mdozmorov\\Data_notes",
+      "head": "95353d4245a3ab5f6b75edf6a78f5ccce4188a76",
+      "logical_bytes": 88944,
+      "git_bytes": 71994,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\jojo-main\\jojo-main",
+      "head": null,
+      "logical_bytes": 83702,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_DESIGN_CHECKPOINT_2026-09-24.bundle",
+      "head": "e057047ff1b5b7999186e8f649fb8a437b88b42c",
+      "logical_bytes": 74298,
+      "git_bytes": 42077,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\quantopian\\quantopian-algos",
+      "head": "ec0fac6b5cfc84497957f7cbf3968ec559239d25",
+      "logical_bytes": 58100,
+      "git_bytes": 44496,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\hudson-and-thames\\EdgarSEC",
+      "head": "e8632932379dfddf81b6b16f3213e4ff1e45bd24",
+      "logical_bytes": 54804,
+      "git_bytes": 54794,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\ICARUS-OPTIONAL-SOURCES\\STARNET-74fcd5040ba0\\test\\native-connector-keychain",
+      "head": null,
+      "logical_bytes": 33474,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    },
+    {
+      "path": "<USER_HOME>\\ICARUS-OPTIONAL-SOURCES\\STARNET-74fcd5040ba0\\test\\native-process-ownership",
+      "head": null,
+      "logical_bytes": 4814,
+      "git_bytes": 0,
+      "status": "pending_qualification",
+      "source_inspected": false,
+      "next": "Inspect unique capability, license, runtime, provenance, and overlap; disposition only with evidence."
+    }
+  ]
+}
