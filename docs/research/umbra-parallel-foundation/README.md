@@ -1,5 +1,7 @@
 # UMBRA × ICARUS — parallel construction continuation
 
+**Reasoning distillation design:** [REASONING_DISTILLATION_FOUNDRY.md](REASONING_DISTILLATION_FOUNDRY.md) documents proposed verified reasoning banks, compact students and adapters, integration and promotion gates. Design only; no training or new adapter acquisition confirmed.
+
 **Latest owner-selected SSD-backed continuation:** [QWEN36_MMAP_HANDOFF.md](QWEN36_MMAP_HANDOFF.md) records current Windows screenshots, automatic paging, Steam termination, remote blocker, RAM upgrade options, and guarded llama.cpp qualification sequence. Runtime integration/download still pending.
 
 **Qwen3.6 Sovereign candidate:** [QWEN36_SOVEREIGN.md](QWEN36_SOVEREIGN.md) records owner-authorized 27B IQ2_XS acquisition, exact weight hash, remote PowerShell blocker, tested opt-in integration and independent qualification gates. Download and Windows inference are not verified; default fleet is unchanged.
