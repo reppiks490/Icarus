@@ -72,3 +72,17 @@ def test_prequential_drift_detects_reversal():
     out=prequential(b,H,window=4)
     assert out['drift_count']>0
     assert out['trace'][-1]['probability']<out['trace'][8]['probability']
+
+
+def test_memory_measurement_without_optional_psutil(monkeypatch):
+    import builtins
+    import sys
+    from icarus_engine.umbra_lab.agent_lab import available_ram
+    if sys.platform not in ('linux','win32'):
+        pytest.skip('native telemetry supported on Linux and Windows only')
+    original=builtins.__import__
+    def no_psutil(name,*args,**kwargs):
+        if name=='psutil': raise ImportError('optional dependency absent')
+        return original(name,*args,**kwargs)
+    monkeypatch.setattr(builtins,'__import__',no_psutil)
+    assert type(available_ram()) is int and available_ram()>=0
