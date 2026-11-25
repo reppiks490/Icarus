@@ -1,5 +1,7 @@
 # UMBRA × ICARUS — parallel construction continuation
 
+**Executed adaptive Foundry:** [ADAPTIVE_FOUNDRY_HANDOFF.md](ADAPTIVE_FOUNDRY_HANDOFF.md) records 40 synthetic compact routing checkpoints trained across 20 waves, durable evidence and agent vaults, actual process execution, native memory telemetry, and 37 isolated passing tests. No production teacher inference, live deployment or real-world competence claimed.
+
 **Reasoning distillation design:** [REASONING_DISTILLATION_FOUNDRY.md](REASONING_DISTILLATION_FOUNDRY.md) documents proposed verified reasoning banks, compact students and adapters, integration and promotion gates. Design only; no training or new adapter acquisition confirmed.
 
 **Latest owner-selected SSD-backed continuation:** [QWEN36_MMAP_HANDOFF.md](QWEN36_MMAP_HANDOFF.md) records current Windows screenshots, automatic paging, Steam termination, remote blocker, RAM upgrade options, and guarded llama.cpp qualification sequence. Runtime integration/download still pending.
