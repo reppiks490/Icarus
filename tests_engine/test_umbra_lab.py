@@ -52,3 +52,27 @@ class ResearchFoundation(unittest.TestCase):
     def test_resource_bounds(self):
         for n in [0,100001,True]:
             with self.assertRaises(ValueError): pipeline.run(1,n,2)
+
+class MixedFleetAdmission(unittest.TestCase):
+    def test_exact_reserve_and_mixed_wave(self):
+        from icarus_engine.umbra_lab import ollama_review as r
+        self.assertEqual(r.RESERVE,1_800_000_000)
+        tasks=[("small","s","review"),("large","l","review"),("medium","m","review")]
+        tags={"s":{"size":500_000_000},"l":{"size":4_000_000_000},"m":{"size":1_500_000_000}}
+        selected,remaining=r.admit_wave(tasks,tags,9_000_000_000)
+        self.assertIn("large",[x[0] for x in selected])
+        self.assertIn("small",[x[0] for x in selected])
+        self.assertLessEqual(sum(r.estimated_bytes(tags[t[1]]) for t in selected)+r.RESERVE,9_000_000_000)
+    def test_large_deferred_when_memory_insufficient(self):
+        from icarus_engine.umbra_lab import ollama_review as r
+        tasks=[("large","l","review"),("small","s","review")]
+        tags={"s":{"size":500_000_000},"l":{"size":5_000_000_000}}
+        selected,remaining=r.admit_wave(tasks,tags,4_000_000_000)
+        self.assertEqual([x[0] for x in selected],["small"])
+        self.assertEqual([x[0] for x in remaining],["large"])
+    def test_no_admission_below_reserve_and_duplicate_model(self):
+        from icarus_engine.umbra_lab import ollama_review as r
+        tasks=[("a","s","review"),("b","s","review")]
+        tags={"s":{"size":500_000_000}}
+        self.assertEqual(r.admit_wave(tasks,tags,r.RESERVE-1),([],tasks))
+        self.assertEqual(len(r.admit_wave(tasks,tags,10_000_000_000)[0]),1)
