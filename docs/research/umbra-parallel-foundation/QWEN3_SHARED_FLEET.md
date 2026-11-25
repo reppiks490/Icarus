@@ -1,5 +1,7 @@
 # Qwen3 shared-weight specialist fleet — continuation architecture
 
+**Expanded owner-required architecture:** [LEARNING_AGENT_FEDERATION.md](LEARNING_AGENT_FEDERATION.md) and [agent-federation-registry.json](agent-federation-registry.json) extend the ten roles to 40 logical identities (primary plus three replicas per role), with independent trainable ML components, checkpoint lineage, blind reproduction, heterogeneous challenge, deterministic coordination, and qualified execution backends beyond Ollama. The exact 1.8 GB available-RAM reserve and all earlier research/discovery gates remain mandatory. This is a design specification; none of the forty identities is claimed trained or running.
+
 Date: 2026-11-24 local time. Owner asked whether ten separate Qwen3 models can operate at once and requested the entire discussion be documented. This is a design and benchmark specification, not evidence of ten live agents. It extends the owner instruction to use Ollama for continuation, run large and small models in parallel where possible, and retain at least 1,800,000,000 bytes of available physical RAM. Existing implementation and tests remain in PR #506. Historical discovery evidence is in PR #505.
 
 ## 1. Architecture decision
