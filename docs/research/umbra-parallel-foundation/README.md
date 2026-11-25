@@ -1,5 +1,7 @@
 # UMBRA × ICARUS — parallel construction continuation
 
+**Latest owner-selected SSD-backed continuation:** [QWEN36_MMAP_HANDOFF.md](QWEN36_MMAP_HANDOFF.md) records current Windows screenshots, automatic paging, Steam termination, remote blocker, RAM upgrade options, and guarded llama.cpp qualification sequence. Runtime integration/download still pending.
+
 **Qwen3.6 Sovereign candidate:** [QWEN36_SOVEREIGN.md](QWEN36_SOVEREIGN.md) records owner-authorized 27B IQ2_XS acquisition, exact weight hash, remote PowerShell blocker, tested opt-in integration and independent qualification gates. Download and Windows inference are not verified; default fleet is unchanged.
 
 **Storage cleanup continuation:** [STORAGE_CLEANUP_20261124.md](STORAGE_CLEANUP_20261124.md) records 13.48 GB verified earlier recovery; [STORAGE_RECOVERY_40GB.md](STORAGE_RECOVERY_40GB.md) records the additional owner-authorized maximum 40 GB, remaining candidates, outstanding device calls and preservation rules. Reestablish device response and measure a fresh baseline before further cleanup; never repeat pending mutations.
