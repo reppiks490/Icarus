@@ -5,9 +5,34 @@ This is a local Windows-machine evidence handoff for ICARUS / UMBRA / MYRIAD / P
 ## Discovery and storage
 Original discovery: 269 locations (237 Git, 32 extracted source projects). Expanded index audit: 275 locations (243 Git, 32 source), 238 resolved HEADs, 217 distinct full HEAD hashes, 243 index inventories, 5 unverified HEADs, 78 skipped reparse entries. Distinct HEADs are not distinct software projects. Index test paths do not prove passing tests. See the metadata JSON for revisions and per-project counts.
 
-Size pass uses original 269-root manifest; latest committed snapshot: 268 roots, 978,888 files, 87,951,276,664 logical bytes, 0 reported traversal errors, 0 reported placeholder entries, 4 excluded nested inventoried roots. ClickHouse__ClickHouse is still outstanding in this snapshot; six newly discovered roots also require sizing. Do not call this a complete 275-root measurement. See repository-sizes.json for exact coverage. Local size process PID 11752; query its output if still available; do not assume PID identity after restart. Original local roots manifest: projects/icarus-local-inventory-20261124-roots.json. The running process is designed to write projects/icarus-local-inventory-20261124-sizes.json on completion. Check existence and contents before relying on it.
+The completed storage census measured **275/275 discovered locations**, comprising 243 Git locations and 32 extracted source projects. Original 269-root pass: 100,765,857,325 bytes and 1,771,110 files. Six additional ML repositories: 369,190,311 bytes and 3,285 files. Reconciled total: **101,135,047,636 logical bytes (101.135 GB)** and **1,774,395 files**. Both measurement processes exited successfully; no traversal errors or placeholder entries were reported within the measured scope. Four nested inventoried roots were excluded from their parent totals. Both JSON inventories contain 275 unique normalized paths with exact set equality. The original local output files under projects/icarus-local-inventory-20261124-*.json preserve the 269-root pass only; the GitHub size JSON reconciles the extra six. See the full session handoff and system/runtime evidence for the earlier research, development and acquisition history.
 
-Measured categories (bytes): git 49,987,769,116; source_other 26,574,647,622; data 5,499,998,644; dependencies 4,460,764,326; archives 829,201,414; build 343,875,124; weights 255,020,418. Extension and directory heuristics, not content classification. Size totals are logical lengths, NOT NTFS allocated bytes or potential reclaimable space. Hard links, sparse files, compression, cloud synchronization and duplicates require separate accounting. Reparse/offline entries excluded. No deletions, compaction, sync, or source execution authorized. Do not sum the following overlapping earlier snapshots into the repository total.
+| Category | Logical bytes |
+|---|---:|
+| git | 53,015,505,445 |
+| source_other | 35,806,794,936 |
+| data | 5,740,776,416 |
+| dependencies | 4,591,978,539 |
+| archives | 1,136,483,111 |
+| build | 566,938,515 |
+| weights | 276,570,674 |
+
+| Collection | Locations | Logical bytes |
+|---|---:|---:|
+| downloads | 65 | 34,774,034,887 |
+| external | 88 | 45,524,148,658 |
+| other | 87 | 19,561,924,241 |
+| myriad | 21 | 466,702,692 |
+| new_ml | 14 | 808,237,158 |
+
+These are logical file lengths, not actual NTFS allocation or reclaimable space. Categories are heuristics. The metadata discovery was depth-limited and excluded 78 reparse entries; measuring discovered paths does not prove complete PC coverage. Shared hardlinks, sparse files, compression, cloud sync and duplicate histories require separate verification. No deletion, compaction, cloud hydration or runtime change is authorized. Earlier overlapping snapshots below must not be added to this total.
+
+## Full-session continuation documents
+- [SESSION_HANDOFF.md](SESSION_HANDOFF.md): chronological technical history, actual UMBRA changes, POLYMIND, acquisition and proposed ICARUS research architecture, Pulse findings and next-agent instructions.
+- [repository-metadata.json](repository-metadata.json): 275 locations and Git index/HEAD evidence.
+- [repository-sizes.json](repository-sizes.json): reconciled 275-root storage census.
+- [runtime-evidence.json](runtime-evidence.json): sanitized system, environment, dependency-cache and model acquisition observations.
+- [CONTINUE.md](CONTINUE.md): prioritized operational handoff with explicit gates.
 
 ## Previously recovered local assets
 - Primary Icarus: 871,066,987 bytes excluding selected dependency/cache paths; 41 SQLite3 files, 363 Python files. research/market-sources.sqlite3 232,505,344 bytes; audit/subsystem_connections/main/aion.sqlite3 187,785,216; CC2 AION 106,287,104; icarus_engine.db 67,416,064. Schema inspection: market source records/trades/streams; AION events with event/availability/ingestion times, forecasts, settlements and gaps; engine trade/fill/equity/log tables. No row-level qualification performed. Avoid reading credential or access-registry payloads.
@@ -20,14 +45,14 @@ Measured categories (bytes): git 49,987,769,116; source_other 26,574,647,622; da
 - STARNET local checkout 74fcd5040 plus extracted source copy. Existing lifecycle, execution router, evidence, learning eligibility, memory and visual station modules. Inspect capabilities and license before integration; do not start agents or invoke paid tools automatically.
 - NEXUS v0.3 03b2265, local review 6529eed: causal data features, source hashing, replay bus, availability checks, multi-resolution representation registry. DAEDALUS 74ad941: logistic/forest/extra-trees/hist-gradient-boosting, causal features, regimes, purged validation and independent holdout gates. AION 12a7cb8: temporal market memory and labeled replay; settlement not independently verified. ORACLE 6255339: research orchestration, not broker access. PROMETHEUS v0.5 444d978: experiment routing, same-instant replay, evidence lineage, deferral. JANUS runs 025/027/028/029/030/032/037/038 plus additional extracted 032: proof-carrying bi-temporal project twin. Causal router d95a53c AdaptiveRegressor; check unresolved journal import before use. Evidence lab d6a5868 structural audits, not market-data certification. No live execution authority.
 - 88 repositories under ICARUS-EXTERNAL-GITHUB/source and 65 under ICARUS-GITHUB-DOWNLOADS; duplicates and forks exist. Acquisition manifests and logs retained locally. Important already present: Qlib, RD-Agent, FinGPT, FinRL, GluonTS, NeuralForecast, StatsForecast, Darts, River, Optuna, SHAP, PyMC, Tigramite, DoWhy, EconML, finlab-ml, purgedcv, holdout, MLFinLab, CVXPY, ABIDES-JPMC, AlphaTrade/JAX-LOB, HftBacktest, NautilusTrader, LEAN, VectorBT, Databento, CCXT, OpenBB, FinanceDatabase, CME parsers, MBO-to-MBP-10, Arrow, DataFusion, DuckDB, Polars, Feast, MLflow, DVC, lakeFS, Graphiti, Mem0, LangGraph, AutoGen, CrewAI, Pydantic AI, Phoenix, Langfuse, Promptfoo. Full names/revisions in metadata. RD-Agent README describes Qlib factor/model joint optimization; holdout README describes PBO and deflated Sharpe; purgedcv README describes CPCV; AlphaTrade README describes JAX-LOB; ABIDES README describes discrete event exchange simulation; HftBacktest README describes queue and latency fill models. These are documented capabilities, not local smoke-test results.
-- Earlier new research clone inventory: 13 directories (8 Git verified in original scan). Includes Kronos, PySINDy, pyribs, TS2Vec, ABIDES, Time-Series-Library, Qlib, NeuralForecast, DreamerV3, TD-MPC2, d3rlpy, aeon, TALENT; verify current clone receipts.
+- New research clone inventory: 14 measured Git locations after the expanded scan (8 in original pass, 6 additional). Includes Kronos, PySINDy, pyribs, TS2Vec, ABIDES, Time-Series-Library, Qlib, NeuralForecast, DreamerV3, TD-MPC2, d3rlpy, aeon, TALENT; verify current clone receipts.
 
 ## Runtime and system findings (metadata only)
 Existing synced venvs: hft (47 distributions, hftbacktest 2.4.4); nautilus (2 distributions, nautilus_trader 2.0.0rc7, incomplete compatibility unverified); quant (194, pyqlib 0.9.7, LightGBM, CVXPY, MLflow, scikit-learn, SciPy); research (220, River, Optuna, Ruptures, DuckDB, Polars, statsmodels, MLflow). New icarus-ml-runtime (105 distributions at inspection) contains xgboost_cpu, LightGBM, River, hmmlearn, arch, PySINDy, DEAP, pymoo, ribs, Optuna, SymPy, aeon, PyOD and others. MYRIAD training env torch CPU and SymPy metadata; POLYMIND runtime ORT, numpy, tokenizers, HF hub. Do not assume imports work; check isolated interpreter and pip check before use.
 Temp 215 wheels 408,738,235 bytes, 421 NPZ only 132,496 bytes (not evidence of major model banks). UV bounded scan 457,276,113 bytes, npm 82,537,778 bytes, Temp 745,784,384 bytes. WSL registered Ubuntu and docker-desktop; virtual disks observed 15,294,529,536 bytes WSL and 6,788,481,024 Docker. Not mounted or inspected. Installed metadata: Python 3.10–3.13, Node 26.13.0, Git 2.54.0, Ollama 0.40.17, WSL 2.6.3.0, Docker 4.92.0, PostgreSQL 18.3-2, VS Build Tools. System directory snapshots depth-limited. Credential locations inspected for presence only; protected system areas denied; no secret extraction or bypass. Do not publish private logs or raw licensed data.
 
 ## Ranked next-agent plan
-1. Close size coverage (ClickHouse plus 6 new roots); compare root identities with metadata; calculate allocated disk bytes only via supported local filesystem metadata, account for hardlinks/cloud placeholders. No deletion or compaction without explicit owner approval.
+1. Size coverage of all 275 discovered locations is closed; compare physical allocated disk bytes only via supported local filesystem metadata, account for hardlinks/cloud placeholders. No deletion or compaction without explicit owner approval.
 2. Verify active downloads, free space, exact model receipts and isolated environments. Avoid duplicate installs/clones. Preserve existing runtime and current owner constraints; no scheduled Codex use.
 3. Build a local reference-only inventory of CSVs, DB sources, archive entries and trained artifacts with hashes, lineage, timestamps and rights; avoid loading pickle or unknown code. Keep raw artifacts local.
 4. Extend existing Icarus trainer adapters, starting with Qlib/LightGBM/XGBoost/River; numerical models as challenger forecasts, family-specific inputs and independently calibrated evaluation. Preserve original Pulse and current paper system.
@@ -36,4 +61,4 @@ Temp 215 wheels 408,738,235 bytes, 421 NPZ only 132,496 bytes (not evidence of m
 7. Publish sanitized evidence and exact revisions; check current coordination reservations before implementation. No proof of profitability or complete four-month history. Historical filesystem timestamps do not establish actual usage.
 
 ## Completion boundary
-This branch is documentation only. No source changes, deletion, credential disclosure, live broker activity, provider calls, deployments, or main merge. Current size snapshot is incomplete; next agent must verify missing roots and reconcile later process output. The report does not establish actual physical disk allocation, tested functionality of all repositories, or unique software count.
+This branch is documentation only. No source changes, deletion, credential disclosure, live broker activity, provider calls, deployments, or main merge. The 275 discovered-root size snapshot is complete; whole-machine usage, actual allocation, content-level security, model qualification and historical evidence remain incomplete. The report does not establish actual physical disk allocation, tested functionality of all repositories, or unique software count.
