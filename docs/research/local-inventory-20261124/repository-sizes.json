@@ -1,0 +1,5956 @@
+{
+  "schema": "icarus.local_repository_sizes.v1",
+  "as_of_local": "2026-11-24",
+  "method": "Logical length of files from local directory metadata. Nested inventoried roots excluded to avoid overlap. Reparse/offline entries excluded, no hydration. No hardlink or physical allocated-byte reconciliation. Category heuristics based on directory and extension, not content qualification.",
+  "status": "partial",
+  "summary": {
+    "roots_expected": 269,
+    "roots_measured": 268,
+    "logical_bytes": 87951276664,
+    "files": 978888,
+    "errors": 0,
+    "placeholder_entries": 0,
+    "placeholder_file_logical_bytes": 0,
+    "nested_roots_excluded": 4,
+    "missing": [
+      "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\ClickHouse__ClickHouse"
+    ],
+    "categories": {
+      "source_other": 26574647622,
+      "weights": 255020418,
+      "data": 5499998644,
+      "build": 343875124,
+      "git": 49987769116,
+      "dependencies": 4460764326,
+      "archives": 829201414
+    },
+    "groups": {
+      "external": {
+        "count": 87,
+        "bytes": 32709567997,
+        "errors": 0
+      },
+      "downloads": {
+        "count": 65,
+        "bytes": 34774034887,
+        "errors": 0
+      },
+      "myriad": {
+        "count": 21,
+        "bytes": 466702692,
+        "errors": 0
+      },
+      "other": {
+        "count": 87,
+        "bytes": 19561924241,
+        "errors": 0
+      },
+      "new_ml": {
+        "count": 8,
+        "bytes": 439046847,
+        "errors": 0
+      }
+    },
+    "process_summary": null
+  },
+  "repositories": [
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\JerBouma\\FinanceDatabase",
+      "kind": "GIT",
+      "head_at_discovery": "3815eb341",
+      "logical_bytes": 14972388862,
+      "file_count": 8979,
+      "categories": {
+        "source_other": 28784263,
+        "data": 189234911,
+        "dependencies": 373351,
+        "git": 14753996337
+      },
+      "file_counts": {
+        "source_other": 182,
+        "data": 201,
+        "dependencies": 37,
+        "git": 8559
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.95
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\ccxt__ccxt",
+      "kind": "GIT",
+      "head_at_discovery": "133fd945e5d",
+      "logical_bytes": 9649798427,
+      "file_count": 10775,
+      "categories": {
+        "source_other": 443481813,
+        "build": 73863788,
+        "data": 2875,
+        "git": 9132449951
+      },
+      "file_counts": {
+        "source_other": 9289,
+        "build": 731,
+        "data": 1,
+        "git": 754
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 2.39
+    },
+    {
+      "path": "ICARUS-OPTIONAL-SOURCES\\STARNET",
+      "kind": "GIT",
+      "head_at_discovery": "74fcd5040",
+      "logical_bytes": 5946680137,
+      "file_count": 48451,
+      "categories": {
+        "source_other": 3608136619,
+        "archives": 1080229,
+        "build": 554767,
+        "data": 107014,
+        "git": 2336801508
+      },
+      "file_counts": {
+        "source_other": 48283,
+        "archives": 104,
+        "build": 25,
+        "data": 9,
+        "git": 30
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 7.19
+    },
+    {
+      "path": "ICARUS-OPTIONAL-SOURCES\\STARNET-74fcd5040ba0",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 3601462375,
+      "file_count": 48330,
+      "categories": {
+        "source_other": 3599729753,
+        "archives": 1080229,
+        "data": 106870,
+        "build": 545523
+      },
+      "file_counts": {
+        "source_other": 48193,
+        "archives": 104,
+        "data": 9,
+        "build": 24
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 3,
+      "errors": 0,
+      "elapsed_sec": 6.89
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\dgunning__edgartools",
+      "kind": "GIT",
+      "head_at_discovery": "3931b220",
+      "logical_bytes": 3570714868,
+      "file_count": 3618,
+      "categories": {
+        "source_other": 2638392811,
+        "archives": 2128045,
+        "data": 11043417,
+        "git": 919150595
+      },
+      "file_counts": {
+        "source_other": 3550,
+        "archives": 3,
+        "data": 22,
+        "git": 43
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.86
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\openbq-org__OpenBB",
+      "kind": "GIT",
+      "head_at_discovery": "7df7d0c5592",
+      "logical_bytes": 2727510370,
+      "file_count": 4192,
+      "categories": {
+        "source_other": 170530163,
+        "archives": 976085,
+        "data": 7802964,
+        "build": 0,
+        "git": 2548201158
+      },
+      "file_counts": {
+        "source_other": 4114,
+        "archives": 10,
+        "data": 13,
+        "build": 1,
+        "git": 54
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.38
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\grafana\\grafana",
+      "kind": "GIT",
+      "head_at_discovery": "82187be1b52",
+      "logical_bytes": 2372371286,
+      "file_count": 24190,
+      "categories": {
+        "source_other": 226388568,
+        "build": 425708,
+        "data": 795279,
+        "archives": 6929,
+        "git": 2144754802
+      },
+      "file_counts": {
+        "source_other": 23720,
+        "build": 417,
+        "data": 17,
+        "archives": 8,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 8.61
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\pingdotgg\\t3code",
+      "kind": "GIT",
+      "head_at_discovery": "0604547a3a",
+      "logical_bytes": 2254697498,
+      "file_count": 41499,
+      "categories": {
+        "source_other": 1501701746,
+        "archives": 194,
+        "build": 114500,
+        "git": 752877547,
+        "dependencies": 801,
+        "data": 2710
+      },
+      "file_counts": {
+        "source_other": 41422,
+        "archives": 1,
+        "build": 20,
+        "git": 46,
+        "dependencies": 9,
+        "data": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 11.41
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\heygen-com\\hyperframes",
+      "kind": "GIT",
+      "head_at_discovery": "933ae3eb5",
+      "logical_bytes": 2035600035,
+      "file_count": 9477,
+      "categories": {
+        "source_other": 922407136,
+        "data": 836,
+        "build": 984,
+        "git": 1113191079
+      },
+      "file_counts": {
+        "source_other": 9288,
+        "data": 1,
+        "build": 2,
+        "git": 186
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 3.55
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\apache__datafusion",
+      "kind": "GIT",
+      "head_at_discovery": "833f499da",
+      "logical_bytes": 1529818035,
+      "file_count": 5984,
+      "categories": {
+        "source_other": 882459279,
+        "data": 4550166,
+        "archives": 1019752,
+        "build": 192814,
+        "git": 641596024
+      },
+      "file_counts": {
+        "source_other": 5300,
+        "data": 227,
+        "archives": 92,
+        "build": 12,
+        "git": 353
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.33
+    },
+    {
+      "path": "Icarus-ml-d9d4db8",
+      "kind": "GIT",
+      "head_at_discovery": "55b88422",
+      "logical_bytes": 1521940021,
+      "file_count": 7713,
+      "categories": {
+        "source_other": 10691606,
+        "dependencies": 278423646,
+        "archives": 155204464,
+        "git": 154784747,
+        "data": 922835558
+      },
+      "file_counts": {
+        "source_other": 291,
+        "dependencies": 6756,
+        "archives": 9,
+        "git": 29,
+        "data": 628
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.47
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\MainakRepositor\\Datasets",
+      "kind": "GIT",
+      "head_at_discovery": "f20fd12",
+      "logical_bytes": 1227433485,
+      "file_count": 497,
+      "categories": {
+        "source_other": 34683976,
+        "data": 863403667,
+        "git": 329345842
+      },
+      "file_counts": {
+        "source_other": 188,
+        "data": 281,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.08
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\vectorize-io\\hindsight",
+      "kind": "GIT",
+      "head_at_discovery": "5a672f0cd",
+      "logical_bytes": 1126668360,
+      "file_count": 5113,
+      "categories": {
+        "source_other": 265925110,
+        "archives": 7462404,
+        "build": 3631,
+        "data": 25966,
+        "git": 853251249
+      },
+      "file_counts": {
+        "source_other": 5074,
+        "archives": 8,
+        "build": 2,
+        "data": 1,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.19
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\airbytehq__airbyte",
+      "kind": "GIT",
+      "head_at_discovery": "a16e57dc",
+      "logical_bytes": 1110045276,
+      "file_count": 19437,
+      "categories": {
+        "source_other": 925531097,
+        "build": 84225,
+        "data": 8510769,
+        "archives": 13602361,
+        "git": 162316824
+      },
+      "file_counts": {
+        "source_other": 18733,
+        "build": 20,
+        "data": 637,
+        "archives": 13,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 11.09
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\polakowo\\vectorbt",
+      "kind": "GIT",
+      "head_at_discovery": "8e30b8c",
+      "logical_bytes": 966299483,
+      "file_count": 330,
+      "categories": {
+        "source_other": 171396466,
+        "git": 794903017
+      },
+      "file_counts": {
+        "source_other": 302,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.08
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\grafana\\loki",
+      "kind": "GIT",
+      "head_at_discovery": "168ed3f221",
+      "logical_bytes": 949337533,
+      "file_count": 17178,
+      "categories": {
+        "source_other": 344465907,
+        "build": 3959,
+        "data": 160,
+        "archives": 2823637,
+        "git": 602043870
+      },
+      "file_counts": {
+        "source_other": 17139,
+        "build": 7,
+        "data": 3,
+        "archives": 1,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 5.8
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\recinosr\\wall-street-motor",
+      "kind": "GIT",
+      "head_at_discovery": "e622cfabe",
+      "logical_bytes": 936600351,
+      "file_count": 32821,
+      "categories": {
+        "source_other": 619184618,
+        "archives": 22973033,
+        "data": 15163498,
+        "git": 279279202
+      },
+      "file_counts": {
+        "source_other": 32748,
+        "archives": 38,
+        "data": 7,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 4.5
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\duckdb__duckdb",
+      "kind": "GIT",
+      "head_at_discovery": "c1606652f2a",
+      "logical_bytes": 931269211,
+      "file_count": 17447,
+      "categories": {
+        "source_other": 111425188,
+        "data": 95776168,
+        "archives": 73307914,
+        "git": 650759941
+      },
+      "file_counts": {
+        "source_other": 14852,
+        "data": 2321,
+        "archives": 169,
+        "git": 105
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 3.94
+    },
+    {
+      "path": "Icarus-as-is",
+      "kind": "GIT",
+      "head_at_discovery": "8929c966",
+      "logical_bytes": 918742345,
+      "file_count": 42808,
+      "categories": {
+        "source_other": 21576499,
+        "archives": 378541,
+        "dependencies": 896773232,
+        "data": 14073
+      },
+      "file_counts": {
+        "source_other": 4680,
+        "archives": 2,
+        "dependencies": 38120,
+        "data": 6
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 12.66
+    },
+    {
+      "path": "Icarus",
+      "kind": "GIT",
+      "head_at_discovery": "75785696",
+      "logical_bytes": 917403521,
+      "file_count": 2061,
+      "categories": {
+        "source_other": 93203167,
+        "data": 789234281,
+        "archives": 54974,
+        "dependencies": 5043261,
+        "git": 29867838
+      },
+      "file_counts": {
+        "source_other": 962,
+        "data": 62,
+        "archives": 1,
+        "dependencies": 342,
+        "git": 694
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.66
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\kungfu-systems\\kungfu",
+      "kind": "GIT",
+      "head_at_discovery": "a025fe8fd3",
+      "logical_bytes": 914418078,
+      "file_count": 7029,
+      "categories": {
+        "source_other": 292256129,
+        "data": 1315295,
+        "build": 22530,
+        "archives": 20096394,
+        "git": 600727730
+      },
+      "file_counts": {
+        "source_other": 6913,
+        "data": 43,
+        "build": 4,
+        "archives": 41,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 3.62
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\ruvnet\\ruflo",
+      "kind": "GIT",
+      "head_at_discovery": "dafd38a4f",
+      "logical_bytes": 834506682,
+      "file_count": 8297,
+      "categories": {
+        "source_other": 149569049,
+        "data": 1674451,
+        "build": 37094,
+        "weights": 56860,
+        "archives": 8260,
+        "git": 683160968
+      },
+      "file_counts": {
+        "source_other": 8242,
+        "data": 16,
+        "build": 9,
+        "weights": 1,
+        "archives": 1,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 3.14
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\K-Dense-AI\\scientific-agent-skills",
+      "kind": "GIT",
+      "head_at_discovery": "5f2bc034",
+      "logical_bytes": 775306018,
+      "file_count": 2808,
+      "categories": {
+        "source_other": 291362101,
+        "data": 44937,
+        "archives": 212812,
+        "git": 483686168
+      },
+      "file_counts": {
+        "source_other": 2718,
+        "data": 42,
+        "archives": 20,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.3
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\NationalSecurityAgency\\ghidra",
+      "kind": "GIT",
+      "head_at_discovery": "057a646233",
+      "logical_bytes": 771856391,
+      "file_count": 20651,
+      "categories": {
+        "source_other": 319024491,
+        "archives": 2290547,
+        "build": 8805346,
+        "git": 441736007
+      },
+      "file_counts": {
+        "source_other": 18790,
+        "archives": 1,
+        "build": 1832,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 7.81
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\anomalyco\\opencode",
+      "kind": "GIT",
+      "head_at_discovery": "7ad676b0c7",
+      "logical_bytes": 770942274,
+      "file_count": 8962,
+      "categories": {
+        "source_other": 144227917,
+        "build": 191749,
+        "data": 8192,
+        "archives": 39601,
+        "git": 626474815
+      },
+      "file_counts": {
+        "source_other": 8916,
+        "build": 14,
+        "data": 2,
+        "archives": 2,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.89
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\mlflow__mlflow",
+      "kind": "GIT",
+      "head_at_discovery": "387eaed",
+      "logical_bytes": 717192667,
+      "file_count": 10553,
+      "categories": {
+        "source_other": 407613775,
+        "data": 2392713,
+        "weights": 1317,
+        "build": 9337581,
+        "git": 297847281
+      },
+      "file_counts": {
+        "source_other": 10335,
+        "data": 32,
+        "weights": 3,
+        "build": 27,
+        "git": 156
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 3.89
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\Arize-ai__phoenix",
+      "kind": "GIT",
+      "head_at_discovery": "23bd69f0ca",
+      "logical_bytes": 681232085,
+      "file_count": 9235,
+      "categories": {
+        "source_other": 69241473,
+        "data": 2705765,
+        "git": 609284847
+      },
+      "file_counts": {
+        "source_other": 8438,
+        "data": 17,
+        "git": 780
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 3.53
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\semgrep__semgrep",
+      "kind": "GIT",
+      "head_at_discovery": "087e93b",
+      "logical_bytes": 657649565,
+      "file_count": 16918,
+      "categories": {
+        "source_other": 615697521,
+        "build": 77195,
+        "archives": 414567,
+        "git": 41460282
+      },
+      "file_counts": {
+        "source_other": 16757,
+        "build": 88,
+        "archives": 2,
+        "git": 71
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 8
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\questdb__questdb",
+      "kind": "GIT",
+      "head_at_discovery": "0151d5e",
+      "logical_bytes": 653026570,
+      "file_count": 11246,
+      "categories": {
+        "source_other": 255245147,
+        "data": 15668587,
+        "archives": 19015588,
+        "build": 83323265,
+        "git": 279773983
+      },
+      "file_counts": {
+        "source_other": 10712,
+        "data": 116,
+        "archives": 30,
+        "build": 118,
+        "git": 270
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 2.7
+    },
+    {
+      "path": "icarus-reset-20261015-070848\\Icarus",
+      "kind": "GIT",
+      "head_at_discovery": "2bf2743",
+      "logical_bytes": 651178740,
+      "file_count": 17622,
+      "categories": {
+        "source_other": 13217312,
+        "archives": 378541,
+        "dependencies": 628366382,
+        "data": 14073,
+        "git": 9202432
+      },
+      "file_counts": {
+        "source_other": 1642,
+        "archives": 2,
+        "dependencies": 15946,
+        "data": 6,
+        "git": 26
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 5.78
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\paperclipai\\paperclip",
+      "kind": "GIT",
+      "head_at_discovery": "835966dec",
+      "logical_bytes": 616013671,
+      "file_count": 12149,
+      "categories": {
+        "source_other": 181304629,
+        "data": 203190,
+        "archives": 139143,
+        "build": 178634,
+        "git": 434188075
+      },
+      "file_counts": {
+        "source_other": 12110,
+        "data": 2,
+        "archives": 1,
+        "build": 8,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 2.89
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\crewAIInc__crewAI",
+      "kind": "GIT",
+      "head_at_discovery": "ed0abf2",
+      "logical_bytes": 593183568,
+      "file_count": 37379,
+      "categories": {
+        "source_other": 474789149,
+        "data": 120,
+        "git": 118394299
+      },
+      "file_counts": {
+        "source_other": 37344,
+        "data": 1,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 12.55
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\shap__shap",
+      "kind": "GIT",
+      "head_at_discovery": "c058cae",
+      "logical_bytes": 562434311,
+      "file_count": 649,
+      "categories": {
+        "source_other": 370315603,
+        "data": 19260557,
+        "archives": 19257804,
+        "git": 153600347
+      },
+      "file_counts": {
+        "source_other": 576,
+        "data": 38,
+        "archives": 1,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.33
+    },
+    {
+      "path": "Icarus-as-is-restart-candidate-a21507b8b9bb",
+      "kind": "GIT",
+      "head_at_discovery": "08c57fe6",
+      "logical_bytes": 560374312,
+      "file_count": 19407,
+      "categories": {
+        "source_other": 24003776,
+        "archives": 378541,
+        "dependencies": 535975783,
+        "data": 16212
+      },
+      "file_counts": {
+        "source_other": 3654,
+        "archives": 2,
+        "dependencies": 15744,
+        "data": 7
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 5.5
+    },
+    {
+      "path": "Downloads\\divine providence\\divine-providence",
+      "kind": "GIT",
+      "head_at_discovery": "5e4ed5f",
+      "logical_bytes": 527261763,
+      "file_count": 19255,
+      "categories": {
+        "source_other": 10191024,
+        "dependencies": 512855269,
+        "data": 93085,
+        "build": 81959,
+        "git": 4040426
+      },
+      "file_counts": {
+        "source_other": 1741,
+        "dependencies": 17272,
+        "data": 9,
+        "build": 22,
+        "git": 211
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 4.22
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\open-metadata__OpenMetadata",
+      "kind": "GIT",
+      "head_at_discovery": "bff4d484",
+      "logical_bytes": 518748240,
+      "file_count": 23756,
+      "categories": {
+        "source_other": 308897777,
+        "archives": 41702312,
+        "data": 7730898,
+        "build": 286505,
+        "git": 160130748
+      },
+      "file_counts": {
+        "source_other": 23644,
+        "archives": 24,
+        "data": 40,
+        "build": 14,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 9.83
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\QuantConnect__Lean",
+      "kind": "GIT",
+      "head_at_discovery": "22404ea",
+      "logical_bytes": 513311017,
+      "file_count": 6552,
+      "categories": {
+        "source_other": 49631791,
+        "data": 19447270,
+        "archives": 220295613,
+        "git": 223936343
+      },
+      "file_counts": {
+        "source_other": 5295,
+        "data": 523,
+        "archives": 697,
+        "git": 37
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.81
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\feast-dev__feast",
+      "kind": "GIT",
+      "head_at_discovery": "1e5e90ca0",
+      "logical_bytes": 508866645,
+      "file_count": 3399,
+      "categories": {
+        "source_other": 119680050,
+        "data": 43672673,
+        "build": 22750752,
+        "git": 322763170
+      },
+      "file_counts": {
+        "source_other": 3144,
+        "data": 32,
+        "build": 2,
+        "git": 221
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.06
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\continuedev__continue",
+      "kind": "GIT",
+      "head_at_discovery": "5522c6f",
+      "logical_bytes": 473874996,
+      "file_count": 3092,
+      "categories": {
+        "source_other": 261188638,
+        "archives": 2735,
+        "data": 439,
+        "weights": 22972370,
+        "git": 189710814
+      },
+      "file_counts": {
+        "source_other": 3055,
+        "archives": 1,
+        "data": 1,
+        "weights": 1,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.3
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\pydantic__pydantic-ai",
+      "kind": "GIT",
+      "head_at_discovery": "f6851c5",
+      "logical_bytes": 459331258,
+      "file_count": 5172,
+      "categories": {
+        "source_other": 326448751,
+        "git": 132882507
+      },
+      "file_counts": {
+        "source_other": 5138,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.47
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\nautechsystems\\nautilus_trader",
+      "kind": "GIT",
+      "head_at_discovery": "04f766b4d4",
+      "logical_bytes": 453483684,
+      "file_count": 5340,
+      "categories": {
+        "source_other": 99756833,
+        "data": 31023884,
+        "archives": 2439181,
+        "build": 465799,
+        "git": 319797987
+      },
+      "file_counts": {
+        "source_other": 5128,
+        "data": 74,
+        "archives": 46,
+        "build": 64,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.67
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\dagster-io__dagster",
+      "kind": "GIT",
+      "head_at_discovery": "c94186b",
+      "logical_bytes": 448743541,
+      "file_count": 14598,
+      "categories": {
+        "source_other": 252596471,
+        "data": 41044441,
+        "archives": 150879,
+        "build": 28786204,
+        "git": 126165546
+      },
+      "file_counts": {
+        "source_other": 13648,
+        "data": 239,
+        "archives": 5,
+        "build": 672,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 7.53
+    },
+    {
+      "path": "Icarus-restart-backups\\independent-access-20261104T180122Z\\private-root",
+      "kind": "GIT",
+      "head_at_discovery": "75785696",
+      "logical_bytes": 433315570,
+      "file_count": 2005,
+      "categories": {
+        "source_other": 41247454,
+        "data": 362048625,
+        "archives": 54974,
+        "dependencies": 5043261,
+        "git": 24921256
+      },
+      "file_counts": {
+        "source_other": 944,
+        "data": 59,
+        "archives": 1,
+        "dependencies": 342,
+        "git": 659
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.36
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\promptfoo__promptfoo",
+      "kind": "GIT",
+      "head_at_discovery": "e48ed85",
+      "logical_bytes": 432689812,
+      "file_count": 6010,
+      "categories": {
+        "source_other": 241932546,
+        "data": 4847205,
+        "dependencies": 1543,
+        "weights": 361,
+        "archives": 25577,
+        "git": 185882580
+      },
+      "file_counts": {
+        "source_other": 5934,
+        "data": 26,
+        "dependencies": 14,
+        "weights": 1,
+        "archives": 1,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 2.3
+    },
+    {
+      "path": "icarus-reset-20261015\\divine-providence",
+      "kind": "GIT",
+      "head_at_discovery": "0e17bbe",
+      "logical_bytes": 430482517,
+      "file_count": 18195,
+      "categories": {
+        "source_other": 11332835,
+        "dependencies": 414032958,
+        "data": 92843,
+        "git": 5023881
+      },
+      "file_counts": {
+        "source_other": 1821,
+        "dependencies": 16338,
+        "data": 8,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 4.45
+    },
+    {
+      "path": "icarus-reset-20261015-070848\\divine-providence",
+      "kind": "GIT",
+      "head_at_discovery": "eeb82bd",
+      "logical_bytes": 430260693,
+      "file_count": 18207,
+      "categories": {
+        "source_other": 11365835,
+        "dependencies": 414125786,
+        "data": 100869,
+        "git": 4668203
+      },
+      "file_counts": {
+        "source_other": 1823,
+        "dependencies": 16349,
+        "data": 9,
+        "git": 26
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 4.34
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\apache__arrow",
+      "kind": "GIT",
+      "head_at_discovery": "4a6ebc06dc",
+      "logical_bytes": 371602524,
+      "file_count": 6719,
+      "categories": {
+        "source_other": 76759687,
+        "data": 4349503,
+        "archives": 1221932,
+        "build": 2336,
+        "git": 289269066
+      },
+      "file_counts": {
+        "source_other": 6059,
+        "data": 280,
+        "archives": 97,
+        "build": 1,
+        "git": 282
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1
+    },
+    {
+      "path": "Icarus-mobile-sdk58",
+      "kind": "GIT",
+      "head_at_discovery": "294f5a1f",
+      "logical_bytes": 365625977,
+      "file_count": 27520,
+      "categories": {
+        "source_other": 20576870,
+        "archives": 378541,
+        "dependencies": 344656493,
+        "data": 14073
+      },
+      "file_counts": {
+        "source_other": 3870,
+        "archives": 2,
+        "dependencies": 23642,
+        "data": 6
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 9.47
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\datahub-project__datahub",
+      "kind": "GIT",
+      "head_at_discovery": "68fb10c0",
+      "logical_bytes": 359610082,
+      "file_count": 20788,
+      "categories": {
+        "source_other": 273842696,
+        "archives": 10406621,
+        "data": 1113475,
+        "weights": 107,
+        "build": 903,
+        "git": 74246280
+      },
+      "file_counts": {
+        "source_other": 20673,
+        "archives": 24,
+        "data": 53,
+        "weights": 3,
+        "build": 1,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 10.7
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\nkaz001__hftbacktest",
+      "kind": "GIT",
+      "head_at_discovery": "5f3ec40",
+      "logical_bytes": 353006945,
+      "file_count": 331,
+      "categories": {
+        "source_other": 25886655,
+        "archives": 46366864,
+        "git": 280753426
+      },
+      "file_counts": {
+        "source_other": 217,
+        "archives": 15,
+        "git": 99
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.16
+    },
+    {
+      "path": "Icarus-backup-20261028T041317Z",
+      "kind": "GIT",
+      "head_at_discovery": "75785696",
+      "logical_bytes": 346043365,
+      "file_count": 2029,
+      "categories": {
+        "source_other": 32721530,
+        "data": 284130735,
+        "archives": 54974,
+        "dependencies": 5043261,
+        "git": 24092865
+      },
+      "file_counts": {
+        "source_other": 909,
+        "data": 58,
+        "archives": 1,
+        "dependencies": 342,
+        "git": 719
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.75
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\Zdong104\\FNSPID_Financial_News_Dataset",
+      "kind": "GIT",
+      "head_at_discovery": "4054842",
+      "logical_bytes": 344519014,
+      "file_count": 1111,
+      "categories": {
+        "source_other": 4856545,
+        "data": 118870039,
+        "dependencies": 88689,
+        "weights": 109401212,
+        "git": 111302529
+      },
+      "file_counts": {
+        "source_other": 205,
+        "data": 813,
+        "dependencies": 22,
+        "weights": 43,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.44
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\BerriAI__litellm",
+      "kind": "GIT",
+      "head_at_discovery": "6d93445",
+      "logical_bytes": 320051070,
+      "file_count": 14723,
+      "categories": {
+        "source_other": 220544898,
+        "data": 3538644,
+        "archives": 12970,
+        "build": 28819134,
+        "git": 67135424
+      },
+      "file_counts": {
+        "source_other": 13550,
+        "data": 91,
+        "archives": 2,
+        "build": 1046,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 7.09
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\unit8co__darts",
+      "kind": "GIT",
+      "head_at_discovery": "555c8d1",
+      "logical_bytes": 311346556,
+      "file_count": 526,
+      "categories": {
+        "source_other": 56613245,
+        "data": 175931451,
+        "archives": 758,
+        "weights": 944840,
+        "git": 77856262
+      },
+      "file_counts": {
+        "source_other": 455,
+        "data": 32,
+        "archives": 1,
+        "weights": 4,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.17
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\morluto\\rea",
+      "kind": "GIT",
+      "head_at_discovery": "e89192653",
+      "logical_bytes": 306192742,
+      "file_count": 7006,
+      "categories": {
+        "source_other": 90802033,
+        "data": 155748,
+        "git": 215234961
+      },
+      "file_counts": {
+        "source_other": 6837,
+        "data": 3,
+        "git": 166
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.58
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\tradingview__lightweight-charts",
+      "kind": "GIT",
+      "head_at_discovery": "c9ec1cec25",
+      "logical_bytes": 299108706,
+      "file_count": 2285,
+      "categories": {
+        "source_other": 8761856,
+        "git": 290346850
+      },
+      "file_counts": {
+        "source_other": 2213,
+        "git": 72
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.92
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\grafana__grafana",
+      "kind": "GIT",
+      "head_at_discovery": "2612e559",
+      "logical_bytes": 290451871,
+      "file_count": 24196,
+      "categories": {
+        "source_other": 226389447,
+        "build": 425708,
+        "data": 795279,
+        "archives": 6929,
+        "git": 62834508
+      },
+      "file_counts": {
+        "source_other": 23720,
+        "build": 417,
+        "data": 17,
+        "archives": 8,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 9.7
+    },
+    {
+      "path": "Icarus.backup-20261024T023702Z",
+      "kind": "GIT",
+      "head_at_discovery": "75785696",
+      "logical_bytes": 272509532,
+      "file_count": 1953,
+      "categories": {
+        "source_other": 48907874,
+        "data": 198570621,
+        "archives": 54974,
+        "dependencies": 5043261,
+        "git": 19932802
+      },
+      "file_counts": {
+        "source_other": 850,
+        "data": 55,
+        "archives": 1,
+        "dependencies": 342,
+        "git": 705
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.62
+    },
+    {
+      "path": "Icarus.backup-20261023T204521Z",
+      "kind": "GIT",
+      "head_at_discovery": "75785696",
+      "logical_bytes": 269456316,
+      "file_count": 1900,
+      "categories": {
+        "source_other": 48888544,
+        "data": 196012928,
+        "archives": 54974,
+        "dependencies": 5043261,
+        "git": 19456609
+      },
+      "file_counts": {
+        "source_other": 849,
+        "data": 55,
+        "archives": 1,
+        "dependencies": 342,
+        "git": 653
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.5
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\cvxpy\\cvxpy",
+      "kind": "GIT",
+      "head_at_discovery": "8280648bd",
+      "logical_bytes": 266874757,
+      "file_count": 1189,
+      "categories": {
+        "source_other": 29179760,
+        "git": 237694997
+      },
+      "file_counts": {
+        "source_other": 1161,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.47
+    },
+    {
+      "path": "Icarus-backup-20261027T033253Z",
+      "kind": "GIT",
+      "head_at_discovery": "75785696",
+      "logical_bytes": 264989901,
+      "file_count": 1976,
+      "categories": {
+        "source_other": 32124423,
+        "data": 204251393,
+        "archives": 54974,
+        "dependencies": 5043261,
+        "git": 23515850
+      },
+      "file_counts": {
+        "source_other": 862,
+        "data": 55,
+        "archives": 1,
+        "dependencies": 342,
+        "git": 716
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.42
+    },
+    {
+      "path": "daedalus-review\\daedalus-research-os",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 261045952,
+      "file_count": 8245,
+      "categories": {
+        "source_other": 260374,
+        "dependencies": 260455991,
+        "build": 202866,
+        "data": 126721
+      },
+      "file_counts": {
+        "source_other": 72,
+        "dependencies": 8138,
+        "build": 32,
+        "data": 3
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.56
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\K-Dense-AI--scientific-agent-skills",
+      "kind": "GIT",
+      "head_at_discovery": "c21d13b",
+      "logical_bytes": 245870644,
+      "file_count": 28,
+      "categories": {
+        "git": 245870644
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "icarus-bridge",
+      "kind": "GIT",
+      "head_at_discovery": "bc4f3bd",
+      "logical_bytes": 244706654,
+      "file_count": 1169,
+      "categories": {
+        "source_other": 105716242,
+        "data": 78837188,
+        "dependencies": 2055614,
+        "archives": 940711,
+        "git": 57156899
+      },
+      "file_counts": {
+        "source_other": 742,
+        "data": 137,
+        "dependencies": 141,
+        "archives": 2,
+        "git": 147
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.27
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\polakowo__vectorbt",
+      "kind": "GIT",
+      "head_at_discovery": "8e30b8c",
+      "logical_bytes": 240490166,
+      "file_count": 545,
+      "categories": {
+        "source_other": 171420929,
+        "dependencies": 5861969,
+        "git": 63207268
+      },
+      "file_counts": {
+        "source_other": 307,
+        "dependencies": 204,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.16
+    },
+    {
+      "path": "Icarus.backup-20261021-204236",
+      "kind": "GIT",
+      "head_at_discovery": "7578569",
+      "logical_bytes": 239047748,
+      "file_count": 1870,
+      "categories": {
+        "source_other": 43644210,
+        "data": 179044720,
+        "archives": 54974,
+        "dependencies": 5043261,
+        "git": 11260583
+      },
+      "file_counts": {
+        "source_other": 852,
+        "data": 43,
+        "archives": 1,
+        "dependencies": 342,
+        "git": 632
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.75
+    },
+    {
+      "path": "Icarus.backup-20261021-213348",
+      "kind": "GIT",
+      "head_at_discovery": "7578569",
+      "logical_bytes": 239047748,
+      "file_count": 1870,
+      "categories": {
+        "source_other": 43644210,
+        "data": 179044720,
+        "archives": 54974,
+        "dependencies": 5043261,
+        "git": 11260583
+      },
+      "file_counts": {
+        "source_other": 852,
+        "data": 43,
+        "archives": 1,
+        "dependencies": 342,
+        "git": 632
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.64
+    },
+    {
+      "path": "Icarus.backup-20261021-204204",
+      "kind": "GIT",
+      "head_at_discovery": "7578569",
+      "logical_bytes": 234506307,
+      "file_count": 1532,
+      "categories": {
+        "source_other": 41592648,
+        "data": 179044720,
+        "archives": 54974,
+        "dependencies": 2553382,
+        "git": 11260583
+      },
+      "file_counts": {
+        "source_other": 658,
+        "data": 43,
+        "archives": 1,
+        "dependencies": 198,
+        "git": 632
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.59
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\pola-rs__polars",
+      "kind": "GIT",
+      "head_at_discovery": "d0a98d9c50",
+      "logical_bytes": 230567003,
+      "file_count": 4176,
+      "categories": {
+        "source_other": 34075129,
+        "data": 67574,
+        "archives": 94,
+        "build": 5022,
+        "git": 196419184
+      },
+      "file_counts": {
+        "source_other": 3513,
+        "data": 44,
+        "archives": 2,
+        "build": 1,
+        "git": 616
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.36
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\Aider-AI__aider",
+      "kind": "GIT",
+      "head_at_discovery": "5dc9490bb",
+      "logical_bytes": 225295296,
+      "file_count": 729,
+      "categories": {
+        "source_other": 77832250,
+        "data": 156010,
+        "git": 147307036
+      },
+      "file_counts": {
+        "source_other": 690,
+        "data": 1,
+        "git": 38
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.11
+    },
+    {
+      "path": "projects\\icarus-ml-research-sources\\dynamicslab--pysindy",
+      "kind": "GIT",
+      "head_at_discovery": "c4421fc",
+      "logical_bytes": 220856597,
+      "file_count": 307,
+      "categories": {
+        "source_other": 95736305,
+        "build": 2851512,
+        "data": 23406528,
+        "git": 98862252
+      },
+      "file_counts": {
+        "source_other": 194,
+        "build": 72,
+        "data": 7,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.11
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\agent-substrate\\substrate",
+      "kind": "GIT",
+      "head_at_discovery": "ffed8551",
+      "logical_bytes": 208249349,
+      "file_count": 14056,
+      "categories": {
+        "source_other": 153657048,
+        "build": 49932,
+        "git": 54542369
+      },
+      "file_counts": {
+        "source_other": 14018,
+        "build": 10,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 6.33
+    },
+    {
+      "path": "Downloads\\AI-Aimbot v3.1.0 source code\\RootKit-Org-AI-Aimbot-b91dd1c",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 201812473,
+      "file_count": 172,
+      "categories": {
+        "source_other": 98363015,
+        "weights": 103449458
+      },
+      "file_counts": {
+        "source_other": 166,
+        "weights": 6
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\epam\\java-cme-mdp3-handler",
+      "kind": "GIT",
+      "head_at_discovery": "0291e50",
+      "logical_bytes": 197399752,
+      "file_count": 308,
+      "categories": {
+        "source_other": 2750911,
+        "archives": 86625780,
+        "build": 1322,
+        "git": 108021739
+      },
+      "file_counts": {
+        "source_other": 276,
+        "archives": 3,
+        "build": 1,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.11
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\Nixtla__statsforecast",
+      "kind": "GIT",
+      "head_at_discovery": "8e0f327",
+      "logical_bytes": 186199967,
+      "file_count": 2167,
+      "categories": {
+        "source_other": 138030497,
+        "git": 48169470
+      },
+      "file_counts": {
+        "source_other": 2096,
+        "git": 71
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.62
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\Yuri-Mizuki\\daily_stock_analysis",
+      "kind": "GIT",
+      "head_at_discovery": "ef7264f7",
+      "logical_bytes": 180050780,
+      "file_count": 918,
+      "categories": {
+        "source_other": 88522739,
+        "git": 91528041
+      },
+      "file_counts": {
+        "source_other": 882,
+        "git": 36
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.17
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\jakobrunge__tigramite",
+      "kind": "GIT",
+      "head_at_discovery": "ff3ff13",
+      "logical_bytes": 173297447,
+      "file_count": 465,
+      "categories": {
+        "source_other": 46578258,
+        "git": 126719189
+      },
+      "file_counts": {
+        "source_other": 424,
+        "git": 41
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.11
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\nautechsystems__nautilus_trader",
+      "kind": "GIT",
+      "head_at_discovery": "04f766b",
+      "logical_bytes": 165932583,
+      "file_count": 5346,
+      "categories": {
+        "source_other": 99756833,
+        "data": 31023884,
+        "archives": 2439181,
+        "build": 465799,
+        "git": 32246886
+      },
+      "file_counts": {
+        "source_other": 5128,
+        "data": 74,
+        "archives": 46,
+        "build": 64,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 2
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\dlt-hub__dlt",
+      "kind": "GIT",
+      "head_at_discovery": "ab73248de",
+      "logical_bytes": 157646073,
+      "file_count": 2318,
+      "categories": {
+        "source_other": 33313357,
+        "data": 249285,
+        "archives": 5156,
+        "git": 124078275
+      },
+      "file_counts": {
+        "source_other": 2118,
+        "data": 16,
+        "archives": 5,
+        "git": 179
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.86
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\Comfy-Org\\ComfyUI",
+      "kind": "GIT",
+      "head_at_discovery": "cdf272f3",
+      "logical_bytes": 155137772,
+      "file_count": 1354,
+      "categories": {
+        "source_other": 51317965,
+        "git": 103819807
+      },
+      "file_counts": {
+        "source_other": 1326,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.48
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\aquasecurity__trivy",
+      "kind": "GIT",
+      "head_at_discovery": "4e94880",
+      "logical_bytes": 149518336,
+      "file_count": 3463,
+      "categories": {
+        "source_other": 69228492,
+        "data": 198867,
+        "archives": 25700959,
+        "dependencies": 91764,
+        "build": 101996,
+        "git": 54196258
+      },
+      "file_counts": {
+        "source_other": 3334,
+        "data": 11,
+        "archives": 16,
+        "dependencies": 58,
+        "build": 10,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 2.73
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\CurateLabs\\xyg",
+      "kind": "GIT",
+      "head_at_discovery": "d005b006",
+      "logical_bytes": 143473334,
+      "file_count": 3871,
+      "categories": {
+        "source_other": 72071703,
+        "data": 1964021,
+        "archives": 5642130,
+        "build": 56740,
+        "git": 63738740
+      },
+      "file_counts": {
+        "source_other": 3481,
+        "data": 292,
+        "archives": 63,
+        "build": 7,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.81
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\mindsdb\\mindsdb-docs-old",
+      "kind": "GIT",
+      "head_at_discovery": "6d4030a",
+      "logical_bytes": 142163927,
+      "file_count": 852,
+      "categories": {
+        "source_other": 52552215,
+        "data": 1463,
+        "git": 89610249
+      },
+      "file_counts": {
+        "source_other": 823,
+        "data": 1,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.38
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\NVIDIA\\OpenShell",
+      "kind": "GIT",
+      "head_at_discovery": "5c533d6fb",
+      "logical_bytes": 138503651,
+      "file_count": 2137,
+      "categories": {
+        "source_other": 38868123,
+        "build": 84521,
+        "git": 99551007
+      },
+      "file_counts": {
+        "source_other": 2097,
+        "build": 12,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.8
+    },
+    {
+      "path": "Downloads\\superbot-complete\\superbot-mcp",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 131418286,
+      "file_count": 882,
+      "categories": {
+        "source_other": 119535100,
+        "dependencies": 11883186
+      },
+      "file_counts": {
+        "source_other": 20,
+        "dependencies": 862
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.25
+    },
+    {
+      "path": "Icarus-phone-upgrade",
+      "kind": "GIT",
+      "head_at_discovery": "8c3a1ae3",
+      "logical_bytes": 130270399,
+      "file_count": 2288,
+      "categories": {
+        "source_other": 51392328,
+        "data": 62171005,
+        "archives": 378541,
+        "dependencies": 2223180,
+        "git": 14105345
+      },
+      "file_counts": {
+        "source_other": 2054,
+        "data": 42,
+        "archives": 2,
+        "dependencies": 143,
+        "git": 47
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.05
+    },
+    {
+      "path": "Cinematic-Development\\new",
+      "kind": "GIT",
+      "head_at_discovery": "3c7ff8e",
+      "logical_bytes": 127565758,
+      "file_count": 553,
+      "categories": {
+        "source_other": 39251226,
+        "archives": 33647295,
+        "git": 54667237
+      },
+      "file_counts": {
+        "source_other": 515,
+        "archives": 1,
+        "git": 37
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.19
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\affaan-m\\ECC",
+      "kind": "GIT",
+      "head_at_discovery": "25278e7d",
+      "logical_bytes": 124934892,
+      "file_count": 4677,
+      "categories": {
+        "source_other": 62076767,
+        "data": 6212,
+        "git": 62851913
+      },
+      "file_counts": {
+        "source_other": 4645,
+        "data": 4,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 3.08
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\PrefectHQ__prefect",
+      "kind": "GIT",
+      "head_at_discovery": "21a1f02",
+      "logical_bytes": 121905622,
+      "file_count": 5564,
+      "categories": {
+        "source_other": 90601357,
+        "data": 363,
+        "git": 31303902
+      },
+      "file_counts": {
+        "source_other": 5492,
+        "data": 2,
+        "git": 70
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.8
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\apache__echarts",
+      "kind": "GIT",
+      "head_at_discovery": "34f4d92",
+      "logical_bytes": 115896404,
+      "file_count": 2216,
+      "categories": {
+        "source_other": 44645342,
+        "data": 8240,
+        "build": 53270632,
+        "git": 17972190
+      },
+      "file_counts": {
+        "source_other": 2100,
+        "data": 1,
+        "build": 81,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.22
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\astral-sh__ruff",
+      "kind": "GIT",
+      "head_at_discovery": "07872ad",
+      "logical_bytes": 114234735,
+      "file_count": 11305,
+      "categories": {
+        "source_other": 94727216,
+        "dependencies": 7750,
+        "data": 3057,
+        "git": 19496712
+      },
+      "file_counts": {
+        "source_other": 11269,
+        "dependencies": 1,
+        "data": 1,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 2.86
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\google__osv-scanner",
+      "kind": "GIT",
+      "head_at_discovery": "b1d85b72",
+      "logical_bytes": 107503357,
+      "file_count": 1189,
+      "categories": {
+        "source_other": 54024345,
+        "build": 357,
+        "git": 53478655
+      },
+      "file_counts": {
+        "source_other": 1133,
+        "build": 1,
+        "git": 55
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.58
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\AI4Finance-Foundation__FinRL",
+      "kind": "GIT",
+      "head_at_discovery": "7e98df4",
+      "logical_bytes": 105959128,
+      "file_count": 256,
+      "categories": {
+        "source_other": 16681010,
+        "weights": 2863838,
+        "data": 1120,
+        "build": 177,
+        "git": 86412983
+      },
+      "file_counts": {
+        "source_other": 207,
+        "weights": 2,
+        "data": 2,
+        "build": 3,
+        "git": 42
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.06
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\CMEGroupPublic\\datamine_python",
+      "kind": "GIT",
+      "head_at_discovery": "0454c8f",
+      "logical_bytes": 97921984,
+      "file_count": 67,
+      "categories": {
+        "source_other": 704513,
+        "git": 97217471
+      },
+      "file_counts": {
+        "source_other": 39,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\microsoft__autogen",
+      "kind": "GIT",
+      "head_at_discovery": "004749e",
+      "logical_bytes": 91210466,
+      "file_count": 1922,
+      "categories": {
+        "source_other": 58062030,
+        "data": 77164,
+        "git": 33071272
+      },
+      "file_counts": {
+        "source_other": 1836,
+        "data": 1,
+        "git": 85
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.11
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\TencentCloud\\Octop",
+      "kind": "GIT",
+      "head_at_discovery": "890111b7",
+      "logical_bytes": 89855329,
+      "file_count": 4166,
+      "categories": {
+        "source_other": 50231723,
+        "build": 926563,
+        "git": 38697043
+      },
+      "file_counts": {
+        "source_other": 4121,
+        "build": 17,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.36
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\py-why__EconML",
+      "kind": "GIT",
+      "head_at_discovery": "9f61a33",
+      "logical_bytes": 78082953,
+      "file_count": 333,
+      "categories": {
+        "source_other": 56379415,
+        "data": 769358,
+        "git": 20934180
+      },
+      "file_counts": {
+        "source_other": 295,
+        "data": 4,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.11
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\langfuse__langfuse",
+      "kind": "GIT",
+      "head_at_discovery": "7526ede",
+      "logical_bytes": 75287543,
+      "file_count": 7519,
+      "categories": {
+        "source_other": 58364504,
+        "git": 16923039
+      },
+      "file_counts": {
+        "source_other": 7485,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 3.8
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\mem0ai__mem0",
+      "kind": "GIT",
+      "head_at_discovery": "26cdefb",
+      "logical_bytes": 73846900,
+      "file_count": 1979,
+      "categories": {
+        "source_other": 52720258,
+        "build": 19616,
+        "git": 21107026
+      },
+      "file_counts": {
+        "source_other": 1911,
+        "build": 5,
+        "git": 63
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\treeverse__lakeFS",
+      "kind": "GIT",
+      "head_at_discovery": "3456769",
+      "logical_bytes": 71224777,
+      "file_count": 2805,
+      "categories": {
+        "source_other": 43679134,
+        "build": 0,
+        "data": 1931038,
+        "git": 25614605
+      },
+      "file_counts": {
+        "source_other": 2765,
+        "build": 1,
+        "data": 5,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.8
+    },
+    {
+      "path": "projects\\icarus-ml-research-sources\\Nixtla--neuralforecast",
+      "kind": "GIT",
+      "head_at_discovery": "24dd828",
+      "logical_bytes": 70888782,
+      "file_count": 447,
+      "categories": {
+        "source_other": 42801989,
+        "weights": 1647331,
+        "git": 26439462
+      },
+      "file_counts": {
+        "source_other": 406,
+        "weights": 6,
+        "git": 35
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.08
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\Nixtla__neuralforecast",
+      "kind": "GIT",
+      "head_at_discovery": "34ce132",
+      "logical_bytes": 70725494,
+      "file_count": 439,
+      "categories": {
+        "source_other": 42696853,
+        "weights": 1647331,
+        "git": 26381310
+      },
+      "file_counts": {
+        "source_other": 399,
+        "weights": 6,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.38
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\anchore__syft",
+      "kind": "GIT",
+      "head_at_discovery": "fb56f1ee",
+      "logical_bytes": 70011175,
+      "file_count": 3196,
+      "categories": {
+        "source_other": 34273773,
+        "archives": 104,
+        "weights": 32842,
+        "build": 470,
+        "data": 20,
+        "dependencies": 492356,
+        "git": 35211610
+      },
+      "file_counts": {
+        "source_other": 2958,
+        "archives": 9,
+        "weights": 8,
+        "build": 28,
+        "data": 6,
+        "dependencies": 84,
+        "git": 103
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 2.19
+    },
+    {
+      "path": "projects\\icarus-ml-research-sources\\icaros-usc--pyribs",
+      "kind": "GIT",
+      "head_at_discovery": "29fa9b0",
+      "logical_bytes": 68360014,
+      "file_count": 397,
+      "categories": {
+        "source_other": 24977979,
+        "weights": 12002551,
+        "git": 31379484
+      },
+      "file_counts": {
+        "source_other": 360,
+        "weights": 3,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.11
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\kestra-io__kestra",
+      "kind": "GIT",
+      "head_at_discovery": "6f8d021",
+      "logical_bytes": 65839717,
+      "file_count": 6151,
+      "categories": {
+        "source_other": 47069152,
+        "build": 49,
+        "git": 18770516
+      },
+      "file_counts": {
+        "source_other": 6116,
+        "build": 1,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 2
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\OpenHands__OpenHands",
+      "kind": "GIT",
+      "head_at_discovery": "dbe578d",
+      "logical_bytes": 60295782,
+      "file_count": 2863,
+      "categories": {
+        "source_other": 38315129,
+        "build": 10068,
+        "git": 21968476,
+        "archives": 2109
+      },
+      "file_counts": {
+        "source_other": 2826,
+        "build": 2,
+        "git": 34,
+        "archives": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.09
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\online-ml__river",
+      "kind": "GIT",
+      "head_at_discovery": "95098478",
+      "logical_bytes": 58866213,
+      "file_count": 880,
+      "categories": {
+        "source_other": 8963442,
+        "archives": 1441442,
+        "data": 388404,
+        "git": 48072925
+      },
+      "file_counts": {
+        "source_other": 780,
+        "archives": 9,
+        "data": 10,
+        "git": 81
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.22
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\evidentlyai__evidently",
+      "kind": "GIT",
+      "head_at_discovery": "34771fe",
+      "logical_bytes": 58121183,
+      "file_count": 1272,
+      "categories": {
+        "source_other": 37203960,
+        "data": 5166511,
+        "archives": 279992,
+        "git": 15470720
+      },
+      "file_counts": {
+        "source_other": 1233,
+        "data": 4,
+        "archives": 1,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.67
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\mksglu\\context-mode",
+      "kind": "GIT",
+      "head_at_discovery": "84357027",
+      "logical_bytes": 55898764,
+      "file_count": 627,
+      "categories": {
+        "source_other": 12268451,
+        "data": 89791,
+        "build": 14443,
+        "git": 43526079
+      },
+      "file_counts": {
+        "source_other": 595,
+        "data": 3,
+        "build": 1,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.33
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\temporalio__temporal",
+      "kind": "GIT",
+      "head_at_discovery": "9c8c4ed",
+      "logical_bytes": 55853131,
+      "file_count": 4172,
+      "categories": {
+        "source_other": 43945127,
+        "archives": 1328506,
+        "build": 1160,
+        "git": 10578338
+      },
+      "file_counts": {
+        "source_other": 3725,
+        "archives": 370,
+        "build": 1,
+        "git": 76
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.72
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\locustio__locust",
+      "kind": "GIT",
+      "head_at_discovery": "a1864e57",
+      "logical_bytes": 54349337,
+      "file_count": 554,
+      "categories": {
+        "source_other": 10488402,
+        "data": 62,
+        "git": 43860873
+      },
+      "file_counts": {
+        "source_other": 430,
+        "data": 1,
+        "git": 123
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.27
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\cporter202\\API-mega-list",
+      "kind": "GIT",
+      "head_at_discovery": "b7c914f",
+      "logical_bytes": 51398018,
+      "file_count": 64,
+      "categories": {
+        "source_other": 24217219,
+        "git": 27180799
+      },
+      "file_counts": {
+        "source_other": 36,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.08
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\meltano__meltano",
+      "kind": "GIT",
+      "head_at_discovery": "e96f637",
+      "logical_bytes": 50794937,
+      "file_count": 1222,
+      "categories": {
+        "source_other": 32430569,
+        "data": 3365,
+        "git": 18361003
+      },
+      "file_counts": {
+        "source_other": 1185,
+        "data": 3,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.59
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\astral-sh__uv",
+      "kind": "GIT",
+      "head_at_discovery": "68677f5",
+      "logical_bytes": 50785118,
+      "file_count": 1916,
+      "categories": {
+        "source_other": 41891295,
+        "build": 400312,
+        "archives": 5040,
+        "data": 265,
+        "git": 8488206
+      },
+      "file_counts": {
+        "source_other": 1860,
+        "build": 16,
+        "archives": 5,
+        "data": 1,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.88
+    },
+    {
+      "path": "Icarus-engine",
+      "kind": "GIT",
+      "head_at_discovery": "dfce5509",
+      "logical_bytes": 49661410,
+      "file_count": 1514,
+      "categories": {
+        "source_other": 2448906,
+        "dependencies": 13833288,
+        "data": 18840173,
+        "git": 14539043
+      },
+      "file_counts": {
+        "source_other": 222,
+        "dependencies": 1046,
+        "data": 5,
+        "git": 241
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.55
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\microsoft__RD-Agent",
+      "kind": "GIT",
+      "head_at_discovery": "484776c",
+      "logical_bytes": 47531314,
+      "file_count": 1671,
+      "categories": {
+        "source_other": 12213983,
+        "build": 4016677,
+        "git": 31300654
+      },
+      "file_counts": {
+        "source_other": 928,
+        "build": 694,
+        "git": 49
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.2
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\richie-ma\\cme.mdp",
+      "kind": "GIT",
+      "head_at_discovery": "4d0db0c",
+      "logical_bytes": 46116363,
+      "file_count": 77,
+      "categories": {
+        "source_other": 2935070,
+        "git": 43181293
+      },
+      "file_counts": {
+        "source_other": 49,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\tashfeenahmed\\freellmapi",
+      "kind": "GIT",
+      "head_at_discovery": "22b7ec74",
+      "logical_bytes": 45668511,
+      "file_count": 1311,
+      "categories": {
+        "source_other": 19358455,
+        "git": 26310056
+      },
+      "file_counts": {
+        "source_other": 1283,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.31
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\plotly__dash",
+      "kind": "GIT",
+      "head_at_discovery": "d74f615",
+      "logical_bytes": 43529401,
+      "file_count": 1357,
+      "categories": {
+        "source_other": 22413638,
+        "data": 9249151,
+        "git": 11866612
+      },
+      "file_counts": {
+        "source_other": 1319,
+        "data": 4,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.45
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\getzep__graphiti",
+      "kind": "GIT",
+      "head_at_discovery": "5c27edf",
+      "logical_bytes": 41626491,
+      "file_count": 541,
+      "categories": {
+        "source_other": 23330239,
+        "git": 18296252
+      },
+      "file_counts": {
+        "source_other": 424,
+        "git": 117
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.19
+    },
+    {
+      "path": "oh-my-claudecode-main",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 40474739,
+      "file_count": 5605,
+      "categories": {
+        "source_other": 20988814,
+        "data": 2485,
+        "build": 19483440
+      },
+      "file_counts": {
+        "source_other": 1469,
+        "data": 3,
+        "build": 4133
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 1,
+      "errors": 0,
+      "elapsed_sec": 1.11
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\ggml-org--llama.cpp",
+      "kind": "GIT",
+      "head_at_discovery": "22b9912",
+      "logical_bytes": 40265993,
+      "file_count": 28,
+      "categories": {
+        "git": 40265993
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\py-why__dowhy",
+      "kind": "GIT",
+      "head_at_discovery": "d34703b",
+      "logical_bytes": 40202545,
+      "file_count": 564,
+      "categories": {
+        "source_other": 16719730,
+        "data": 10217886,
+        "git": 13264929
+      },
+      "file_counts": {
+        "source_other": 512,
+        "data": 18,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.28
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\prometheus__prometheus",
+      "kind": "GIT",
+      "head_at_discovery": "8d8dc0c",
+      "logical_bytes": 38671069,
+      "file_count": 1750,
+      "categories": {
+        "source_other": 31488781,
+        "git": 7182288
+      },
+      "file_counts": {
+        "source_other": 1716,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.52
+    },
+    {
+      "path": "Icarus-dashboard-release",
+      "kind": "GIT",
+      "head_at_discovery": "23b078fb",
+      "logical_bytes": 38626345,
+      "file_count": 5167,
+      "categories": {
+        "source_other": 16929531,
+        "archives": 378541,
+        "dependencies": 21304200,
+        "data": 14073
+      },
+      "file_counts": {
+        "source_other": 2394,
+        "archives": 2,
+        "dependencies": 2765,
+        "data": 6
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1.97
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\AI4Finance-Foundation__FinGPT",
+      "kind": "GIT",
+      "head_at_discovery": "ac5c544",
+      "logical_bytes": 35487947,
+      "file_count": 472,
+      "categories": {
+        "source_other": 20117184,
+        "data": 4279268,
+        "git": 11091495
+      },
+      "file_counts": {
+        "source_other": 423,
+        "data": 15,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.16
+    },
+    {
+      "path": "projects\\icarus-ml-research-sources\\abides-sim--abides",
+      "kind": "GIT",
+      "head_at_discovery": "c4bf157",
+      "logical_bytes": 33767836,
+      "file_count": 219,
+      "categories": {
+        "source_other": 18461609,
+        "data": 496,
+        "git": 15305731
+      },
+      "file_counts": {
+        "source_other": 184,
+        "data": 1,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.2
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\anthropics\\claude-plugins-official",
+      "kind": "GIT",
+      "head_at_discovery": "58267944",
+      "logical_bytes": 33673507,
+      "file_count": 619,
+      "categories": {
+        "source_other": 14598302,
+        "git": 19075205
+      },
+      "file_counts": {
+        "source_other": 591,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.36
+    },
+    {
+      "path": "projects\\task-api",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 31858812,
+      "file_count": 5992,
+      "categories": {
+        "source_other": 303709,
+        "dependencies": 31551007,
+        "data": 4096
+      },
+      "file_counts": {
+        "source_other": 17,
+        "dependencies": 5974,
+        "data": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 2.14
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\adbar--trafilatura",
+      "kind": "GIT",
+      "head_at_discovery": "195a969",
+      "logical_bytes": 31700300,
+      "file_count": 28,
+      "categories": {
+        "git": 31700300
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\anchore__grype",
+      "kind": "GIT",
+      "head_at_discovery": "882c0aba",
+      "logical_bytes": 31073315,
+      "file_count": 1792,
+      "categories": {
+        "source_other": 7706861,
+        "dependencies": 350,
+        "archives": 24,
+        "build": 1047465,
+        "data": 53,
+        "git": 22318562
+      },
+      "file_counts": {
+        "source_other": 1452,
+        "dependencies": 1,
+        "archives": 2,
+        "build": 174,
+        "data": 3,
+        "git": 160
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.91
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\datasets\\publicbodies",
+      "kind": "GIT",
+      "head_at_discovery": "add22e71",
+      "logical_bytes": 28620374,
+      "file_count": 152,
+      "categories": {
+        "source_other": 950201,
+        "data": 11028194,
+        "git": 16641979
+      },
+      "file_counts": {
+        "source_other": 113,
+        "data": 11,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\kgretzky\\evilginx2",
+      "kind": "GIT",
+      "head_at_discovery": "4c0988a",
+      "logical_bytes": 27845897,
+      "file_count": 1445,
+      "categories": {
+        "source_other": 19139828,
+        "git": 8706069
+      },
+      "file_counts": {
+        "source_other": 1417,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.31
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\microsoft__qlib",
+      "kind": "GIT",
+      "head_at_discovery": "54355232",
+      "logical_bytes": 27552261,
+      "file_count": 707,
+      "categories": {
+        "source_other": 8567870,
+        "git": 18984391
+      },
+      "file_counts": {
+        "source_other": 643,
+        "git": 64
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.23
+    },
+    {
+      "path": "projects\\icarus-ml-research-sources\\shiyu-coder--Kronos",
+      "kind": "GIT",
+      "head_at_discovery": "67b630e",
+      "logical_bytes": 26362097,
+      "file_count": 127,
+      "categories": {
+        "source_other": 10854037,
+        "data": 6097670,
+        "git": 9410390
+      },
+      "file_counts": {
+        "source_other": 89,
+        "data": 4,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.06
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\akfamily__akshare",
+      "kind": "GIT",
+      "head_at_discovery": "2ea08ff",
+      "logical_bytes": 26009184,
+      "file_count": 1202,
+      "categories": {
+        "source_other": 10868088,
+        "dependencies": 3929259,
+        "archives": 122225,
+        "git": 11089612
+      },
+      "file_counts": {
+        "source_other": 502,
+        "dependencies": 394,
+        "archives": 1,
+        "git": 305
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.19
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\pymc-devs__pymc",
+      "kind": "GIT",
+      "head_at_discovery": "31aed52",
+      "logical_bytes": 25909128,
+      "file_count": 448,
+      "categories": {
+        "source_other": 18864072,
+        "git": 7045056
+      },
+      "file_counts": {
+        "source_other": 414,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.12
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\awslabs__gluonts",
+      "kind": "GIT",
+      "head_at_discovery": "d60556ca",
+      "logical_bytes": 25794888,
+      "file_count": 1075,
+      "categories": {
+        "source_other": 8120946,
+        "archives": 177626,
+        "data": 34126,
+        "git": 17462190
+      },
+      "file_counts": {
+        "source_other": 1011,
+        "archives": 3,
+        "data": 2,
+        "git": 59
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.38
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\UKGovernmentBEIS--inspect_ai",
+      "kind": "GIT",
+      "head_at_discovery": "cab2b87",
+      "logical_bytes": 23593097,
+      "file_count": 28,
+      "categories": {
+        "git": 23593097
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\publicbodies",
+      "kind": "GIT",
+      "head_at_discovery": "add22e7",
+      "logical_bytes": 20211385,
+      "file_count": 159,
+      "categories": {
+        "source_other": 950201,
+        "data": 11028194,
+        "git": 8232990
+      },
+      "file_counts": {
+        "source_other": 113,
+        "data": 11,
+        "git": 35
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.19
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\perspective-dev__perspective",
+      "kind": "GIT",
+      "head_at_discovery": "d03a0b6",
+      "logical_bytes": 20159761,
+      "file_count": 1912,
+      "categories": {
+        "source_other": 15852868,
+        "data": 90879,
+        "git": 4216014
+      },
+      "file_counts": {
+        "source_other": 1846,
+        "data": 32,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.81
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\bytewax__bytewax",
+      "kind": "GIT",
+      "head_at_discovery": "57369808",
+      "logical_bytes": 20148697,
+      "file_count": 372,
+      "categories": {
+        "source_other": 4591554,
+        "data": 1318093,
+        "git": 14239050
+      },
+      "file_counts": {
+        "source_other": 287,
+        "data": 6,
+        "git": 79
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.19
+    },
+    {
+      "path": "Downloads\\tgko_prototype",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 19453633,
+      "file_count": 1525,
+      "categories": {
+        "source_other": 199645,
+        "dependencies": 19253988
+      },
+      "file_counts": {
+        "source_other": 34,
+        "dependencies": 1491
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.34
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\blue-yonder__tsfresh",
+      "kind": "GIT",
+      "head_at_discovery": "6af3c00",
+      "logical_bytes": 19447229,
+      "file_count": 198,
+      "categories": {
+        "source_other": 10371807,
+        "git": 9075422
+      },
+      "file_counts": {
+        "source_other": 150,
+        "git": 48
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.11
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\langchain-ai__langgraph",
+      "kind": "GIT",
+      "head_at_discovery": "1526b0e",
+      "logical_bytes": 18731814,
+      "file_count": 733,
+      "categories": {
+        "source_other": 14639878,
+        "git": 4091936
+      },
+      "file_counts": {
+        "source_other": 699,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.25
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\ranaroussi\\yfinance",
+      "kind": "GIT",
+      "head_at_discovery": "d9f72aa",
+      "logical_bytes": 18629647,
+      "file_count": 251,
+      "categories": {
+        "source_other": 1100819,
+        "data": 5948995,
+        "git": 11579833
+      },
+      "file_counts": {
+        "source_other": 140,
+        "data": 83,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\stanfordnlp--dspy",
+      "kind": "GIT",
+      "head_at_discovery": "2ae73ca",
+      "logical_bytes": 17961274,
+      "file_count": 28,
+      "categories": {
+        "git": 17961274
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\QwenLM--Qwen-Agent",
+      "kind": "GIT",
+      "head_at_discovery": "31a4d36",
+      "logical_bytes": 16884978,
+      "file_count": 28,
+      "categories": {
+        "git": 16884978
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\deepcharles__ruptures",
+      "kind": "GIT",
+      "head_at_discovery": "ee1c8ff",
+      "logical_bytes": 16462300,
+      "file_count": 232,
+      "categories": {
+        "source_other": 4420081,
+        "git": 12042219
+      },
+      "file_counts": {
+        "source_other": 176,
+        "git": 56
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.08
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\exchange-rates",
+      "kind": "GIT",
+      "head_at_discovery": "9e669bc",
+      "logical_bytes": 15364654,
+      "file_count": 45,
+      "categories": {
+        "source_other": 20648,
+        "data": 8187842,
+        "git": 7156164
+      },
+      "file_counts": {
+        "source_other": 8,
+        "data": 4,
+        "git": 33
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\evidentlyai--evidently",
+      "kind": "GIT",
+      "head_at_discovery": "34771fe",
+      "logical_bytes": 15212263,
+      "file_count": 28,
+      "categories": {
+        "git": 15212263
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\open-telemetry__opentelemetry-collector",
+      "kind": "GIT",
+      "head_at_discovery": "30add05",
+      "logical_bytes": 15041025,
+      "file_count": 2907,
+      "categories": {
+        "source_other": 11845476,
+        "git": 3195549
+      },
+      "file_counts": {
+        "source_other": 2873,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.94
+    },
+    {
+      "path": "projects\\icarus-ml-research-sources\\microsoft--qlib",
+      "kind": "GIT",
+      "head_at_discovery": "5435523",
+      "logical_bytes": 13898687,
+      "file_count": 679,
+      "categories": {
+        "source_other": 8568149,
+        "git": 5330538
+      },
+      "file_counts": {
+        "source_other": 644,
+        "git": 35
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.22
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\deepset-ai--haystack",
+      "kind": "GIT",
+      "head_at_discovery": "68497ec",
+      "logical_bytes": 13592570,
+      "file_count": 28,
+      "categories": {
+        "git": 13592570
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\microsoft--graphrag",
+      "kind": "GIT",
+      "head_at_discovery": "34b2b67",
+      "logical_bytes": 11935851,
+      "file_count": 28,
+      "categories": {
+        "git": 11935851
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\mementum__backtrader",
+      "kind": "GIT",
+      "head_at_discovery": "b853d7c",
+      "logical_bytes": 10754769,
+      "file_count": 590,
+      "categories": {
+        "source_other": 7050645,
+        "data": 49938,
+        "build": 1250968,
+        "git": 2403218
+      },
+      "file_counts": {
+        "source_other": 379,
+        "data": 5,
+        "build": 172,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.25
+    },
+    {
+      "path": "icarus-runtime",
+      "kind": "GIT",
+      "head_at_discovery": "e13b949",
+      "logical_bytes": 10710926,
+      "file_count": 1775,
+      "categories": {
+        "source_other": 9607318,
+        "dependencies": 545074,
+        "data": 558534
+      },
+      "file_counts": {
+        "source_other": 1710,
+        "dependencies": 56,
+        "data": 9
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.3
+    },
+    {
+      "path": "dp-runtime",
+      "kind": "GIT",
+      "head_at_discovery": "e13b949",
+      "logical_bytes": 10566351,
+      "file_count": 1784,
+      "categories": {
+        "source_other": 9609122,
+        "dependencies": 864386,
+        "data": 92843
+      },
+      "file_counts": {
+        "source_other": 1711,
+        "dependencies": 65,
+        "data": 8
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.34
+    },
+    {
+      "path": "projects\\umbra-native-compute-20261124",
+      "kind": "GIT",
+      "head_at_discovery": "36f7d59",
+      "logical_bytes": 10196962,
+      "file_count": 5538,
+      "categories": {
+        "source_other": 7668754,
+        "dependencies": 28569,
+        "git": 2499639
+      },
+      "file_counts": {
+        "source_other": 5401,
+        "dependencies": 2,
+        "git": 135
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 1
+    },
+    {
+      "path": "projects\\umbra-native-compute-review-20261124",
+      "kind": "GIT",
+      "head_at_discovery": "0f1d446",
+      "logical_bytes": 9407670,
+      "file_count": 5417,
+      "categories": {
+        "source_other": 7621144,
+        "git": 1786526
+      },
+      "file_counts": {
+        "source_other": 5390,
+        "git": 27
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.7
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\ranaroussi__yfinance",
+      "kind": "GIT",
+      "head_at_discovery": "d9f72aa",
+      "logical_bytes": 9084388,
+      "file_count": 295,
+      "categories": {
+        "source_other": 1109697,
+        "dependencies": 695257,
+        "data": 5948995,
+        "git": 1330439
+      },
+      "file_counts": {
+        "source_other": 145,
+        "dependencies": 33,
+        "data": 83,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.06
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\rhysd__actionlint",
+      "kind": "GIT",
+      "head_at_discovery": "011a6d1",
+      "logical_bytes": 9030629,
+      "file_count": 944,
+      "categories": {
+        "source_other": 2171570,
+        "archives": 1439263,
+        "data": 6461,
+        "git": 5413335
+      },
+      "file_counts": {
+        "source_other": 840,
+        "archives": 1,
+        "data": 9,
+        "git": 94
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.25
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\huggingface--lerobot",
+      "kind": "GIT",
+      "head_at_discovery": "b07adcc",
+      "logical_bytes": 8718074,
+      "file_count": 28,
+      "categories": {
+        "git": 8718074
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\gitleaks__gitleaks",
+      "kind": "GIT",
+      "head_at_discovery": "5f6ec56",
+      "logical_bytes": 8205251,
+      "file_count": 507,
+      "categories": {
+        "source_other": 1223347,
+        "archives": 16901,
+        "data": 415,
+        "git": 6964588
+      },
+      "file_counts": {
+        "source_other": 444,
+        "archives": 8,
+        "data": 2,
+        "git": 53
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.17
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\alpacahq__alpaca-py",
+      "kind": "GIT",
+      "head_at_discovery": "3da132c",
+      "logical_bytes": 8071943,
+      "file_count": 450,
+      "categories": {
+        "source_other": 3352031,
+        "dependencies": 355257,
+        "git": 4364655
+      },
+      "file_counts": {
+        "source_other": 276,
+        "dependencies": 39,
+        "git": 135
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.08
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\firmai\\financial-machine-learning",
+      "kind": "GIT",
+      "head_at_discovery": "a0fda6a",
+      "logical_bytes": 7635092,
+      "file_count": 59,
+      "categories": {
+        "source_other": 707322,
+        "data": 270028,
+        "git": 6657742
+      },
+      "file_counts": {
+        "source_other": 30,
+        "data": 1,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\searxng--searxng",
+      "kind": "GIT",
+      "head_at_discovery": "a7163d0",
+      "logical_bytes": 6755215,
+      "file_count": 28,
+      "categories": {
+        "git": 6755215
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\datasets\\s-and-p-500-companies-financials",
+      "kind": "GIT",
+      "head_at_discovery": "4223bbd",
+      "logical_bytes": 6591000,
+      "file_count": 45,
+      "categories": {
+        "source_other": 769501,
+        "data": 143204,
+        "git": 5678295
+      },
+      "file_counts": {
+        "source_other": 14,
+        "data": 3,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "ICARUS-OPTIONAL-SOURCES\\STARNET-74fcd5040ba0\\src-tauri",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 6444838,
+      "file_count": 82,
+      "categories": {
+        "source_other": 6443337,
+        "build": 1501
+      },
+      "file_counts": {
+        "source_other": 81,
+        "build": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.01
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\jadchaar__sec-edgar-downloader",
+      "kind": "GIT",
+      "head_at_discovery": "185a554",
+      "logical_bytes": 5872754,
+      "file_count": 109,
+      "categories": {
+        "source_other": 1070956,
+        "git": 4801798
+      },
+      "file_counts": {
+        "source_other": 39,
+        "git": 70
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.06
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\jpmorganchase__abides-jpmc-public",
+      "kind": "GIT",
+      "head_at_discovery": "f9cbe51",
+      "logical_bytes": 5842229,
+      "file_count": 201,
+      "categories": {
+        "source_other": 2690633,
+        "git": 3151596
+      },
+      "file_counts": {
+        "source_other": 115,
+        "git": 86
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.14
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\KangOxford__AlphaTrade",
+      "kind": "GIT",
+      "head_at_discovery": "2b1951f",
+      "logical_bytes": 5592368,
+      "file_count": 153,
+      "categories": {
+        "source_other": 4870973,
+        "git": 721395
+      },
+      "file_counts": {
+        "source_other": 119,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\EleutherAI--lm-evaluation-harness",
+      "kind": "GIT",
+      "head_at_discovery": "d6de8164",
+      "logical_bytes": 5471677,
+      "file_count": 28,
+      "categories": {
+        "git": 5471677
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\Yuri-Mizuki\\AlphaGPT",
+      "kind": "GIT",
+      "head_at_discovery": "d851f22",
+      "logical_bytes": 5463772,
+      "file_count": 90,
+      "categories": {
+        "source_other": 2825256,
+        "git": 2638516
+      },
+      "file_counts": {
+        "source_other": 57,
+        "git": 33
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\modelcontextprotocol__servers",
+      "kind": "GIT",
+      "head_at_discovery": "ef9808f",
+      "logical_bytes": 5407245,
+      "file_count": 379,
+      "categories": {
+        "source_other": 4139687,
+        "git": 1267558
+      },
+      "file_counts": {
+        "source_other": 344,
+        "git": 35
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.14
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\google-deepmind--clrs",
+      "kind": "GIT",
+      "head_at_discovery": "6d5728b",
+      "logical_bytes": 5380018,
+      "file_count": 28,
+      "categories": {
+        "git": 5380018
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\Reconstructing-MBP-10-data-from-MBO-data",
+      "kind": "GIT",
+      "head_at_discovery": "5614e5a",
+      "logical_bytes": 5229145,
+      "file_count": 46,
+      "categories": {
+        "source_other": 357395,
+        "data": 4260784,
+        "git": 610966
+      },
+      "file_counts": {
+        "source_other": 10,
+        "data": 3,
+        "git": 33
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\Shine-5705\\Reconstructing-MBP-10-data-from-MBO-data",
+      "kind": "GIT",
+      "head_at_discovery": "5614e5a",
+      "logical_bytes": 5228409,
+      "file_count": 41,
+      "categories": {
+        "source_other": 357395,
+        "data": 4260784,
+        "git": 610230
+      },
+      "file_counts": {
+        "source_other": 10,
+        "data": 3,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\modelcontextprotocol--python-sdk",
+      "kind": "GIT",
+      "head_at_discovery": "77001c9",
+      "logical_bytes": 5223897,
+      "file_count": 28,
+      "categories": {
+        "git": 5223897
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\optuna__optuna",
+      "kind": "GIT",
+      "head_at_discovery": "b37c43f",
+      "logical_bytes": 5223812,
+      "file_count": 518,
+      "categories": {
+        "source_other": 3167471,
+        "data": 995328,
+        "git": 1061013
+      },
+      "file_counts": {
+        "source_other": 474,
+        "data": 10,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.17
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\zizmorcore__zizmor",
+      "kind": "GIT",
+      "head_at_discovery": "dc2209b",
+      "logical_bytes": 5223203,
+      "file_count": 725,
+      "categories": {
+        "source_other": 3791315,
+        "data": 276620,
+        "git": 1155268
+      },
+      "file_counts": {
+        "source_other": 690,
+        "data": 1,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.38
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\microsoft--markitdown",
+      "kind": "GIT",
+      "head_at_discovery": "ed17895",
+      "logical_bytes": 4831740,
+      "file_count": 28,
+      "categories": {
+        "git": 4831740
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "projects\\icarus-ml-research-sources\\thuml--Time-Series-Library",
+      "kind": "GIT",
+      "head_at_discovery": "4e938a1",
+      "logical_bytes": 4766223,
+      "file_count": 403,
+      "categories": {
+        "source_other": 2919646,
+        "git": 1846577
+      },
+      "file_counts": {
+        "source_other": 369,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.11
+    },
+    {
+      "path": "icarus-owner-actions-coordination",
+      "kind": "GIT",
+      "head_at_discovery": "3ec14b0",
+      "logical_bytes": 4369463,
+      "file_count": 586,
+      "categories": {
+        "source_other": 3930414,
+        "data": 5996,
+        "archives": 362691,
+        "dependencies": 70362
+      },
+      "file_counts": {
+        "source_other": 576,
+        "data": 2,
+        "archives": 4,
+        "dependencies": 4
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.16
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\treeverse__dvc",
+      "kind": "GIT",
+      "head_at_discovery": "56e5982",
+      "logical_bytes": 4102715,
+      "file_count": 625,
+      "categories": {
+        "source_other": 3150889,
+        "git": 951826
+      },
+      "file_counts": {
+        "source_other": 591,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.36
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\langchain-ai--langgraph",
+      "kind": "GIT",
+      "head_at_discovery": "732da52",
+      "logical_bytes": 4070552,
+      "file_count": 28,
+      "categories": {
+        "git": 4070552
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\landtml__finlab-ml",
+      "kind": "GIT",
+      "head_at_discovery": "32ca447",
+      "logical_bytes": 4044810,
+      "file_count": 221,
+      "categories": {
+        "source_other": 1983930,
+        "git": 2060880
+      },
+      "file_counts": {
+        "source_other": 173,
+        "git": 48
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "icarus-bridge-panels",
+      "kind": "GIT",
+      "head_at_discovery": "e1b68ee",
+      "logical_bytes": 4029446,
+      "file_count": 343,
+      "categories": {
+        "source_other": 2531554,
+        "dependencies": 1497892
+      },
+      "file_counts": {
+        "source_other": 225,
+        "dependencies": 118
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.06
+    },
+    {
+      "path": "Icarus-g008",
+      "kind": "GIT",
+      "head_at_discovery": "9a7ca02c",
+      "logical_bytes": 3932227,
+      "file_count": 467,
+      "categories": {
+        "source_other": 2315859,
+        "archives": 54974,
+        "dependencies": 1561184,
+        "data": 210
+      },
+      "file_counts": {
+        "source_other": 327,
+        "archives": 1,
+        "dependencies": 138,
+        "data": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.11
+    },
+    {
+      "path": "Icarus-g009",
+      "kind": "GIT",
+      "head_at_discovery": "506f00c6",
+      "logical_bytes": 3922209,
+      "file_count": 463,
+      "categories": {
+        "source_other": 2306651,
+        "archives": 54974,
+        "dependencies": 1560374,
+        "data": 210
+      },
+      "file_counts": {
+        "source_other": 324,
+        "archives": 1,
+        "dependencies": 137,
+        "data": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.09
+    },
+    {
+      "path": "Icarus-g005",
+      "kind": "GIT",
+      "head_at_discovery": "98d70144",
+      "logical_bytes": 3840174,
+      "file_count": 454,
+      "categories": {
+        "source_other": 2270481,
+        "archives": 54974,
+        "dependencies": 1514509,
+        "data": 210
+      },
+      "file_counts": {
+        "source_other": 319,
+        "archives": 1,
+        "dependencies": 133,
+        "data": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.09
+    },
+    {
+      "path": "astra-push",
+      "kind": "GIT",
+      "head_at_discovery": "312ff25",
+      "logical_bytes": 3753884,
+      "file_count": 370,
+      "categories": {
+        "source_other": 1403019,
+        "dependencies": 1239857,
+        "git": 1111008
+      },
+      "file_counts": {
+        "source_other": 81,
+        "dependencies": 83,
+        "git": 206
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.22
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\facebookresearch--faiss",
+      "kind": "GIT",
+      "head_at_discovery": "6074b69",
+      "logical_bytes": 3751528,
+      "file_count": 28,
+      "categories": {
+        "git": 3751528
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "Icarus-g003",
+      "kind": "GIT",
+      "head_at_discovery": "c7a89869",
+      "logical_bytes": 3740345,
+      "file_count": 447,
+      "categories": {
+        "source_other": 2178780,
+        "archives": 54974,
+        "dependencies": 1506381,
+        "data": 210
+      },
+      "file_counts": {
+        "source_other": 313,
+        "archives": 1,
+        "dependencies": 132,
+        "data": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.12
+    },
+    {
+      "path": "Icarus-causal-asof",
+      "kind": "GIT",
+      "head_at_discovery": "232ea462",
+      "logical_bytes": 3637547,
+      "file_count": 434,
+      "categories": {
+        "source_other": 2143316,
+        "archives": 54974,
+        "dependencies": 1439047,
+        "data": 210
+      },
+      "file_counts": {
+        "source_other": 307,
+        "archives": 1,
+        "dependencies": 125,
+        "data": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.09
+    },
+    {
+      "path": "Icarus-g001",
+      "kind": "GIT",
+      "head_at_discovery": "080e9d0d",
+      "logical_bytes": 3498788,
+      "file_count": 423,
+      "categories": {
+        "source_other": 2094314,
+        "archives": 54974,
+        "dependencies": 1349290,
+        "data": 210
+      },
+      "file_counts": {
+        "source_other": 303,
+        "archives": 1,
+        "dependencies": 118,
+        "data": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.22
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\oil-prices",
+      "kind": "GIT",
+      "head_at_discovery": "24f11b3",
+      "logical_bytes": 3384535,
+      "file_count": 61,
+      "categories": {
+        "source_other": 1232082,
+        "data": 428144,
+        "git": 1724309
+      },
+      "file_counts": {
+        "source_other": 17,
+        "data": 8,
+        "git": 36
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\databento__databento-python",
+      "kind": "GIT",
+      "head_at_discovery": "bde82bd",
+      "logical_bytes": 3336901,
+      "file_count": 381,
+      "categories": {
+        "source_other": 883386,
+        "archives": 18292,
+        "data": 14130,
+        "dependencies": 513028,
+        "git": 1908065
+      },
+      "file_counts": {
+        "source_other": 115,
+        "archives": 73,
+        "data": 4,
+        "dependencies": 36,
+        "git": 153
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.08
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\datasets\\oil-prices",
+      "kind": "GIT",
+      "head_at_discovery": "1cfa6f0",
+      "logical_bytes": 3305565,
+      "file_count": 53,
+      "categories": {
+        "source_other": 1232082,
+        "data": 428144,
+        "git": 1645339
+      },
+      "file_counts": {
+        "source_other": 17,
+        "data": 8,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "nexus-review-20260923\\bundle-checkout",
+      "kind": "GIT",
+      "head_at_discovery": "6529eed",
+      "logical_bytes": 3200771,
+      "file_count": 256,
+      "categories": {
+        "source_other": 2017873,
+        "dependencies": 855412,
+        "git": 327486
+      },
+      "file_counts": {
+        "source_other": 142,
+        "dependencies": 88,
+        "git": 26
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "nexus-review-20260923\\NEXUS_ADAPTIVE_MARKET_FABRIC_v0.3_SOL_FOR_SOL_EXTRA_HIGH\\nexus-adaptive-market-fabric",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 3002116,
+      "file_count": 267,
+      "categories": {
+        "source_other": 1959111,
+        "dependencies": 1043005
+      },
+      "file_counts": {
+        "source_other": 142,
+        "dependencies": 125
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\dottxt-ai--outlines",
+      "kind": "GIT",
+      "head_at_discovery": "c52af84",
+      "logical_bytes": 2992856,
+      "file_count": 28,
+      "categories": {
+        "git": 2992856
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "aion-review-20260923\\icarus-aion",
+      "kind": "GIT",
+      "head_at_discovery": "12a7cb8",
+      "logical_bytes": 2794660,
+      "file_count": 162,
+      "categories": {
+        "source_other": 2243763,
+        "dependencies": 243272,
+        "data": 163840,
+        "git": 143785
+      },
+      "file_counts": {
+        "source_other": 39,
+        "dependencies": 24,
+        "data": 2,
+        "git": 97
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.09
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\rx3asarc\\toragents-pi",
+      "kind": "GIT",
+      "head_at_discovery": "1f3a20e",
+      "logical_bytes": 2688411,
+      "file_count": 115,
+      "categories": {
+        "source_other": 1594496,
+        "git": 1093915
+      },
+      "file_counts": {
+        "source_other": 87,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.08
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\hudson-and-thames\\mlfinlab",
+      "kind": "GIT",
+      "head_at_discovery": "79dcc71",
+      "logical_bytes": 2528384,
+      "file_count": 160,
+      "categories": {
+        "source_other": 806113,
+        "data": 989727,
+        "git": 732544
+      },
+      "file_counts": {
+        "source_other": 129,
+        "data": 3,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.09
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\awesome-public-datasets",
+      "kind": "GIT",
+      "head_at_discovery": "4016cde",
+      "logical_bytes": 2517316,
+      "file_count": 62,
+      "categories": {
+        "source_other": 284400,
+        "archives": 22579,
+        "git": 2210337
+      },
+      "file_counts": {
+        "source_other": 2,
+        "archives": 1,
+        "git": 59
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "daedalus-intake-20260923\\daedalus-research-os",
+      "kind": "GIT",
+      "head_at_discovery": "74ad941",
+      "logical_bytes": 2495126,
+      "file_count": 374,
+      "categories": {
+        "source_other": 354513,
+        "dependencies": 924764,
+        "build": 202866,
+        "data": 829368,
+        "git": 183615
+      },
+      "file_counts": {
+        "source_other": 81,
+        "dependencies": 116,
+        "build": 32,
+        "data": 9,
+        "git": 136
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.16
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\NEXUS_v0.3_SOL.git (1).bundle",
+      "kind": "GIT",
+      "head_at_discovery": "03b2265",
+      "logical_bytes": 2303537,
+      "file_count": 162,
+      "categories": {
+        "source_other": 1992876,
+        "git": 310661
+      },
+      "file_counts": {
+        "source_other": 134,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "icarus-owner-actions",
+      "kind": "GIT",
+      "head_at_discovery": "cf9947b",
+      "logical_bytes": 2245035,
+      "file_count": 72,
+      "categories": {
+        "source_other": 33563,
+        "data": 339,
+        "git": 2211133
+      },
+      "file_counts": {
+        "source_other": 5,
+        "data": 1,
+        "git": 66
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.06
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\s-and-p-500-companies",
+      "kind": "GIT",
+      "head_at_discovery": "2f083ae",
+      "logical_bytes": 1933882,
+      "file_count": 46,
+      "categories": {
+        "source_other": 10358,
+        "data": 54329,
+        "git": 1869195
+      },
+      "file_counts": {
+        "source_other": 9,
+        "data": 2,
+        "git": 35
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\awesomedata\\awesome-public-datasets",
+      "kind": "GIT",
+      "head_at_discovery": "4016cde",
+      "logical_bytes": 1879431,
+      "file_count": 31,
+      "categories": {
+        "source_other": 284400,
+        "archives": 22579,
+        "git": 1572452
+      },
+      "file_counts": {
+        "source_other": 2,
+        "archives": 1,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\datasets\\s-and-p-500-companies",
+      "kind": "GIT",
+      "head_at_discovery": "2f083ae",
+      "logical_bytes": 1878204,
+      "file_count": 39,
+      "categories": {
+        "source_other": 10358,
+        "data": 54329,
+        "git": 1813517
+      },
+      "file_counts": {
+        "source_other": 9,
+        "data": 2,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\torq-cme",
+      "kind": "GIT",
+      "head_at_discovery": "4d5f348",
+      "logical_bytes": 1846760,
+      "file_count": 53,
+      "categories": {
+        "source_other": 1437376,
+        "data": 1683,
+        "git": 407701
+      },
+      "file_counts": {
+        "source_other": 18,
+        "data": 2,
+        "git": 33
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\DaniyalMlk__holdout",
+      "kind": "GIT",
+      "head_at_discovery": "1723581",
+      "logical_bytes": 1645305,
+      "file_count": 109,
+      "categories": {
+        "source_other": 846725,
+        "git": 798580
+      },
+      "file_counts": {
+        "source_other": 69,
+        "git": 40
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "Icarus-aion-review",
+      "kind": "GIT",
+      "head_at_discovery": "20c1f153",
+      "logical_bytes": 1556505,
+      "file_count": 187,
+      "categories": {
+        "source_other": 1501321,
+        "archives": 54974,
+        "data": 210
+      },
+      "file_counts": {
+        "source_other": 185,
+        "archives": 1,
+        "data": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\connu\\awesome-datasets",
+      "kind": "GIT",
+      "head_at_discovery": "c7416f5",
+      "logical_bytes": 1536312,
+      "file_count": 557,
+      "categories": {
+        "source_other": 711944,
+        "data": 277907,
+        "git": 546461
+      },
+      "file_counts": {
+        "source_other": 527,
+        "data": 2,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.25
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_032(1).zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 1455272,
+      "file_count": 230,
+      "categories": {
+        "source_other": 749305,
+        "dependencies": 705967
+      },
+      "file_counts": {
+        "source_other": 221,
+        "dependencies": 9
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.08
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\ar51an\\unbound-dashboard",
+      "kind": "GIT",
+      "head_at_discovery": "971ba67",
+      "logical_bytes": 1164869,
+      "file_count": 35,
+      "categories": {
+        "source_other": 566500,
+        "git": 598369
+      },
+      "file_counts": {
+        "source_other": 7,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_038.zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 1157135,
+      "file_count": 276,
+      "categories": {
+        "source_other": 1157135
+      },
+      "file_counts": {
+        "source_other": 276
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\huggingface--smolagents",
+      "kind": "GIT",
+      "head_at_discovery": "d0ec596",
+      "logical_bytes": 1144978,
+      "file_count": 28,
+      "categories": {
+        "git": 1144978
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_037.zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 1071093,
+      "file_count": 267,
+      "categories": {
+        "source_other": 1071093
+      },
+      "file_counts": {
+        "source_other": 267
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_027.zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 991047,
+      "file_count": 182,
+      "categories": {
+        "source_other": 495466,
+        "dependencies": 495581
+      },
+      "file_counts": {
+        "source_other": 172,
+        "dependencies": 10
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\optuna--optuna",
+      "kind": "GIT",
+      "head_at_discovery": "0abf066",
+      "logical_bytes": 964597,
+      "file_count": 28,
+      "categories": {
+        "git": 964597
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "Downloads\\v1.5.0 -- Neng Li Ceng _Duo Hou Duan Lu You + Zhen Ti Jian + OpenCLI source code (1)\\Panniantong-Agent-Reach-f65526c",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 815750,
+      "file_count": 89,
+      "categories": {
+        "source_other": 815750
+      },
+      "file_counts": {
+        "source_other": 89
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\merge\\prometheus",
+      "kind": "GIT",
+      "head_at_discovery": "136563e",
+      "logical_bytes": 788139,
+      "file_count": 178,
+      "categories": {
+        "source_other": 457353,
+        "git": 330786
+      },
+      "file_counts": {
+        "source_other": 88,
+        "git": 90
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.11
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_032.zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 759829,
+      "file_count": 232,
+      "categories": {
+        "source_other": 747113,
+        "dependencies": 12716
+      },
+      "file_counts": {
+        "source_other": 227,
+        "dependencies": 5
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.06
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\clonemasterUwU\\orderbook",
+      "kind": "GIT",
+      "head_at_discovery": "0e261be",
+      "logical_bytes": 698683,
+      "file_count": 44,
+      "categories": {
+        "source_other": 71510,
+        "git": 627173
+      },
+      "file_counts": {
+        "source_other": 16,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_030.zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 602987,
+      "file_count": 197,
+      "categories": {
+        "source_other": 602987
+      },
+      "file_counts": {
+        "source_other": 197
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\orderbook",
+      "kind": "GIT",
+      "head_at_discovery": "0e261be",
+      "logical_bytes": 602392,
+      "file_count": 49,
+      "categories": {
+        "source_other": 71510,
+        "git": 530882
+      },
+      "file_counts": {
+        "source_other": 16,
+        "git": 33
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\virattt\\financial-datasets",
+      "kind": "GIT",
+      "head_at_discovery": "9856644",
+      "logical_bytes": 583090,
+      "file_count": 45,
+      "categories": {
+        "source_other": 201477,
+        "git": 381613
+      },
+      "file_counts": {
+        "source_other": 17,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "Downloads\\Python-3.10.20\\Python-3.10.20\\Tools\\peg_generator",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 569938,
+      "file_count": 38,
+      "categories": {
+        "source_other": 551167,
+        "archives": 18771
+      },
+      "file_counts": {
+        "source_other": 37,
+        "archives": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0
+    },
+    {
+      "path": "Downloads\\Python-3.10.20 (1)\\Python-3.10.20\\Tools\\peg_generator",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 569938,
+      "file_count": 38,
+      "categories": {
+        "source_other": 551167,
+        "archives": 18771
+      },
+      "file_counts": {
+        "source_other": 37,
+        "archives": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_029.zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 563865,
+      "file_count": 189,
+      "categories": {
+        "source_other": 563865
+      },
+      "file_counts": {
+        "source_other": 189
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.06
+    },
+    {
+      "path": "icarus-csv-evidence-lab",
+      "kind": "GIT",
+      "head_at_discovery": "d6a5868",
+      "logical_bytes": 558342,
+      "file_count": 130,
+      "categories": {
+        "source_other": 117237,
+        "dependencies": 26560,
+        "git": 414545
+      },
+      "file_counts": {
+        "source_other": 17,
+        "dependencies": 7,
+        "git": 106
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.06
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_028.zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 525228,
+      "file_count": 179,
+      "categories": {
+        "source_other": 525228
+      },
+      "file_counts": {
+        "source_other": 179
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\JANUS_INFINITY_HANDOFF_RUN_025.zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 488039,
+      "file_count": 169,
+      "categories": {
+        "source_other": 478217,
+        "dependencies": 9822
+      },
+      "file_counts": {
+        "source_other": 164,
+        "dependencies": 5
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.5_VERIFIED_2026-09-25.bundle",
+      "kind": "GIT",
+      "head_at_discovery": "444d978",
+      "logical_bytes": 479404,
+      "file_count": 101,
+      "categories": {
+        "source_other": 308623,
+        "git": 170781
+      },
+      "file_counts": {
+        "source_other": 73,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.4_VERIFIED_2026-09-25(1).bundle",
+      "kind": "GIT",
+      "head_at_discovery": "2659350",
+      "logical_bytes": 425969,
+      "file_count": 96,
+      "categories": {
+        "source_other": 276187,
+        "git": 149782
+      },
+      "file_counts": {
+        "source_other": 68,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.08
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\landtml__purgedcv",
+      "kind": "GIT",
+      "head_at_discovery": "aee3396",
+      "logical_bytes": 392247,
+      "file_count": 147,
+      "categories": {
+        "source_other": 130073,
+        "build": 26057,
+        "git": 236117
+      },
+      "file_counts": {
+        "source_other": 21,
+        "build": 3,
+        "git": 123
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.11
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\ORACLE_CHECKPOINT_C_75_SOL.git (1).bundle",
+      "kind": "GIT",
+      "head_at_discovery": "6255339",
+      "logical_bytes": 390078,
+      "file_count": 85,
+      "categories": {
+        "source_other": 189428,
+        "git": 200650
+      },
+      "file_counts": {
+        "source_other": 57,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\noamgat--lm-format-enforcer",
+      "kind": "GIT",
+      "head_at_discovery": "817f944",
+      "logical_bytes": 380590,
+      "file_count": 28,
+      "categories": {
+        "git": 380590
+      },
+      "file_counts": {
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.5_VERIFIED_2026-09-25(1).zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 340255,
+      "file_count": 72,
+      "categories": {
+        "source_other": 340255
+      },
+      "file_counts": {
+        "source_other": 72
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "aion-gap-integrity-20260924",
+      "kind": "GIT",
+      "head_at_discovery": "12a7cb8",
+      "logical_bytes": 281195,
+      "file_count": 45,
+      "categories": {
+        "source_other": 184315,
+        "dependencies": 96880
+      },
+      "file_counts": {
+        "source_other": 39,
+        "dependencies": 6
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "icarus-causal-router",
+      "kind": "GIT",
+      "head_at_discovery": "d95a53c",
+      "logical_bytes": 257581,
+      "file_count": 86,
+      "categories": {
+        "source_other": 109914,
+        "dependencies": 92575,
+        "git": 55092
+      },
+      "file_counts": {
+        "source_other": 22,
+        "dependencies": 16,
+        "git": 48
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\awesome-public-real-time-datasets",
+      "kind": "GIT",
+      "head_at_discovery": "5195084",
+      "logical_bytes": 214035,
+      "file_count": 39,
+      "categories": {
+        "source_other": 38594,
+        "git": 175441
+      },
+      "file_counts": {
+        "source_other": 4,
+        "git": 35
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "Downloads\\tgko_prototype (1)",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 207669,
+      "file_count": 34,
+      "categories": {
+        "source_other": 207669
+      },
+      "file_counts": {
+        "source_other": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_ALL_CURRENT_WORK_FRESH_2026-09-24.zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 191851,
+      "file_count": 51,
+      "categories": {
+        "source_other": 191851
+      },
+      "file_counts": {
+        "source_other": 51
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.01
+    },
+    {
+      "path": "oracle-review-20260923\\ICARUS_ORACLE_CHECKPOINT_C_75_SOL_FOR_SOL_EXTRA_HIGH\\icarus-oracle",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 184031,
+      "file_count": 55,
+      "categories": {
+        "source_other": 184031
+      },
+      "file_counts": {
+        "source_other": 55
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.5_VERIFIED_2026-09-25(1).bundle",
+      "kind": "GIT",
+      "head_at_discovery": "",
+      "logical_bytes": 168076,
+      "file_count": 22,
+      "categories": {
+        "git": 168076
+      },
+      "file_counts": {
+        "git": 22
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0
+    },
+    {
+      "path": "Downloads\\tgko_prototype (2)",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 160875,
+      "file_count": 33,
+      "categories": {
+        "source_other": 160875
+      },
+      "file_counts": {
+        "source_other": 33
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0
+    },
+    {
+      "path": "projects\\icarus-ml-research-sources\\yuezhihan--ts2vec",
+      "kind": "GIT",
+      "head_at_discovery": "b0088e1",
+      "logical_bytes": 146611,
+      "file_count": 61,
+      "categories": {
+        "source_other": 89416,
+        "git": 57195
+      },
+      "file_counts": {
+        "source_other": 27,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.4_VERIFIED_2026-09-25.bundle",
+      "kind": "GIT",
+      "head_at_discovery": "",
+      "logical_bytes": 137217,
+      "file_count": 22,
+      "categories": {
+        "git": 137217
+      },
+      "file_counts": {
+        "git": 22
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.2_SIBLING_BINDINGS_PLAN_2026-09-24.zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 133578,
+      "file_count": 39,
+      "categories": {
+        "source_other": 133578
+      },
+      "file_counts": {
+        "source_other": 39
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "oh-my-claudecode-main\\benchmark",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 130975,
+      "file_count": 22,
+      "categories": {
+        "source_other": 120416,
+        "data": 10559
+      },
+      "file_counts": {
+        "source_other": 21,
+        "data": 1
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.3_VERIFIED_2026-09-25.bundle",
+      "kind": "GIT",
+      "head_at_discovery": "",
+      "logical_bytes": 119219,
+      "file_count": 22,
+      "categories": {
+        "git": 119219
+      },
+      "file_counts": {
+        "git": 22
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.1_2026-09-24.zip",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 118296,
+      "file_count": 38,
+      "categories": {
+        "source_other": 118296
+      },
+      "file_counts": {
+        "source_other": 38
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.2_SIBLING_BINDINGS_PLAN_2026-09-24.bundle",
+      "kind": "GIT",
+      "head_at_discovery": "",
+      "logical_bytes": 109599,
+      "file_count": 22,
+      "categories": {
+        "git": 109599
+      },
+      "file_counts": {
+        "git": 22
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_v0.1_2026-09-24.bundle",
+      "kind": "GIT",
+      "head_at_discovery": "",
+      "logical_bytes": 103554,
+      "file_count": 22,
+      "categories": {
+        "git": 103554
+      },
+      "file_counts": {
+        "git": 22
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\sovai-research\\open-investment-datasets",
+      "kind": "GIT",
+      "head_at_discovery": "6af7a5d",
+      "logical_bytes": 100174,
+      "file_count": 29,
+      "categories": {
+        "source_other": 11308,
+        "git": 88866
+      },
+      "file_counts": {
+        "source_other": 1,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\reppiks490\\datasets-links-collection",
+      "kind": "GIT",
+      "head_at_discovery": "fd98f4a",
+      "logical_bytes": 98097,
+      "file_count": 36,
+      "categories": {
+        "source_other": 9755,
+        "git": 88342
+      },
+      "file_counts": {
+        "source_other": 3,
+        "git": 33
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.05
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\vdmitriyev\\datasets-links-collection",
+      "kind": "GIT",
+      "head_at_discovery": "fd98f4a",
+      "logical_bytes": 97387,
+      "file_count": 31,
+      "categories": {
+        "source_other": 9755,
+        "git": 87632
+      },
+      "file_counts": {
+        "source_other": 3,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.01
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\mdozmorov\\Data_notes",
+      "kind": "GIT",
+      "head_at_discovery": "95353d4",
+      "logical_bytes": 88944,
+      "file_count": 31,
+      "categories": {
+        "source_other": 16950,
+        "git": 71994
+      },
+      "file_counts": {
+        "source_other": 3,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "Downloads\\jojo-main\\jojo-main",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 83702,
+      "file_count": 12,
+      "categories": {
+        "source_other": 83702
+      },
+      "file_counts": {
+        "source_other": 12
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0
+    },
+    {
+      "path": "Downloads\\divine providence\\_analysis\\x\\PROMETHEUS_DESIGN_CHECKPOINT_2026-09-24.bundle",
+      "kind": "GIT",
+      "head_at_discovery": "e057047",
+      "logical_bytes": 74298,
+      "file_count": 30,
+      "categories": {
+        "source_other": 32221,
+        "git": 42077
+      },
+      "file_counts": {
+        "source_other": 2,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\quantopian\\quantopian-algos",
+      "kind": "GIT",
+      "head_at_discovery": "ec0fac6",
+      "logical_bytes": 58100,
+      "file_count": 32,
+      "categories": {
+        "source_other": 13604,
+        "git": 44496
+      },
+      "file_counts": {
+        "source_other": 4,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02
+    },
+    {
+      "path": "<SYNC_ROOT>\\ICARUS-GITHUB-DOWNLOADS\\hudson-and-thames\\EdgarSEC",
+      "kind": "GIT",
+      "head_at_discovery": "e863293",
+      "logical_bytes": 54804,
+      "file_count": 29,
+      "categories": {
+        "source_other": 10,
+        "git": 54794
+      },
+      "file_counts": {
+        "source_other": 1,
+        "git": 28
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03
+    },
+    {
+      "path": "ICARUS-OPTIONAL-SOURCES\\STARNET-74fcd5040ba0\\test\\native-connector-keychain",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 33474,
+      "file_count": 6,
+      "categories": {
+        "source_other": 33474
+      },
+      "file_counts": {
+        "source_other": 6
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0
+    },
+    {
+      "path": "ICARUS-OPTIONAL-SOURCES\\STARNET-74fcd5040ba0\\test\\native-process-ownership",
+      "kind": "SOURCE",
+      "head_at_discovery": null,
+      "logical_bytes": 4814,
+      "file_count": 3,
+      "categories": {
+        "source_other": 4814
+      },
+      "file_counts": {
+        "source_other": 3
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0
+    }
+  ]
+}
