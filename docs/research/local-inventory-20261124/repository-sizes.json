@@ -2,48 +2,35 @@
   "schema": "icarus.local_repository_sizes.v1",
   "as_of_local": "2026-11-24",
   "method": "Logical length of files from directory metadata; nested inventoried roots excluded. Reparse/offline entries excluded; no hydration. No hardlink or physical allocated-byte reconciliation. Categories inferred from directory and extension.",
-  "status": "completed_original_269_roots",
+  "status": "completed_275_discovered_roots",
   "summary": {
-    "roots_expected": 269,
-    "roots_measured": 269,
-    "logical_bytes": 100765857325,
-    "files": 1771110,
+    "roots_expected": 275,
+    "roots_measured": 275,
+    "logical_bytes": 101135047636,
+    "files": 1774395,
     "errors": 0,
     "placeholder_entries": 0,
     "placeholder_file_logical_bytes": 0,
     "nested_roots_excluded": 4,
     "missing": [],
-    "additional_discovered_roots_pending": [
-      "projects\\icarus-ml-research-sources\\aeon-toolkit--aeon",
-      "projects\\icarus-ml-research-sources\\danijar--dreamerv3",
-      "projects\\icarus-ml-research-sources\\KangOxford--jax-lob",
-      "projects\\icarus-ml-research-sources\\LAMDA-Tabular--TALENT",
-      "projects\\icarus-ml-research-sources\\nicklashansen--tdmpc2",
-      "projects\\icarus-ml-research-sources\\takuseno--d3rlpy"
-    ],
     "categories": {
-      "source_other": 35613645526,
-      "weights": 274327054,
-      "data": 5730859315,
-      "build": 566938515,
-      "git": 52857900497,
+      "source_other": 35806794936,
+      "data": 5740776416,
       "dependencies": 4591978539,
-      "archives": 1130207879
+      "git": 53015505445,
+      "archives": 1136483111,
+      "build": 566938515,
+      "weights": 276570674
     },
     "groups": {
-      "external": {
-        "count": 88,
-        "bytes": 45524148658,
-        "errors": 0
-      },
       "downloads": {
         "count": 65,
         "bytes": 34774034887,
         "errors": 0
       },
-      "myriad": {
-        "count": 21,
-        "bytes": 466702692,
+      "external": {
+        "count": 88,
+        "bytes": 45524148658,
         "errors": 0
       },
       "other": {
@@ -51,19 +38,31 @@
         "bytes": 19561924241,
         "errors": 0
       },
+      "myriad": {
+        "count": 21,
+        "bytes": 466702692,
+        "errors": 0
+      },
       "new_ml": {
-        "count": 8,
-        "bytes": 439046847,
+        "count": 14,
+        "bytes": 808237158,
         "errors": 0
       }
     },
-    "process_summary": {
+    "original_process_summary": {
       "roots_expected": 269,
       "roots_measured": 269,
       "logical_bytes_nonoverlap": 100765857325,
       "files": 1771110,
       "placeholder_entries": 0,
       "placeholder_file_logical_bytes": 0,
+      "errors": 0
+    },
+    "additional_process_summary": {
+      "roots_expected": 6,
+      "roots_measured": 6,
+      "logical_bytes": 369190311,
+      "files": 3285,
       "errors": 0
     }
   },
@@ -1681,6 +1680,30 @@
       "elapsed_sec": 0.27
     },
     {
+      "path": "projects\\icarus-ml-research-sources\\LAMDA-Tabular--TALENT",
+      "kind": "GIT",
+      "logical_bytes": 242117679,
+      "file_count": 779,
+      "categories": {
+        "source_other": 124787073,
+        "weights": 2243620,
+        "data": 8567111,
+        "git": 106519875
+      },
+      "file_counts": {
+        "source_other": 723,
+        "weights": 1,
+        "data": 21,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03,
+      "head_at_discovery": "39b54024902955e51063a34bce17d514cd68ff42"
+    },
+    {
       "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\polakowo__vectorbt",
       "kind": "GIT",
       "head_at_discovery": "8e30b8c",
@@ -2417,6 +2440,28 @@
       "nested_roots_excluded": 0,
       "errors": 0,
       "elapsed_sec": 1.36
+    },
+    {
+      "path": "projects\\icarus-ml-research-sources\\aeon-toolkit--aeon",
+      "kind": "GIT",
+      "logical_bytes": 88327856,
+      "file_count": 1399,
+      "categories": {
+        "source_other": 53380454,
+        "data": 608083,
+        "git": 34339319
+      },
+      "file_counts": {
+        "source_other": 1353,
+        "data": 12,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.16,
+      "head_at_discovery": "810325b558c8459c538fd162ef6bae3abacf7d7d"
     },
     {
       "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\py-why__EconML",
@@ -3673,6 +3718,50 @@
       "elapsed_sec": 0.03
     },
     {
+      "path": "projects\\icarus-ml-research-sources\\nicklashansen--tdmpc2",
+      "kind": "GIT",
+      "logical_bytes": 13136666,
+      "file_count": 527,
+      "categories": {
+        "source_other": 6157058,
+        "data": 741907,
+        "git": 6237701
+      },
+      "file_counts": {
+        "source_other": 65,
+        "data": 428,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02,
+      "head_at_discovery": "332f19e4aba4bffe2dc736f45ea7f7bdc585903a"
+    },
+    {
+      "path": "projects\\icarus-ml-research-sources\\danijar--dreamerv3",
+      "kind": "GIT",
+      "logical_bytes": 13025085,
+      "file_count": 130,
+      "categories": {
+        "source_other": 378819,
+        "archives": 6275232,
+        "git": 6371034
+      },
+      "file_counts": {
+        "source_other": 69,
+        "archives": 27,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.02,
+      "head_at_discovery": "e01491fad6434b2245a3b8ca201dd7faedcc458c"
+    },
+    {
       "path": "projects\\MYRIAD-v32-local-pilot-20261124\\capability-acquisition\\microsoft--graphrag",
       "kind": "GIT",
       "head_at_discovery": "34b2b67",
@@ -3865,6 +3954,26 @@
       "nested_roots_excluded": 0,
       "errors": 0,
       "elapsed_sec": 0.03
+    },
+    {
+      "path": "projects\\icarus-ml-research-sources\\takuseno--d3rlpy",
+      "kind": "GIT",
+      "logical_bytes": 8567823,
+      "file_count": 374,
+      "categories": {
+        "source_other": 4903865,
+        "git": 3663958
+      },
+      "file_counts": {
+        "source_other": 340,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0.03,
+      "head_at_discovery": "38c34b6f99fde82875e2ad81d1ba1f7a7da34137"
     },
     {
       "path": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\source\\gitleaks__gitleaks",
@@ -4375,6 +4484,26 @@
       "nested_roots_excluded": 0,
       "errors": 0,
       "elapsed_sec": 0.06
+    },
+    {
+      "path": "projects\\icarus-ml-research-sources\\KangOxford--jax-lob",
+      "kind": "GIT",
+      "logical_bytes": 4015202,
+      "file_count": 76,
+      "categories": {
+        "source_other": 3542141,
+        "git": 473061
+      },
+      "file_counts": {
+        "source_other": 42,
+        "git": 34
+      },
+      "placeholder_entries": 0,
+      "placeholder_file_logical_bytes": 0,
+      "nested_roots_excluded": 0,
+      "errors": 0,
+      "elapsed_sec": 0,
+      "head_at_discovery": "d1f596610b04a09941c7a1b609e5bab541ecfc98"
     },
     {
       "path": "Icarus-g008",
