@@ -1,5 +1,7 @@
 # Next-agent master prompt and acceptance gates
 
+**Findings navigation:** [FINDINGS_LOCATIONS.md](FINDINGS_LOCATIONS.md) contains directions to the recorded local and GitHub findings. [findings-locations.json](findings-locations.json) indexes all 275 measured project roots, all 14 pinned model/tokenizer directories and 42 observed artifact paths, plus targeted path checks and environment locations. Resolve local path aliases on the authorized Windows device; do not guess missing paths.
+
 Read the complete technical session archive at this directory before doing any new work. Start with README.md, SESSION_HANDOFF.md, GIT_STORAGE_AUDIT.md, repository-metadata.json, repository-sizes.json and runtime-evidence.json. These are the durable transfer of the technical findings from the available conversation, not a verbatim chat export. The latest reconciled facts override earlier snapshots.
 
 ## Master prompt
