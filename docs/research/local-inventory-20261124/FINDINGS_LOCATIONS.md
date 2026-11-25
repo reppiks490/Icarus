@@ -1,5 +1,7 @@
 # Findings location guide — 2026-11-24
 
+**Deeper follow-up:** [DEEP_DISCOVERIES.md](DEEP_DISCOVERIES.md), [deep-source-evidence.json](deep-source-evidence.json), and [deep-artifact-evidence.json](deep-artifact-evidence.json) preserve 15 targeted source inspections with exact paths/revisions/file hashes, new AION clock counts and MYRIAD weight metadata, integration opportunities and acceptance gates. Read before implementing new financial-world adapters.
+
 This is the navigation layer for the complete session handoff, not a new scan of all files. Use [findings-locations.json](findings-locations.json) to find every one of the 275 measured project locations, their recorded Git HEADs, logical sizes, and the fourteen pinned model/tokenizer artifact directories. It also records 35 fresh local existence checks, 42 individual model/config/receipt file metadata observations, selected directory listings and system/environment locations. All 35 checked locations existed at the latest readback. Historical repository paths have not all been freshly rechecked.
 
 ## 1. Start here: GitHub and authorized local device
