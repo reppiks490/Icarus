@@ -1,4 +1,6 @@
 # Full technical session handoff — ICARUS × UMBRA × MYRIAD × POLYMIND
+
+**Findings navigation:** [FINDINGS_LOCATIONS.md](FINDINGS_LOCATIONS.md) contains directions to the recorded local and GitHub findings. [findings-locations.json](findings-locations.json) indexes all 275 measured project roots, all 14 pinned model/tokenizer directories and 42 observed artifact paths, plus targeted path checks and environment locations. Resolve local path aliases on the authorized Windows device; do not guess missing paths.
 Date of observations: 2026-11-24, America/Chicago. Scope: technical findings and actions recovered from the available conversation context, from the beginning of this workstream to the storage census. This is not a verbatim transcript or a claim that every historical source has been recovered. Distinguish **verified operation**, **observed metadata**, **historical receipt**, **design proposal**, and **unverified**. All local paths are relative to the authorized Windows user's home (<USER_HOME>); <SYNC_ROOT> denotes the locally synchronized research collection. Do not put account-identifying path prefixes, raw market data, passwords, token values, broker credentials or private logs in GitHub.
 
 ## 0. Owner objective and non-negotiable boundaries
