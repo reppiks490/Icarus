@@ -1,5 +1,7 @@
 # UMBRA × ICARUS — parallel construction continuation
 
+**Storage and capability expansion:** [STORAGE_AND_AGENT_INTELLIGENCE.md](STORAGE_AND_AGENT_INTELLIGENCE.md) preserves the fresh cache/partial-download audit, 20 GB recovery options, and per-agent parameter/learner expansion. No cleanup or training is authorized by this design. Preserve pending download progress unless the owner expressly abandons it.
+
 **Expanded owner-required architecture:** [LEARNING_AGENT_FEDERATION.md](LEARNING_AGENT_FEDERATION.md) and [agent-federation-registry.json](agent-federation-registry.json) extend the ten roles to 40 logical identities (primary plus three replicas per role), with independent trainable ML components, checkpoint lineage, blind reproduction, heterogeneous challenge, deterministic coordination, and qualified execution backends beyond Ollama. The exact 1.8 GB available-RAM reserve and all earlier research/discovery gates remain mandatory. This is a design specification; none of the forty identities is claimed trained or running.
 
 **Required continuation design:** [QWEN3_SHARED_FLEET.md](QWEN3_SHARED_FLEET.md) documents the proposed ten persistent Qwen3 identities, shared model weights, mixed-size inference scheduling, 1.8 GB reserve, GitHub-backed memory, benchmark gates and OpenBB storage tradeoff. Existing dispatcher supports distinct-model waves only; same-model parallelism and persistent identities remain implementation tasks.
