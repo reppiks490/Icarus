@@ -1,5 +1,7 @@
 # UMBRA × ICARUS — parallel construction continuation
 
+**Required continuation design:** [QWEN3_SHARED_FLEET.md](QWEN3_SHARED_FLEET.md) documents the proposed ten persistent Qwen3 identities, shared model weights, mixed-size inference scheduling, 1.8 GB reserve, GitHub-backed memory, benchmark gates and OpenBB storage tradeoff. Existing dispatcher supports distinct-model waves only; same-model parallelism and persistent identities remain implementation tasks.
+
 Owner instruction: use the installed Ollama fleet for continuation, mixing large and small models concurrently whenever capacity permits, with at least 1.8 GB (1,800,000,000 bytes) estimated available physical RAM reserved. This supersedes the initial 1.5 GiB admission policy. No scheduled Codex, no live broker activation, no active runtime alteration, no downloads without authorization.
 
 ## Read first
