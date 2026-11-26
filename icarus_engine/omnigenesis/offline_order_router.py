@@ -108,9 +108,7 @@ def replay_offline_order_router(spec: Mapping[str, Any]) -> dict:
             raise ValueError("non-increasing event sequence or receive time")
         previous_seq, prior_received = seq, received
         # Unique event IDs are accepted only after all safety checks succeed.
-        oid = event.get("order_id")
-        if oid is not None:
-            oid = _ident(oid, "order ID")
+        oid = _ident(event["order_id"], "order ID") if "order_id" in _FIELDS[action] else None
         if action == "SUBMIT":
             if halted:
                 raise ValueError("submit forbidden after safety halt")
@@ -202,7 +200,8 @@ def replay_offline_order_router(spec: Mapping[str, Any]) -> dict:
                 order["status"] = "REJECTED"
         seen[eid] = encoded
         node = {"sequence": seq, "event_id": eid, "action": action,
-                "order_id": oid, "position_contracts": position,
+                "order_id": oid, "event_sha256": identity(event),
+                "position_contracts": position,
                 "halted": halted, "previous_receipt": last_receipt,
                 "research_only": True, "execution_authorized": False}
         node["receipt_id"] = identity(node)
@@ -213,6 +212,7 @@ def replay_offline_order_router(spec: Mapping[str, Any]) -> dict:
     report = {
         "schema_version": _SCHEMA,
         "mode": "OFFLINE_SANDBOX", "asset": asset,
+        "receipt_binding_version": 2, "input_spec_sha256": identity(spec),
         "evidence_kind": "SIMULATED_ORDER_LIFECYCLE",
         "authority": dict(_AUTHORITY),
         "source_authenticity_verified": False, "actual_exchange_reconciled": False,
