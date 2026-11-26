@@ -303,3 +303,49 @@ def test_router_report_reconciliation_key_present_for_all_terminal_states():
         assert result["broker_order_count"] == 0
         assert result["receipt_id"] == identity(
             {key: value for key, value in result.items() if key != "receipt_id"})
+
+@pytest.mark.parametrize("action,payload", [
+    ("SUBMIT", {"side": "BUY", "quantity": 1, "limit_ticks": 10000}),
+    ("ACK", {}),
+    ("FILL", {"execution_id": "x1", "quantity": 1, "price_ticks": 10000}),
+    ("CANCEL", {}),
+    ("CANCEL_ACK", {}),
+    ("REJECT", {}),
+])
+def test_null_order_identifiers_fail_at_schema_boundary(action, payload):
+    events = ([event(1, action, order_id=None, **payload)] if action == "SUBMIT"
+              else [submit(1, "o1", "BUY", 2),
+                    event(2, action, order_id=None, **payload)])
+    with pytest.raises(ValueError, match="invalid order ID"):
+        replay_offline_order_router(config(events))
+
+
+def test_receipt_binds_input_prices_configuration_and_event_payloads():
+    spec = config([submit(1, "o1", "BUY", 2)])
+    result = replay_offline_order_router(spec)
+    assert result["receipt_binding_version"] == 2
+    assert result["input_spec_sha256"] == identity(spec)
+    assert result["audit_receipts"][0]["event_sha256"] == identity(spec["events"][0])
+
+    changed = deepcopy(spec)
+    changed["events"][0]["limit_ticks"] += 1
+    other = replay_offline_order_router(changed)
+    assert other["audit_final_receipt"] != result["audit_final_receipt"]
+    assert other["receipt_id"] != result["receipt_id"]
+
+    changed = deepcopy(spec)
+    changed["max_active_orders"] += 1
+    assert replay_offline_order_router(changed)["receipt_id"] != result["receipt_id"]
+
+    filled = config([submit(1, "o1", "BUY", 2),
+                     event(2, "FILL", order_id="o1", execution_id="x1",
+                           quantity=1, price_ticks=10000)])
+    cheaper = deepcopy(filled)
+    cheaper["events"][1]["price_ticks"] = 9999
+    a, b = map(replay_offline_order_router, (filled, cheaper))
+    assert a["position_contracts"] == b["position_contracts"]
+    assert a["audit_final_receipt"] != b["audit_final_receipt"]
+    assert a["receipt_id"] != b["receipt_id"]
+    assert result == replay_offline_order_router(spec)
+    assert result["broker_order_count"] == 0
+    assert result["authority"]["execution_authorized"] is False
