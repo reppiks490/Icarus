@@ -291,3 +291,16 @@ if(highlighted||marked||radar!==null)throw Error('motion-disabled rebuild retain
         capture_output=True, text=True, timeout=10, check=False,
     )
     assert result.returncode == 0, result.stderr
+
+def test_topology_reconciles_existing_graph_without_redraw_churn():
+    """Run deterministic keyed-graph reconciliation against the real source."""
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("optional Node runtime unavailable")
+    result = subprocess.run(
+        [node, str(ROOT / "tests_engine" / "topology_reconcile.cjs"), str(IMMERSION)],
+        capture_output=True, text=True, timeout=10, check=False,
+    )
+    assert result.returncode == 0, result.stderr
