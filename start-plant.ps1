@@ -74,7 +74,7 @@ if (-not (Test-Path -LiteralPath $hist1)) {
 
 Write-Host ''
 Write-Host 'Starting plant  --assets NQ --offline'
-Write-Host 'Dashboard on THIS PC:  http://127.0.0.1:8791/   token: icarus'
+Write-Host 'Dashboard on THIS PC:  http://127.0.0.1:8791/   authentication uses ICARUS_TOKEN from the process or private plant .env'
 Write-Host 'Leave this window open.  Ctrl+C to stop.'
 Write-Host ''
 

@@ -284,11 +284,11 @@ class ChronofoldEngine:
             out[symbol] = obs
         return out
 
-    def _possibility_snapshot(self, symbol: str) -> Mapping[str, Any]:
+    def _possibility_snapshot(self, symbol: str, *, status=None) -> Mapping[str, Any]:
         if self.possibility is None:
             return {}
         try:
-            value = self.possibility.snapshot(symbol)
+            value = self.possibility.snapshot(symbol, status=status) if status is not None else self.possibility.snapshot(symbol)
         except Exception:
             return {}
         return value if isinstance(value, Mapping) else {}
@@ -760,13 +760,14 @@ class ChronofoldEngine:
             "production_decision_authorized": False,
         }
 
-    def snapshot(self, asset: str = "") -> Dict[str, Any]:
+    def snapshot(self, asset: str = "", *, status=None) -> Dict[str, Any]:
         with self._lock:
             retrieval_ts = time.time()
-            try:
-                status = self.port.status()
-            except Exception as ex:
-                return self._empty(f"portfolio status unavailable: {type(ex).__name__}: {ex}")
+            if status is None:
+                try:
+                    status = self.port.status()
+                except Exception as ex:
+                    return self._empty(f"portfolio status unavailable: {type(ex).__name__}: {ex}")
             if not isinstance(status, Mapping):
                 return self._empty("portfolio status unavailable")
             rows = self._asset_rows(status)
@@ -776,7 +777,7 @@ class ChronofoldEngine:
             symbol = str(asset or symbols[0]).upper()
             if symbol not in symbols:
                 return self._empty(f"unknown observed asset {symbol}")
-            poss = self._possibility_snapshot(symbol)
+            poss = self._possibility_snapshot(symbol, status=status)
             fingerprint = self._input_fingerprint(status, symbol, poss)
             if self._last_input_fingerprint.get(symbol) == fingerprint and symbol in self._last_snapshot:
                 return self._last_snapshot[symbol]

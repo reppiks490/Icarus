@@ -44,6 +44,7 @@ const fixture={
   const browser=await chromium.launch({headless:true,...(process.env.ICARUS_BROWSER_BINARY?{executablePath:process.env.ICARUS_BROWSER_BINARY}:{})});
   try {
     const context=await browser.newContext({viewport:{width:1280,height:900}}),page=await context.newPage();
+    await require('./browser_preview_auth.cjs').authenticatePreview(context);
     const errors=[],writes=[];
     await page.addInitScript(()=>sessionStorage.setItem('icarus-intro-seen','1'));
     page.on('pageerror',error=>errors.push(error.message));

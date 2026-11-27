@@ -893,7 +893,7 @@
     const el = document.querySelector('#ascendancyBody');
     if (!el) return;
     try {
-      const token = localStorage.getItem('icarus-engine-token') || 'icarus';
+      const token = IcarusClient.getToken();
       const settled = await Promise.allSettled([
         fetchJson('/api/ascendancy/capabilities', token),
         fetchJson('/api/ascendancy/genomes', token),

@@ -224,13 +224,13 @@ class CommissioningEngine:
                 out[f"without_{name}"] = _finite(row.get("shadow_expected_return"))
         return out
 
-    def capture(self, asset: str, *, force: bool = False) -> Dict[str, Any]:
+    def capture(self, asset: str, *, force: bool = False, _status=None, _snapshot=None) -> Dict[str, Any]:
         asset = str(asset or "").strip().upper()
         if not asset:
             raise ValueError("asset is required")
         with self._lock:
-            status = self.port.status()
-            snapshot = self.chronofold.snapshot(asset)
+            status = _status if isinstance(_status, Mapping) else self.port.status()
+            snapshot = _snapshot if isinstance(_snapshot, Mapping) else self.chronofold.snapshot(asset, status=status)
             if not isinstance(snapshot, Mapping) or snapshot.get("asset") != asset:
                 raise RuntimeError(f"Chronofold has no commissionable state for {asset}")
             truth = snapshot.get("truth_contract") if isinstance(snapshot.get("truth_contract"), Mapping) else {}
@@ -315,7 +315,7 @@ class CommissioningEngine:
             self._last_capture_tau[asset] = tau
             return {"captured": True, "prediction": row}
 
-    def settle_ready(self, asset: str = "") -> Dict[str, Any]:
+    def settle_ready(self, asset: str = "", *, _status=None) -> Dict[str, Any]:
         requested = str(asset or "").strip().upper()
         with self._lock:
             pending = [
@@ -327,10 +327,12 @@ class CommissioningEngine:
                 by_asset[str(row.get("asset") or "").upper()].append(row)
             settled: list[Dict[str, Any]] = []
             skipped: Dict[str, str] = {}
-            status = self.port.status()
+            if not by_asset:
+                return {"settled": 0, "outcomes": settled, "skipped": skipped}
+            status = _status if isinstance(_status, Mapping) else self.port.status()
             for symbol, rows in sorted(by_asset.items()):
                 try:
-                    snapshot = self.chronofold.snapshot(symbol)
+                    snapshot = self.chronofold.snapshot(symbol, status=status)
                     current_tau = _finite((snapshot.get("chronon") or {}).get("market_proper_time"))
                     current_price = self._asset_price(symbol, status)
                 except Exception as ex:
@@ -631,21 +633,23 @@ class CommissioningEngine:
             }
 
     def tick(self) -> Dict[str, Any]:
-        with self._lock:
-            status = self.port.status()
-            assets = [
-                str(row.get("symbol") or "").upper()
-                for row in status.get("assets", [])
-                if isinstance(row, Mapping) and row.get("symbol")
-            ]
+        status = self.port.status()
+        assets = [
+            str(row.get("symbol") or "").upper()
+            for row in status.get("assets", [])
+            if isinstance(row, Mapping) and row.get("symbol")
+        ]
         captures = []
         errors = {}
         for asset in assets:
             try:
-                captures.append(self.capture(asset))
+                snapshot = self.chronofold.snapshot(asset, status=status)
+                captures.append(self.capture(asset, _status=status, _snapshot=snapshot))
             except Exception as ex:
                 errors[f"capture:{asset}"] = f"{type(ex).__name__}: {ex}"[:500]
         try:
+            # Settlement is a later evidence stage: take a fresh status and
+            # stateful Chronofold snapshot if there are pending predictions.
             settlement = self.settle_ready()
         except Exception as ex:
             settlement = {"settled": 0, "outcomes": [], "skipped": {"*": f"{type(ex).__name__}: {ex}"[:500]}}

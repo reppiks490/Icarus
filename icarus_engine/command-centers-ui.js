@@ -9,6 +9,37 @@ function paperTone(x) { const n=paperValue(x); return n==null?'':n<0?'neg':'pos'
 function paperCurrentPnl(realized,open) { const closed=paperValue(realized),mark=paperValue(open);if(closed==null||mark==null)return null;const total=closed+mark;return Number.isFinite(total)?total:null; }
 function paperRealized(pnl) { return pnl?.realized_pnl; }
 function paperLedger(id) { return IcarusPaperPnl.read(paperWorkspaces)?.profiles.find(row=>row.id===id)||{}; }
+// Receipt freshness describes observations, independently of monetary validation.
+function paperSnapshotFresh(data,now=Date.now()/1000) {
+  if(data?.mode!=='concurrent_paper'||data.paper_only!==true||data.execution_authorized!==false||
+     !Array.isArray(data.profiles)||data.profiles.length!==4||
+     new Set(data.profiles.map(p=>p?.id)).size!==4||
+     !data.profiles.every(p=>['cc1','cc2','cc3','cc4'].includes(p?.id)))return false;
+  const stamps=data.profiles.map(p=>p.status?.now??data.paper_pnl?.as_of_ts);
+  return stamps.every(ts=>typeof ts==='number'&&Number.isFinite(ts)&&ts>=0&&ts<=now&&now-ts<=90);
+}
+function paperRuntimeState(p) {
+  const s=p.status||{};
+  if(!paperSnapshotFresh(paperWorkspaces))return 'Snapshot stale or unavailable';
+  if(p.runtime_available!==true)return 'Runtime unavailable';
+  if(s.snapshot_unavailable)return 'Runtime running · observations unavailable';
+  const state=s.paused?'Entries paused':s.all_warm?'Runners ready':'Warming';
+  return s.view_stale?`${s.all_warm&&!s.paused?'Runtime running':state} · runner snapshot stale`:state;
+}
+function paperValuationNotice(data,id) {
+  const accounting=IcarusPaperPnl.read(data),ledger=id?accounting?.profiles.find(row=>row.id===id):accounting?.aggregate;
+  if(!accounting) {
+    const stamp=data?.paper_pnl?.as_of_ts;
+    if(typeof stamp==='number'&&Number.isFinite(stamp)&&Date.now()/1000-stamp>90)return 'Paper valuation unavailable: accounting snapshot stale.';
+    return paperSnapshotFresh(data)?'Paper valuation unavailable: missing or invalid accounting evidence.':'Paper valuation unavailable: snapshot stale or unavailable.';
+  }
+  if(ledger?.accounting_complete)return 'Closed P&L comes from persisted paper trades; open marks may include warmup-origin positions. Fees unverified; no broker reconciliation.';
+  const labels={COMBINED_OPEN_PNL_UNAVAILABLE:'current open marks unavailable',INDIVIDUAL_LEDGER_VALUATION_INCOMPLETE:'one or more ledgers have incomplete valuation',
+    COMBINED_REALIZED_PNL_UNAVAILABLE:'persistent closed P&L unavailable',OPEN_PNL_UNKNOWN_OR_INVALID:'current open marks unavailable',
+    OPEN_MARK_STALE:'open marks stale',SNAPSHOT_STALE:'ledger snapshot stale',RUNTIME_UNAVAILABLE:'ledger runtime unavailable'};
+  const reasons=Array.isArray(ledger?.reasons)?ledger.reasons.map(reason=>labels[reason]||String(reason).toLowerCase().replaceAll('_',' ')):[];
+  return 'Paper valuation incomplete'+(reasons.length?': '+reasons.join('; '):'')+'. Missing amounts remain unavailable; no broker reconciliation.';
+}
 function paperSelectedWorkspace() {
   const id=globalThis.IcarusClient?.context?.id;
   return ['cc1','cc2','cc3','cc4'].includes(id)?id:null;
@@ -42,7 +73,7 @@ function paperSetHeader(data) {
 }
 
 function paperExpireObservations() {
-  if(paperWorkspaces&&!IcarusPaperPnl.read(paperWorkspaces)) {
+  if(paperWorkspaces&&(!IcarusPaperPnl.read(paperWorkspaces)||!paperSnapshotFresh(paperWorkspaces))) {
     paperSetHeader(null);
     renderPaperLiveSections();
   }
@@ -76,21 +107,21 @@ async function loadPaperWorkspaces(full=false) {
 }
 
 function paperAggregateHtml(data) {
-  const a=IcarusPaperPnl.read(data)?.aggregate||{},complete=a.accounting_complete===true,realized=a.realized_pnl,current=a.total_pnl;
+  const a=IcarusPaperPnl.read(data)?.aggregate||{},realized=a.realized_pnl,current=a.total_pnl;
   return `<div class="paper-aggregate-main"><span class="paper-metric-label">COMBINED PAPER P&amp;L · CLOSED + OPEN</span><strong class="tnum ${paperTone(current)}">${paperSigned(current)}</strong><span>Sum of all four current paper portfolios</span></div>
     <div class="paper-aggregate-side"><div><span>Persistent closed P&amp;L</span><b class="tnum ${paperTone(realized)}">${paperSigned(realized)}</b></div><div><span>Current open mark</span><b class="tnum ${paperTone(a.open_pnl)}">${paperSigned(a.open_pnl)}</b></div><div><span>Broker reconciliation</span><b class="tnum ${paperTone(a.net)}">—</b></div></div>
-    <p class="paper-basis">${current==null?'Aggregate ledger fields require the updated engine server.':`${paperEsc(a.open_positions??'—')} open positions. Closed P&L comes from persisted live paper trades; open marks may include warmup-origin positions. Replay-inclusive net and equity use synthetic per-asset capital.`}</p>`;
+    <p class="paper-basis">${paperEsc(paperValuationNotice(data))}</p>`;
 }
 
 function paperProfileHtml(p) {
   const s=p.status||{},ledger=paperLedger(p.id),realized=ledger.realized_pnl,feed=p.feed||{},current=ledger.total_pnl;
-  const observed=!!IcarusPaperPnl.read(paperWorkspaces)&&p.runtime_available===true&&!s.snapshot_unavailable&&!s.view_stale;
-  const state=!observed?'Runtime unavailable':s.paused?'Entries paused':s.all_warm?'Runners ready':'Warming';
-  return `<a href="/dashboards/${paperEsc(p.id)}" class="paper-portfolio ${p.id===paperSelectedWorkspace()?'is-selected':''}" data-paper-profile="${paperEsc(p.id)}" ${p.id===paperSelectedWorkspace()?'aria-current="page"':''}><span class="paper-profile-top"><b>${paperEsc(p.id).toUpperCase()}</b><span class="paper-ledger-status ${!observed?'is-bad':s.paused?'is-warn':s.all_warm?'is-good':'is-warn'}">${state}</span></span><strong>${paperEsc(p.name)}</strong><em class="tnum ${paperTone(current)}">${paperSigned(current)}</em><span class="paper-profile-foot"><span>Closed + open P&amp;L</span><span>${paperEsc(observed?s.positions??'—':'—')} positions</span></span><small class="paper-feed-state ${paperStateTone(observed?feed.status:'unavailable')}">Persistent closed ${paperSigned(realized)} · Feed ${paperEsc(observed?feed.status||'unknown':'unavailable')}${observed&&feed.total_assets!=null?` ${paperEsc(feed.healthy_assets??0)}/${paperEsc(feed.total_assets)}`:''}</small></a>`;
+  const observed=paperSnapshotFresh(paperWorkspaces)&&p.runtime_available===true;
+  const state=paperRuntimeState(p),tone=!observed?'is-bad':s.snapshot_unavailable||s.view_stale||!s.all_warm||s.paused?'is-warn':'is-good';
+  return `<a href="/dashboards/${paperEsc(p.id)}" class="paper-portfolio ${p.id===paperSelectedWorkspace()?'is-selected':''}" data-paper-profile="${paperEsc(p.id)}" ${p.id===paperSelectedWorkspace()?'aria-current="page"':''}><span class="paper-profile-top"><b>${paperEsc(p.id).toUpperCase()}</b><span class="paper-ledger-status ${tone}">${paperEsc(state)}</span></span><strong>${paperEsc(p.name)}</strong><em class="tnum ${paperTone(current)}">${paperSigned(current)}</em><span class="paper-profile-foot"><span>Closed + open P&amp;L</span><span>${paperEsc(observed?s.positions??'—':'—')} positions</span></span><small class="paper-feed-state ${paperStateTone(observed?feed.status:'unavailable')}">Persistent closed ${paperSigned(realized)} · Feed ${paperEsc(observed?feed.status||'unknown':'unavailable')}${observed&&feed.total_assets!=null?` ${paperEsc(feed.healthy_assets??0)}/${paperEsc(feed.total_assets)}`:''}</small></a>`;
 }
 
 function paperConnectionsHtml(data) {
-  const fresh=!!IcarusPaperPnl.read(data),connections=data.connections||{},feeds=fresh&&Array.isArray(connections.feeds)?connections.feeds:[],adapters=fresh&&Array.isArray(connections.adapters)?connections.adapters:[];
+  const fresh=paperSnapshotFresh(data),connections=data.connections||{},feeds=fresh&&Array.isArray(connections.feeds)?connections.feeds:[],adapters=fresh&&Array.isArray(connections.adapters)?connections.adapters:[];
   const rows=(items,adapter)=>items.map(item=>{
     const state=adapter?(item.configured===false?'Not configured':item.connected===true?'Connected':item.connected===false?'Disconnected':item.configured===true?'Configured · unverified':'Unknown'):(item.status||'unknown');
     const tone=paperStateTone(state);
@@ -102,14 +133,15 @@ function paperConnectionsHtml(data) {
 
 function paperRuntimeHtml(p) {
   const s=p.status||{},pnl=paperLedger(p.id),assets=Array.isArray(s.assets)?s.assets:[];
-  if(!IcarusPaperPnl.read(paperWorkspaces)||p.runtime_available!==true||s.snapshot_unavailable||s.view_stale)
-    return `<p class="empty">Current runner observations for ${paperEsc(p.id).toUpperCase()} are unavailable from the shared snapshot.</p>`;
+  if(!paperSnapshotFresh(paperWorkspaces)||p.runtime_available!==true||s.snapshot_unavailable)
+    return `<p class="empty">${paperEsc(paperRuntimeState(p))}: current runner observations for ${paperEsc(p.id).toUpperCase()} are unavailable from the shared snapshot. ${paperEsc(paperValuationNotice(paperWorkspaces,p.id))}</p>`;
   const realized=pnl.realized_pnl,current=pnl.total_pnl;
   const controls=p.id===paperSelectedWorkspace()?`<button type="button" class="sm" data-paper-pause="${paperEsc(p.id)}" data-paused="${!!s.paused}">${s.paused?'Resume entries':'Pause entries'}</button><button type="button" class="sm danger" data-paper-flatten="${paperEsc(p.id)}">Flatten this ledger</button>`:`<a href="/dashboards/${paperEsc(p.id)}">Open ledger controls ↗</a>`;
-  const rows=assets.map(a=>`<tr><td><b>${paperEsc(a.symbol)}</b></td><td>${paperEsc(a.feed_provider||a.feed||'—')}</td><td>${a.warm?'Ready':'Warming'}</td><td>${a.paused?'Paused':'Running'}</td><td class="tnum">${paperEsc(a.position??0)}</td><td class="tnum ${paperTone(a.open_profit)}">${paperMoney(pnl.open_pnl!=null&&paperValue(a.price_age)!=null&&a.price_age>=0&&a.price_age<=90?a.open_profit:null)}</td><td class="tnum ${paperTone(a.live_profit)}">${paperMoney(pnl.realized_pnl!=null?a.live_profit:null)}</td><td>${paperEsc(a.last_error||'—')}</td></tr>`).join('');
+  const rows=assets.map(a=>`<tr><td><b>${paperEsc(a.symbol)}</b></td><td>${paperEsc(a.feed_provider||a.feed||'—')}</td><td>${a.warm?'Ready':'Warming'}</td><td>${a.paused?'Paused':'Running'}</td><td class="tnum">${paperEsc(a.position??0)}</td><td class="tnum ${paperTone(a.open_profit)}">${paperMoney(!s.view_stale&&!a.view_stale&&pnl.open_pnl!=null&&paperValue(a.price_age)!=null&&a.price_age>=0&&a.price_age<=90?a.open_profit:null)}</td><td class="tnum ${paperTone(a.live_profit)}">${paperMoney(!s.view_stale&&!a.view_stale&&pnl.realized_pnl!=null?a.live_profit:null)}</td><td>${paperEsc(a.last_error||'—')}</td></tr>`).join('');
   return `<div class="paper-workspace-heading"><div><span class="paper-kicker">SHARED SNAPSHOT / ${paperEsc(p.id).toUpperCase()}</span><h3>${paperEsc(p.name)}</h3><p>${paperEsc(p.description||'')}</p></div><span class="paper-mode">PAPER ONLY</span></div>
     <div class="paper-runtime-tiles"><div><span>Current paper P&amp;L</span><b class="tnum ${paperTone(current)}">${paperSigned(current)}</b></div><div><span>Persistent closed P&amp;L</span><b class="tnum ${paperTone(realized)}">${paperSigned(realized)}</b></div><div><span>Open mark</span><b class="tnum ${paperTone(pnl.open_pnl)}">${paperSigned(pnl.open_pnl)}</b></div><div><span>Broker reconciliation</span><b class="tnum ${paperTone(null)}">${paperSigned(null)}</b></div></div>
-    <div class="paper-workspace-controls"><span class="paper-ledger-status ${s.paused?'is-warn':s.all_warm?'is-good':'is-warn'}">${s.paused?'Entries paused':s.all_warm?'Runners ready':'Warming'}</span><span class="small muted">${assets.length} asset runners · ${paperEsc(s.positions??0)} open positions</span><div class="paper-workspace-actions">${controls}</div></div>
+    <p class="paper-basis">${paperEsc(paperValuationNotice(paperWorkspaces,p.id))}</p>
+    <div class="paper-workspace-controls"><span class="paper-ledger-status ${s.view_stale||s.paused||!s.all_warm?'is-warn':'is-good'}">${paperEsc(paperRuntimeState(p))}</span><span class="small muted">${assets.length} asset runners · ${paperEsc(s.positions??0)} open positions</span><div class="paper-workspace-actions">${controls}</div></div>
     <div class="paper-section-head"><h3>Independent paper runners</h3><span>Runner states from current engine snapshot</span></div><div class="scroll paper-runner-scroll"><table><thead><tr><th>Asset</th><th>Feed</th><th>Warmth</th><th>Entries</th><th>Position</th><th>Open mark</th><th>Live realized</th><th>Issue</th></tr></thead><tbody>${rows||'<tr><td colspan="8" class="empty">No paper runners configured.</td></tr>'}</tbody></table></div>`;
 }
 

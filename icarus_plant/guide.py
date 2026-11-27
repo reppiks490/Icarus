@@ -85,9 +85,8 @@ repo:       {repo_root()}
 4. Start the plant (leave the window open):
    {start_cmd}
 
-5. On THIS computer, open a browser:
-   http://127.0.0.1:8791/
-   token: icarus
+5. Set a unique ICARUS_TOKEN (or the existing ICARUS_ADMIN_TOKEN) in your process environment or private plant .env, then start the plant.
+   The dashboard will prompt for that token. Icarus will not print or provide a built-in token.
 
 Each new export MERGE into history/NQ_1m.csv (does not wipe older bars).
 This is Brain B. Pine alerts / Alpaca QQQ are Brain A — different path.

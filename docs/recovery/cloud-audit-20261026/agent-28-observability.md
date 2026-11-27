@@ -1,0 +1,7 @@
+Read-only source audit; no network or tests. AGENTS and coordination state read.
+
+- **P1 false-green health:** Icarus `icarus_engine/server.py:1793–1794` always returns HTTP200/`ok:true`, even with `warm:false`; Engine `icarus_engine/server.py:193–194` matches. Icarus `icarus_plant/supervisor.py:28–33,184–197` checks only HTTP status, so an alive but unwarmed/erroring engine is reported healthy. Split liveness/readiness and include runner errors.
+- **P1 receipt masking:** Engine `icarus_engine/mcp_control.py:37–59` silently skips unreadable/malformed newest receipts and selects older valid JSON. Lines234,255–257 count the older receipt’s health; no receipt-age gate exists in `_v3_health` (70–80). A corrupt latest run can therefore retain VERIFIED. Surface rejected receipt path/error and age.
+- **P2 lost operational failures:** Icarus `icarus_plant/supervisor.py:211–225` discards ingestion and status-write exceptions. `icarus_engine/server.py:1952–1956` similarly discards overview market-snapshot failures and returns a partial HTTP200 overview. Persist bounded errors and expose degradation.
+
+Current telemetry: `/status/public` supplies runtime state/log tail (Icarus `runtime.py:2455`); SQLite logs retain14 days, with400 memory entries (`runtime.py:124–126`). ASCENDANCY failures already journal WARN plus HTTP500 (`server.py:1841–1843`). No `/metrics` route appears in either server. Add request-failure/receipt-age counters and structured error records first; Grafana/Loki are optional consumers, not fixes for swallowed errors.

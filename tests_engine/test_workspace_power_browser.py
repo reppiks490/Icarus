@@ -69,7 +69,7 @@ def test_main_switch_stops_only_requested_workspace_and_preserves_profiles(works
             switch.press("Space")
         else:
             switch.click()
-        page.wait_for_function("id => document.querySelector('[data-power-state=' + id + ']').textContent === 'OFF'", arg=scope)
+        page.wait_for_function("id => { const state=document.querySelector('[data-power-state=' + id + ']'); const input=document.querySelector('#workspace-power-' + id); return state && state.textContent === 'OFF' && input && !input.checked && !input.disabled; }", arg=scope)
         switch = page.get_by_role("switch", name=scope.upper() + " paper workers", exact=True)
         assert not switch.is_checked() and switch.is_enabled()
         assert len(posts) == 1

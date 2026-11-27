@@ -67,6 +67,7 @@ class ResearchWorkspace:
         self._analysis = None
         self._activation = None
         self._market_sources = None
+        self._market_context = None
         self._adaptation = None
         self._source_watch = None
         self._learning = None
@@ -154,6 +155,14 @@ class ResearchWorkspace:
             return self._market_sources
 
     @property
+    def market_context(self):
+        with self._lock:
+            if self._market_context is None:
+                from .research_context import MarketContextStore
+                self._market_context = MarketContextStore()
+            return self._market_context
+
+    @property
     def ledger(self):
         with self._lock:
             if self._ledger is None:
@@ -199,22 +208,31 @@ class ResearchWorkspace:
             "execution_authorized": False,
         }
 
-    def status(self):
+    def status(self, *, nonblocking=False):
         with self._lock:
             jobs = [{k: j.get(k) for k in ("id", "status", "asset", "started", "finished", "error")}
                     for j in self._jobs.values()]
         assets = []
         for r in self.port.runner_list():
+            if nonblocking:
+                view = r.summary(nonblocking=True)
+                assets.append({"asset": view["symbol"], "cached_subbars": view.get("cached_subbars"),
+                               "warm": view["warm"], "timeframe_minutes": view["tf"],
+                               "configuration_changes_require_flat": True,
+                               **{key: view.get(key) for key in (
+                                   "view_cached", "view_stale", "view_captured_at", "view_age", "rewarming")}})
+                continue
             with r.lock:
                 assets.append({"asset": r.symbol, "cached_subbars": len(r.subbars), "warm": r.warm,
                                "timeframe_minutes": r.chart_minutes,
                                "configuration_changes_require_flat": True})
-        adaptation = self.adaptation.status()
+        adaptation = self.adaptation.status(nonblocking=True) if nonblocking else self.adaptation.status()
         return {"mode": "qualified paper adaptation", "execution_authorized": False, "assets": assets,
-                "ledger": self.ledger.status(), "jobs": jobs,
-                "analysis": self.analysis.status(), "activation": self.activation.status(),
+                "ledger": self.ledger.status(nonblocking=nonblocking), "jobs": jobs,
+                "analysis": self.analysis.status(nonblocking=nonblocking),
+                "activation": self.activation.status(nonblocking=nonblocking),
                 "adaptation": adaptation,
-                "learning": self.learning.status(),
+                "learning": self.learning.status(nonblocking=nonblocking),
                 "capabilities": {"zapier_receiver_configured": bool(os.environ.get("ICARUS_INGEST_SECRET")),
                                  "zapier_connected": False, "sp_global_connected": False,
                                  "licensed_tick_feed_connected": False,
@@ -504,21 +522,18 @@ class ResearchWorkspace:
                                         frozen, asset, inputs=patch, fill_on="real", window_start=start, window_end=end, **costs))
                 with self._lock:
                     job["result"], job["status"] = result, result["status"]
-                    # Publish terminal state to disk before another thread can observe
-                    # it through job(). Otherwise a new workspace can see a stale
-                    # persisted "running" job and falsely classify it as interrupted.
+                    job["finished"] = time.time()
+                    # Publish a complete terminal record in one atomic replacement.
+                    # A reader must never observe terminal status without its finish time.
                     self._save(job)
             except Exception as ex:
                 with self._lock:
                     job["status"], job["error"] = "error", f"{type(ex).__name__}: {ex}"
+                    job["finished"] = time.time()
                     self._save(job)
             finally:
                 with self._lock:
-                    job["finished"] = time.time()
-                    try:
-                        self._save(job)
-                    finally:
-                        self._active = None
+                    self._active = None
         threading.Thread(target=work, daemon=True, name=f"research-{job_id}").start()
         return {"ok": True, "job": job_id, "note": "Bounded research started on a frozen copy; inputs remain unchanged."}
 

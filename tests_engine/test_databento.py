@@ -1317,7 +1317,7 @@ def test_portfolio_databento_mode_routes_futures_transport(monkeypatch, tmp_path
 
 
 def test_plant_databento_launch_sets_env_and_engine_flag(tmp_path):
-    svc = default_engine_service(str(tmp_path), str(tmp_path), feed="databento")
+    svc = default_engine_service(str(tmp_path), str(tmp_path), feed="databento", token="test-token")
     assert svc.env["ICARUS_FEED"] == "databento"
     assert "--feed" in svc.argv
     i = svc.argv.index("--feed")
@@ -1551,6 +1551,10 @@ def test_engine_http_exposes_databento_capabilities_ticks_depth_and_mbo(tmp_path
     })
     snapshot_live = FakeLive({"mbo": [Depth(4_002, 100.5, flags=1)]})
     feed = make_feed(lives=[core_live, depth_live, snapshot_live])
+    # The capability endpoint must use the adapter's immutable in-memory view,
+    # not provider methods that may perform external I/O.
+    feed.capabilities = lambda: (_ for _ in ()).throw(AssertionError("live capability method called"))
+    feed.meta = lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("provider metadata method called"))
 
     journal = Journal(":memory:")
     port = Portfolio(journal, str(tmp_path))

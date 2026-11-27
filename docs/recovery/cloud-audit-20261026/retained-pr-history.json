@@ -1,0 +1,18 @@
+{
+  "scope": "Retained GitHub PR head refs, including deleted source branches; fetched as data, not executed or fully reviewed",
+  "fetch_command": "git fetch --no-tags origin '+refs/pull/*/head:refs/remotes/pull-history/*'",
+  "repositories": [
+    {
+      "repo": "reppiks490/Icarus",
+      "retained_pr_heads": 481,
+      "oldest_pr": 1,
+      "oldest_pr_head": "26c757febd89d290a157ac8d48bb140173649436"
+    },
+    {
+      "repo": "reppiks490/Icarus-engine",
+      "retained_pr_heads": 194,
+      "oldest_pr": 1,
+      "oldest_pr_head": "dfce55097efbc200ce2a0664e34dd463fb3824b5"
+    }
+  ]
+}

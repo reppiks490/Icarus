@@ -85,7 +85,7 @@ const context = {
     return {ok: true, async json() {return state;}};
   },
 };
-context.IcarusClient={request:context.fetch};
+context.IcarusClient={getToken(){return 'fixture-token';},request:context.fetch};
 vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), context);
 (async () => {
   const rendered = [];

@@ -95,7 +95,7 @@ from .parallax import ParallaxStore
 from .dreamstate import DreamstateLab
 from .possibility import PossibilityEngine
 from .performance_proof import PerformanceProofStore
-from .access_control import AccessRegistry, AccessUnavailable
+from .access_control import AccessRegistry, AccessUnavailable, resolve_owner_token
 from .latency_telemetry import LatencyTelemetry
 from .source_reliability import SourceReliabilityStore
 from .qualification_receipts import (
@@ -222,8 +222,9 @@ COMMANDS = [
 ]
 
 
-def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: bool = True,
+def serve(port: Portfolio, http_port: int = 8791, token: str | None = None, start: bool = True,
           shared_dashboard: bool = True):
+    token = resolve_owner_token(token)
     if type(shared_dashboard) is not bool:
         raise ValueError("shared_dashboard must be a boolean")
     html_path = Path(__file__).parent / "dashboard.html"
@@ -2192,14 +2193,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})
                 try:
-                    market = port.status()
-                except Exception:
-                    market = {}
+                    market = port.status(nonblocking=True)
+                except Exception as ex:
+                    return self._json(503, {"detail": f"Brain market snapshot unavailable: {ex}",
+                                            "execution_authorized": False})
                 try:
-                    research_state = research.status()
-                except Exception:
-                    research_state = {}
-                return self._json(200, brain_snapshot(
+                    research_state = research.status(nonblocking=True)
+                except Exception as ex:
+                    return self._json(503, {"detail": f"Brain research snapshot unavailable: {ex}",
+                                            "execution_authorized": False})
+                state = brain_snapshot(
                     port.base_dir,
                     market_status=market,
                     research_status=research_state,
@@ -2212,7 +2215,15 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     latency_status=latency_telemetry.snapshot(),
                     source_reliability=source_reliability.snapshot(),
                     qualification_receipts=qualification_receipts.snapshot(),
-                ))
+                )
+                state["market_view"] = {"view_stale": market.get("view_stale"), "assets": [
+                    {key: row.get(key) for key in ("symbol", "view_stale", "view_captured_at", "view_age", "rewarming")}
+                    for row in market.get("assets", [])]}
+                state["research_view"] = {
+                    "assets": research_state.get("assets", []),
+                    "adaptation": {key: research_state.get("adaptation", {}).get(key) for key in (
+                        "view_stale", "view_captured_at", "view_cached", "view_basis", "view_freshness")}}
+                return self._json(200, state)
             if p.path == "/api/input-meta":
                 return self._json(200, meta)
             if p.path.startswith("/api/research"):
@@ -2220,9 +2231,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     return self._json(401, {"detail": "bad admin token"})
                 try:
                     if p.path == "/api/research":
-                        return self._json(200, research.status())
+                        return self._json(200, research.status(nonblocking=True))
                     if p.path == "/api/research/adaptation":
-                        return self._json(200, research.adaptation.status())
+                        return self._json(200, research.adaptation.status(nonblocking=True))
                     if p.path == "/api/research/source-watch":
                         return self._json(200, research.source_watch.status())
                     if p.path == "/api/research/events":
@@ -2235,6 +2246,9 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         return self._json(200, research.activation.status())
                     if p.path == "/api/research/sources":
                         return self._json(200, research.market_sources.status())
+                    if p.path == "/api/research/market-context":
+                        return self._json(200, research.market_context.snapshot(
+                            limit=int(q.get("limit", ["90"])[0])))
                     if p.path == "/api/research/records":
                         return self._json(200, research.market_sources.records(kind=q.get("kind", ["asset"])[0],
                             asset=q.get("asset", [None])[0], cik=q.get("cik", [None])[0],
@@ -2245,6 +2259,8 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                         return self._json(200, research.ledger.get_proposal(p.path.rsplit("/", 1)[1]))
                 except (ValueError, TypeError, KeyError) as ex:
                     return self._json(400, {"detail": str(ex)})
+                except RuntimeError as ex:
+                    return self._json(503, {"detail": str(ex), "execution_authorized": False})
                 return self._json(404, {"detail": "unknown research resource"})
             if p.path == "/api/presets":
                 out = []
@@ -2292,10 +2308,11 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 kind = parts[1]
                 feed = r.feed
                 if kind == "capabilities":
-                    caps = feed.capabilities() if hasattr(feed, "capabilities") else {}
-                    metadata = feed.meta(r.spec.ticker) if hasattr(feed, "meta") else {}
-                    return self._json(200, {"asset": r.symbol, "provider": type(feed).__name__.lower(),
-                                            "capabilities": caps, "metadata": metadata})
+                    # Diagnostics must not acquire provider data. In particular,
+                    # Yahoo/FMP meta() may issue a network request. The cached
+                    # view also states unsupported raw streams explicitly.
+                    from .workspace_market_data import snapshot as cached_market_data_snapshot
+                    return self._json(200, cached_market_data_snapshot(r, "capabilities"))
                 if kind == "ticks":
                     if not hasattr(feed, "trades"):
                         return self._json(409, {"error": f"{type(feed).__name__} does not expose trade ticks"})

@@ -12,17 +12,30 @@ class Port:
     def __init__(self):
         self.price = 100.0
         self.runners = {"NQ": SimpleNamespace()}
+        self.status_calls = 0
+        self.assets = ["NQ"]
+        self.status_prices = None
+        self.status_frames = []
     def status(self):
-        return {"assets": [{"symbol": "NQ", "price": self.price}]}
+        self.status_calls += 1
+        price = self.price
+        if self.status_prices:
+            price = self.status_prices[min(self.status_calls - 1, len(self.status_prices) - 1)]
+        frame = {"assets": [{"symbol": symbol, "price": price} for symbol in self.assets]}
+        self.status_frames.append(frame)
+        return frame
 
 
 class Chronofold:
-    def __init__(self):
+    def __init__(self, horizon_chronons=3):
         self.tau = 0.0
         self.expected = 0.01
+        self.snapshot_calls = []
+        self.horizon_chronons = horizon_chronons
     def status(self):
         return {"authority": {"execution_authorized": False}}
-    def snapshot(self, asset):
+    def snapshot(self, asset, *, status=None):
+        self.snapshot_calls.append((asset, status))
         self.tau += 1.0
         return {
             "asset": asset,
@@ -37,7 +50,7 @@ class Chronofold:
                 "availability_time_exact": False,
             },
             "multiverse": {
-                "horizon_chronons": 3,
+                "horizon_chronons": self.horizon_chronons,
                 "expected_return": self.expected,
                 "p05_return": -0.02,
                 "p50_return": 0.008,
@@ -103,6 +116,39 @@ def test_duplicate_chronon_capture_is_suppressed(tmp_path: Path):
     assert first["captured"] is True
     assert second["captured"] is False
     assert second["reason"] == "chronon_step_not_reached"
+    assert port.status_calls == 2
+    assert cf.snapshot_calls[0][1] is port.status_frames[0]
+    assert cf.snapshot_calls[1][1] is port.status_frames[1]
+
+
+def test_background_tick_uses_fresh_capture_and_settlement_frames(tmp_path: Path):
+    port = Port()
+    port.assets.append("ES")
+    port.runners["ES"] = SimpleNamespace()
+    port.status_prices = [100.0, 101.0]
+    cf = Chronofold(horizon_chronons=1)
+    engine = CommissioningEngine(tmp_path, port, cf, capture_step_chronons=0.05)
+
+    result = engine.tick()
+
+    assert len(result["captures"]) == 2
+    assert result["settlement"]["settled"] == 2
+    assert port.status_calls == 2
+    capture_frame, settlement_frame = port.status_frames
+    assert capture_frame is not settlement_frame
+    assert [row[0] for row in cf.snapshot_calls] == ["NQ", "ES", "ES", "NQ"]
+    assert all(row[1] is capture_frame for row in cf.snapshot_calls[:2])
+    assert all(row[1] is settlement_frame for row in cf.snapshot_calls[2:])
+    assert [row["prediction"]["start_price"] for row in result["captures"]] == [100.0, 100.0]
+    assert [row["settle_price"] for row in result["settlement"]["outcomes"]] == [101.0, 101.0]
+
+    next_result = engine.tick()
+    assert len(next_result["captures"]) == 2
+    assert port.status_calls == 4
+    assert port.status_frames[2] is not capture_frame
+    assert port.status_frames[3] is not settlement_frame
+    assert all(row[1] is port.status_frames[2] for row in cf.snapshot_calls[4:6])
+    assert all(row[1] is port.status_frames[3] for row in cf.snapshot_calls[6:8])
 
 
 def test_metrics_calibration_variants_and_promotion_never_arm_execution(tmp_path: Path):
@@ -159,8 +205,8 @@ def test_truth_or_authority_violation_refuses_capture(tmp_path: Path):
     port = Port()
     cf = Chronofold()
     original = cf.snapshot
-    def bad(asset):
-        row = original(asset)
+    def bad(asset, *, status=None):
+        row = original(asset, status=status)
         row["truth_contract"]["future_data_used"] = True
         return row
     cf.snapshot = bad

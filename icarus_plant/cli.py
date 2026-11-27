@@ -23,6 +23,7 @@ import time
 from typing import Optional
 
 from icarus_engine import brand
+from icarus_engine.access_control import resolve_owner_token
 from .downloads import ingest_downloads
 from .drop import ingest_drop
 from .guide import open_drop, preflight, steps, write_next_txt
@@ -125,6 +126,10 @@ def cmd_start(args: argparse.Namespace) -> int:
     root = plant_root(args.root)
     ensure(root)
     _load_root_env(root)
+    try:
+        token = resolve_owner_token()
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
     repo = repo_root()
     engine_url = f"http://127.0.0.1:{args.engine_port}/healthz"
     bridge_url = f"http://127.0.0.1:{args.bridge_port}/healthz"
@@ -140,7 +145,7 @@ def cmd_start(args: argparse.Namespace) -> int:
             print("  --bridge was requested but the bridge is not running.")
             print("  stop the plant, then start again with --bridge so one supervisor owns both services.")
             return 1
-        print(f"already running: {engine_url.replace('/healthz', '/')}  token={args.token}")
+        print(f"already running: {engine_url.replace('/healthz', '/')}  authentication: configured")
         print("  this does not change feed/assets/preset/token. Stop the plant, then start again to change launch configuration.")
         return 0
     if plant_alive:
@@ -170,7 +175,7 @@ def cmd_start(args: argparse.Namespace) -> int:
     plant = Plant(root, repo=repo)
     plant.add(default_engine_service(
         root, repo, assets=args.assets, port=args.engine_port,
-        token=args.token, offline=args.offline, preset=args.preset, feed=selected_feed,
+        token=token, offline=args.offline, preset=args.preset, feed=selected_feed,
     ))
     if args.bridge:
         plant.add(default_bridge_service(root, repo, port=args.bridge_port))
@@ -193,7 +198,7 @@ def cmd_start(args: argparse.Namespace) -> int:
     if engine and engine.health_url:
         if wait_health(engine.health_url, timeout=45):
             dash = engine.health_url.replace("/healthz", "/")
-            print(f"  dashboard live: {dash}  token={args.token}")
+            print(f"  dashboard live: {dash}  authentication: configured")
             if not args.no_browser:
                 import webbrowser
                 webbrowser.open(dash)
@@ -370,7 +375,6 @@ def main(argv: Optional[list] = None) -> int:
     s.add_argument("--bridge", action="store_true", help="also supervise icarus-bridge (needs fastapi)")
     s.add_argument("--engine-port", type=int, default=8791)
     s.add_argument("--bridge-port", type=int, default=8787)
-    s.add_argument("--token", default="icarus")
     s.add_argument("--poll", type=float, default=5.0)
     s.add_argument("--no-browser", action="store_true", help="do not open the dashboard")
     s.add_argument("--no-downloads", action="store_true", help="do not scan Downloads/Desktop for CSVs")

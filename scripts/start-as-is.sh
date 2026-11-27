@@ -88,4 +88,4 @@ if "--help" not in rest and "-h" not in rest:
     for name in ("cc1", "cc2", "cc3", "cc4", "connections"):
         print("  http://127.0.0.1:%s/dashboards/%s" % (a.engine_port,name), flush=True)
 ' "${arguments[@]}"
-exec "${python_command[@]}" -m icarus_plant start --no-downloads --token "${ICARUS_TOKEN:-icarus}" "${arguments[@]}"
+exec "${python_command[@]}" -m icarus_plant start --no-downloads "${arguments[@]}"

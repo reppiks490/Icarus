@@ -60,8 +60,10 @@ class Port:
             "ES": SimpleNamespace(feed=Feed(), spec=SimpleNamespace(ticker="ES.v.0")),
         }
         self._price = 20000.0
+        self.status_calls = 0
 
     def status(self):
+        self.status_calls += 1
         return {
             "assets": [
                 {
@@ -119,6 +121,19 @@ def test_empty_port_fails_closed():
     assert out["edge_state"]["state"] == "NO_EDGE"
     assert out["authority"]["execution_authorized"] is False
     assert out["authority"]["production_decision_authorized"] is False
+
+
+def test_snapshot_uses_supplied_status_frame_without_requerying_port():
+    port = Port()
+    frame = port.status()
+    frame["assets"][0]["price"] = 21000.0
+    engine = PossibilityEngine(port, scenarios=96)
+
+    result = engine.snapshot("NQ", status=frame)
+
+    assert result["asset"] == "NQ"
+    assert engine._history["NQ"][-1]["price"] == 21000.0
+    assert port.status_calls == 1
 
 
 def test_external_evidence_is_bounded_and_research_only():

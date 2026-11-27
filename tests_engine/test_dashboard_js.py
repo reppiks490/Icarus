@@ -215,7 +215,9 @@ def test_asset_adder_uses_registry_and_timeframe_suggestions_and_single_flight_s
 def test_engine_dashboard_surfaces_repository_mcp_audit():
     src = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
     assert 'id="repoHealth"' in src
-    assert 'data-v="system">System</span>' in src
+    assert "['system','System']" in src
+    assert 'aria-label="Icarus dashboard views"' in src
+    assert 'aria-current="page"' in src
     assert "repositoryAuditCard(window.ICARUS_AUDIT" in src
     assert "IcarusClient.request('/api/system/audit'" in src
     assert "setInterval(refreshAudit, 20000)" in src
@@ -266,7 +268,7 @@ def test_dashboard_surfaces_export_data_integrity_and_mcp_receipts():
     ui = (REPO / "icarus_engine/integrity-ui.js").read_text(encoding="utf-8")
     server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
     assert '/integrity-ui.js' in dashboard
-    assert 'data-v="integrity">Data Integrity</span>' in dashboard
+    assert "['integrity','Data Integrity']" in dashboard
     assert "wireIntegrity()" in dashboard
     assert "/api/integrity" in ui
     assert "MCP change ledger" in ui
@@ -281,7 +283,7 @@ def test_dashboard_surfaces_adaptive_brain_fabric():
     ui = (REPO / "icarus_engine/brain-ui.js").read_text(encoding="utf-8")
     server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
     assert '/brain-ui.js' in dashboard
-    assert 'data-v="brain">Adaptive Brain</span>' in dashboard
+    assert "['brain','Adaptive Brain']" in dashboard
     assert "wireBrain()" in dashboard
     assert "/api/brain" in ui
     assert "5 custom agents" in ui
@@ -338,7 +340,7 @@ def test_dashboard_surfaces_repository_native_mcp_evolution_panel():
     server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
     sync = (REPO / "icarus_engine/evolution_sync.py").read_text(encoding="utf-8")
     assert '/evolution-ui.js' in dashboard
-    assert 'data-v="evolution">MCP Evolution</span>' in dashboard
+    assert "['evolution','MCP Evolution']" in dashboard
     assert "wireEvolution()" in dashboard
     assert "/api/evolution" in ui
     assert "Subsystem evolution state" in ui
@@ -360,7 +362,7 @@ def test_dashboard_surfaces_icarus_psi_without_replacing_oracle_or_parallax():
     server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
     brain = (REPO / "icarus_engine/brain.py").read_text(encoding="utf-8")
     assert '/possibility-ui.js' in dashboard
-    assert 'data-v="possibility">ICARUS Ψ</span>' in dashboard
+    assert "['possibility','ICARUS Ψ']" in dashboard
     assert "wirePossibility()" in dashboard
     assert "/api/possibility" in ui
     assert 'p.path == "/api/possibility"' in server
@@ -410,7 +412,7 @@ def test_dashboard_surfaces_authenticated_engine_control_panel():
     backend = (REPO / "icarus_engine/engine_control.py").read_text(encoding="utf-8")
 
     assert '<script src="/engine-control-ui.js"></script>' in dashboard
-    assert 'data-v="engine-control">Engine Control</span>' in dashboard
+    assert "['engine-control','Engine Control']" in dashboard
     assert "view === 'engine-control'" in dashboard
     assert "wireEngineControl()" in dashboard
     assert 'p.path == "/engine-control-ui.js"' in server
@@ -445,10 +447,10 @@ def test_dashboard_surfaces_tactical_autopilot_and_root_engine_control():
     control = (REPO / "icarus_engine/engine-control-ui.js").read_text(encoding="utf-8")
     server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
     assert '/autopilot-ui.js' in dashboard
-    assert 'data-v="autopilot">Tactical Autopilot</span>' in dashboard
+    assert "['autopilot','Tactical Autopilot']" in dashboard
     assert "wireAutopilot()" in dashboard
     assert '/engine-control-ui.js' in dashboard
-    assert 'data-v="engine-control">Engine Control</span>' in dashboard
+    assert "['engine-control','Engine Control']" in dashboard
     assert "wireEngineControl()" in dashboard
     assert "/api/autopilot" in autopilot
     assert "robustness_windows" in autopilot
@@ -485,7 +487,7 @@ def test_dashboard_surfaces_authentic_market_data_console():
     server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
 
     assert '<script src="/market-data-ui.js"></script>' in dashboard
-    assert 'data-v="market-data">Market Data</span>' in dashboard
+    assert "['market-data','Market Data']" in dashboard
     assert "view === 'market-data'" in dashboard
     assert "wireMarketData()" in dashboard
     assert 'p.path == "/market-data-ui.js"' in server
@@ -513,7 +515,7 @@ def test_dashboard_surfaces_authentic_market_data_console():
     assert "Choose provider" in ui
     assert "provider:'yahoo'" not in ui
     assert "/api/market-history/" in ui
-    assert "localStorage.getItem('icarus-engine-token')" in ui
+    assert "IcarusClient.getToken()" in ui
     assert "'Authorization':'Bearer '+token" in ui
     assert "payload.qualification" in ui
     assert 'p.path.startswith("/api/market-history/")' in server
@@ -524,13 +526,60 @@ def test_dashboard_surfaces_authentic_market_data_console():
     assert "hybrid_probe" in ui
 
 
+def test_active_startup_and_browser_paths_have_no_fixed_owner_token():
+    paths = [
+        "icarus_engine/dashboard.html", "icarus_engine/workspace-client.js",
+        "icarus_engine/workspace_power_ui.js", "icarus_engine/brain-ui.js",
+        "icarus_engine/commissioning-ui.js", "icarus_engine/chronofold-ui.js",
+        "icarus_engine/ascendancy-ui.js", "icarus_engine/apex-ui.js",
+        "icarus_engine/evolution-ui.js", "icarus_engine/pantheon-ui.js",
+        "icarus_engine/learning-ui.js", "icarus_engine/possibility-ui.js",
+        "icarus_engine/sibyl-ui.js", "icarus_engine/parallax-ui.js",
+        "icarus_engine/cli.py", "icarus_engine/server.py",
+        "icarus_engine/workspace_tools.py", "icarus_engine/restart_defaults.py",
+        "scripts/start-as-is.sh",
+        "icarus_plant/cli.py", "icarus_plant/supervisor.py", "icarus_plant/guide.py",
+        "start-plant.sh", "start-plant.ps1", "start-yahoo.ps1",
+    ]
+    sources = {path: (REPO / path).read_text(encoding="utf-8") for path in paths}
+    fixed = re.compile(
+        r"(?:\|\||\bor\b)\s*['\"]icarus['\"]|"
+        r"(?:default\s*=|token\s*:\s*str\s*=)\s*['\"]icarus['\"]|"
+        r"localStorage\.setItem\([^;]*['\"]icarus['\"]|"
+        r"\$\{ICARUS_TOKEN:-icarus\}"
+    )
+    assert not {path: fixed.findall(source) for path, source in sources.items() if fixed.search(source)}
+    assert "admin token: {args.token}" not in sources["icarus_engine/cli.py"]
+    assert "IcarusClient.getToken()" in sources["icarus_engine/dashboard.html"]
+    for path in ("icarus_plant/cli.py", "icarus_plant/supervisor.py", "scripts/start-as-is.sh"):
+        assert "--token" not in sources[path], path
+
+
+def test_privileged_dashboard_panels_read_token_from_shared_client():
+    paths = (
+        "icarus_engine/brain-ui.js", "icarus_engine/commissioning-ui.js",
+        "icarus_engine/chronofold-ui.js", "icarus_engine/ascendancy-ui.js",
+        "icarus_engine/apex-ui.js", "icarus_engine/evolution-ui.js",
+        "icarus_engine/pantheon-ui.js", "icarus_engine/learning-ui.js",
+        "icarus_engine/possibility-ui.js", "icarus_engine/sibyl-ui.js",
+        "icarus_engine/parallax-ui.js", "icarus_engine/workspace_power_ui.js",
+        "icarus_engine/autopilot-ui.js", "icarus_engine/workspace-evidence-ui.js",
+        "icarus_engine/integrity-ui.js", "icarus_engine/engine-control-ui.js",
+        "icarus_engine/market-data-ui.js", "icarus_engine/research-ui.js",
+    )
+    for path in paths:
+        source = (REPO / path).read_text(encoding="utf-8")
+        assert "IcarusClient.getToken()" in source or "IcarusClient?.getToken?.()" in source, path
+        assert "|| 'icarus'" not in source and "||'icarus'" not in source, path
+
+
 def test_dashboard_surfaces_apex_omega_world_intelligence():
     dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
     ui = (REPO / "icarus_engine/apex-ui.js").read_text(encoding="utf-8")
     server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
 
     assert '<script src="/apex-ui.js"></script>' in dashboard
-    assert 'data-v="apex">APEX Ω</span>' in dashboard
+    assert "['apex','APEX Ω']" in dashboard
     assert "view === 'apex'" in dashboard
     assert "wireApex()" in dashboard
     assert 'p.path == "/apex-ui.js"' in server
@@ -559,7 +608,7 @@ def test_dashboard_surfaces_continuous_learning_fabric():
     ui = (REPO / "icarus_engine/learning-ui.js").read_text(encoding="utf-8")
     server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
     assert '<script src="/learning-ui.js"></script>' in dashboard
-    assert 'data-v="learning">Learning Fabric</span>' in dashboard
+    assert "['learning','Learning Fabric']" in dashboard
     assert "view === 'learning'" in dashboard
     assert "wireLearning()" in dashboard
     assert 'p.path == "/learning-ui.js"' in server
@@ -763,7 +812,7 @@ def test_dashboard_surfaces_ascendancy_capability_orchestrator():
     ui = (REPO / "icarus_engine/ascendancy-ui.js").read_text(encoding="utf-8")
     server = (REPO / "icarus_engine/server.py").read_text(encoding="utf-8")
     assert '<script src="/ascendancy-ui.js"></script>' in dashboard
-    assert 'data-v="ascendancy">ASCENDANCY</span>' in dashboard
+    assert "['ascendancy','ASCENDANCY']" in dashboard
     assert "view === 'ascendancy'" in dashboard
     assert "wireAscendancy()" in dashboard
     assert 'p.path == "/ascendancy-ui.js"' in server
@@ -962,3 +1011,11 @@ def test_learning_view_uses_explicit_intuition_import_without_background_polling
     assert "intuition-omega/import-learning" in client
     assert 'p.path == "/api/intuition-omega"' in server
     assert 'p.path == "/admin/intuition-omega/import-learning"' in server
+
+
+def test_main_dashboard_uses_inline_favicon_without_requesting_missing_ico():
+    dashboard = (REPO / "icarus_engine/dashboard.html").read_text(encoding="utf-8")
+    assert re.search(
+        r'<link\s+rel="icon"\s+type="image/svg\+xml"\s+href="data:image/svg\+xml,',
+        dashboard,
+    )

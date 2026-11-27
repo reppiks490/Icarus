@@ -42,6 +42,7 @@ class ActivationStore:
         self.path = self.root / "activation.sqlite3"
         with _LOCKS_GUARD:
             self._lock = _LOCKS.setdefault(os.path.normcase(str(self.path)), threading.RLock())
+        self._last_status = None
         with self._exclusive(), self._connect() as con:
             con.executescript("""
                 CREATE TABLE IF NOT EXISTS activation_versions (
@@ -174,21 +175,51 @@ class ActivationStore:
                 raise ActivationError("interrupted activation requires recovery before loading overlay")
             return self._read(con.execute("SELECT * FROM activation_active WHERE asset=?", (asset,)).fetchone())
 
-    def status(self, asset=None, limit=100):
+    def status(self, asset=None, limit=100, *, nonblocking=False):
         if asset is not None:
             _asset(asset)
         if type(limit) is not int or not 1 <= limit <= 1000:
             raise ActivationError("limit must be 1 to 1000")
-        with self._connect() as con:
-            rows = con.execute("SELECT * FROM activation_operations "
-                               + ("WHERE asset=? " if asset else "")
-                               + "ORDER BY rowid DESC LIMIT ?", (asset, limit) if asset else (limit,))
-            operations = [self._read(row) for row in rows]
-            rows = con.execute("SELECT * FROM activation_active" + (" WHERE asset=?" if asset else ""),
-                               (asset,) if asset else ())
-            active = [self._read(row) for row in rows]
-        return {"mode": "paper", "active": active, "operations": operations,
-                "execution_authorized": False}
+        if nonblocking:
+            con = sqlite3.connect(self.path, timeout=0.025)
+            con.row_factory = sqlite3.Row
+            try:
+                # A read transaction sees committed activation state without
+                # taking the writer reservation used by activation mutations.
+                con.execute("BEGIN")
+                rows = con.execute("SELECT * FROM activation_operations "
+                                   + ("WHERE asset=? " if asset else "")
+                                   + "ORDER BY rowid DESC LIMIT ?", (asset, limit) if asset else (limit,))
+                operations = [self._read(row) for row in rows]
+                rows = con.execute("SELECT * FROM activation_active" + (" WHERE asset=?" if asset else ""),
+                                   (asset,) if asset else ())
+                active = [self._read(row) for row in rows]
+                con.commit()
+            except sqlite3.OperationalError as exc:
+                con.rollback()
+                if not any(word in str(exc).lower() for word in ("locked", "busy")):
+                    raise
+                if self._last_status is not None and asset is None and limit == 100:
+                    return {**self._last_status, "view_stale": True,
+                            "view_freshness": "Activation store busy; showing last committed status"}
+                return {"mode": "paper", "active": [], "operations": [],
+                        "execution_authorized": False, "status": "BUSY", "view_stale": True}
+            finally:
+                con.close()
+        else:
+            with self._connect() as con:
+                rows = con.execute("SELECT * FROM activation_operations "
+                                   + ("WHERE asset=? " if asset else "")
+                                   + "ORDER BY rowid DESC LIMIT ?", (asset, limit) if asset else (limit,))
+                operations = [self._read(row) for row in rows]
+                rows = con.execute("SELECT * FROM activation_active" + (" WHERE asset=?" if asset else ""),
+                                   (asset,) if asset else ())
+                active = [self._read(row) for row in rows]
+        result = {"mode": "paper", "active": active, "operations": operations,
+                  "execution_authorized": False}
+        if asset is None and limit == 100:
+            self._last_status = result
+        return result
 
     def _save_operation(self, con, operation):
         con.execute("INSERT INTO activation_operations VALUES (?,?,?,?,?,?,?) "

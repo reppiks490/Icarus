@@ -265,8 +265,8 @@ class FileFeed:
         self._maybe_reload()
         src = int(self._granularity or 60)
         g = int(granularity)
-        if g < src:
-            return []  # cannot invent a finer bar from a coarser dump
+        if g < src or g % src:
+            return []  # splitting a source bar would invent prices/volume
         if g == src:
             return [b for b in self._bars if start_ts <= b.ts < end_ts]
         buckets: Dict[int, Bar] = {}
@@ -275,6 +275,8 @@ class FileFeed:
             if not (start_ts <= b.ts < end_ts):
                 continue
             bk = (b.ts // span) * span
+            if b.ts + src > bk + span:
+                return []  # a phase-shifted source bar crosses this target bucket
             prev = buckets.get(bk)
             if prev is None:
                 buckets[bk] = Bar(bk, b.o, b.h, b.l, b.c, b.v)

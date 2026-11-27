@@ -399,6 +399,20 @@ def test_http_auth_static_json_validation_and_no_provider_calls(http, monkeypatc
     assert http("POST", "/admin/research/proposals", b'{"validation":{"approved":true}}', auth)[0] == 400
 
 
+def test_http_market_context_is_read_only_authenticated_and_bounded(http):
+    assert http("GET", "/api/research/market-context")[0] == 401
+    auth = {"Authorization": "Bearer test-token"}
+    code, raw = http("GET", "/api/research/market-context?limit=5", headers=auth)
+    assert code == 200
+    data = json.loads(raw)
+    assert [row["id"] for row in data["datasets"]] == [
+        "eia-brent-daily", "eia-wti-daily", "eia-natural-gas-daily",
+    ]
+    assert all(len(row["observations"]) == 5 for row in data["datasets"])
+    assert data["execution_authorized"] is False
+    assert http("GET", "/api/research/market-context?limit=0", headers=auth)[0] == 400
+
+
 def test_http_adaptation_lifecycle_is_authenticated_and_opt_in(http, monkeypatch):
     from icarus_engine.advisory import _PROVIDERS
     for _, key, _ in _PROVIDERS.values():

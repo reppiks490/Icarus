@@ -210,7 +210,7 @@
       if (!Number.isFinite(ttl) || ttl <= 0 || ttl > 86400) throw new Error('TTL must be within 1..86400 seconds.');
       evidenceDraft.source = source;
       evidenceDraft.ttl_seconds = ttl;
-      const token = localStorage.getItem('icarus-engine-token') || 'icarus';
+      const token = IcarusClient.getToken();
       const response = await IcarusClient.request('/admin/possibility/evidence', {
         method:'POST', cache:'no-store', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
         body:JSON.stringify({asset:selected, values, source, ttl_seconds:ttl}),
@@ -239,7 +239,7 @@
     loading = true;
     pendingLoad = false;
     try {
-      const token = localStorage.getItem('icarus-engine-token') || 'icarus';
+      const token = IcarusClient.getToken();
       const query = selected ? '?asset='+encodeURIComponent(selected) : '';
       const ledgerQuery = '?asset='+encodeURIComponent(selected||'')+'&limit=100&include_expired='+(ledgerIncludeExpired?'true':'false');
       const [response, ledgerResponse] = await Promise.all([
@@ -287,7 +287,7 @@
     const cached = quickCache.get(symbol);
     if (!force && cached && Date.now() - cached.at < QUICK_TTL_MS) return cached.data;
     if (quickInflight.has(symbol)) return quickInflight.get(symbol);
-    const token = localStorage.getItem('icarus-engine-token') || 'icarus';
+    const token = IcarusClient.getToken();
     const task = (async () => {
       const response = await IcarusClient.request('/api/possibility?asset='+encodeURIComponent(symbol), {cache:'no-store', headers:{'Authorization':'Bearer '+token}});
       const data = await response.json();
