@@ -1,0 +1,202 @@
+{
+  "schema": "icarus.deep_artifact_evidence.v1",
+  "date_local": "2026-11-24",
+  "scope": "Bounded read-only metadata and aggregate queries. No raw market data, credential values, or checkpoint payloads read. Clock consistency is not proof of causality or data provenance. All counts are snapshots.",
+  "records": [
+    {
+      "root": "Icarus-ml-d9d4db8/run",
+      "counts": {
+        ".json": 92
+      },
+      "bytes": {
+        ".json": 8956699
+      },
+      "errors": 0,
+      "bounded": false,
+      "examples": [
+        {
+          "path": "Icarus-ml-d9d4db8/run/trainers/training_run.json",
+          "bytes": 34672,
+          "type": ".json"
+        }
+      ]
+    },
+    {
+      "root": "Icarus/run",
+      "counts": {
+        ".json": 2
+      },
+      "bytes": {
+        ".json": 334
+      },
+      "errors": 0,
+      "bounded": false,
+      "examples": []
+    },
+    {
+      "root": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot",
+      "counts": {
+        ".json": 1581,
+        ".sqlite3": 5,
+        ".fp16": 190,
+        ".jsonl": 14
+      },
+      "bytes": {
+        ".json": 1600397,
+        ".sqlite3": 10113024,
+        ".fp16": 715881728,
+        ".jsonl": 14677738
+      },
+      "errors": 0,
+      "bounded": false,
+      "examples": [
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00524289/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00516097/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00507905/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00499713/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00491521/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00483329/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00475137/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00466945/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00458753/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00450561/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00442369/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00434177/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00425985/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00417793/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00409601/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00401409/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00393217/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00385025/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00376833/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        },
+        {
+          "path": "projects/MYRIAD-v32-local-pilot-20261124/private-pilot/ability-v47/00368641/weights.fp16",
+          "bytes": 8192000,
+          "type": ".fp16"
+        }
+      ]
+    },
+    {
+      "db": "Icarus/audit/subsystem_connections/main/aion.sqlite3",
+      "table": "events",
+      "aggregate": [
+        6021,
+        0,
+        0,
+        0
+      ],
+      "columns": [
+        "rows",
+        "availability_precedes_event",
+        "ingestion_precedes_availability",
+        "missing_clock"
+      ]
+    },
+    {
+      "db": "Icarus/audit/subsystem_connections/main/aion.sqlite3",
+      "table": "predictions",
+      "aggregate": [
+        0
+      ],
+      "columns": [
+        "rows"
+      ]
+    },
+    {
+      "db": "Icarus/audit/subsystem_connections/main/aion.sqlite3",
+      "table": "settlements",
+      "aggregate": [
+        0
+      ],
+      "columns": [
+        "rows"
+      ]
+    },
+    {
+      "db": "Icarus/audit/subsystem_connections/main/aion.sqlite3",
+      "table": "source_gaps",
+      "aggregate": [
+        0
+      ],
+      "columns": [
+        "rows"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,3992 @@
+{
+  "schema": "icarus.deep_source_evidence.v1",
+  "date_local": "2026-11-24",
+  "scope": "Read-only local source inspection; selected working-tree file SHA256s and AST/declaration identifiers, Git HEAD separately observed. Not proof of clean working tree, runtime qualification or license approval.",
+  "records": [
+    {
+      "name": "bytewax",
+      "path": "<SYNC_ROOT>/ICARUS-EXTERNAL-GITHUB/source/bytewax__bytewax",
+      "head": "57369808388e06220b6a79038ade2713756e05bb",
+      "license_paths": [
+        "LICENSE"
+      ],
+      "tracked_count": 293,
+      "sources": [
+        {
+          "file": "src/recovery.rs",
+          "sha256": "2b9b4db13587018b97fcbc2350ec98fc4fa57aaa9b4fb6ec9a6f2c3c4bb58b55",
+          "symbols": []
+        },
+        {
+          "file": "pytests/test_recovery.py",
+          "sha256": "bdee9280072e996f312c86f9ea9b6454d929c6406a03dbf34f999db49d4b433c",
+          "symbols": [
+            {
+              "line": 21,
+              "name": "test_abort_no_snapshots",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 40,
+              "name": "test_abort_with_snapshots",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 59,
+              "name": "test_continuation",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 86,
+              "name": "test_continuation_with_delayed_backup",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 136,
+              "name": "keep_max",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 143,
+              "name": "build_keep_max_dataflow",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 151,
+              "name": "test_rescale",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 204,
+              "name": "test_no_parts",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 217,
+              "name": "test_missing_parts",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 232,
+              "name": "test_inconsistent_parts",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "pysrc/bytewax/recovery.py",
+          "sha256": "96f0a7c4adc37f20af2d0c53a8d9a7dbe2c05932c5e01e45bda44f6aa124cc22",
+          "symbols": [
+            {
+              "line": 23,
+              "name": "_parse_args",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "pytests/operators/test_join.py",
+          "sha256": "0d4f2897371698817350e29757f0c198488c1b329c1062fd905efa32524c1c39",
+          "symbols": [
+            {
+              "line": 14,
+              "name": "test_join_state_astuples",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 29,
+              "name": "_build_join_dataflow",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 60,
+              "name": "test_join_last_complete",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 73,
+              "name": "test_join_default_is_last_complete",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 86,
+              "name": "test_join_first_final",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 99,
+              "name": "test_join_last_final",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 112,
+              "name": "test_join_last_running",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 127,
+              "name": "test_join_product_final",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 198,
+              "name": "_build_multi_key_join",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 217,
+              "name": "_group_by_key",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 229,
+              "name": "test_join_multiple_keys",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 240,
+              "name": "test_join_multiple_keys_resume_after_abort",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 261,
+              "name": "test_join_rejects_unknown_insert_mode",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 269,
+              "name": "test_join_rejects_unknown_emit_mode",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "pysrc/bytewax/operators/windowing.py",
+          "sha256": "9ff2534174cebd3a80940c84ece5c1eeb73d8962988393934135fa804a6aa526",
+          "symbols": [
+            {
+              "line": 79,
+              "name": "ClockLogic",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 192,
+              "name": "_SystemClockLogic",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 226,
+              "name": "_EventClockState",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 232,
+              "name": "_EventClockLogic",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 314,
+              "name": "Clock",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 344,
+              "name": "SystemClock",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 361,
+              "name": "EventClock",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 430,
+              "name": "WindowMetadata",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 447,
+              "name": "WindowerLogic",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 600,
+              "name": "_SlidingWindowerState",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 605,
+              "name": "_SlidingWindowerLogic",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 677,
+              "name": "_SessionWindowerState",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 684,
+              "name": "_open_sort",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 689,
+              "name": "_session_find_merges",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 95,
+              "name": "ClockLogic.before_batch",
+              "kind": "method"
+            },
+            {
+              "line": 107,
+              "name": "ClockLogic.on_item",
+              "kind": "method"
+            },
+            {
+              "line": 124,
+              "name": "ClockLogic.on_notify",
+              "kind": "method"
+            },
+            {
+              "line": 135,
+              "name": "ClockLogic.on_eof",
+              "kind": "method"
+            },
+            {
+              "line": 151,
+              "name": "ClockLogic.to_system_utc",
+              "kind": "method"
+            },
+            {
+              "line": 166,
+              "name": "ClockLogic.snapshot",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "pytests/operators/windowing/test_event_clock.py",
+          "sha256": "b634caa9bb20ad970bb01147a5b2a4fb303162244fcc7b06000b6d5ac121274b",
+          "symbols": [
+            {
+              "line": 11,
+              "name": "test_watermark_starts_at_beginning_of_time",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 23,
+              "name": "test_watermark_is_item_timestamp_minus_wait",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 38,
+              "name": "test_watermark_forwards_by_system_time",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 54,
+              "name": "test_watermark_advances_in_batch",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 71,
+              "name": "test_watermark_does_not_reverse_in_batch",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 88,
+              "name": "test_watermark_does_not_reverse_and_forwards_by_system_time_next_batch",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 107,
+              "name": "test_watermark_does_not_reverse_advancing_item_is_slower_than_system_time_gap",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 132,
+              "name": "test_watermark_is_end_of_time_on_eof",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 145,
+              "name": "test_watermark_doesnt_overflow_after_eof",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 159,
+              "name": "test_allows_max_wait_for_system_duration_init",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 174,
+              "name": "test_allows_max_wait_for_system_duration_update_does_not_regress",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "pytests/operators/windowing/test_fold_window.py",
+          "sha256": "c7a4f28b7112c885954f7c4f459118cb3c9011866b93e91c1c7e7fe98d46be16",
+          "symbols": [
+            {
+              "line": 21,
+              "name": "_UserEvent",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 26,
+              "name": "_merge_defaultdict",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 34,
+              "name": "test_fold_window_tumbling",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 89,
+              "name": "_Event",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 94,
+              "name": "test_fold_window_session",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 140,
+              "name": "test_fold_window_sliding",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 198,
+              "name": "test_fold_window_benchmark",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "pytests/operators/windowing/test_join_window.py",
+          "sha256": "86f2f4c3feb5359843fe5680d6c025a06b298ac24df2f9f0b656a74b73bac928",
+          "symbols": [
+            {
+              "line": 14,
+              "name": "_Event",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 22,
+              "name": "_build_join_window_dataflow",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 71,
+              "name": "test_join_window_first_complete",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 90,
+              "name": "test_join_window_last_complete",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 108,
+              "name": "test_join_window_last_final",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 127,
+              "name": "test_join_window_default_mode_is_last_final",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 146,
+              "name": "test_join_window_last_running",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 167,
+              "name": "test_join_window_product_final",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 190,
+              "name": "test_join_window_late_items_have_side",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 18,
+              "name": "_Event.ts_getter",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "pytests/operators/windowing/test_window_late.py",
+          "sha256": "d9f674d3c3537d216deaedbe7237bc27b026aeeeec184cc1e48497533f29198d",
+          "symbols": [
+            {
+              "line": 58,
+              "name": "_clock",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 68,
+              "name": "_drop_side",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 73,
+              "name": "_join",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 100,
+              "name": "test_late_items",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 114,
+              "name": "test_late_items_not_in_windows",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 128,
+              "name": "test_late_item_left_out_of_still_open_sliding_window",
+              "kind": "FunctionDef"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "feast",
+      "path": "<SYNC_ROOT>/ICARUS-EXTERNAL-GITHUB/source/feast-dev__feast",
+      "head": "1e5e90ca01b0a6b1877a6c809436f0d8d574aad6",
+      "license_paths": [
+        "LICENSE"
+      ],
+      "tracked_count": 3178,
+      "sources": [
+        {
+          "file": "sdk/python/feast/feature_view.py",
+          "sha256": "d0b089050f760fa18eb42d51c05f6d73fbb1495b0b4cd31803c3b6ada0037abe",
+          "symbols": [
+            {
+              "line": 53,
+              "name": "FeatureViewState",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 111,
+              "name": "FeatureView",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 66,
+              "name": "FeatureViewState.can_transition_to",
+              "kind": "method"
+            },
+            {
+              "line": 72,
+              "name": "FeatureViewState.from_proto",
+              "kind": "method"
+            },
+            {
+              "line": 78,
+              "name": "FeatureViewState.to_proto",
+              "kind": "method"
+            },
+            {
+              "line": 423,
+              "name": "FeatureView.join_keys",
+              "kind": "method"
+            },
+            {
+              "line": 428,
+              "name": "FeatureView.schema",
+              "kind": "method"
+            },
+            {
+              "line": 431,
+              "name": "FeatureView.ensure_valid",
+              "kind": "method"
+            },
+            {
+              "line": 444,
+              "name": "FeatureView.proto_class",
+              "kind": "method"
+            },
+            {
+              "line": 447,
+              "name": "FeatureView.with_join_key_map",
+              "kind": "method"
+            },
+            {
+              "line": 482,
+              "name": "FeatureView.update_materialization_intervals",
+              "kind": "method"
+            },
+            {
+              "line": 492,
+              "name": "FeatureView.to_proto",
+              "kind": "method"
+            },
+            {
+              "line": 519,
+              "name": "FeatureView.to_proto_spec",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "sdk/python/feast/base_feature_view.py",
+          "sha256": "f0276313c7829a7cfdd4a33f7e6c04a1e7b1a3efc9e1bb2a9120a1bf1c0d3f03",
+          "symbols": [
+            {
+              "line": 34,
+              "name": "BaseFeatureView",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 107,
+              "name": "BaseFeatureView.proto_class",
+              "kind": "method"
+            },
+            {
+              "line": 111,
+              "name": "BaseFeatureView.to_proto",
+              "kind": "method"
+            },
+            {
+              "line": 123,
+              "name": "BaseFeatureView.from_proto",
+              "kind": "method"
+            },
+            {
+              "line": 193,
+              "name": "BaseFeatureView.ensure_valid",
+              "kind": "method"
+            },
+            {
+              "line": 215,
+              "name": "BaseFeatureView.with_name",
+              "kind": "method"
+            },
+            {
+              "line": 228,
+              "name": "BaseFeatureView.set_projection",
+              "kind": "method"
+            },
+            {
+              "line": 254,
+              "name": "BaseFeatureView.with_projection",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "sdk/python/feast/batch_feature_view.py",
+          "sha256": "d34a15234e244132e5711f60b01be4abdfeccd9c68f2c02fa434dc983c4c98db",
+          "symbols": [
+            {
+              "line": 32,
+              "name": "BatchFeatureView",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 217,
+              "name": "batch_feature_view",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 198,
+              "name": "BatchFeatureView.get_feature_transformation",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "sdk/python/feast/feature_view_utils.py",
+          "sha256": "e10451da34eb1d545ff1af2246a05acafa2a5d05d06ea719dbbf1a9189ff4e14",
+          "symbols": [
+            {
+              "line": 32,
+              "name": "FeatureViewSourceInfo",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 42,
+              "name": "has_transformation",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 50,
+              "name": "get_transformation_function",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 68,
+              "name": "find_original_source_view",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 82,
+              "name": "check_sink_source_exists",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 106,
+              "name": "resolve_feature_view_source",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 211,
+              "name": "resolve_feature_view_source_with_fallback",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 257,
+              "name": "get_feature_view_from_feature_store",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 280,
+              "name": "get_feature_view_from_registry",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "sdk/python/feast/stream_feature_view.py",
+          "sha256": "405148cc862b27d2dc2a3f5ccb93a11eb8d77760a803598c575f6902a4d6f10f",
+          "symbols": [
+            {
+              "line": 46,
+              "name": "StreamFeatureView",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 495,
+              "name": "stream_feature_view",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 201,
+              "name": "StreamFeatureView.get_feature_transformation",
+              "kind": "method"
+            },
+            {
+              "line": 275,
+              "name": "StreamFeatureView.to_proto",
+              "kind": "method"
+            },
+            {
+              "line": 338,
+              "name": "StreamFeatureView.from_proto",
+              "kind": "method"
+            },
+            {
+              "line": 491,
+              "name": "StreamFeatureView.proto_class",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "sdk/python/feast/on_demand_feature_view.py",
+          "sha256": "7c8ccba45decbce77adf1f7ba19181704f74e2e930d678e96b10c9e8c3abb864",
+          "symbols": [
+            {
+              "line": 45,
+              "name": "ODFVErrorMessages",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 116,
+              "name": "OnDemandFeatureView",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 1353,
+              "name": "on_demand_feature_view",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 1448,
+              "name": "_empty_odfv_udf_fn",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 49,
+              "name": "ODFVErrorMessages.unsupported_source_type",
+              "kind": "method"
+            },
+            {
+              "line": 56,
+              "name": "ODFVErrorMessages.singleton_mode_requires_python",
+              "kind": "method"
+            },
+            {
+              "line": 64,
+              "name": "ODFVErrorMessages.online_store_requires_entities",
+              "kind": "method"
+            },
+            {
+              "line": 72,
+              "name": "ODFVErrorMessages.no_transformation_provided",
+              "kind": "method"
+            },
+            {
+              "line": 79,
+              "name": "ODFVErrorMessages.duplicate_source_names",
+              "kind": "method"
+            },
+            {
+              "line": 86,
+              "name": "ODFVErrorMessages.no_sources_configured",
+              "kind": "method"
+            },
+            {
+              "line": 93,
+              "name": "ODFVErrorMessages.mode_transformation_mismatch",
+              "kind": "method"
+            },
+            {
+              "line": 99,
+              "name": "ODFVErrorMessages.unknown_source_type_in_proto",
+              "kind": "method"
+            },
+            {
+              "line": 368,
+              "name": "OnDemandFeatureView.get_feature_transformation",
+              "kind": "method"
+            },
+            {
+              "line": 386,
+              "name": "OnDemandFeatureView.proto_class",
+              "kind": "method"
+            },
+            {
+              "line": 488,
+              "name": "OnDemandFeatureView.join_keys",
+              "kind": "method"
+            },
+            {
+              "line": 493,
+              "name": "OnDemandFeatureView.schema",
+              "kind": "method"
+            },
+            {
+              "line": 496,
+              "name": "OnDemandFeatureView.ensure_valid",
+              "kind": "method"
+            },
+            {
+              "line": 584,
+              "name": "OnDemandFeatureView.to_proto",
+              "kind": "method"
+            },
+            {
+              "line": 657,
+              "name": "OnDemandFeatureView.from_proto",
+              "kind": "method"
+            },
+            {
+              "line": 926,
+              "name": "OnDemandFeatureView.get_request_data_schema",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "sdk/python/feast/feature_view_projection.py",
+          "sha256": "379c136f9286abbba2e2b1c157e52fc966de7ddd8b4d013bc69ea5259332e921",
+          "symbols": [
+            {
+              "line": 17,
+              "name": "FeatureViewProjection",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 53,
+              "name": "FeatureViewProjection.name_to_use",
+              "kind": "method"
+            },
+            {
+              "line": 59,
+              "name": "FeatureViewProjection.to_proto",
+              "kind": "method"
+            },
+            {
+              "line": 85,
+              "name": "FeatureViewProjection.from_proto",
+              "kind": "method"
+            },
+            {
+              "line": 113,
+              "name": "FeatureViewProjection.from_feature_view_definition",
+              "kind": "method"
+            },
+            {
+              "line": 136,
+              "name": "FeatureViewProjection.from_definition",
+              "kind": "method"
+            },
+            {
+              "line": 159,
+              "name": "FeatureViewProjection.get_feature",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "sdk/python/feast/cli/feature_views.py",
+          "sha256": "b13d1157d111949271a8e802f1f576151ca3cd90cf69defdd4efc07ace913d44",
+          "symbols": [
+            {
+              "line": 19,
+              "name": "feature_views_cmd",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 29,
+              "name": "feature_view_describe",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 53,
+              "name": "feature_view_list",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 99,
+              "name": "feature_view_enable",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 126,
+              "name": "feature_view_disable",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 160,
+              "name": "feature_view_set_state",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 198,
+              "name": "feature_view_versions",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "sdk/python/feast/cli/stream_feature_views.py",
+          "sha256": "15ed8e3144187bdaa75bd4cb1c727ef3bd4c6f50c97ae355cc43e0971ae60e88",
+          "symbols": [
+            {
+              "line": 11,
+              "name": "stream_feature_views_cmd",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 21,
+              "name": "stream_feature_views_describe",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 45,
+              "name": "stream_feature_views_list",
+              "kind": "FunctionDef"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "holdout",
+      "path": "<SYNC_ROOT>/ICARUS-EXTERNAL-GITHUB/source/DaniyalMlk__holdout",
+      "head": "172358144b938a8cb47614cb13a72555550c4a1f",
+      "license_paths": [
+        "LICENSE"
+      ],
+      "tracked_count": 69,
+      "sources": [
+        {
+          "file": "src/holdout/pbo.py",
+          "sha256": "aeaf3373db9581b73c879d3bafef707d23e6aa38a1cd7de058ae161a53c067c1",
+          "symbols": [
+            {
+              "line": 50,
+              "name": "PBOResult",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 102,
+              "name": "cscv_partitions",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 115,
+              "name": "_block_bounds",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 122,
+              "name": "probability_of_backtest_overfitting",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 195,
+              "name": "_from_sums",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 221,
+              "name": "_score",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 68,
+              "name": "PBOResult.n_partitions",
+              "kind": "method"
+            },
+            {
+              "line": 72,
+              "name": "PBOResult.probability_of_loss",
+              "kind": "method"
+            },
+            {
+              "line": 77,
+              "name": "PBOResult.degradation",
+              "kind": "method"
+            },
+            {
+              "line": 96,
+              "name": "PBOResult.selection_frequency",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "src/holdout/sharpe.py",
+          "sha256": "7684bb9290a77f91ff4cc74ab30be6e4335197bb33c3a4023f3b7b733605cd92",
+          "symbols": [
+            {
+              "line": 84,
+              "name": "check_shape",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 116,
+              "name": "sharpe_variance_term",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 126,
+              "name": "sharpe_standard_error",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 139,
+              "name": "_excess",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 152,
+              "name": "sharpe_ratio",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 178,
+              "name": "SharpeRatio",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 227,
+              "name": "estimate_sharpe",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 243,
+              "name": "serial_correlation_factor",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 267,
+              "name": "autocorrelation_adjusted_sharpe",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 193,
+              "name": "SharpeRatio.standard_error",
+              "kind": "method"
+            },
+            {
+              "line": 204,
+              "name": "SharpeRatio.annualised",
+              "kind": "method"
+            },
+            {
+              "line": 207,
+              "name": "SharpeRatio.annualised_standard_error",
+              "kind": "method"
+            },
+            {
+              "line": 210,
+              "name": "SharpeRatio.confidence_interval",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "src/holdout/deflated.py",
+          "sha256": "b1ebffad9a168f5ad18a21a81dfa27fbfcc677f4dd95c81f53591bafcb9c6912",
+          "symbols": [
+            {
+              "line": 51,
+              "name": "_check_n",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 57,
+              "name": "probabilistic_sharpe_ratio",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 81,
+              "name": "minimum_track_record_length",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 108,
+              "name": "expected_maximum_normal",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 131,
+              "name": "expected_maximum_sharpe",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 174,
+              "name": "deflated_sharpe_ratio",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 199,
+              "name": "DeflatedSharpe",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 212,
+              "name": "deflate_trials",
+              "kind": "FunctionDef"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "purgedcv",
+      "path": "<SYNC_ROOT>/ICARUS-EXTERNAL-GITHUB/source/landtml__purgedcv",
+      "head": "aee3396422192d18bc30d376dfe9e31b2399abab",
+      "license_paths": [
+        "LICENSE"
+      ],
+      "tracked_count": 16,
+      "sources": [
+        {
+          "file": "src/purgedcv/__init__.py",
+          "sha256": "1913ef38d374052ebf156b4399d8928208c7920dd1c72ca75211f271ab77f5f1",
+          "symbols": []
+        },
+        {
+          "file": "src/purgedcv/_splitter.py",
+          "sha256": "4eda7bca69415df0dc42fc0a279a630a002f8f4f1abe801189b5a9fa0d5ee42a",
+          "symbols": [
+            {
+              "line": 57,
+              "name": "make_t1",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 90,
+              "name": "_make_group_labels",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 102,
+              "name": "_sample_index",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 121,
+              "name": "_end_positions",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 196,
+              "name": "_contiguous_blocks",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 213,
+              "name": "_train_mask",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 253,
+              "name": "CPCVPaths",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 301,
+              "name": "CombinatorialPurgedCV",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 268,
+              "name": "CPCVPaths.combine",
+              "kind": "method"
+            },
+            {
+              "line": 288,
+              "name": "CPCVPaths.to_frame",
+              "kind": "method"
+            },
+            {
+              "line": 386,
+              "name": "CombinatorialPurgedCV.get_n_splits",
+              "kind": "method"
+            },
+            {
+              "line": 390,
+              "name": "CombinatorialPurgedCV.get_n_paths",
+              "kind": "method"
+            },
+            {
+              "line": 414,
+              "name": "CombinatorialPurgedCV.split",
+              "kind": "method"
+            },
+            {
+              "line": 482,
+              "name": "CombinatorialPurgedCV.build_paths",
+              "kind": "method"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "hftbacktest",
+      "path": "<SYNC_ROOT>/ICARUS-EXTERNAL-GITHUB/source/nkaz001__hftbacktest",
+      "head": "5f3ec40b2afb764e0fea112f941ed85523ef4e88",
+      "license_paths": [
+        "LICENSE"
+      ],
+      "tracked_count": 232,
+      "sources": [
+        {
+          "file": "hftbacktest/src/lib.rs",
+          "sha256": "36202b1d2f7c0bce8ff84a2f3454053d4c5d8ec19aef8f083eb8f8fc5e3a4c64",
+          "symbols": []
+        },
+        {
+          "file": "hftbacktest/src/types.rs",
+          "sha256": "4229ba7b1bc51c8f82e1761c13ae6120d0f9e654ffaef7b79a12dbf4be4f8b7e",
+          "symbols": [
+            {
+              "line": 34,
+              "declaration": "pub fn get_str(&self) -> Option<&str> {"
+            },
+            {
+              "line": 42,
+              "declaration": "pub fn get_int(&self) -> Option<i64> {"
+            },
+            {
+              "line": 50,
+              "declaration": "pub fn get_float(&self) -> Option<f64> {"
+            },
+            {
+              "line": 58,
+              "declaration": "pub fn get_bool(&self) -> Option<bool> {"
+            },
+            {
+              "line": 66,
+              "declaration": "pub fn get_list(&self) -> Option<&Vec<Value>> {"
+            },
+            {
+              "line": 74,
+              "declaration": "pub fn get_map(&self) -> Option<&HashMap<String, Value>> {"
+            },
+            {
+              "line": 92,
+              "declaration": "pub struct LiveError {"
+            },
+            {
+              "line": 99,
+              "declaration": "pub fn new(kind: ErrorKind) -> LiveError {"
+            },
+            {
+              "line": 107,
+              "declaration": "pub fn with(kind: ErrorKind, value: Value) -> LiveError {"
+            },
+            {
+              "line": 112,
+              "declaration": "pub fn value(&self) -> &Value {"
+            },
+            {
+              "line": 314,
+              "declaration": "pub struct Event {"
+            },
+            {
+              "line": 338,
+              "declaration": "pub fn is(&self, event: u64) -> bool {"
+            },
+            {
+              "line": 491,
+              "declaration": "pub struct Order {"
+            },
+            {
+              "line": 529,
+              "declaration": "pub fn new("
+            },
+            {
+              "line": 559,
+              "declaration": "pub fn price(&self) -> f64 {"
+            },
+            {
+              "line": 564,
+              "declaration": "pub fn exec_price(&self) -> f64 {"
+            }
+          ]
+        },
+        {
+          "file": "py-hftbacktest/src/lib.rs",
+          "sha256": "d53bf55859635c9d5364912a267a844bb4312823f39283520cf0b77bc64184bb",
+          "symbols": [
+            {
+              "line": 109,
+              "declaration": "pub struct BacktestAsset {"
+            },
+            {
+              "line": 134,
+              "declaration": "pub fn new() -> Self {"
+            },
+            {
+              "line": 164,
+              "declaration": "pub fn parallel_load(mut slf: PyRefMut<Self>, parallel_load: bool) -> PyRefMut<Self> {"
+            },
+            {
+              "line": 176,
+              "declaration": "pub fn latency_offset(mut slf: PyRefMut<Self>, latency_offset: i64) -> PyRefMut<Self> {"
+            },
+            {
+              "line": 186,
+              "declaration": "pub fn roi_lb(mut slf: PyRefMut<Self>, roi_lb: f64) -> PyRefMut<Self> {"
+            },
+            {
+              "line": 196,
+              "declaration": "pub fn roi_ub(mut slf: PyRefMut<Self>, roi_ub: f64) -> PyRefMut<Self> {"
+            },
+            {
+              "line": 201,
+              "declaration": "pub fn add_file(mut slf: PyRefMut<Self>, data: String) -> PyRefMut<Self> {"
+            },
+            {
+              "line": 206,
+              "declaration": "pub fn _add_data_ndarray(mut slf: PyRefMut<Self>, data: usize, len: usize) -> PyRefMut<Self> {"
+            },
+            {
+              "line": 217,
+              "declaration": "pub fn linear_asset(mut slf: PyRefMut<Self>, contract_size: f64) -> PyRefMut<Self> {"
+            },
+            {
+              "line": 226,
+              "declaration": "pub fn inverse_asset(mut slf: PyRefMut<Self>, contract_size: f64) -> PyRefMut<Self> {"
+            },
+            {
+              "line": 241,
+              "declaration": "pub fn constant_latency("
+            },
+            {
+              "line": 271,
+              "declaration": "pub fn constant_order_latency("
+            },
+            {
+              "line": 295,
+              "declaration": "pub fn intp_order_latency("
+            },
+            {
+              "line": 310,
+              "declaration": "pub fn _intp_order_latency_ndarray("
+            },
+            {
+              "line": 329,
+              "declaration": "pub fn risk_adverse_queue_model(mut slf: PyRefMut<Self>) -> PyRefMut<Self> {"
+            },
+            {
+              "line": 341,
+              "declaration": "pub fn log_prob_queue_model(mut slf: PyRefMut<Self>) -> PyRefMut<Self> {"
+            }
+          ]
+        },
+        {
+          "file": "hftbacktest/src/prelude.rs",
+          "sha256": "24d03f039fbad6d8a69b5b8931fd6350933d5e88175547d3ac198b219a60f51b",
+          "symbols": []
+        },
+        {
+          "file": "py-hftbacktest/src/fuse.rs",
+          "sha256": "7e986476f7092ac4e9d0d7150f84aadbbda66ac2742a2da324ee48bf4187f70a",
+          "symbols": [
+            {
+              "line": 17,
+              "declaration": "pub struct FuseMarketDepth {"
+            }
+          ]
+        },
+        {
+          "file": "py-hftbacktest/src/live.rs",
+          "sha256": "49e0de7ea80ed2f833f046292ebac0f35af8c1ce64bfb6cb7b8162081c008741",
+          "symbols": []
+        },
+        {
+          "file": "py-hftbacktest/src/depth.rs",
+          "sha256": "2a2a82ce7d7b631074aa563b156a7082ad1e47ec3142e8e0e1be441cec42294e",
+          "symbols": []
+        },
+        {
+          "file": "py-hftbacktest/src/order.rs",
+          "sha256": "4071773de00ef36d301127b891793ae50fa8afc98fd2017d5d252fc55f5fecda",
+          "symbols": []
+        },
+        {
+          "file": "hftbacktest-derive/src/lib.rs",
+          "sha256": "bc6028c1afcad9be8687348217ea7c780f30fe89831f6976f17986ab22dd8511",
+          "symbols": [
+            {
+              "line": 19,
+              "declaration": "pub fn dtype_derive(input: TokenStream) -> TokenStream {"
+            },
+            {
+              "line": 182,
+              "declaration": "pub fn build_asset(input: TokenStream) -> TokenStream {"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "abides",
+      "path": "<USER_HOME>/projects/icarus-ml-research-sources/abides-sim--abides",
+      "head": "c4bf157678928934417aba6073eb0651aeaf6d15",
+      "license_paths": [
+        "LICENSE.txt"
+      ],
+      "tracked_count": 184,
+      "sources": [
+        {
+          "file": "Kernel.py",
+          "sha256": "58660a6005775d1c84c41d296b85672076cfbf83804a9bdbf5ec90bb272fa685",
+          "symbols": [
+            {
+              "line": 10,
+              "name": "Kernel",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 51,
+              "name": "Kernel.runner",
+              "kind": "method"
+            },
+            {
+              "line": 329,
+              "name": "Kernel.sendMessage",
+              "kind": "method"
+            },
+            {
+              "line": 394,
+              "name": "Kernel.setWakeup",
+              "kind": "method"
+            },
+            {
+              "line": 421,
+              "name": "Kernel.getAgentComputeDelay",
+              "kind": "method"
+            },
+            {
+              "line": 426,
+              "name": "Kernel.setAgentComputeDelay",
+              "kind": "method"
+            },
+            {
+              "line": 452,
+              "name": "Kernel.delayAgent",
+              "kind": "method"
+            },
+            {
+              "line": 473,
+              "name": "Kernel.findAgentByType",
+              "kind": "method"
+            },
+            {
+              "line": 483,
+              "name": "Kernel.writeLog",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "util/OrderBook.py",
+          "sha256": "969890e98bb040e136d413e75080384ad27ea742acd70cd918d0dc7fc7c760dc",
+          "symbols": [
+            {
+              "line": 18,
+              "name": "OrderBook",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 46,
+              "name": "OrderBook.handleLimitOrder",
+              "kind": "method"
+            },
+            {
+              "line": 160,
+              "name": "OrderBook.handleMarketOrder",
+              "kind": "method"
+            },
+            {
+              "line": 190,
+              "name": "OrderBook.executeOrder",
+              "kind": "method"
+            },
+            {
+              "line": 258,
+              "name": "OrderBook.isMatch",
+              "kind": "method"
+            },
+            {
+              "line": 272,
+              "name": "OrderBook.enterOrder",
+              "kind": "method"
+            },
+            {
+              "line": 300,
+              "name": "OrderBook.cancelOrder",
+              "kind": "method"
+            },
+            {
+              "line": 350,
+              "name": "OrderBook.modifyOrder",
+              "kind": "method"
+            },
+            {
+              "line": 378,
+              "name": "OrderBook.getInsideBids",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "cli/plot_exchange.py",
+          "sha256": "9e4dcc08e4ecbb65650c7f2f0cc242a565c87af6f189b4a5c0e3beffec39a41b",
+          "symbols": []
+        },
+        {
+          "file": "model/LatencyModel.py",
+          "sha256": "3e7e3870fdfd71951bfed694a8e8748e4cc4e0313b63d520ae8a05fc7e32bc94",
+          "symbols": [
+            {
+              "line": 4,
+              "name": "LatencyModel",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 113,
+              "name": "LatencyModel.get_latency",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "agent/ExchangeAgent.py",
+          "sha256": "6234eb899d403807441688b903d4be015d54eeed1b2b4670f31ba40bcf05085f",
+          "symbols": [
+            {
+              "line": 24,
+              "name": "ExchangeAgent",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 75,
+              "name": "ExchangeAgent.kernelInitializing",
+              "kind": "method"
+            },
+            {
+              "line": 91,
+              "name": "ExchangeAgent.kernelTerminating",
+              "kind": "method"
+            },
+            {
+              "line": 113,
+              "name": "ExchangeAgent.receiveMessage",
+              "kind": "method"
+            },
+            {
+              "line": 285,
+              "name": "ExchangeAgent.updateSubscriptionDict",
+              "kind": "method"
+            },
+            {
+              "line": 297,
+              "name": "ExchangeAgent.publishOrderBookData",
+              "kind": "method"
+            },
+            {
+              "line": 319,
+              "name": "ExchangeAgent.logOrderBookSnapshots",
+              "kind": "method"
+            },
+            {
+              "line": 398,
+              "name": "ExchangeAgent.sendMessage",
+              "kind": "method"
+            },
+            {
+              "line": 414,
+              "name": "ExchangeAgent.getMarketOpen",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "agent/OrderBookImbalanceAgent.py",
+          "sha256": "3e3a829c2f3dd46b2e0357cf91d98b0ae4371bd9ed775070f7e7c3b8d8bc7e93",
+          "symbols": [
+            {
+              "line": 10,
+              "name": "OrderBookImbalanceAgent",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 43,
+              "name": "OrderBookImbalanceAgent.kernelStarting",
+              "kind": "method"
+            },
+            {
+              "line": 46,
+              "name": "OrderBookImbalanceAgent.wakeup",
+              "kind": "method"
+            },
+            {
+              "line": 51,
+              "name": "OrderBookImbalanceAgent.receiveMessage",
+              "kind": "method"
+            },
+            {
+              "line": 148,
+              "name": "OrderBookImbalanceAgent.getWakeFrequency",
+              "kind": "method"
+            },
+            {
+              "line": 154,
+              "name": "OrderBookImbalanceAgent.computeRequiredPrice",
+              "kind": "method"
+            },
+            {
+              "line": 174,
+              "name": "OrderBookImbalanceAgent.cancelOrders",
+              "kind": "method"
+            },
+            {
+              "line": 184,
+              "name": "OrderBookImbalanceAgent.kernelTerminating",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "util/formatting/convert_order_book.py",
+          "sha256": "57fe448d173f3ffdaa575444deb06fbead88d1bbb5bb9b0355ef90efb35229a2",
+          "symbols": [
+            {
+              "line": 15,
+              "name": "get_larger_int_and_gap",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 19,
+              "name": "get_int_from_string",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 24,
+              "name": "process_row",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 63,
+              "name": "reorder_columns",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 91,
+              "name": "finalise_processing",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 112,
+              "name": "is_wide_book",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 120,
+              "name": "process_orderbook",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 154,
+              "name": "save_formatted_order_book",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "agent/market_makers/MarketMakerAgent.py",
+          "sha256": "d74f8de0bc8f3d177f225100289b04d2f94279953566b98059272ea62789bb0f",
+          "symbols": [
+            {
+              "line": 13,
+              "name": "MarketMakerAgent",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 50,
+              "name": "MarketMakerAgent.kernelStarting",
+              "kind": "method"
+            },
+            {
+              "line": 53,
+              "name": "MarketMakerAgent.wakeup",
+              "kind": "method"
+            },
+            {
+              "line": 65,
+              "name": "MarketMakerAgent.receiveMessage",
+              "kind": "method"
+            },
+            {
+              "line": 101,
+              "name": "MarketMakerAgent.placeOrders",
+              "kind": "method"
+            },
+            {
+              "line": 124,
+              "name": "MarketMakerAgent.cancelOrders",
+              "kind": "method"
+            },
+            {
+              "line": 129,
+              "name": "MarketMakerAgent.getWakeFrequency",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "agent/market_makers/POVMarketMakerAgent.py",
+          "sha256": "338e88f545be0d2ee4cf4885b2a2f81fd0a728fc459a3c478e610d8aded18404",
+          "symbols": [
+            {
+              "line": 12,
+              "name": "POVMarketMakerAgent",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 46,
+              "name": "POVMarketMakerAgent.initialiseState",
+              "kind": "method"
+            },
+            {
+              "line": 59,
+              "name": "POVMarketMakerAgent.validateAnchor",
+              "kind": "method"
+            },
+            {
+              "line": 70,
+              "name": "POVMarketMakerAgent.kernelStarting",
+              "kind": "method"
+            },
+            {
+              "line": 73,
+              "name": "POVMarketMakerAgent.wakeup",
+              "kind": "method"
+            },
+            {
+              "line": 88,
+              "name": "POVMarketMakerAgent.receiveMessage",
+              "kind": "method"
+            },
+            {
+              "line": 141,
+              "name": "POVMarketMakerAgent.updateOrderSize",
+              "kind": "method"
+            },
+            {
+              "line": 146,
+              "name": "POVMarketMakerAgent.computeOrdersToPlace",
+              "kind": "method"
+            },
+            {
+              "line": 171,
+              "name": "POVMarketMakerAgent.placeOrders",
+              "kind": "method"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "jax-lob",
+      "path": "<USER_HOME>/projects/icarus-ml-research-sources/KangOxford--jax-lob",
+      "head": "d1f596610b04a09941c7a1b609e5bab541ecfc98",
+      "license_paths": [],
+      "tracked_count": 41,
+      "sources": [
+        {
+          "file": "gymnax_exchange/jaxen/arbi_env.py",
+          "sha256": "621cb1fa760426fd0127b3f7b7e20d36e3918384d189a7ac9b08e4188eccb906",
+          "symbols": [
+            {
+              "line": 52,
+              "name": "EnvState",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 71,
+              "name": "EnvParams",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 98,
+              "name": "ExecutionEnv",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 119,
+              "name": "ExecutionEnv.default_params",
+              "kind": "method"
+            },
+            {
+              "line": 125,
+              "name": "ExecutionEnv.step_env",
+              "kind": "method"
+            },
+            {
+              "line": 248,
+              "name": "ExecutionEnv.reset_env",
+              "kind": "method"
+            },
+            {
+              "line": 285,
+              "name": "ExecutionEnv.is_terminal",
+              "kind": "method"
+            },
+            {
+              "line": 289,
+              "name": "ExecutionEnv.getActionMsgs",
+              "kind": "method"
+            },
+            {
+              "line": 340,
+              "name": "ExecutionEnv.get_obs",
+              "kind": "method"
+            },
+            {
+              "line": 388,
+              "name": "ExecutionEnv.action_space",
+              "kind": "method"
+            },
+            {
+              "line": 398,
+              "name": "ExecutionEnv.observation_space",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "gymnax_exchange/jaxen/base_env.py",
+          "sha256": "65c1355725b3da65be42c21b4a270905264f0d24624dea8e4ce341122d27961a",
+          "symbols": [
+            {
+              "line": 22,
+              "name": "EnvState",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 34,
+              "name": "EnvParams",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 46,
+              "name": "BaseLOBEnv",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 443,
+              "name": "BaseLOBEnv.default_params",
+              "kind": "method"
+            },
+            {
+              "line": 454,
+              "name": "BaseLOBEnv.step_env",
+              "kind": "method"
+            },
+            {
+              "line": 493,
+              "name": "BaseLOBEnv.reset_env",
+              "kind": "method"
+            },
+            {
+              "line": 515,
+              "name": "BaseLOBEnv.is_terminal",
+              "kind": "method"
+            },
+            {
+              "line": 519,
+              "name": "BaseLOBEnv.get_obs",
+              "kind": "method"
+            },
+            {
+              "line": 524,
+              "name": "BaseLOBEnv.name",
+              "kind": "method"
+            },
+            {
+              "line": 529,
+              "name": "BaseLOBEnv.num_actions",
+              "kind": "method"
+            },
+            {
+              "line": 534,
+              "name": "BaseLOBEnv.action_space",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "gymnax_exchange/jaxen/exec_env.py",
+          "sha256": "8f7b4892b5659f336bd3c3c208891bc5b44da1af42e1c082a14081c1aacb6aff",
+          "symbols": [
+            {
+              "line": 52,
+              "name": "EnvState",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 76,
+              "name": "EnvParams",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 103,
+              "name": "ExecutionEnv",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 124,
+              "name": "ExecutionEnv.default_params",
+              "kind": "method"
+            },
+            {
+              "line": 130,
+              "name": "ExecutionEnv.step_env",
+              "kind": "method"
+            },
+            {
+              "line": 260,
+              "name": "ExecutionEnv.reset_env",
+              "kind": "method"
+            },
+            {
+              "line": 298,
+              "name": "ExecutionEnv.is_terminal",
+              "kind": "method"
+            },
+            {
+              "line": 302,
+              "name": "ExecutionEnv.getActionMsgs",
+              "kind": "method"
+            },
+            {
+              "line": 348,
+              "name": "ExecutionEnv.get_obs",
+              "kind": "method"
+            },
+            {
+              "line": 396,
+              "name": "ExecutionEnv.action_space",
+              "kind": "method"
+            },
+            {
+              "line": 403,
+              "name": "ExecutionEnv.observation_space",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "gymnax_exchange/jaxen/nexec_env.py",
+          "sha256": "23692b73e523de2674bdff97d0c0bf1558f020071cfab41abc87823f9233382b",
+          "symbols": [
+            {
+              "line": 51,
+              "name": "NEnvState",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 69,
+              "name": "NEnvParams",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 83,
+              "name": "ExecutionEnv",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 96,
+              "name": "ExecutionEnv.default_params",
+              "kind": "method"
+            },
+            {
+              "line": 102,
+              "name": "ExecutionEnv.getActionMsgs",
+              "kind": "method"
+            },
+            {
+              "line": 163,
+              "name": "ExecutionEnv.step",
+              "kind": "method"
+            },
+            {
+              "line": 193,
+              "name": "ExecutionEnv.step_env",
+              "kind": "method"
+            },
+            {
+              "line": 270,
+              "name": "ExecutionEnv.reset_env",
+              "kind": "method"
+            },
+            {
+              "line": 318,
+              "name": "ExecutionEnv.get_obs",
+              "kind": "method"
+            },
+            {
+              "line": 356,
+              "name": "ExecutionEnv.is_terminal",
+              "kind": "method"
+            },
+            {
+              "line": 361,
+              "name": "ExecutionEnv.get_reward",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "gymnax_exchange/jaxob/jorderbook.py",
+          "sha256": "0b89ddc6f11222f2ea7fb179dd30b0ee1832c6ffa0e618ce793ceeee6a22e9e5",
+          "symbols": [
+            {
+              "line": 15,
+              "name": "LobState",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 21,
+              "name": "OrderBook",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 31,
+              "name": "OrderBook.init",
+              "kind": "method"
+            },
+            {
+              "line": 38,
+              "name": "OrderBook.reset",
+              "kind": "method"
+            },
+            {
+              "line": 50,
+              "name": "OrderBook.process_order",
+              "kind": "method"
+            },
+            {
+              "line": 90,
+              "name": "OrderBook.process_order_array",
+              "kind": "method"
+            },
+            {
+              "line": 102,
+              "name": "OrderBook.process_orders_array",
+              "kind": "method"
+            },
+            {
+              "line": 111,
+              "name": "OrderBook.process_orders_array_l2",
+              "kind": "method"
+            },
+            {
+              "line": 124,
+              "name": "OrderBook.get_volume_at_price",
+              "kind": "method"
+            },
+            {
+              "line": 145,
+              "name": "OrderBook.get_best_price",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "gymnax_exchange/test_scripts/vmapEnv.py",
+          "sha256": "60a2a72c7dca6f3646371109ed5107f2d518f33a0a581dd8f181758e26375ae7",
+          "symbols": []
+        },
+        {
+          "file": "gymnax_exchange/test_scripts/singleEnv.py",
+          "sha256": "c8fc932b203c7f862948bb581cd41b7240ce10c9efe571db8f23d6723832e4c4",
+          "symbols": []
+        },
+        {
+          "file": "gymnax_exchange/jaxob/JaxOrderBookArrays.py",
+          "sha256": "e0990f7efa3940d3bd2f7568eb33b725fff99eede1cb22c9ae052c163f9e5bc7",
+          "symbols": [
+            {
+              "line": 32,
+              "name": "add_order",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 40,
+              "name": "__removeZeroNegQuant",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 53,
+              "name": "cancel_order",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 70,
+              "name": "match_bid_order",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 74,
+              "name": "match_ask_order",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 78,
+              "name": "match_order",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 89,
+              "name": "__get_top_bid_order_idx",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 98,
+              "name": "__get_top_ask_order_idx",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 109,
+              "name": "__check_before_matching_bid",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 115,
+              "name": "_match_against_bid_orders",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 121,
+              "name": "__check_before_matching_ask",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 127,
+              "name": "_match_against_ask_orders",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 134,
+              "name": "doNothing",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 137,
+              "name": "bid_lim",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "gymnax_exchange/jaxob/JaxOrderBookWrapper.py",
+          "sha256": "58bc6302587b561c43ec59cd7758df1c749358592fa70902aeac7d9fe854dd41",
+          "symbols": [
+            {
+              "line": 7,
+              "name": "get_best_bid",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 12,
+              "name": "get_best_bid",
+              "kind": "FunctionDef"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pysindy",
+      "path": "<USER_HOME>/projects/icarus-ml-research-sources/dynamicslab--pysindy",
+      "head": "c4421fcec275c8f4cc5c1e93bebb961b212067ae",
+      "license_paths": [
+        "LICENSE"
+      ],
+      "tracked_count": 272,
+      "sources": [
+        {
+          "file": "pysindy/optimizers/sbr.py",
+          "sha256": "66349e4d561b6e05671417ad4f33a6edb9b107470f0523926f0b985b0266cf1a",
+          "symbols": [
+            {
+              "line": 18,
+              "name": "SBR",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 192,
+              "name": "_sample_reg_horseshoe",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "pysindy/optimizers/sr3.py",
+          "sha256": "fe966ba5cebc091a258ad7c88e5db5e5dc0cc2d3074353c80ab69c6e276d7cf1",
+          "symbols": [
+            {
+              "line": 15,
+              "name": "SR3",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 209,
+              "name": "SR3.calculate_l0_weight",
+              "kind": "method"
+            },
+            {
+              "line": 222,
+              "name": "SR3.enable_trimming",
+              "kind": "method"
+            },
+            {
+              "line": 235,
+              "name": "SR3.disable_trimming",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "pysindy/optimizers/ssr.py",
+          "sha256": "00378987957d5df9d8b5423b5b1cb75d58458892ff387901869c7ce81d848178",
+          "symbols": [
+            {
+              "line": 19,
+              "name": "SSR",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 261,
+              "name": "_ind_inflection",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "pysindy/optimizers/base.py",
+          "sha256": "acc22883ce84c1ba196f436c7fab60279e7d6e8a4e08b24e3831457694a5c712",
+          "symbols": [
+            {
+              "line": 28,
+              "name": "_rescale_data",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 41,
+              "name": "_preprocess_data",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 77,
+              "name": "_BaseOptimizer",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 91,
+              "name": "BaseOptimizer",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 276,
+              "name": "EnsembleOptimizer",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 442,
+              "name": "_drop_random_samples",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 456,
+              "name": "_normalize_features",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 82,
+              "name": "_BaseOptimizer.complexity",
+              "kind": "method"
+            },
+            {
+              "line": 87,
+              "name": "_BaseOptimizer.fit",
+              "kind": "method"
+            },
+            {
+              "line": 171,
+              "name": "BaseOptimizer.set_params",
+              "kind": "method"
+            },
+            {
+              "line": 186,
+              "name": "BaseOptimizer.fit",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "pysindy/optimizers/frols.py",
+          "sha256": "793f8ee69849ac160b64dfc3b1cdd9754f2e7ab306197c0318ccca7eedef73a0",
+          "symbols": [
+            {
+              "line": 9,
+              "name": "FROLS",
+              "kind": "ClassDef"
+            }
+          ]
+        },
+        {
+          "file": "pysindy/optimizers/miosr.py",
+          "sha256": "2c6fe049f925704295909c23aa0ce3699b2eb752a2ae32c5898a542d6ea71eff",
+          "symbols": [
+            {
+              "line": 17,
+              "name": "MIOSR",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 268,
+              "name": "MIOSR.complexity",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "pysindy/optimizers/stlsq.py",
+          "sha256": "ee684226f38d3242993ca75cf3abcef904a7d3d0f20541a94ece86b2984777bf",
+          "symbols": [
+            {
+              "line": 14,
+              "name": "STLSQ",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 310,
+              "name": "_remove_and_decrement",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 284,
+              "name": "STLSQ.complexity",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "pysindy/optimizers/__init__.py",
+          "sha256": "cead8f474c7da04b5905a8f9d9414826727877482b9cd8dda87784cabbb9acf8",
+          "symbols": []
+        },
+        {
+          "file": "pysindy/optimizers/sindy_pi.py",
+          "sha256": "2444273c0cf2119bb87e8c36c8d802bf5ac54fa04fc2958d804e80b6cfb5f631",
+          "symbols": [
+            {
+              "line": 10,
+              "name": "SINDyPI",
+              "kind": "ClassDef"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pyribs",
+      "path": "<USER_HOME>/projects/icarus-ml-research-sources/icaros-usc--pyribs",
+      "head": "29fa9b0b85b6623f8e0384c910c6f5bfffcdaac0",
+      "license_paths": [
+        "LICENSE"
+      ],
+      "tracked_count": 362,
+      "sources": [
+        {
+          "file": "ribs/emitters/rankers.py",
+          "sha256": "00a0f0ac67865da2f75e51f5827b8902438e5e27a16ae463bc696cc20988ada0",
+          "symbols": [
+            {
+              "line": 94,
+              "name": "RankerBase",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 136,
+              "name": "ImprovementRanker",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 168,
+              "name": "TwoStageImprovementRanker",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 212,
+              "name": "RandomDirectionRanker",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 276,
+              "name": "TwoStageRandomDirectionRanker",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 341,
+              "name": "ObjectiveRanker",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 365,
+              "name": "TwoStageObjectiveRanker",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 401,
+              "name": "NoveltyRanker",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 424,
+              "name": "DensityRanker",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 450,
+              "name": "NSLCRanker",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 614,
+              "name": "NSLCClassicRanker",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 647,
+              "name": "_fast_non_dominated_sort",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 700,
+              "name": "_crowding_distance",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 755,
+              "name": "_get_ranker",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 109,
+              "name": "RankerBase.rank",
+              "kind": "method"
+            },
+            {
+              "line": 126,
+              "name": "RankerBase.reset",
+              "kind": "method"
+            },
+            {
+              "line": 150,
+              "name": "ImprovementRanker.rank",
+              "kind": "method"
+            },
+            {
+              "line": 180,
+              "name": "TwoStageImprovementRanker.rank",
+              "kind": "method"
+            },
+            {
+              "line": 231,
+              "name": "RandomDirectionRanker.target_measure_dir",
+              "kind": "method"
+            },
+            {
+              "line": 236,
+              "name": "RandomDirectionRanker.target_measure_dir",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "ribs/emitters/__init__.py",
+          "sha256": "5a275bf694bcb7e0a5c839f68d4082f2bfd75202f8193c57584d75933718ae5e",
+          "symbols": []
+        },
+        {
+          "file": "ribs/schedulers/__init__.py",
+          "sha256": "3412690357fca0037676827fbc760dc45985a3a3618f17c2f0543a8ed6c146a7",
+          "symbols": []
+        },
+        {
+          "file": "ribs/archives/_cvt_archive.py",
+          "sha256": "54b27fb88fb398d951c73ea45199789e0a8cce2ff3ebb1aad85c7aa8a779f181",
+          "symbols": [
+            {
+              "line": 36,
+              "name": "k_means_centroids",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 137,
+              "name": "CVTArchive",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 434,
+              "name": "CVTArchive.field_list",
+              "kind": "method"
+            },
+            {
+              "line": 438,
+              "name": "CVTArchive.dtypes",
+              "kind": "method"
+            },
+            {
+              "line": 442,
+              "name": "CVTArchive.stats",
+              "kind": "method"
+            },
+            {
+              "line": 446,
+              "name": "CVTArchive.empty",
+              "kind": "method"
+            },
+            {
+              "line": 453,
+              "name": "CVTArchive.best_elite",
+              "kind": "method"
+            },
+            {
+              "line": 475,
+              "name": "CVTArchive.cells",
+              "kind": "method"
+            },
+            {
+              "line": 480,
+              "name": "CVTArchive.lower_bounds",
+              "kind": "method"
+            },
+            {
+              "line": 485,
+              "name": "CVTArchive.upper_bounds",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "ribs/schedulers/_scheduler.py",
+          "sha256": "2ce6dc02d930e2dc7d1c5fded9892ec4e2268870ffea549edde4f282f65dae96",
+          "symbols": [
+            {
+              "line": 18,
+              "name": "Scheduler",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 127,
+              "name": "Scheduler.archive",
+              "kind": "method"
+            },
+            {
+              "line": 132,
+              "name": "Scheduler.emitters",
+              "kind": "method"
+            },
+            {
+              "line": 137,
+              "name": "Scheduler.result_archive",
+              "kind": "method"
+            },
+            {
+              "line": 145,
+              "name": "Scheduler.ask_dqd",
+              "kind": "method"
+            },
+            {
+              "line": 180,
+              "name": "Scheduler.ask",
+              "kind": "method"
+            },
+            {
+              "line": 298,
+              "name": "Scheduler.tell_dqd",
+              "kind": "method"
+            },
+            {
+              "line": 361,
+              "name": "Scheduler.tell",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "ribs/archives/_grid_archive.py",
+          "sha256": "43b3132e37c2262b5677c37e31312c4842a8d44248d1060afd6aae0876577a47",
+          "symbols": [
+            {
+              "line": 32,
+              "name": "GridArchive",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 199,
+              "name": "GridArchive.field_list",
+              "kind": "method"
+            },
+            {
+              "line": 203,
+              "name": "GridArchive.dtypes",
+              "kind": "method"
+            },
+            {
+              "line": 207,
+              "name": "GridArchive.stats",
+              "kind": "method"
+            },
+            {
+              "line": 211,
+              "name": "GridArchive.empty",
+              "kind": "method"
+            },
+            {
+              "line": 218,
+              "name": "GridArchive.best_elite",
+              "kind": "method"
+            },
+            {
+              "line": 240,
+              "name": "GridArchive.dims",
+              "kind": "method"
+            },
+            {
+              "line": 245,
+              "name": "GridArchive.cells",
+              "kind": "method"
+            },
+            {
+              "line": 250,
+              "name": "GridArchive.lower_bounds",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "ribs/emitters/_emitter_base.py",
+          "sha256": "043dbf13c62ff72f42e0e8f68931df43266a15990936ed8107745ac1206e408c",
+          "symbols": [
+            {
+              "line": 17,
+              "name": "EmitterBase",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 126,
+              "name": "EmitterBase.archive",
+              "kind": "method"
+            },
+            {
+              "line": 131,
+              "name": "EmitterBase.solution_dim",
+              "kind": "method"
+            },
+            {
+              "line": 136,
+              "name": "EmitterBase.lower_bounds",
+              "kind": "method"
+            },
+            {
+              "line": 145,
+              "name": "EmitterBase.upper_bounds",
+              "kind": "method"
+            },
+            {
+              "line": 153,
+              "name": "EmitterBase.ask",
+              "kind": "method"
+            },
+            {
+              "line": 165,
+              "name": "EmitterBase.tell",
+              "kind": "method"
+            },
+            {
+              "line": 191,
+              "name": "EmitterBase.ask_dqd",
+              "kind": "method"
+            },
+            {
+              "line": 206,
+              "name": "EmitterBase.tell_dqd",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "ribs/emitters/_gaussian_emitter.py",
+          "sha256": "7b0900d57aab1a6929bac60792d0388cb29efae198a29e63524caa721868504f",
+          "symbols": [
+            {
+              "line": 17,
+              "name": "GaussianEmitter",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 112,
+              "name": "GaussianEmitter.x0",
+              "kind": "method"
+            },
+            {
+              "line": 121,
+              "name": "GaussianEmitter.initial_solutions",
+              "kind": "method"
+            },
+            {
+              "line": 126,
+              "name": "GaussianEmitter.sigma",
+              "kind": "method"
+            },
+            {
+              "line": 131,
+              "name": "GaussianEmitter.batch_size",
+              "kind": "method"
+            },
+            {
+              "line": 139,
+              "name": "GaussianEmitter.ask",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "ribs/emitters/_iso_line_emitter.py",
+          "sha256": "887dd993217539f8fb20c4fa94ca67e962a70dabd034e13137dae10721739e41",
+          "symbols": [
+            {
+              "line": 17,
+              "name": "IsoLineEmitter",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 124,
+              "name": "IsoLineEmitter.x0",
+              "kind": "method"
+            },
+            {
+              "line": 133,
+              "name": "IsoLineEmitter.initial_solutions",
+              "kind": "method"
+            },
+            {
+              "line": 138,
+              "name": "IsoLineEmitter.iso_sigma",
+              "kind": "method"
+            },
+            {
+              "line": 143,
+              "name": "IsoLineEmitter.line_sigma",
+              "kind": "method"
+            },
+            {
+              "line": 148,
+              "name": "IsoLineEmitter.batch_size",
+              "kind": "method"
+            },
+            {
+              "line": 156,
+              "name": "IsoLineEmitter.ask",
+              "kind": "method"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "river",
+      "path": "<SYNC_ROOT>/ICARUS-EXTERNAL-GITHUB/source/online-ml__river",
+      "head": "950984786649806bfdc446062fcc830235f8131b",
+      "license_paths": [
+        "LICENSE"
+      ],
+      "tracked_count": 799,
+      "sources": [
+        {
+          "file": "rust_src/adwin.rs",
+          "sha256": "58af2a4495e3808f52c7f96e2f03509dcddff27205d7ba006c66f6f7d5b5c083",
+          "symbols": [
+            {
+              "line": 76,
+              "declaration": "pub struct AdaptiveWindowing {"
+            },
+            {
+              "line": 100,
+              "declaration": "pub fn new("
+            },
+            {
+              "line": 128,
+              "declaration": "pub fn update(&mut self, value: f64) -> bool {"
+            },
+            {
+              "line": 133,
+              "declaration": "pub fn n_detections(&self) -> i32 {"
+            },
+            {
+              "line": 136,
+              "declaration": "pub fn width(&self) -> f64 {"
+            },
+            {
+              "line": 139,
+              "declaration": "pub fn total(&self) -> f64 {"
+            },
+            {
+              "line": 142,
+              "declaration": "pub fn variance(&self) -> f64 {"
+            },
+            {
+              "line": 145,
+              "declaration": "pub fn variance_in_window(&self) -> f64 {"
+            }
+          ]
+        },
+        {
+          "file": "river/drift/adwin.py",
+          "sha256": "1d8ebd615b3abe5b212b6c15c883d7480d3f9a7047b459e624b75480ef63b7c5",
+          "symbols": [
+            {
+              "line": 7,
+              "name": "ADWIN",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 94,
+              "name": "ADWIN.width",
+              "kind": "method"
+            },
+            {
+              "line": 99,
+              "name": "ADWIN.n_detections",
+              "kind": "method"
+            },
+            {
+              "line": 104,
+              "name": "ADWIN.variance",
+              "kind": "method"
+            },
+            {
+              "line": 109,
+              "name": "ADWIN.total",
+              "kind": "method"
+            },
+            {
+              "line": 114,
+              "name": "ADWIN.estimation",
+              "kind": "method"
+            },
+            {
+              "line": 120,
+              "name": "ADWIN.update",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "river/drift/page_hinkley.py",
+          "sha256": "110739baedfe48b7a0c7c25a205b26b88339771a5e9b39f02b51fbef1f45f0df",
+          "symbols": [
+            {
+              "line": 7,
+              "name": "PageHinkley",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 108,
+              "name": "PageHinkley.update",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "river/forest/adaptive_random_forest.py",
+          "sha256": "fba2bb6c79c40d680e0abf6124d9d375ef1a6c0d6bd57fe12e75d832297bae68",
+          "symbols": [
+            {
+              "line": 26,
+              "name": "BaseForest",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 251,
+              "name": "BaseTreeClassifier",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 341,
+              "name": "BaseTreeRegressor",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 448,
+              "name": "ARFClassifier",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 716,
+              "name": "ARFRegressor",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 105,
+              "name": "BaseForest.n_warnings_detected",
+              "kind": "method"
+            },
+            {
+              "line": 129,
+              "name": "BaseForest.n_drifts_detected",
+              "kind": "method"
+            },
+            {
+              "line": 153,
+              "name": "BaseForest.learn_one",
+              "kind": "method"
+            },
+            {
+              "line": 666,
+              "name": "ARFClassifier.predict_proba_one",
+              "kind": "method"
+            },
+            {
+              "line": 946,
+              "name": "ARFRegressor.predict_one",
+              "kind": "method"
+            },
+            {
+              "line": 1020,
+              "name": "ARFRegressor.valid_aggregation_method",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "river/evaluate/progressive_validation.py",
+          "sha256": "e49a11b25aa59b8506630b0dbc053d09a672132773762fed2f5d97c50b7269e2",
+          "symbols": [
+            {
+              "line": 15,
+              "name": "_progressive_validation",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 169,
+              "name": "iter_progressive_val_score",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 298,
+              "name": "progressive_val_score",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 485,
+              "name": "_build_clustering_closures",
+              "kind": "FunctionDef"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rd-agent",
+      "path": "<SYNC_ROOT>/ICARUS-EXTERNAL-GITHUB/source/microsoft__RD-Agent",
+      "head": "484776c211e4fbbeef03e0ec00d6bbee7362a4f4",
+      "license_paths": [
+        "LICENSE"
+      ],
+      "tracked_count": 920,
+      "sources": [
+        {
+          "file": "rdagent/utils/qlib.py",
+          "sha256": "a403445093a61044d9cc90ab425a1ca422c0ddc767b7fb480cb91bf9d837697e",
+          "symbols": [
+            {
+              "line": 199,
+              "name": "validate_qlib_features",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "rdagent/core/evaluation.py",
+          "sha256": "c3e4cf12a6d28923f38bb56cc7e01375e08c639c5dbf44c0304950d4285429b4",
+          "symbols": [
+            {
+              "line": 8,
+              "name": "Feedback",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 33,
+              "name": "EvaluableObj",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 42,
+              "name": "Evaluator",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 15,
+              "name": "Feedback.is_acceptable",
+              "kind": "method"
+            },
+            {
+              "line": 22,
+              "name": "Feedback.finished",
+              "kind": "method"
+            },
+            {
+              "line": 53,
+              "name": "Evaluator.evaluate",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "rdagent/core/evolving_agent.py",
+          "sha256": "2e8576f93d5296950158f0e8aaf7e5c9540abc73063b08b4b641ca1a54c64df2",
+          "symbols": [
+            {
+              "line": 26,
+              "name": "EvoAgent",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 43,
+              "name": "RAGEvaluator",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 78,
+              "name": "RAGEvoAgent",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 33,
+              "name": "EvoAgent.multistep_evolve",
+              "kind": "method"
+            },
+            {
+              "line": 46,
+              "name": "RAGEvaluator.evaluate_iter",
+              "kind": "method"
+            },
+            {
+              "line": 140,
+              "name": "RAGEvoAgent.multistep_evolve",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "rdagent/core/evolving_framework.py",
+          "sha256": "609c2503e052c5c42481ea4d74338f62feca3bb0d847be39912cf4b6c049b4ed",
+          "symbols": [
+            {
+              "line": 17,
+              "name": "Knowledge",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 21,
+              "name": "QueriedKnowledge",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 25,
+              "name": "EvolvingKnowledgeBase",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 33,
+              "name": "EvolvableSubjects",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 44,
+              "name": "EvoStep",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 61,
+              "name": "EvolvingStrategy",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 94,
+              "name": "IterEvaluator",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 141,
+              "name": "RAGStrategy",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 27,
+              "name": "EvolvingKnowledgeBase.query",
+              "kind": "method"
+            },
+            {
+              "line": 36,
+              "name": "EvolvableSubjects.clone",
+              "kind": "method"
+            },
+            {
+              "line": 66,
+              "name": "EvolvingStrategy.evolve_iter",
+              "kind": "method"
+            },
+            {
+              "line": 101,
+              "name": "IterEvaluator.evaluate",
+              "kind": "method"
+            },
+            {
+              "line": 115,
+              "name": "IterEvaluator.evaluate_iter",
+              "kind": "method"
+            },
+            {
+              "line": 148,
+              "name": "RAGStrategy.load_or_init_knowledge_base",
+              "kind": "method"
+            },
+            {
+              "line": 156,
+              "name": "RAGStrategy.query",
+              "kind": "method"
+            },
+            {
+              "line": 165,
+              "name": "RAGStrategy.generate_knowledge",
+              "kind": "method"
+            },
+            {
+              "line": 179,
+              "name": "RAGStrategy.dump_knowledge_base",
+              "kind": "method"
+            },
+            {
+              "line": 183,
+              "name": "RAGStrategy.load_dumped_knowledge_base",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "rdagent/app/qlib_rd_loop/conf.py",
+          "sha256": "d175a37c9efcffb880e364c9537bdc7df5ddb5dec1443067c61f95d5b9850e8a",
+          "symbols": [
+            {
+              "line": 8,
+              "name": "ModelBasePropSetting",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 52,
+              "name": "FactorBasePropSetting",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 96,
+              "name": "FactorFromReportPropSetting",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 112,
+              "name": "QuantBasePropSetting",
+              "kind": "ClassDef"
+            }
+          ]
+        },
+        {
+          "file": "rdagent/app/qlib_rd_loop/model.py",
+          "sha256": "530cf50161cb49e82fee348d22596034dc87210bc10955d113356537a3f7a89c",
+          "symbols": [
+            {
+              "line": 14,
+              "name": "ModelRDLoop",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 18,
+              "name": "main",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "rdagent/app/qlib_rd_loop/quant.py",
+          "sha256": "d87ed6b04e41d22138177471eadb606a4bb3404cf3dfeae528cbc8bb21acca82",
+          "symbols": [
+            {
+              "line": 30,
+              "name": "QuantRDLoop",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 131,
+              "name": "main",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 74,
+              "name": "QuantRDLoop.direct_exp_gen",
+              "kind": "method"
+            },
+            {
+              "line": 92,
+              "name": "QuantRDLoop.coding",
+              "kind": "method"
+            },
+            {
+              "line": 100,
+              "name": "QuantRDLoop.running",
+              "kind": "method"
+            },
+            {
+              "line": 111,
+              "name": "QuantRDLoop.feedback",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "rdagent/app/qlib_rd_loop/factor.py",
+          "sha256": "9494327fb4413c702daac357f3bb4e94dbd7aad97a2c97672a213c80922e3183",
+          "symbols": [
+            {
+              "line": 17,
+              "name": "FactorRDLoop",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 30,
+              "name": "main",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 21,
+              "name": "FactorRDLoop.running",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "rdagent/log/ui/qlib_report_figure.py",
+          "sha256": "ad242e021775770115d3f6afca4af23fa41d438ba77938574a6cd1e2225960c2",
+          "symbols": [
+            {
+              "line": 9,
+              "name": "BaseGraph",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 110,
+              "name": "SubplotsGraph",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 290,
+              "name": "_calculate_maximum",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 306,
+              "name": "_calculate_mdd",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 316,
+              "name": "_calculate_report_data",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 348,
+              "name": "report_figure",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 62,
+              "name": "BaseGraph.get_instance_with_graph_parameters",
+              "kind": "method"
+            },
+            {
+              "line": 99,
+              "name": "BaseGraph.figure",
+              "kind": "method"
+            },
+            {
+              "line": 286,
+              "name": "SubplotsGraph.figure",
+              "kind": "method"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d3rlpy",
+      "path": "<USER_HOME>/projects/icarus-ml-research-sources/takuseno--d3rlpy",
+      "head": "38c34b6f99fde82875e2ad81d1ba1f7a7da34137",
+      "license_paths": [
+        "LICENSE"
+      ],
+      "tracked_count": 339,
+      "sources": [
+        {
+          "file": "d3rlpy/ope/fqe.py",
+          "sha256": "391b264d5d0672e27b33efd5493bdc65601b3c2c915fe5774a91879415d7e9c0",
+          "symbols": [
+            {
+              "line": 26,
+              "name": "FQEConfig",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 86,
+              "name": "_FQEBase",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 119,
+              "name": "FQE",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 197,
+              "name": "DiscreteFQE",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 74,
+              "name": "FQEConfig.create",
+              "kind": "method"
+            },
+            {
+              "line": 82,
+              "name": "FQEConfig.get_type",
+              "kind": "method"
+            },
+            {
+              "line": 102,
+              "name": "_FQEBase.save_policy",
+              "kind": "method"
+            },
+            {
+              "line": 106,
+              "name": "_FQEBase.predict",
+              "kind": "method"
+            },
+            {
+              "line": 110,
+              "name": "_FQEBase.sample_action",
+              "kind": "method"
+            },
+            {
+              "line": 115,
+              "name": "_FQEBase.algo",
+              "kind": "method"
+            },
+            {
+              "line": 146,
+              "name": "FQE.inner_create_impl",
+              "kind": "method"
+            },
+            {
+              "line": 193,
+              "name": "FQE.get_action_type",
+              "kind": "method"
+            },
+            {
+              "line": 226,
+              "name": "DiscreteFQE.inner_create_impl",
+              "kind": "method"
+            },
+            {
+              "line": 271,
+              "name": "DiscreteFQE.get_action_type",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "d3rlpy/ope/__init__.py",
+          "sha256": "76608d31761698b9e36f9b28f2cb93c94c8787ec4fa3787725dba8b8756f28b6",
+          "symbols": []
+        },
+        {
+          "file": "reproductions/offline/cql.py",
+          "sha256": "53e354061ded5689eb78aa9a231128d3ea3caf8ae7ab046dcdd6373572fc0775",
+          "symbols": [
+            {
+              "line": 6,
+              "name": "main",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "reproductions/offline/iql.py",
+          "sha256": "3fe172e1abf92685f399ba5e0d14dc53c758c4674419175b19c84ed2840a0ca3",
+          "symbols": [
+            {
+              "line": 6,
+              "name": "main",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "d3rlpy/dataset/replay_buffer.py",
+          "sha256": "356526f70fba58055348d9020d7fd7f2ef7867c5670f46b9f273a17be7d57579",
+          "symbols": [
+            {
+              "line": 43,
+              "name": "ReplayBufferBase",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 274,
+              "name": "ReplayBuffer",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 559,
+              "name": "MixedReplayBuffer",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 747,
+              "name": "create_fifo_replay_buffer",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 792,
+              "name": "create_infinite_replay_buffer",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 47,
+              "name": "ReplayBufferBase.append",
+              "kind": "method"
+            },
+            {
+              "line": 63,
+              "name": "ReplayBufferBase.append_episode",
+              "kind": "method"
+            },
+            {
+              "line": 72,
+              "name": "ReplayBufferBase.clip_episode",
+              "kind": "method"
+            },
+            {
+              "line": 82,
+              "name": "ReplayBufferBase.sample_transition",
+              "kind": "method"
+            },
+            {
+              "line": 91,
+              "name": "ReplayBufferBase.sample_transition_batch",
+              "kind": "method"
+            },
+            {
+              "line": 103,
+              "name": "ReplayBufferBase.sample_trajectory",
+              "kind": "method"
+            },
+            {
+              "line": 115,
+              "name": "ReplayBufferBase.sample_trajectory_batch",
+              "kind": "method"
+            },
+            {
+              "line": 130,
+              "name": "ReplayBufferBase.dump",
+              "kind": "method"
+            },
+            {
+              "line": 456,
+              "name": "ReplayBuffer.append",
+              "kind": "method"
+            },
+            {
+              "line": 464,
+              "name": "ReplayBuffer.append_episode",
+              "kind": "method"
+            },
+            {
+              "line": 468,
+              "name": "ReplayBuffer.clip_episode",
+              "kind": "method"
+            },
+            {
+              "line": 471,
+              "name": "ReplayBuffer.sample_transition",
+              "kind": "method"
+            },
+            {
+              "line": 476,
+              "name": "ReplayBuffer.sample_transition_batch",
+              "kind": "method"
+            },
+            {
+              "line": 481,
+              "name": "ReplayBuffer.sample_trajectory",
+              "kind": "method"
+            },
+            {
+              "line": 486,
+              "name": "ReplayBuffer.sample_trajectory_batch",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "reproductions/offline/discrete_cql.py",
+          "sha256": "06badf64fa8749d91eeee7c84a3bc2278a7b3da74d9e3d7b2e9fe9e0405cbb16",
+          "symbols": [
+            {
+              "line": 6,
+              "name": "main",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "reproductions/finetuning/iql_finetune.py",
+          "sha256": "0e898741764139da706e818abcf82d1cf2ac02e4407c28cbd39dd6a2656d027f",
+          "symbols": [
+            {
+              "line": 8,
+              "name": "main",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "d3rlpy/ope/torch/__init__.py",
+          "sha256": "a6f3c0897ae1e9330df0c5fa5aac32056b18155c6b949509a6bc00f9c20b5ac1",
+          "symbols": []
+        },
+        {
+          "file": "d3rlpy/ope/torch/fqe_impl.py",
+          "sha256": "325a8c5b57b9297fcd244c1a49fc74a43d2934f0ba065ee6137f4908af14c5fc",
+          "symbols": [
+            {
+              "line": 24,
+              "name": "FQEBaseModules",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 30,
+              "name": "FQEBaseImpl",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 122,
+              "name": "FQEImpl",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 127,
+              "name": "DiscreteFQEImpl",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 73,
+              "name": "FQEBaseImpl.compute_loss",
+              "kind": "method"
+            },
+            {
+              "line": 87,
+              "name": "FQEBaseImpl.compute_target",
+              "kind": "method"
+            },
+            {
+              "line": 95,
+              "name": "FQEBaseImpl.update_target",
+              "kind": "method"
+            },
+            {
+              "line": 98,
+              "name": "FQEBaseImpl.inner_predict_best_action",
+              "kind": "method"
+            },
+            {
+              "line": 101,
+              "name": "FQEBaseImpl.inner_sample_action",
+              "kind": "method"
+            },
+            {
+              "line": 104,
+              "name": "FQEBaseImpl.inner_update",
+              "kind": "method"
+            },
+            {
+              "line": 131,
+              "name": "DiscreteFQEImpl.compute_loss",
+              "kind": "method"
+            },
+            {
+              "line": 145,
+              "name": "DiscreteFQEImpl.compute_target",
+              "kind": "method"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ts2vec",
+      "path": "<USER_HOME>/projects/icarus-ml-research-sources/yuezhihan--ts2vec",
+      "head": "b0088e14a99706c05451316dc6db8d3da9351163",
+      "license_paths": [
+        "LICENSE"
+      ],
+      "tracked_count": 26,
+      "sources": [
+        {
+          "file": "ts2vec.py",
+          "sha256": "95f1e75caaed5a1d2b14d121e0ee4074fa05aed6528afd15d6b30ca3ca7253f7",
+          "symbols": [
+            {
+              "line": 10,
+              "name": "TS2Vec",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 60,
+              "name": "TS2Vec.fit",
+              "kind": "method"
+            },
+            {
+              "line": 206,
+              "name": "TS2Vec.encode",
+              "kind": "method"
+            },
+            {
+              "line": 303,
+              "name": "TS2Vec.save",
+              "kind": "method"
+            },
+            {
+              "line": 311,
+              "name": "TS2Vec.load",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "models/losses.py",
+          "sha256": "6a42a13fac7f56059d2194fe3effb80bf8028653910d5b70eafea95bcba71696",
+          "symbols": [
+            {
+              "line": 5,
+              "name": "hierarchical_contrastive_loss",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 23,
+              "name": "instance_contrastive_loss",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 38,
+              "name": "temporal_contrastive_loss",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "models/encoder.py",
+          "sha256": "56cdb66e469a483339fe3908b443c33d0403e997276c357b802047fa46b871bb",
+          "symbols": [
+            {
+              "line": 7,
+              "name": "generate_continuous_mask",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 23,
+              "name": "generate_binomial_mask",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 26,
+              "name": "TSEncoder",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 41,
+              "name": "TSEncoder.forward",
+              "kind": "method"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "nexus",
+      "path": "<USER_HOME>/nexus-review-20260923/bundle-checkout",
+      "head": "6529eed7623e9a967bb053c9a78e4102d2c18d6d",
+      "license_paths": [],
+      "tracked_count": 142,
+      "sources": [
+        {
+          "file": "src/nexus/ledger.py",
+          "sha256": "03eb775670ac5fcc99cf6fa77276ff77f7f3335e09fdd09800b4ef537056b125",
+          "symbols": [
+            {
+              "line": 7,
+              "name": "_canonical",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 11,
+              "name": "MarketFabricLedger",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 30,
+              "name": "MarketFabricLedger.append",
+              "kind": "method"
+            },
+            {
+              "line": 38,
+              "name": "MarketFabricLedger.verify",
+              "kind": "method"
+            },
+            {
+              "line": 48,
+              "name": "MarketFabricLedger.tail",
+              "kind": "method"
+            },
+            {
+              "line": 52,
+              "name": "MarketFabricLedger.head_hash",
+              "kind": "method"
+            },
+            {
+              "line": 56,
+              "name": "MarketFabricLedger.count",
+              "kind": "method"
+            },
+            {
+              "line": 59,
+              "name": "MarketFabricLedger.close",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "src/nexus/replay.py",
+          "sha256": "de7a0c03a10003c8b306deb10d7f9d00c6a113712d53c7cfac72bff22cc57c1d",
+          "symbols": [
+            {
+              "line": 6,
+              "name": "ReplayAvailabilityError",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 11,
+              "name": "ReplayBus",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 13,
+              "name": "ReplayBus.merge",
+              "kind": "method"
+            },
+            {
+              "line": 36,
+              "name": "ReplayBus.merge_batches",
+              "kind": "method"
+            },
+            {
+              "line": 78,
+              "name": "ReplayBus.states",
+              "kind": "method"
+            },
+            {
+              "line": 84,
+              "name": "ReplayBus.states_batches",
+              "kind": "method"
+            },
+            {
+              "line": 92,
+              "name": "ReplayBus.instants",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "src/nexus/features.py",
+          "sha256": "596f1102a529f7864ec59009a60338fd6d920d1c02464e8c23c12813a2ff4209",
+          "symbols": [
+            {
+              "line": 5,
+              "name": "causal_bar_features",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "src/nexus/causality.py",
+          "sha256": "fde78b2de8df21712373e5c0db93cc43cc2b2b94a99c3ba350d134817281200e",
+          "symbols": [
+            {
+              "line": 14,
+              "name": "CausalityViolation",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 24,
+              "name": "CausalityAudit",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 39,
+              "name": "audit_event_availability",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 54,
+              "name": "audit_prefix_invariance",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 30,
+              "name": "CausalityAudit.to_dict",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "src/nexus/vector_replay.py",
+          "sha256": "dc28b91d23762e712a588296eff1f39c290807762925b4c674689c1d6e15d631",
+          "symbols": [
+            {
+              "line": 8,
+              "name": "VectorReplayBus",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 10,
+              "name": "VectorReplayBus.merge",
+              "kind": "method"
+            },
+            {
+              "line": 32,
+              "name": "VectorReplayBus.states",
+              "kind": "method"
+            }
+          ]
+        },
+        {
+          "file": "src/nexus/sibling_replay.py",
+          "sha256": "573f3ec9a81b7cd2327c122a4eda733440b660051849f5cc6367ed1446e1c8bd",
+          "symbols": [
+            {
+              "line": 28,
+              "name": "SiblingInstantBundle",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 44,
+              "name": "SiblingInstantRouter",
+              "kind": "ClassDef"
+            },
+            {
+              "line": 40,
+              "name": "SiblingInstantBundle.to_dict",
+              "kind": "method"
+            },
+            {
+              "line": 56,
+              "name": "SiblingInstantRouter.package_instant",
+              "kind": "method"
+            },
+            {
+              "line": 89,
+              "name": "SiblingInstantRouter.package",
+              "kind": "method"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "umbra",
+      "path": "<USER_HOME>/projects/umbra-native-compute-20261124",
+      "head": "36f7d592020378b8e7080f7156ea0f23fa0273c9",
+      "license_paths": [],
+      "tracked_count": 5401,
+      "sources": [
+        {
+          "file": "court.mjs",
+          "sha256": "7baa4026b3a5d2fa3dfe2c7f86fb2e6a15cc8f9f43db0598c26db1edb0238638",
+          "symbols": [
+            {
+              "line": 16,
+              "declaration": "export function runCourt(world,{replayLimit=5000}={}){"
+            }
+          ]
+        },
+        {
+          "file": "mcp/owner_once.mjs",
+          "sha256": "0b10e9919eccf360946fd7954c99103a3f40c116f4961d38c81c959d308f258d",
+          "symbols": [
+            {
+              "line": 9,
+              "declaration": "async function readRequest(){"
+            },
+            {
+              "line": 14,
+              "declaration": "function request(bridge,id,method,params){"
+            }
+          ]
+        },
+        {
+          "file": "mcp/checkpoint_eval.py",
+          "sha256": "82b91cd52abd836e1db8807cadaeb34a8b60cbed834d451815e862e14ae50dfe",
+          "symbols": [
+            {
+              "line": 8,
+              "name": "validate",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 17,
+              "name": "safe",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 23,
+              "name": "evaluate",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 44,
+              "name": "unique",
+              "kind": "FunctionDef"
+            },
+            {
+              "line": 51,
+              "name": "main",
+              "kind": "FunctionDef"
+            }
+          ]
+        },
+        {
+          "file": "mcp/polymind_router.mjs",
+          "sha256": "be5bd659ac05280a74416ec5538c181897f78390120459f8decd2c041e68fdc9",
+          "symbols": [
+            {
+              "line": 17,
+              "declaration": "function config(){"
+            },
+            {
+              "line": 23,
+              "declaration": "function invoke(c,script,args=[],input){"
+            },
+            {
+              "line": 30,
+              "declaration": "function modelsFrom(r){"
+            },
+            {
+              "line": 38,
+              "declaration": "export async function polymindList({ollama=availableAdapters,external:ext=external}={}){"
+            },
+            {
+              "line": 43,
+              "declaration": "function evidence(seed,steps){"
+            },
+            {
+              "line": 49,
+              "declaration": "export async function polymindRun(a,{ollama=availableAdapters,external:ext=external,infer:run=infer,runOllama=runModelAdapter}={}){"
+            },
+            {
+              "line": 60,
+              "declaration": "export async function polymindPlan(a,{list=polymindList,free=freemem,busy=ollamaBusy}={}){"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

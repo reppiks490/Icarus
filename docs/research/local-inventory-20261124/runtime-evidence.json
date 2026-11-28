@@ -1,0 +1,1052 @@
+{
+  "schema": "icarus.local_runtime_evidence.v1",
+  "observed_local_date": "2026-11-24",
+  "evidence_scope": "Sanitized observed metadata and process receipts, not current runtime or execution qualification. Historical process IDs are not persistent identities.",
+  "model_acquisition": {
+    "models": [
+      {
+        "model_id": "ibm-granite/granite-timeseries-ttm-r3",
+        "download_bytes": 5738481,
+        "revision": "ea17cfd2e3edcaea21eb8dcecd18bf88971482fa",
+        "license_metadata": "apache-2.0",
+        "verified_download": true,
+        "source_process": 33192,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "ibm-granite/granite-timeseries-tspulse-r1",
+        "download_bytes": 4387409,
+        "revision": "2e64fcdc2a06d3565dfadaf0065c0ab5055f80f2",
+        "license_metadata": "apache-2.0",
+        "verified_download": true,
+        "source_process": 33192,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "NeoQuasar/Kronos-mini",
+        "download_bytes": 16449842,
+        "revision": "f4e68697d9d5aed55cef5c96aabc3376bcad9f81",
+        "license_metadata": "mit",
+        "verified_download": true,
+        "source_process": 33192,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "NeoQuasar/Kronos-Tokenizer-2k",
+        "download_bytes": 15851538,
+        "revision": "26966d0035065a0cae0ebad7af8ece35bc1fb51c",
+        "license_metadata": "mit",
+        "verified_download": true,
+        "source_process": 33192,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "amazon/chronos-bolt-tiny",
+        "download_bytes": 34632131,
+        "revision": "a0e552de83495b5c28c14c71c374f3e33280b340",
+        "license_metadata": "apache-2.0",
+        "verified_download": true,
+        "source_process": 33192,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "amazon/chronos-bolt-mini",
+        "download_bytes": 84965875,
+        "revision": "251268337516a88e253628c43e1d26ec577b376b",
+        "license_metadata": "apache-2.0",
+        "verified_download": true,
+        "source_process": 33192,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "NeoQuasar/Kronos-small",
+        "download_bytes": 98989739,
+        "revision": "901c26c1332695a2a8f243eb2f37243a37bea320",
+        "license_metadata": "mit",
+        "verified_download": true,
+        "source_process": 33192,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "NeoQuasar/Kronos-Tokenizer-base",
+        "download_bytes": 15851532,
+        "revision": "0e0117387f39004a9016484a186a908917e22426",
+        "license_metadata": "mit",
+        "verified_download": true,
+        "source_process": 33192,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "autogluon/chronos-2-small",
+        "download_bytes": 111751377,
+        "revision": "ddec01313e50b6bc58ebaa92ede81bc24a3d9f9a",
+        "license_metadata": "apache-2.0",
+        "verified_download": true,
+        "source_process": 2200,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "ibm-granite/granite-timeseries-ttm-r2",
+        "download_bytes": 3260457,
+        "revision": "d6a79570cac0f33d526601cd3a0fc7c80a8f9a2f",
+        "license_metadata": "apache-2.0",
+        "verified_download": true,
+        "source_process": 2200,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "Datadog/Toto-2.0-4m",
+        "download_bytes": 16590747,
+        "revision": "8306a9801cf98c0f5ffe4b2dcc8f496e616d84d9",
+        "license_metadata": "apache-2.0",
+        "verified_download": true,
+        "source_process": 2200,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "AutonLab/MOMENT-1-small",
+        "download_bytes": 151622580,
+        "revision": "411e288267f82cce86296dbe4d6c8bc533cc162f",
+        "license_metadata": "mit",
+        "verified_download": true,
+        "source_process": 2200,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "amazon/chronos-bolt-small",
+        "download_bytes": 190898607,
+        "revision": "772f3d25d38aec6d914c8949dab4462e2d46f5d8",
+        "license_metadata": "apache-2.0",
+        "verified_download": true,
+        "source_process": 2200,
+        "inference_qualified": false,
+        "trading_authority": false
+      },
+      {
+        "model_id": "amazon/chronos-2",
+        "download_bytes": 477939312,
+        "revision": "29ec3766d36d6f73f0696f85560a422f50e8498c",
+        "license_metadata": "apache-2.0",
+        "verified_download": true,
+        "source_process": 2200,
+        "inference_qualified": false,
+        "trading_authority": false
+      }
+    ],
+    "verified_count": 14,
+    "verified_bytes": 1228929627,
+    "policy_skips": [
+      "SKIP policy ProsusAI/finbert license=cc-by-nc-sa-4.0"
+    ],
+    "pending_ollama": [
+      "gemma3:12b",
+      "llama3.2:3b",
+      "mistral-nemo:12b",
+      "qwen2.5-coder:3b",
+      "smollm2:1.7b",
+      "qwen3-embedding:0.6b"
+    ],
+    "pending_note": "Owner-directed pause; do not resume automatically. No deletion. Cancellation of partial API pulls was not independently verified."
+  },
+  "installation": {
+    "status": "Process exited 0; pip check reported a dependency incompatibility; not qualified",
+    "receipt": [
+      "GROUP_END numerical-foundation free=13903130624",
+      "GROUP_END financial-prediction free=13260328960",
+      "GROUP_END mathematical-evolution free=12381073408",
+      "GROUP_END temporal-anomaly free=12165398528",
+      "GROUP_END cpu-neural free=11563896832",
+      "ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.",
+      "GROUP_END forecast-runtime free=11339706368",
+      "GROUP_END rl-research free=11328966656",
+      "gplearn 0.4.3 has requirement scikit-learn>=1.8.0, but you have scikit-learn 1.7.2.",
+      "FINAL_FREE=11328151552",
+      "✅ Process completed with exit code 0 (runtime: 1359.54s)"
+    ],
+    "blocker": "gplearn 0.4.3 requires scikit-learn>=1.8.0; observed 1.7.2 after installer completed. Isolate or resolve constraint before qualification.",
+    "path": "<USER_HOME>/projects/icarus-ml-runtime"
+  },
+  "source_acquisition": {
+    "receipt": [
+      "CLONED shiyu-coder/Kronos sha=67b630e67f6a18c9e9be918d9b4337c960db1e9a free=14894460928",
+      "CLONED dynamicslab/pysindy sha=c4421fcec275c8f4cc5c1e93bebb961b212067ae free=13261246464",
+      "CLONED icaros-usc/pyribs sha=29fa9b0b85b6623f8e0384c910c6f5bfffcdaac0 free=13019344896",
+      "CLONED yuezhihan/ts2vec sha=b0088e14a99706c05451316dc6db8d3da9351163 free=13006999552",
+      "CLONED abides-sim/abides sha=c4bf157678928934417aba6073eb0651aeaf6d15 free=12946714624",
+      "CLONED thuml/Time-Series-Library sha=4e938a1767106324dd753b2a44832bf870a0252e free=12931805184",
+      "CLONED microsoft/qlib sha=54355232463878d2eebb91fe0ee5fa7fa1f5976c free=12906569728",
+      "CLONED Nixtla/neuralforecast sha=24dd828c12d966ba5d41566d91735c996e488db7 free=12808220672",
+      "CLONED danijar/dreamerv3 sha=e01491fad6434b2245a3b8ca201dd7faedcc458c free=12776267776",
+      "CLONED nicklashansen/tdmpc2 sha=332f19e4aba4bffe2dc736f45ea7f7bdc585903a free=12745261056",
+      "CLONED takuseno/d3rlpy sha=38c34b6f99fde82875e2ad81d1ba1f7a7da34137 free=12606074880",
+      "CLONED aeon-toolkit/aeon sha=810325b558c8459c538fd162ef6bae3abacf7d7d free=12474003456",
+      "CLONED LAMDA-Tabular/TALENT sha=39b54024902955e51063a34bce17d514cd68ff42 free=12238229504",
+      "CLONED KangOxford/jax-lob sha=d1f596610b04a09941c7a1b609e5bab541ecfc98 free=12233351168",
+      "DONE free=12233154560",
+      "✅ Process completed with exit code 0 (runtime: 630.53s)"
+    ],
+    "note": "Git checkout presence and HEADs in repository-metadata.json; no source runtime qualification"
+  },
+  "system_observations": [
+    {
+      "path": "C:\\Windows",
+      "counts": {
+        "directories": 24092,
+        "files": 908,
+        ".dll": 711,
+        ".exe": 122,
+        ".msc": 9,
+        ".log": 8,
+        ".cpl": 7,
+        ".rs": 7,
+        ".png": 6,
+        ".dat": 4,
+        ".xml": 3,
+        ".ini": 3,
+        ".json": 3,
+        ".uce": 3,
+        ".cpx": 2
+      },
+      "logical_bytes": 404040081,
+      "recent_modified_files": {
+        "2026-11": 381,
+        "2026-09": 283,
+        "2026-10": 29,
+        "2026-07": 3
+      },
+      "errors": 2,
+      "bounded": true,
+      "depth": 1
+    },
+    {
+      "path": "C:\\Program Files",
+      "counts": {
+        "files": 559,
+        ".dll": 369,
+        "directories": 158,
+        ".exe": 94,
+        ".html": 20,
+        ".txt": 10,
+        ".bat": 9,
+        ".mof": 6,
+        ".cepack": 6,
+        ".xml": 5,
+        ".dat": 4,
+        "(none)": 4,
+        ".sig": 4,
+        ".pak": 3,
+        ".rdp": 2
+      },
+      "logical_bytes": 1839544154,
+      "recent_modified_files": {
+        "2026-09": 58,
+        "2026-11": 12,
+        "2026-08": 5,
+        "2026-10": 5
+      },
+      "errors": 1,
+      "bounded": false,
+      "depth": 1
+    },
+    {
+      "path": "C:\\Program Files (x86)",
+      "counts": {
+        "files": 102,
+        "directories": 82,
+        ".dll": 59,
+        ".exe": 25,
+        ".json": 5,
+        ".vdf": 2,
+        ".old": 2,
+        ".html": 2,
+        ".ini": 1,
+        ".crypt": 1,
+        ".md5": 1,
+        ".signatures": 1,
+        ".css": 1,
+        ".doc": 1,
+        ".propdesc": 1
+      },
+      "logical_bytes": 267830327,
+      "recent_modified_files": {
+        "2026-09": 27,
+        "2026-11": 30,
+        "2026-10": 8
+      },
+      "errors": 0,
+      "bounded": false,
+      "depth": 1
+    },
+    {
+      "path": "C:\\ProgramData",
+      "counts": {
+        "directories": 146,
+        "files": 24,
+        ".txt": 9,
+        ".bin": 6,
+        "reparse_or_placeholder": 5,
+        ".swidtag": 2,
+        ".ini": 2,
+        ".err": 1,
+        "(none)": 1,
+        ".dat": 1,
+        ".union1": 1,
+        ".dll": 1
+      },
+      "logical_bytes": 2099005,
+      "recent_modified_files": {
+        "2026-11": 4,
+        "2026-07": 1,
+        "2026-10": 1,
+        "2026-09": 2,
+        "2026-08": 1
+      },
+      "errors": 3,
+      "bounded": false,
+      "depth": 1
+    },
+    {
+      "path": "<USER_HOME>\\AppData\\Local",
+      "counts": {
+        "directories": 1485,
+        "files": 1289,
+        ".log": 650,
+        ".tmp": 85,
+        ".json": 80,
+        ".txt": 65,
+        ".png": 59,
+        "(none)": 55,
+        ".exe": 13,
+        ".xml": 13,
+        ".ini": 10,
+        ".dmp": 10,
+        ".zip": 7,
+        ".lock": 6,
+        ".db": 5
+      },
+      "logical_bytes": 1766482397,
+      "recent_modified_files": {
+        "2026-11": 1022,
+        "2026-08": 22,
+        "2026-10": 25,
+        "2026-07": 5,
+        "2026-09": 20
+      },
+      "errors": 0,
+      "bounded": false,
+      "depth": 1
+    },
+    {
+      "path": "<USER_HOME>\\AppData\\Roaming",
+      "counts": {
+        "directories": 413,
+        "files": 314,
+        "(none)": 100,
+        ".json": 54,
+        ".dll": 53,
+        ".exe": 20,
+        ".cnf": 14,
+        ".ico": 11,
+        ".cmd": 8,
+        ".ps1": 8,
+        ".xml": 8,
+        ".dat": 7,
+        ".txt": 5,
+        ".ini": 4,
+        ".log": 4
+      },
+      "logical_bytes": 435384113,
+      "recent_modified_files": {
+        "2026-11": 30,
+        "2026-08": 34,
+        "2026-10": 50,
+        "2026-09": 61,
+        "2026-07": 1
+      },
+      "errors": 0,
+      "bounded": false,
+      "depth": 1
+    },
+    {
+      "path": "<USER_HOME>\\AppData\\Local\\pip\\Cache",
+      "counts": {
+        "directories": 3736,
+        "files": 29,
+        "(none)": 29
+      },
+      "logical_bytes": 4076,
+      "recent_modified_files": {
+        "2026-10": 14,
+        "2026-11": 8,
+        "2026-09": 5
+      },
+      "errors": 0,
+      "bounded": false,
+      "depth": 4
+    },
+    {
+      "path": "<USER_HOME>\\.cache\\huggingface",
+      "counts": {
+        "files": 7,
+        "directories": 7,
+        "(none)": 3,
+        ".log": 3,
+        ".json": 1
+      },
+      "logical_bytes": 3291109,
+      "recent_modified_files": {
+        "2026-11": 7
+      },
+      "errors": 0,
+      "bounded": false,
+      "depth": 4
+    },
+    {
+      "path": "<USER_HOME>\\.ollama\\models",
+      "counts": {
+        "files": 143,
+        "(none)": 121,
+        "directories": 32,
+        ".json": 14,
+        ".5b": 4,
+        ".6b": 2,
+        ".7b": 2
+      },
+      "logical_bytes": 34644252308,
+      "recent_modified_files": {
+        "2026-11": 143
+      },
+      "errors": 0,
+      "bounded": false,
+      "depth": 4
+    },
+    {
+      "path": "<USER_HOME>\\AppData\\Local\\npm-cache",
+      "counts": {
+        "directories": 10007,
+        "files": 9067,
+        "(none)": 4487,
+        ".js": 1719,
+        ".md": 1094,
+        ".json": 926,
+        ".ts": 437,
+        ".cmd": 70,
+        ".ps1": 70,
+        ".map": 52,
+        ".yml": 47,
+        ".mjs": 39,
+        ".txt": 35,
+        ".markdown": 15,
+        ".log": 11
+      },
+      "logical_bytes": 82537778,
+      "recent_modified_files": {
+        "2026-11": 1437,
+        "2026-09": 4413,
+        "2026-10": 2351
+      },
+      "errors": 0,
+      "bounded": false,
+      "depth": 4
+    },
+    {
+      "path": "<USER_HOME>\\AppData\\Local\\uv\\cache",
+      "counts": {
+        "files": 11562,
+        ".py": 7334,
+        "directories": 2206,
+        "(none)": 883,
+        ".pyi": 523,
+        ".lock": 479,
+        ".pyd": 317,
+        ".msgpack": 307,
+        ".txt": 208,
+        ".http": 191,
+        ".rkyv": 174,
+        ".gz": 150,
+        ".typed": 148,
+        ".lib": 145,
+        ".a": 83
+      },
+      "logical_bytes": 457276113,
+      "recent_modified_files": {
+        "2026-11": 1611,
+        "2026-10": 696,
+        "2026-08": 3838,
+        "2026-09": 2301
+      },
+      "errors": 0,
+      "bounded": false,
+      "depth": 4
+    },
+    {
+      "path": "<USER_HOME>\\AppData\\Local\\Temp",
+      "counts": {
+        "files": 4519,
+        ".py": 1978,
+        "directories": 1014,
+        ".log": 754,
+        ".json": 519,
+        ".npz": 421,
+        "(none)": 257,
+        ".metadata": 216,
+        ".whl": 215,
+        ".tmp": 85,
+        ".ps1": 15,
+        ".xml": 11,
+        ".txt": 8,
+        ".png": 7,
+        ".rds": 7
+      },
+      "logical_bytes": 745784384,
+      "recent_modified_files": {
+        "2026-11": 4519
+      },
+      "errors": 0,
+      "bounded": false,
+      "depth": 1
+    },
+    {
+      "path": "<USER_HOME>\\AppData\\Local\\Packages",
+      "counts": {
+        "directories": 1078
+      },
+      "logical_bytes": 0,
+      "recent_modified_files": {},
+      "errors": 0,
+      "bounded": false,
+      "depth": 1
+    },
+    {
+      "security_location": "Windows protected storage",
+      "exists": true,
+      "is_directory": true,
+      "metadata_accessible": true,
+      "modified": "2026-06-15T09:31:25.430676"
+    },
+    {
+      "security_location": "Windows credential storage",
+      "exists": true,
+      "is_directory": true,
+      "metadata_accessible": true,
+      "modified": "2026-10-26T14:42:34.532463"
+    },
+    {
+      "security_location": "user credential storage",
+      "exists": true,
+      "is_directory": true,
+      "metadata_accessible": true,
+      "modified": "2026-11-04T23:14:44.703891"
+    },
+    {
+      "security_location": "SSH configuration directory",
+      "exists": false
+    },
+    {
+      "security_location": "cloud SDK configuration directory",
+      "exists": true,
+      "is_directory": true,
+      "metadata_accessible": true,
+      "modified": "2026-10-26T18:59:57.112732"
+    },
+    {
+      "security_location": "Git credential file",
+      "exists": false
+    },
+    {
+      "protected_area": "C:\\System Volume Information",
+      "directory_accessible": false,
+      "error_type": "PermissionError"
+    },
+    {
+      "protected_area": "C:\\Windows\\System32\\config",
+      "directory_accessible": false,
+      "error_type": "PermissionError"
+    },
+    {
+      "protected_area": "C:\\Recovery",
+      "directory_accessible": false,
+      "error_type": "PermissionError"
+    },
+    {
+      "installed": "Git",
+      "version": "2.54.0",
+      "install_date": "20260506"
+    },
+    {
+      "installed": "PostgreSQL 18 ",
+      "version": "18.3-2",
+      "install_date": "20260407"
+    },
+    {
+      "installed": "Unity Hub 3.16.4",
+      "version": "3.16.4",
+      "install_date": null
+    },
+    {
+      "installed": "Node.js",
+      "version": "26.13.0",
+      "install_date": "20261109"
+    },
+    {
+      "installed": "Microsoft .NET Host FX Resolver - 8.0.31 (x64)",
+      "version": "64.124.58447",
+      "install_date": "20260930"
+    },
+    {
+      "installed": "Java(TM) SE Development Kit 11.0.12 (64-bit)",
+      "version": "11.0.12.0",
+      "install_date": "20260220"
+    },
+    {
+      "installed": "Microsoft .NET Host - 10.0.12 (x64)",
+      "version": "80.48.58476",
+      "install_date": "20261006"
+    },
+    {
+      "installed": "Python 3.11.9 pip Bootstrap (64-bit)",
+      "version": "3.11.9150.0",
+      "install_date": "20261109"
+    },
+    {
+      "installed": "Git LFS version 3.8.0",
+      "version": "3.8.0",
+      "install_date": "20261026"
+    },
+    {
+      "installed": "Python 3.11.9 Utility Scripts (64-bit)",
+      "version": "3.11.9150.0",
+      "install_date": "20261109"
+    },
+    {
+      "installed": "Python 3.11.9 Documentation (64-bit)",
+      "version": "3.11.9150.0",
+      "install_date": "20261109"
+    },
+    {
+      "installed": "Microsoft .NET Host - 8.0.31 (x64)",
+      "version": "64.124.58447",
+      "install_date": "20260930"
+    },
+    {
+      "installed": "Python 3.11.9 Tcl/Tk Support (64-bit)",
+      "version": "3.11.9150.0",
+      "install_date": "20261109"
+    },
+    {
+      "installed": "Microsoft Visual Studio Installer",
+      "version": "4.12.34.54489",
+      "install_date": "20260506"
+    },
+    {
+      "installed": "Microsoft .NET Runtime - 10.0.12 (x64)",
+      "version": "80.48.58476",
+      "install_date": "20261006"
+    },
+    {
+      "installed": "Python 3.11.9 Standard Library (64-bit)",
+      "version": "3.11.9150.0",
+      "install_date": "20261109"
+    },
+    {
+      "installed": "Python 3.11.9 Test Suite (64-bit)",
+      "version": "3.11.9150.0",
+      "install_date": "20261109"
+    },
+    {
+      "installed": "Python 3.11.9 Core Interpreter (64-bit)",
+      "version": "3.11.9150.0",
+      "install_date": "20261109"
+    },
+    {
+      "installed": "Windows Subsystem for Linux",
+      "version": "2.6.3.0",
+      "install_date": "20260407"
+    },
+    {
+      "installed": "Python 3.11.9 Executables (64-bit)",
+      "version": "3.11.9150.0",
+      "install_date": "20261109"
+    },
+    {
+      "installed": "Python 3.11.9 Add to Path (64-bit)",
+      "version": "3.11.9150.0",
+      "install_date": "20261109"
+    },
+    {
+      "installed": "Python 3.11.9 Development Libraries (64-bit)",
+      "version": "3.11.9150.0",
+      "install_date": "20261109"
+    },
+    {
+      "installed": "Microsoft .NET Runtime - 8.0.31 (x64)",
+      "version": "64.124.58447",
+      "install_date": "20260930"
+    },
+    {
+      "installed": "GitHub CLI",
+      "version": "2.103.2",
+      "install_date": "20261026"
+    },
+    {
+      "installed": "Microsoft .NET Host FX Resolver - 10.0.12 (x64)",
+      "version": "80.48.58476",
+      "install_date": "20261006"
+    },
+    {
+      "installed": "Visual Studio Build Tools 2026",
+      "version": "18.12.0",
+      "install_date": "20261113"
+    },
+    {
+      "installed": "Python Launcher",
+      "version": "3.11.9150.0",
+      "install_date": "20261109"
+    },
+    {
+      "installed": "Docker Desktop",
+      "version": "4.92.0",
+      "install_date": null
+    },
+    {
+      "installed": "Godot Engine",
+      "version": "4.7.2",
+      "install_date": "20261102"
+    },
+    {
+      "installed": "Python 3.10.11",
+      "version": "3.10-64",
+      "install_date": "20261027"
+    },
+    {
+      "installed": "Python 3.11.9",
+      "version": "3.11-64",
+      "install_date": "20261027"
+    },
+    {
+      "installed": "Python 3.12.10",
+      "version": "3.12-64",
+      "install_date": "20261027"
+    },
+    {
+      "installed": "Python 3.13.17",
+      "version": "3.13-64",
+      "install_date": "20261027"
+    },
+    {
+      "installed": "Python 3.11.9 (64-bit)",
+      "version": "3.11.9150.0",
+      "install_date": null
+    },
+    {
+      "installed": "Ollama version 0.40.17",
+      "version": "0.40.17",
+      "install_date": "20261121"
+    },
+    {
+      "installed": "Microsoft Visual Studio Code (User)",
+      "version": "1.135.0",
+      "install_date": "20260831"
+    }
+  ],
+  "environment_observations": [
+    {
+      "env": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\venvs\\hft",
+      "metadata_distributions": 47,
+      "relevant": [
+        "hftbacktest-2.4.4",
+        "numpy-2.2.6",
+        "pandas-3.1.0",
+        "polars-2.1.0",
+        "polars_runtime_32-2.1.0"
+      ],
+      "interpreter_exists": true
+    },
+    {
+      "env": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\venvs\\nautilus",
+      "metadata_distributions": 2,
+      "relevant": [
+        "nautilus_trader-2.0.0rc7"
+      ],
+      "interpreter_exists": true
+    },
+    {
+      "env": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\venvs\\quant",
+      "metadata_distributions": 194,
+      "relevant": [
+        "cvxpy-1.9.3",
+        "lightgbm-4.7.0",
+        "mlflow-3.17.2",
+        "mlflow_skinny-3.17.2",
+        "mlflow_tracing-3.17.2",
+        "numpy-2.4.6",
+        "pandas-3.1.0",
+        "pyarrow-25.0.1",
+        "pydantic-2.14.1",
+        "pydantic_core-2.50.1",
+        "pydantic_settings-2.16.1",
+        "pyqlib-0.9.7",
+        "scikit_learn-1.9.1",
+        "scipy-1.17.1"
+      ],
+      "interpreter_exists": true
+    },
+    {
+      "env": "<SYNC_ROOT>\\ICARUS-EXTERNAL-GITHUB\\venvs\\research",
+      "metadata_distributions": 220,
+      "relevant": [
+        "duckdb-2.0.0",
+        "mlflow-3.17.2",
+        "mlflow_skinny-3.17.2",
+        "mlflow_tracing-3.17.2",
+        "numpy-2.4.6",
+        "optuna-5.0.0",
+        "pandas-2.3.3",
+        "polars-2.1.0",
+        "polars_runtime_32-2.1.0",
+        "pyarrow-25.0.1",
+        "pydantic-2.14.1",
+        "pydantic_core-2.50.1",
+        "pydantic_settings-2.16.1",
+        "river-0.26.1",
+        "ruptures-1.1.10",
+        "scikit_learn-1.9.1",
+        "scipy-1.17.1",
+        "statsmodels-0.15.0"
+      ],
+      "interpreter_exists": true
+    },
+    {
+      "env": "<USER_HOME>\\projects\\icarus-ml-runtime",
+      "metadata_distributions": 105,
+      "relevant": [
+        "aeon-1.6.0",
+        "arch-9.0.0",
+        "cma-4.6.0",
+        "deap-1.4.4",
+        "hmmlearn-0.3.3",
+        "huggingface_hub-2.4.0",
+        "lightgbm-4.7.0",
+        "neat_python-2.0.0",
+        "numpy-2.3.5",
+        "numpy_groupies-0.16.8",
+        "optuna-5.1.0",
+        "pandas-2.3.3",
+        "pyarrow-26.0.1",
+        "pydantic_core-2.50.5",
+        "pymoo-0.6.2",
+        "pyod-3.6.9",
+        "pysindy-2.1.0",
+        "ribs-0.12.2",
+        "river-0.27.0",
+        "ruptures-1.1.10",
+        "safetensors-0.8.0",
+        "scikit_learn-1.9.1",
+        "scipy-1.17.1",
+        "statsmodels-0.15.0",
+        "sympy-1.14.0",
+        "xgboost_cpu-3.2.0"
+      ],
+      "interpreter_exists": true
+    },
+    {
+      "env": "<USER_HOME>\\projects\\umbra-polymind-runtime",
+      "metadata_distributions": 24,
+      "relevant": [
+        "huggingface_hub-2.4.0",
+        "numpy-2.4.6",
+        "onnxruntime-1.32.0",
+        "tokenizers-0.23.3"
+      ],
+      "interpreter_exists": true
+    },
+    {
+      "env": "<USER_HOME>\\projects\\MYRIAD-v32-local-pilot-20261124\\.training-venv",
+      "metadata_distributions": 11,
+      "relevant": [
+        "sympy-1.14.0",
+        "torch-2.15.0+cpu"
+      ],
+      "interpreter_exists": true
+    },
+    {
+      "cache": "<USER_HOME>\\AppData\\Local\\Temp",
+      "artifact_counts": {
+        ".npz": 421,
+        ".sqlite3": 15,
+        ".whl": 215
+      },
+      "artifact_bytes": {
+        ".npz": 132496,
+        ".sqlite3": 307200,
+        ".whl": 408738235
+      },
+      "largest": [
+        [
+          114519675,
+          "torch-2.11.0-cp311-cp311-win_amd64.whl"
+        ],
+        [
+          36658278,
+          "scipy-1.18.1-cp312-cp312-win_amd64.whl"
+        ],
+        [
+          29078866,
+          "pyarrow-26.0.1-cp312-cp312-win_amd64.whl"
+        ],
+        [
+          29034160,
+          "pyarrow-26.0.1-cp311-cp311-win_amd64.whl"
+        ],
+        [
+          17334944,
+          "jupyterlab-4.6.6-py3-none-any.whl"
+        ],
+        [
+          13556588,
+          "transformers-5.24.1-py3-none-any.whl"
+        ],
+        [
+          12859489,
+          "scs-3.3.2-cp312-cp312-win_amd64.whl"
+        ],
+        [
+          12614865,
+          "mlflow-3.18.0-py3-none-any.whl"
+        ],
+        [
+          10751076,
+          "pandas-3.1.1-cp312-cp312-win_amd64.whl"
+        ],
+        [
+          10196845,
+          "babel-2.18.0-py3-none-any.whl"
+        ]
+      ],
+      "bounded": false,
+      "errors": 0
+    },
+    {
+      "cache": "<USER_HOME>\\AppData\\Local\\uv\\cache",
+      "artifact_counts": {
+        ".whl": 9,
+        ".npz": 27,
+        ".npy": 34,
+        ".pth": 4
+      },
+      "artifact_bytes": {
+        ".whl": 6577937,
+        ".npz": 3833573,
+        ".npy": 85427,
+        ".pth": 442
+      },
+      "largest": [
+        [
+          1841526,
+          "pip-25.0.1-py3-none-any.whl"
+        ],
+        [
+          1787723,
+          "pip-26.0.1-py3-none-any.whl"
+        ],
+        [
+          1270643,
+          "boost.npz"
+        ],
+        [
+          1251633,
+          "setuptools-75.3.4-py3-none-any.whl"
+        ],
+        [
+          1003468,
+          "setuptools-82.0.0-py3-none-any.whl"
+        ]
+      ],
+      "bounded": false,
+      "errors": 0
+    },
+    {
+      "cache": "<USER_HOME>\\AppData\\Local\\pip\\Cache",
+      "artifact_counts": {
+        ".whl": 2
+      },
+      "artifact_bytes": {
+        ".whl": 972353
+      },
+      "largest": [],
+      "bounded": false,
+      "errors": 0
+    },
+    {
+      "cache": "<USER_HOME>\\AppData\\Local\\Docker",
+      "artifact_counts": {
+        ".vhdx": 2
+      },
+      "artifact_bytes": {
+        ".vhdx": 6788481024
+      },
+      "largest": [
+        [
+          6687817728,
+          "docker_data.vhdx"
+        ],
+        [
+          100663296,
+          "ext4.vhdx"
+        ]
+      ],
+      "bounded": false,
+      "errors": 0
+    },
+    {
+      "cache": "<USER_HOME>\\AppData\\Local\\Packages",
+      "artifact_counts": {
+        ".sqlite3": 1
+      },
+      "artifact_bytes": {
+        ".sqlite3": 0
+      },
+      "largest": [],
+      "bounded": false,
+      "errors": 0
+    },
+    {
+      "cache": "<USER_HOME>\\AppData\\Local\\wsl",
+      "artifact_counts": {
+        ".vhdx": 1
+      },
+      "artifact_bytes": {
+        ".vhdx": 15294529536
+      },
+      "largest": [
+        [
+          15294529536,
+          "ext4.vhdx"
+        ]
+      ],
+      "bounded": false,
+      "errors": 0
+    },
+    {
+      "wsl_registered_distribution": "Ubuntu",
+      "wsl_version": 2
+    },
+    {
+      "wsl_registered_distribution": "docker-desktop",
+      "wsl_version": 2
+    }
+  ],
+  "limits": "System and cache depth/entry limits, no protected contents or credential values read. WSL virtual disks not mounted. Counts are logical sizes; no physical allocation or whole-device history established."
+}
