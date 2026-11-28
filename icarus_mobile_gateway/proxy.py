@@ -42,6 +42,7 @@ class UpstreamClient:
         "/v1/system/audit": ("/api/system/audit", False),
         "/v1/brain": ("/api/brain", True),
         "/v1/apex": ("/api/apex", True),
+        "/v1/omnigenesis": ("/api/omnigenesis", True),
         "/v1/learning/health": ("/api/learning/health", True),
         "/v1/engine-control": ("/api/engine-control", True),
         "/v1/integrity": ("/api/integrity", True),

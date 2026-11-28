@@ -1,0 +1,75 @@
+name: OMNIGENESIS research-only verification
+
+on:
+  pull_request:
+    paths:
+      - 'icarus_engine/omnigenesis/**'
+      - 'tests_engine/test_omnigenesis*.py'
+      - 'icarus_engine/brain.py'
+      - 'icarus_engine/server.py'
+      - 'icarus_engine/dashboard.html'
+      - 'icarus_engine/omnigenesis-ui.*'
+      - 'icarus_mobile_gateway/proxy.py'
+      - 'mobile/App.tsx'
+      - 'mobile/src/OmnigenesisMobile.tsx'
+      - 'mobile/src/api.ts'
+      - '.github/workflows/omnigenesis-research-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  omnigenesis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install research + HTTP integration dependencies
+        run: python -m pip install -e '.[dev,bridge]' 'cryptography>=44,<47'
+      - name: Validate isolated research subsystem
+        run: python -m pytest tests_engine/test_omnigenesis*.py -q
+      - name: Verify cinematic dashboard script syntax
+        run: node --check icarus_engine/omnigenesis-ui.js
+      - name: Verify research-only policy
+        run: |
+          python - <<'PY'
+          from icarus_engine.omnigenesis import AUTHORITY
+          assert AUTHORITY["research_only"] is True
+          assert AUTHORITY["execution_authorized"] is False
+          assert AUTHORITY["production_decision_authorized"] is False
+          assert AUTHORITY["auto_promote"] is False
+          PY
+
+  mobile-typescript:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+          cache: 'npm'
+          cache-dependency-path: 'mobile/package-lock.json'
+      - name: Install locked native-app dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck OMNIGENESIS within the complete native app
+        run: npm run typecheck
+
+  constellation-e2e:
+    name: Governed twelve-worker Constellation rehearsal
+    # A green core engine test is a prerequisite; this is an actual nested
+    # reusable-workflow/parallel-artifact trial, not a synthetic green badge.
+    needs: omnigenesis
+    permissions:
+      contents: read
+    uses: ./.github/workflows/omnigenesis-constellation.yml

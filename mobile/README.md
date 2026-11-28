@@ -3,6 +3,8 @@
 Native iOS/Android observer for the canonical `reppiks490/Icarus` runtime, with an explicit rate-limited backtest request and no trade-state mutations.
 
 ## What exists now
+- OMNIGENESIS ∞ native research observatory in the Intelligence section: independently animated orbital structures and actual immutable research record counts, authenticated through the session-protected /v1/omnigenesis gateway route. No trading mutations; requires rebuilding the mobile app after merge.
+
 
 - Expo SDK 57 / React Native 0.86 client.
 - Device pairing through the dedicated ICARUS mobile observation gateway.

@@ -1,0 +1,72 @@
+name: OMNIGENESIS Constellation specialist worker
+on:
+  workflow_call:
+    inputs:
+      lane:
+        description: One of six allowlisted deterministic research specialties
+        required: true
+        type: string
+      shard:
+        description: Research evidence shard, 0 or 1
+        required: true
+        type: number
+      seed:
+        description: Sealed unsigned research seed from the caller plan
+        required: true
+        type: string
+      plan_id:
+        description: SHA-256 identity for the caller's immutable work plan
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  specialist:
+    name: ${{ inputs.lane }} / evidence shard ${{ inputs.shard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download exact calling-run research plan
+        uses: actions/download-artifact@v4
+        with:
+          name: omnigenesis-constellation-plan
+          path: evidence/plan
+      - name: Independently verify declared worker against sealed plan
+        env:
+          EXPECTED_SEED: ${{ inputs.seed }}
+          EXPECTED_PLAN_ID: ${{ inputs.plan_id }}
+          LANE: ${{ inputs.lane }}
+          SHARD: ${{ inputs.shard }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from icarus_engine.omnigenesis.constellation import build_plan
+          plan = json.loads(Path('evidence/plan/constellation-plan.json').read_text())
+          expected = build_plan(int(os.environ['EXPECTED_SEED']))
+          assert plan == expected, 'plan bytes/schema/authority mismatch'
+          assert plan['plan_id'] == os.environ['EXPECTED_PLAN_ID'], 'plan identity mismatch'
+          assert {'lane': os.environ['LANE'], 'shard': int(os.environ['SHARD'])} in plan['jobs']
+          assert expected['authority']['execution_authorized'] is False
+          PY
+      - name: Execute one bounded specialty in a fresh isolated CI process
+        env:
+          LANE: ${{ inputs.lane }}
+          SHARD: ${{ inputs.shard }}
+        run: |
+          mkdir -p evidence/worker
+          python -m icarus_engine.omnigenesis.constellation worker \
+            --plan evidence/plan/constellation-plan.json \
+            --lane "$LANE" --shard "$SHARD" \
+            --output "evidence/worker/worker-$LANE-$SHARD.json"
+      - name: Publish one data-minimized typed research receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: constellation-worker-${{ inputs.lane }}-${{ inputs.shard }}
+          path: evidence/worker/worker-*.json
+          retention-days: 7
+          if-no-files-found: error

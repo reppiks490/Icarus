@@ -420,7 +420,6 @@
     topologyTimer=0;ensureTopology();
     const view=document.getElementById('view');if(!view||!topology)return;
     const links=topology.querySelector('.world-topology-links'),nodeLayer=topology.querySelector('.world-topology-nodes');
-    links.replaceChildren();nodeLayer.replaceChildren();
     const viewRect=view.getBoundingClientRect(),width=Math.max(1,view.scrollWidth),height=Math.max(1,view.scrollHeight);
     topology.setAttribute('viewBox',`0 0 ${width} ${height}`);
     view.querySelectorAll('[data-world-topology-node]').forEach(el=>delete el.dataset.worldTopologyNode);
@@ -435,13 +434,14 @@
     }).sort((a,b)=>a.y-b.y||a.x-b.x);
     const nextPanelGeometry=new Map(points.map(point=>[String(point.index),point]));
     for(const [id,point] of topologyPanelGeometry){
-      if(!nextPanelGeometry.has(id))viewResizeObserver?.unobserve(point.el);
+      if(!points.some(next=>next.el===point.el))viewResizeObserver?.unobserve(point.el);
     }
+    const previouslyObserved=new Set([...topologyPanelGeometry.values()].map(point=>point.el));
     topologyPanelGeometry=nextPanelGeometry;
-    for(const point of points)viewResizeObserver?.observe(point.el);
+    for(const point of points)if(!previouslyObserved.has(point.el))viewResizeObserver?.observe(point.el);
     rebuildSectionRadar(points);
     topologyRadarRect=sectionRadar?.getBoundingClientRect()||null;
-    if(points.length<2){restoreTopologyActivities();return;}
+    if(points.length<2){links.replaceChildren();nodeLayer.replaceChildren();restoreTopologyActivities();updateScrollFocus(true);return;}
     const edgeKeys=new Set(),edges=[];
     const addEdge=(a,b)=>{
       if(!a||!b||a.index===b.index||edges.length>=24)return;
@@ -457,21 +457,31 @@
       }
       if(best<Math.max(320,width*.42))addEdge(points[i],nearest);
     }
+    // Retain live SVG identity across geometry updates; invalidate replaced panels.
+    const oldEdges=new Map([...links.children].map(path=>[path.dataset.from+':'+path.dataset.to,path]));
+    const oldNodes=new Map([...nodeLayer.children].map(node=>[node.dataset.node,node]));
+    const setAttr=(node,key,value)=>{if(node.getAttribute(key)!==value)node.setAttribute(key,value);};
     for(const [a,b] of edges){
-      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-      path.setAttribute('d',topologyPath(a,b));path.setAttribute('pathLength','1');
-      path.dataset.from=String(a.index);path.dataset.to=String(b.index);links.appendChild(path);
+      const key=a.index+':'+b.index;
+      let path=oldEdges.get(key);oldEdges.delete(key);
+      if(path&&(path.__worldFrom!==a.el||path.__worldTo!==b.el)){path.remove();path=null;}
+      if(!path){path=document.createElementNS('http://www.w3.org/2000/svg','path');path.__worldFrom=a.el;path.__worldTo=b.el;path.dataset.from=String(a.index);path.dataset.to=String(b.index);links.appendChild(path);}
+      setAttr(path,'d',topologyPath(a,b));setAttr(path,'pathLength','1');
     }
+    for(const path of oldEdges.values())path.remove();
     for(const p of points){
-      const node=document.createElementNS('http://www.w3.org/2000/svg','circle');
-      node.setAttribute('cx',p.x.toFixed(1));node.setAttribute('cy',p.y.toFixed(1));node.setAttribute('r','2.2');
-      node.dataset.node=String(p.index);nodeLayer.appendChild(node);
+      const key=String(p.index);let node=oldNodes.get(key);oldNodes.delete(key);
+      if(node&&node.__worldPanel!==p.el){node.remove();node=null;}
+      if(!node){node=document.createElementNS('http://www.w3.org/2000/svg','circle');node.__worldPanel=p.el;node.dataset.node=key;nodeLayer.appendChild(node);}
+      setAttr(node,'cx',p.x.toFixed(1));setAttr(node,'cy',p.y.toFixed(1));setAttr(node,'r','2.2');
     }
+    for(const node of oldNodes.values())node.remove();
     restoreTopologyActivities();
     if(scrollFocusPanel&&!elements.includes(scrollFocusPanel)){
       scrollFocusPanel.classList.remove('world-scroll-focus');scrollFocusPanel=null;scrollFocusId=null;
     } else scrollFocusId=scrollFocusPanel?.dataset.worldTopologyNode??null;
-    updateScrollFocus();
+    // Rebuilding replaces the SVG nodes, so restore focus even inside the scroll throttle window.
+    updateScrollFocus(true);
     // Topology is decorative and can be built/rebuilt after pointer interaction.
     // Preserve an existing target, or reconcile against the physical cursor when
     // the pointer arrived before graph node IDs existed.
@@ -501,9 +511,9 @@
     topology.querySelectorAll(`path[data-from="${id}"],path[data-to="${id}"],circle[data-node="${id}"]`).forEach(el=>el.classList.add('active'));
     updateSectionRadar(id);
   }
-  function updateScrollFocus(){
+  function updateScrollFocus(force=false){
     const now=performance.now();
-    if(now-lastScrollFocusAt<200)return;
+    if(!force&&now-lastScrollFocusAt<200)return;
     lastScrollFocusAt=now;
     const view=document.getElementById('view');
     const panels=[...topologyPanelGeometry.values()].filter(point=>point.el.isConnected).slice(0,18);

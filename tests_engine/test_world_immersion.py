@@ -238,3 +238,69 @@ def test_scroll_focus_bounds_layout_reads_without_disabling_scroll_feedback():
             assert reads["growthPhase"] == "depth", reads
         finally:
             browser.close()
+
+def test_topology_rebuild_restores_scroll_highlight_inside_throttle_window():
+    """Deterministically reproduce the lost SVG class without a browser timing race."""
+    import json
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("optional Node runtime unavailable")
+    source = IMMERSION.read_text(encoding="utf-8")
+    focus = re.search(
+        r"  function updateScrollFocus\([^)]*\)\{[\s\S]*?(?=  function topologyActivityElements)",
+        source,
+    )
+    rebuild = re.search(
+        r"    restoreTopologyActivities\(\);\n    if\(scrollFocusPanel&&!elements\.includes\(scrollFocusPanel\)\)\{[\s\S]*?    updateScrollFocus\([^)]*\);",
+        source,
+    )
+    assert focus and rebuild, "topology focus source contract changed"
+    setup = """
+let highlighted=false,marked=true,radar=null,now=150,motion=true;
+const el={isConnected:true,dataset:{worldTopologyNode:'0'},classList:{add(){marked=true},remove(){marked=false}}};
+const node={classList:{add(){highlighted=true},remove(){highlighted=false}}};
+let scrollFocusPanel=el,scrollFocusId='0',lastScrollFocusAt=100;
+const topology={querySelector(){return highlighted?node:null},querySelectorAll(){return [node]}};
+const view={scrollLeft:0,scrollTop:0};
+const document={getElementById(){return view}};
+const window={innerWidth:1440,innerHeight:800,scrollX:0,scrollY:0};
+const performance={now:()=>now};
+const topologyPanelGeometry=new Map([['0',{el,docLeft:0,docTop:200,width:300,height:180}]]);
+const sectionRadar=null,topologyRadarRect=null,elements=[el];
+const motionAllowed=()=>motion;
+function updateSectionRadar(id){radar=id;}
+function restoreTopologyActivities(){}
+"""
+    checks = """
+if(!highlighted)throw Error('rebuild left missing scroll-active within throttle window');
+highlighted=false;now=160;updateScrollFocus();
+if(highlighted)throw Error('ordinary scroll bypassed throttle');
+now=400;updateScrollFocus();
+if(!highlighted)throw Error('ordinary scroll did not recover after throttle');
+motion=false;now=410;
+"""
+    final = """
+if(highlighted||marked||radar!==null)throw Error('motion-disabled rebuild retained active state');
+"""
+    script = "\n".join((setup, focus[0], rebuild[0], checks, rebuild[0], final))
+    result = subprocess.run(
+        [node, "-e", "require('node:vm').runInNewContext(" + json.dumps(script) +
+         ", {}, {timeout:1000})"],
+        capture_output=True, text=True, timeout=10, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+def test_topology_reconciles_existing_graph_without_redraw_churn():
+    """Run deterministic keyed-graph reconciliation against the real source."""
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("optional Node runtime unavailable")
+    result = subprocess.run(
+        [node, str(ROOT / "tests_engine" / "topology_reconcile.cjs"), str(IMMERSION)],
+        capture_output=True, text=True, timeout=10, check=False,
+    )
+    assert result.returncode == 0, result.stderr

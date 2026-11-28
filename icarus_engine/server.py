@@ -21,6 +21,7 @@
   GET  /api/possibility           ICARUS Psi latent pressure, counterfactual price, future-space diagnostics
   GET  /api/possibility/evidence  durable Psi external-evidence ledger and causal as-of selection
   GET  /api/chronofold            ICARUS Xi causal spacetime, multiverse, geometry, GNC and uncertainty
+  GET  /api/omnigenesis           authenticated research-only scientific ledger snapshot
   GET  /api/commissioning         append-only Chronofold prediction ledger, calibration, ablation and promotion gate
   POST /admin/execution-cost/estimate  current Databento MBP-10 book sweep + supplied fee schedule; read-only estimate
   POST /admin/pause | /admin/resume        {"asset": "NQ"} or all          (Bearer token)
@@ -112,6 +113,7 @@ from .commissioning import CommissioningEngine
 from .pantheon import PantheonKernel, subsystem_context
 from .sibyl import SibylEngine
 from .apex import ApexKernel
+from .omnigenesis.ledger import ResearchLedger
 from .ascendancy.capabilities import capability_snapshot
 from .ascendancy.archive import GenomeArchive
 from .ascendancy.frontier import build_frontier
@@ -1768,6 +1770,10 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                 return self._send(200, (html_path.parent / "sibyl-ui.js").read_bytes(), "text/javascript")
             if p.path == "/apex-ui.js":
                 return self._send(200, (html_path.parent / "apex-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/omnigenesis-ui.js":
+                return self._send(200, (html_path.parent / "omnigenesis-ui.js").read_bytes(), "text/javascript")
+            if p.path == "/omnigenesis-ui.css":
+                return self._send(200, (html_path.parent / "omnigenesis-ui.css").read_bytes(), "text/css")
             if p.path == "/ascendancy-ui.js":
                 return self._send(200, (html_path.parent / "ascendancy-ui.js").read_bytes(), "text/javascript")
             if p.path == "/learning-ui.js":
@@ -1826,6 +1832,16 @@ def serve(port: Portfolio, http_port: int = 8791, token: str = "icarus", start: 
                     capital = None
                 return self._json(200, {**performance_snapshot(port.journal, capital=capital),
                                         "workspace_id": "main"})
+            if p.path == "/api/omnigenesis":
+                if not self._auth():
+                    return self._json(401, {"detail": "bad admin token"})
+                if p.query:
+                    return self._json(400, {"detail": "OMNIGENESIS snapshot accepts no selectors"})
+                try:
+                    return self._json(200, ResearchLedger(port.base_dir or os.getcwd()).snapshot(limit=100))
+                except Exception as ex:
+                    port.journal.log("WARN", f"OMNIGENESIS snapshot unavailable: {type(ex).__name__}: {ex}")
+                    return self._json(503, {"detail": "OMNIGENESIS research ledger unavailable"})
             if p.path == "/api/ascendancy/capabilities":
                 if not self._auth():
                     return self._json(401, {"detail": "bad admin token"})

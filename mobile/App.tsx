@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { IcarusApiError, IcarusClient } from './src/api';
 import { PriceChart } from './src/PriceChart';
+import { OmnigenesisMobile } from './src/OmnigenesisMobile';
 import { registerForSystemPush } from './src/notifications';
 import { clearCredentials, loadCredentials, saveCredentials } from './src/storage';
 import type {
@@ -201,6 +202,7 @@ export default function App() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [brain, setBrain] = useState<JsonObject | null>(null);
   const [apex, setApex] = useState<JsonObject | null>(null);
+  const [omnigenesis, setOmnigenesis] = useState<JsonObject | null>(null);
   const [learning, setLearning] = useState<JsonObject | null>(null);
   const [possibility, setPossibility] = useState<JsonObject | null>(null);
   const [control, setControl] = useState<JsonObject | null>(null);
@@ -335,6 +337,28 @@ export default function App() {
     return () => {
       cancelled = true;
     };
+  }, [client, tab]);
+
+  useEffect(() => {
+    if (!client || tab !== 'intelligence') return;
+    let cancelled = false;
+    let inFlight = false;
+    const refreshResearch = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const next = await client.omnigenesis();
+        if (!cancelled) setOmnigenesis(next);
+      } catch {
+        if (!cancelled) setOmnigenesis(null);
+      } finally {
+        inFlight = false;
+      }
+    };
+    void refreshResearch();
+    // Foreground-only read polling; never controls or triggers research jobs.
+    const timer = setInterval(() => { void refreshResearch(); }, 15000);
+    return () => { cancelled = true; clearInterval(timer); };
   }, [client, tab]);
 
   useEffect(() => {
@@ -703,6 +727,7 @@ export default function App() {
                 Mobile receives authenticated observation data through the gateway. No execution mutation routes are exposed.
               </Text>
             </View>
+            <OmnigenesisMobile data={omnigenesis} />
             <JsonPanel title="Adaptive Brain" data={brain} />
             <JsonPanel title="APEX Ω" data={apex} />
             <JsonPanel title="Learning Health" data={learning} />

@@ -1,0 +1,96 @@
+{
+  "version": "5.0.0",
+  "seed": 49021,
+  "trials": 8,
+  "steps": 24,
+  "baseline": {
+    "trade": 0.72,
+    "climate": 0.38,
+    "medicine": 0.48,
+    "innovation": 0.58,
+    "migration": 0.48,
+    "conservation": 0.48,
+    "conflict": 0.25
+  },
+  "treatment": {
+    "trade": 0,
+    "climate": 0.38,
+    "medicine": 0.48,
+    "innovation": 0.58,
+    "migration": 0.48,
+    "conservation": 0.48,
+    "conflict": 0.25
+  },
+  "mean": 10.16,
+  "median": 8.19,
+  "p05": 2.7,
+  "p95": 18.82,
+  "sd": 6.64,
+  "positive": 8,
+  "paths": [
+    {
+      "seed": 1544801170,
+      "baseline": 657.5200000000001,
+      "treatment": 652.0600000000001,
+      "diff": 5.460000000000036,
+      "foodDiff": -176,
+      "emissionsDiff": 0
+    },
+    {
+      "seed": 3618476946,
+      "baseline": 608.5999999999999,
+      "treatment": 607.26,
+      "diff": 1.3399999999999181,
+      "foodDiff": -59,
+      "emissionsDiff": 0
+    },
+    {
+      "seed": 3724903299,
+      "baseline": 615.71,
+      "treatment": 596.19,
+      "diff": 19.519999999999982,
+      "foodDiff": -166,
+      "emissionsDiff": 0
+    },
+    {
+      "seed": 1251572370,
+      "baseline": 634.9899999999999,
+      "treatment": 625.5299999999999,
+      "diff": 9.460000000000036,
+      "foodDiff": -261,
+      "emissionsDiff": 0
+    },
+    {
+      "seed": 2728800669,
+      "baseline": 610.99,
+      "treatment": 595.17,
+      "diff": 15.82000000000005,
+      "foodDiff": -72,
+      "emissionsDiff": 0
+    },
+    {
+      "seed": 2697637544,
+      "baseline": 616.96,
+      "treatment": 610.04,
+      "diff": 6.920000000000073,
+      "foodDiff": -305,
+      "emissionsDiff": 0
+    },
+    {
+      "seed": 336644952,
+      "baseline": 634.2999999999998,
+      "treatment": 616.79,
+      "diff": 17.509999999999877,
+      "foodDiff": -247,
+      "emissionsDiff": 0
+    },
+    {
+      "seed": 1702378113,
+      "baseline": 634.3,
+      "treatment": 629.07,
+      "diff": 5.2299999999999045,
+      "foodDiff": -262,
+      "emissionsDiff": 0
+    }
+  ]
+}

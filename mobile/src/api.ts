@@ -223,6 +223,10 @@ export class IcarusClient {
   apex(): Promise<JsonObject> {
     return this.get<JsonObject>('/v1/apex').then((value) => value || {});
   }
+  
+  omnigenesis(): Promise<JsonObject> {
+    return this.get<JsonObject>('/v1/omnigenesis').then((value) => value || {});
+  }
 
   learningHealth(): Promise<JsonObject> {
     return this.get<JsonObject>('/v1/learning/health').then((value) => value || {});

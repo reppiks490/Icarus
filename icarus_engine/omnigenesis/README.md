@@ -1,0 +1,249 @@
+# ICARUS OMNIGENESIS ∞ — Research-only Mathematical Intelligence
+
+This package is an implemented, intentionally constrained scientific microkernel.
+It is not an autonomous profitable trading system, AI agent colony, production
+execution controller, or verified financial forecaster.
+
+## Delivered Python capabilities
+
+- Exact next-prime and first-observed-event arithmetic.
+- Strict as-of timestamps, immutable record identity, source Git revision.
+- Single-feature finite hypothesis discovery with purged chronological splits.
+- SQLite-ledgered study outcomes with immutable content-derived identifiers.
+- Typed finite-state machine compiler, deterministic replay, prefix causality.
+- Symbolic detection of overlapping numeric transition guards with counterexamples.
+- Seeded price/time-priority synthetic order-book matching with self-match guard.
+- Exact-tick historical OHLC upper/lower first-passage, explicit ambiguous and
+  censored outcomes, and incomplete-horizon rejection.
+- Bounded, dependency-ordered, non-executing research capability proposals.
+- Unified content-addressed summaries of model studies, proofs, event-time
+  labels, synthetic exchange experiments and capability plans.
+- Native ICARUS read-only API, desktop cinematic research tab and secure mobile
+  gateway read surface. Standalone HTML visualization for offline viewing.
+- Focused tests in tests_engine/test_omnigenesis*.py and dedicated Actions CI.
+
+## Run from canonical repository root
+
+    python -m pytest tests_engine/test_omnigenesis*.py -q
+    python -m icarus_engine.omnigenesis prime 100
+    python -m icarus_engine.omnigenesis run dataset.json --root .
+    python -m icarus_engine.omnigenesis status --root .
+    python -m icarus_engine.omnigenesis synthetic-book --seed 17 --steps 300 --root .
+    python -m icarus_engine.omnigenesis formal machine.json --root .
+    python -m icarus_engine.omnigenesis automaton machine.json observations.json
+    python -m icarus_engine.omnigenesis first-passage tape.json --up-ticks 8 --down-ticks 6 --horizon 10 --root .
+    python -m icarus_engine.omnigenesis propose capability.json
+    python -m icarus_engine.omnigenesis plan proposals.json --seconds 1000 --dollars 0 --root .
+    python -m icarus_engine.omnigenesis dashboard --root . --output research/omnigenesis.html
+
+No CLI command automatically trains, deploys, schedules, purchases data or
+modifies paper/live trading. Offline evaluation uses explicit input files.
+
+## Historical research dataset contract
+
+JSON must contain exactly these top-level keys:
+
+    {
+      "dataset_id": "NQ-verified-run-id",
+      "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "records": [...]
+    }
+
+Each of the 30–50000 records must contain exactly:
+
+    {
+      "record_id": "event-0001",
+      "asset": "NQ",
+      "decision_at": "2026-01-01T14:00:00Z",
+      "observed_at": "2026-01-01T13:59:59Z",
+      "received_at": "2026-01-01T14:00:00Z",
+      "label_resolved_at": "2026-01-01T14:05:00Z",
+      "feature": 0.25,
+      "outcome": true,
+      "source_record_id": "verified-source-record-0001"
+    }
+
+This is a ONE-ASSET, ONE-FEATURE experimental grammar. Outcome is a historically
+resolved boolean; unlabeled, ambiguous and censored observations MUST NOT be
+arbitrarily converted into false. Observational and label clocks must be
+verified upstream. This version does NOT prove data-provider completeness or
+correctness just because it accepts a syntactically valid source identifier.
+
+Output EXPLO​RATORY (without the optional invisible separator) is only an
+exploratory held-out improvement and never qualification. Data snooping,
+transaction costs, multiple-testing penalties, OOD, and cross-market
+validation remain external DAEDALUS/ASCENDANCY obligations.
+
+## First-passage tape JSON
+
+    {
+      "asset": "NQ",
+      "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "bars": [
+        {
+          "record_id": "bar_001",
+          "observed_at": "2026-01-01T14:00:00Z",
+          "received_at": "2026-01-01T14:00:01Z",
+          "open_ticks": 25000,
+          "high_ticks": 25004,
+          "low_ticks": 24996,
+          "close_ticks": 25002
+        }
+      ]
+    }
+
+The actual tape requires at least five bars. All prices must be positive
+integer tick indices. Outcomes are UPPER, LOWER, AMBIGUOUS_BOTH or CENSORED.
+An incomplete future window is PENDING (excluded). These are retrospective
+labels, not forecasted trades, not actual fills and not a synthetic oracle.
+
+## Typed machine JSON
+
+    {
+      "name": "sweep_reclaim",
+      "states": ["WAIT", "SWEEP", "DONE"],
+      "initial": "WAIT",
+      "terminal_states": ["DONE"],
+      "transitions": [
+        {"from": "WAIT", "to": "SWEEP", "feature": "sweep",
+         "op": "gte", "threshold": 1.0},
+        {"from": "SWEEP", "to": "DONE", "feature": "reclaim",
+         "op": "gte", "threshold": 0.7}
+      ]
+    }
+
+Replay inputs are bounded arrays of as-of observations, each with exactly
+record_id, observed_at, received_at, decision_at and a finite numeric
+features object. Simultaneously satisfiable guards fail compilation. A
+formal certificate proves only structural properties of this typed program,
+not that real markets will ever enter its terminal state.
+
+## Research integration and UI
+
+An authenticated GET /api/omnigenesis returns a read-only, bounded derived
+snapshot. The existing desktop dashboard has an OMNIGENESIS tab with a
+cinematic geometry scene and data-backed study/artifact nodes. The session-
+secured mobile gateway forwards GET /v1/omnigenesis, but does NOT install
+a new phone application or expose the engine port publicly.
+
+The CLI dashboard command creates an HTML offline snapshot (not live data).
+Animation is visual presentation only and never an assertion of autonomous
+agent activity. Empty ledger means zero research records.
+
+For architecture, ownership, remaining research and release gates see:
+docs/icarus/OMNIGENESIS.md.
+
+## Strict prohibitions
+
+No eval or arbitrary generated code, live order APIs, broker tokens, trade
+state writes, paid vendor requests, production model promotion, self-deploy,
+indefinite autonomous tasks, hidden future inputs or fabricated causal proof.
+
+## Phase 17–18 ICARUS × UMBRA hybrid research — current draft
+
+Phase 17 provides local, read-only, normalized JSONL intake and precise checksum/declared futures-roll and timestamp audits. It does **not** authenticate the claimed vendor, validate actual market-data rights, reconstruct official MBO or produce market signals. UMBRA's separate v5 source is accepted only as a schema-checked synthetic paired-worldline report. Phase 18 provides an **explicitly invoked**, typed, dependency-checked, research-only task DAG with deterministic chained receipts and fail-closed task statuses. Derived summaries may be appended to the existing immutable SQLite research ledger and consequently viewed in the existing authenticated OMNIGENESIS tab without a new write endpoint.
+
+    python -m icarus_engine.omnigenesis market-intake path/to/local_tape.jsonl path/to/manifest.json
+    python -m icarus_engine.omnigenesis audit-umbra path/to/paired.json --claimed-source-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    python -m icarus_engine.omnigenesis workflow path/to/workflow.json
+    python -m icarus_engine.omnigenesis workflow path/to/workflow.json --execute --root . --output research/new_workflow_receipt.json
+
+All paths above are illustrative. No licensed market tape, vendor attestation, live feed, broker order, or actual UMBRA engine replay was performed. Workflow compute budgets are estimates rather than preemptive CPU enforcement. A PASS receipt is not APEX/DAEDALUS approval, empirical causality or profit evidence. Do not present the current local executor as permanently running agents. Source, schemas, nonclaims and release gates: docs/icarus/OMNIGENESIS_SOVEREIGN_HYBRID.md.
+
+
+## Phase 19 — Causal synthetic paper execution
+
+The offline paper harness creates fabricated deterministic bar paths, produces
+SMA-cross decisions only after each close, fills at later opens with adverse
+slippage and fees, and uses integer tick/cent bookkeeping with explicit risk
+kill conditions. A 2–8 contender tournament ranks strategies on a 70%
+synthetic calibration segment and tests only the selected one on the
+remaining 30%. No automatic live promotion or certified profits.
+
+    python -m icarus_engine.omnigenesis paper ./operator-paper.json
+    python -m icarus_engine.omnigenesis paper-arena ./operator-arena.json
+
+These filenames are illustrative; supply strict schema-valid local JSON
+manifests (paper-execution-v1 or paper-arena-v1). Phase 18 agent_workflow
+now accepts the research-only paper_execution and paper_tournament
+operators with a spec object; their results can enter the existing ledger
+only as derived workflow summaries. No broker, API keys, scheduled agent
+loop, real fills or guaranteed max-loss is implemented. See
+docs/icarus/OMNIGENESIS_SOVEREIGN_HYBRID.md.
+
+
+## Phase 20 — Offline order message router and automated research check
+
+A new OFFLINE_SANDBOX-only router simulates message ordering for
+SUBMIT, ACK, FILL, CANCEL, CANCEL_ACK, REJECT, HALT and RECONCILE
+without a broker connection. It supports replay-local event-ID
+deduplication, partial fills, fills racing with cancellations, signed
+position caps and worst-case unfilled-order exposure. Any halt or
+reconciliation mismatch stops downstream typed workflow operations.
+It does not claim live idempotency, market fill prices, account
+reconciliation or guaranteed risk enforcement.
+
+    python -m icarus_engine.omnigenesis offline-router ./sandbox-messages.json
+
+The argument is operator-provided strict OFFLINE_SANDBOX JSON and not a
+real broker feed. The typed DAG operator offline_order_router accepts
+a spec object. GitHub Actions workflow
+.github/workflows/omnigenesis-offline-agent-evidence.yml also verifies
+the Phase 19/20 synthetic harness on pull requests and writes an
+archived fabricated evidence receipt. Its nightly schedule only becomes
+active after a reviewed merge to the default branch; no scheduled trade
+execution or production deployment is configured.
+
+See docs/icarus/OMNIGENESIS_SOVEREIGN_HYBRID.md for security and
+execution-approval limitations.
+
+## Phase 21 + Sovereign Constellation — historical time and parallel CI research workers
+
+Historical paper: run_historical_paper_replay(operator_supplied_history_spec) enforces
+strict OHLC observed/open/closed/received chronology and only models hypothetical
+later-open fills after the signal actually became available. No real exchange
+origin, data entitlement, broker execution, or profitability is verified.
+
+Constellation: build_plan(seed) → run_worker(plan,lane,shard) → arbitrate(plan,receipts).
+Six research disciplines (chronos, execution, reconciliation, nemesis, worldline,
+memory) across two unique shards create twelve typed content-addressed receipts.
+A separate fail-closed tribunal rejects tampered/duplicate/missing/mislabelled
+receipts and checks deterministic same-source replay. No auto-promotions.
+
+Nested GitHub workflow hierarchy is in:
+- .github/workflows/omnigenesis-constellation.yml — parent research dispatcher
+- .github/workflows/omnigenesis-constellation-worker.yml — reusable specialists
+- .github/workflows/omnigenesis-constellation-tribunal.yml — reusable review gate
+
+The hourly GitHub schedule is inactive until explicit review/merge to default;
+this draft branch has no continuous production swarm. Full design, CLI,
+evidence limitations and release gates:
+docs/icarus/OMNIGENESIS_CONSTELLATION_SWARM.md.
+
+## Phases 24–25 — Recovery and real research receipts
+
+The Constellation parent workflow now produces a SHA-256-bound partial-worker
+checkpoint and retries only missing shards once. Its recovery gate requires all
+twelve original receipts before the final tribunal. A failed first-pass matrix
+remains a failed CI job; no automatic merge or release promotion is enabled.
+Checkpoint artifacts are retained for fourteen days, not indefinitely.
+
+A COMPLETED Constellation run can produce an immutable, minimal observation.
+The observer replays the exact source-valid checkpoint and tribunal in memory
+and records zero currently active workers, unverified external provenance and
+no broker orders. GitHub Actions archives a read-only observer artifact. To
+make a verified imported result appear in the existing authenticated ICARUS
+research snapshot, an operator can explicitly run:
+
+    python -m icarus_engine.omnigenesis constellation-import \
+      --plan ./constellation-plan.json \
+      --checkpoint ./checkpoint-final.json \
+      --tribunal ./constellation-tribunal.json \
+      --root /path/to/local/icarus
+
+If recovery actually occurred, append --predecessor ./checkpoint-0.json. All
+paths refer to operator-supplied exact-run files; they are not bundled sample
+datasets or live GitHub links. The import does not fetch GitHub APIs, verify
+an exchange, synchronize an iPhone or alter production trades. It stores ONLY
+a derived, locally replayed artifact in the existing SQLite scientific ledger.
+Full architecture and known limits: docs/icarus/OMNIGENESIS_CONSTELLATION_SWARM.md.

@@ -42,7 +42,9 @@ jobs:
           tests_engine/test_paper_workspaces_runtime.py
           tests_engine/test_command_center_routes.py -q
   browser:
-    runs-on: ubuntu-latest
+    # Playwright 1.56.1 does not support ubuntu26.04 (current ubuntu-latest).
+    # Pin only the browser runtime to its supported GitHub-hosted image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

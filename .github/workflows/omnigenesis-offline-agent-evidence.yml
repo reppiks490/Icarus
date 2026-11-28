@@ -1,0 +1,105 @@
+name: OMNIGENESIS offline agent evidence
+on:
+  pull_request:
+    paths:
+      - 'icarus_engine/omnigenesis/**'
+      - 'tests_engine/test_omnigenesis*.py'
+      - '.github/workflows/omnigenesis-offline-agent-evidence.yml'
+  schedule:
+    # Scheduled workflows run only from the repository default branch.
+    # This is synthetic research only, never live trading or network market data.
+    - cron: '41 6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install research test runner
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Adversarial paper and offline router tests
+        run: |
+          python -m pytest -q \
+            tests_engine/test_omnigenesis_paper_harness.py \
+            tests_engine/test_omnigenesis_offline_order_router.py \
+            tests_engine/test_omnigenesis_agent_workflow.py
+      - name: Execute bounded synthetic-only daily contender experiment
+        run: |
+          mkdir -p evidence
+          python - <<'PY'
+          import hashlib
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from icarus_engine.omnigenesis.paper_harness import (
+              run_paper_execution, tournament_paper_strategies)
+
+          # The seed is reproducible and calendar-derived; NO real markets.
+          utc_day = datetime.now(timezone.utc).date().isoformat()
+          seed = int.from_bytes(hashlib.sha256(utc_day.encode()).digest()[:4], "big")
+          execution = {
+              "contracts": 1, "tick_value_cents": 125,
+              "fee_per_contract_cents": 250, "slippage_ticks": 2,
+              "latency_bars": 1,
+          }
+          risk = {
+              "initial_cash_cents": 20_000_000,
+              "max_loss_cents": 5_000_000,
+              "max_drawdown_cents": 3_000_000,
+              "max_order_events": 120,
+          }
+          paper = run_paper_execution({
+              "schema_version": "icarus-omnigenesis-paper-execution-v1",
+              "seed": seed, "bars": 360,
+              "strategy": {"kind": "SMA_CROSS", "fast": 3,
+                           "slow": 12, "direction": "trend"},
+              "execution": execution, "risk": risk,
+          })
+          arena = tournament_paper_strategies({
+              "schema_version": "icarus-omnigenesis-paper-arena-v1",
+              "seed": seed, "bars": 420,
+              "candidates": [
+                  {"kind": "SMA_CROSS", "fast": 3, "slow": 12, "direction": "trend"},
+                  {"kind": "SMA_CROSS", "fast": 5, "slow": 20, "direction": "trend"},
+                  {"kind": "SMA_CROSS", "fast": 3, "slow": 12, "direction": "reversion"},
+              ],
+              "execution": execution, "risk": risk,
+          })
+          for result in (paper, arena):
+              if result["broker_order_count"]:
+                  raise RuntimeError("broker side effect evidence violated")
+              if result["authority"]["execution_authorized"]:
+                  raise RuntimeError("research authority was escalated")
+              if result["profitability_verified"]:
+                  raise RuntimeError("synthetic test claimed real profitability")
+          witness = {
+              "schema_version": "icarus-offline-agent-ci-evidence-v1",
+              "synthetic_seed": seed, "run_date_utc": utc_day,
+              "paper_receipt_id": paper["receipt_id"],
+              "tournament_receipt_id": arena["receipt_id"],
+              "synthetic_pnl_cents": paper["results"]["net_pnl_cents"],
+              "synthetic_holdout_pnl_cents": arena["chosen_holdout_net_pnl_cents"],
+              "broker_order_count": 0,
+              "market_data_feed_used": False,
+              "automatic_strategy_promotion": False,
+              "real_profitability_verified": False,
+              "real_consciousness_claim": False,
+          }
+          Path("evidence/offline-agent-report.json").write_text(
+              json.dumps(witness, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8")
+          print(json.dumps(witness, sort_keys=True))
+          PY
+      - name: Publish non-sensitive synthetic research witness
+        uses: actions/upload-artifact@v4
+        with:
+          name: omnigenesis-offline-agent-evidence
+          path: evidence/offline-agent-report.json
+          retention-days: 7
+          if-no-files-found: error

@@ -502,12 +502,17 @@ def _finished_job(request, workspace, receipt):
 
 def _job_tape(server, workspace):
     runner = server.command_centers.portfolios[workspace].runners["NQ"]
-    runner.spec.calendar = "crypto"
-    runner.spec.session = "eth"
-    runner.subbars = [(Bar(1_700_000_000 // 60 * 60 + k * 60,
-                          runner.last_price + k, runner.last_price + k + 2,
-                          runner.last_price + k - 1, runner.last_price + k + 1, 1), 1)
-                      for k in range(30)]
+    # The native dashboard intentionally consumes immutable published runner
+    # snapshots. Keep this test's injected tape and its advertised cached
+    # timeframe capabilities consistent, without enabling unsupported TFs.
+    with runner.lock:
+        runner.spec.calendar = "crypto"
+        runner.spec.session = "eth"
+        runner.subbars = [(Bar(1_700_000_000 // 60 * 60 + k * 60,
+                              runner.last_price + k, runner.last_price + k + 2,
+                              runner.last_price + k - 1, runner.last_price + k + 1, 1), 1)
+                          for k in range(30)]
+        runner.publish_read_views()
 
 
 @pytest.mark.parametrize("suffix,settings", [
